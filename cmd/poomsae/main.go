@@ -116,10 +116,7 @@ func newRootCmd() *cobra.Command {
 
 	subs := []*cobra.Command{
 		newDaemonCmd(),
-		newConnectorCmd(),
-		newBridgeCmd(),
 		newMCPCmd(),
-		newStorageCmd(),
 		newInitCmd(),
 		newCreateCmd(),
 		newShowCmd(),
@@ -151,8 +148,6 @@ func newRootCmd() *cobra.Command {
 		newReadyCmd(),
 		newNextCmd(),
 		newWaitCmd(),
-		newSyncCmd(),
-		newFederationCmd(),
 		newCronCmd(),
 		newAttachmentCmd(),
 		newEventsCmd(),
@@ -166,8 +161,6 @@ func newRootCmd() *cobra.Command {
 		newDoctorCmd(),
 		newOpenAPICmd(),
 		newProjectsCmd(),
-		newTokensCmd(),
-		newTeamsCmd(),
 		newUICmd(),
 		newTUICmd(),
 		newUpdateCmd(),

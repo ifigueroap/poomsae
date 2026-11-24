@@ -56,7 +56,6 @@ func buildHostOperationPolicies() map[string]HostOperationPolicy {
 	registerServiceOperationPolicies(policies)
 	registerProjectOperationPolicies(policies)
 	registerTaskOperationPolicies(policies)
-	registerFederationOperationPolicies(policies)
 	return policies
 }
 
