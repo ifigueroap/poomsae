@@ -47,7 +47,7 @@ func copyFileIfAbsent(src, dst string) (bool, error) {
 		}
 		return false, err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	info, err := in.Stat()
 	if err != nil {
 		return false, err

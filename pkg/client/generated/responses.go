@@ -8,30 +8,6 @@ type AuditClosesResponse = AuditClosesResponseBody
 
 type AuditClosesErrorResponse = ErrorEnvelope
 
-type ListConnectorsResponse = ConnectorListResponseBody
-
-type ListConnectorsErrorResponse = ErrorEnvelope
-
-type GetConnectorStatusResponse = ConnectorOut
-
-type GetConnectorStatusErrorResponse = ErrorEnvelope
-
-type ReconcileExternalRootByKeyResponse = ExternalRootRunOut
-
-type ReconcileExternalRootByKeyErrorResponse = ErrorEnvelope
-
-type ListConnectorFieldsResponse = ConnectorFieldsResponseBody
-
-type ListConnectorFieldsErrorResponse = ErrorEnvelope
-
-type UnmapConnectorFieldResponse = ExternalFieldMappingOut
-
-type UnmapConnectorFieldErrorResponse = ErrorEnvelope
-
-type MapConnectorFieldResponse = ExternalFieldMappingOut
-
-type MapConnectorFieldErrorResponse = ErrorEnvelope
-
 type DigestGlobalResponse = DigestResponseBody
 
 type DigestGlobalErrorResponse = ErrorEnvelope
@@ -80,64 +56,6 @@ type PollEventsErrorResponse = ErrorEnvelope
 type StreamEventsResponse = []byte
 
 type StreamEventsErrorResponse = ErrorEnvelope
-
-type ConnectFederationBridgeResponse = FederationBridgeBody
-
-type ConnectFederationBridgeErrorResponse = ErrorEnvelope
-
-type GetFederationBridgeStatusResponse = FederationBridgeStatusBody
-
-type GetFederationBridgeStatusErrorResponse = ErrorEnvelope
-
-type DisconnectFederationBridgeResponse = FederationBridgeDisconnectResult
-
-type DisconnectFederationBridgeErrorResponse = ErrorEnvelope
-
-type ListFederationEnrollmentsResponse = ListFederationEnrollmentsBody
-
-type ListFederationEnrollmentsErrorResponse = ErrorEnvelope
-
-type CreateFederationEnrollmentResponse = FederationEnrollmentOut
-
-type CreateFederationEnrollmentErrorResponse = ErrorEnvelope
-
-type RotateFederationEnrollmentResponse = FederationEnrollmentOut
-
-type RotateFederationEnrollmentErrorResponse = ErrorEnvelope
-
-type ClearFederationSpokeNameResponse = FederationSpokeNameOut
-
-type ClearFederationSpokeNameErrorResponse = ErrorEnvelope
-
-type SetFederationSpokeNameResponse = FederationSpokeNameOut
-
-type SetFederationSpokeNameErrorResponse = ErrorEnvelope
-
-type RevokeFederationEnrollmentResponse = RevokeFederationEnrollmentBody
-
-type RevokeFederationEnrollmentErrorResponse = ErrorEnvelope
-
-type CreateFederationReplicaResponse = CreateFederationReplicaResponseBody
-
-type CreateFederationReplicaErrorResponse = ErrorEnvelope
-
-type LeaveFederationReplicaResponse = LeaveFederationReplicaResultBody
-
-type LeaveFederationReplicaErrorResponse = ErrorEnvelope
-
-type RebindFederationReplicaResponse = RebindFederationReplicaResponseBody
-
-type RebindFederationReplicaErrorResponse = ErrorEnvelope
-
-type ConfigureFederationSigningErrorResponse = ErrorEnvelope
-
-type RepinFederationRootKeyResponse = FederationRootKeyRepinResult
-
-type RepinFederationRootKeyErrorResponse = ErrorEnvelope
-
-type GetFederationStatusResponse = FederationStatusBody
-
-type GetFederationStatusErrorResponse = ErrorEnvelope
 
 type HealthResponse = HealthResponseBody
 
@@ -202,14 +120,6 @@ type ShowProjectErrorResponse = ErrorEnvelope
 type RenameProjectResponse = ShowProjectResponseBody
 
 type RenameProjectErrorResponse = ErrorEnvelope
-
-type GetProjectAccessResponse = ProjectAccessResponseBody
-
-type GetProjectAccessErrorResponse = ErrorEnvelope
-
-type SetProjectAccessResponse = ProjectAccessResponseBody
-
-type SetProjectAccessErrorResponse = ErrorEnvelope
 
 type PurgeProjectResponse = ProjectPurgeResponseBody
 
@@ -295,97 +205,9 @@ type PollProjectEventsResponse = PollEventsBody
 
 type PollProjectEventsErrorResponse = ErrorEnvelope
 
-type GetProjectFederationResponse = ProjectFederationBody
-
-type GetProjectFederationErrorResponse = ErrorEnvelope
-
-type FederatedDocbankCapabilitiesResponse = DocbankServiceCapabilities
-
-type FederatedDocbankCapabilitiesErrorResponse = ErrorEnvelope
-
-type LinkFederatedDocbankResponse = DocbankDescriptor
-
-type LinkFederatedDocbankErrorResponse = ErrorEnvelope
-
-type UploadFederatedDocbankResponse = DocbankDescriptor
-
-type UploadFederatedDocbankErrorResponse = ErrorEnvelope
-
-type FederatedDocbankContentResponse = []byte
-
-type FederatedDocbankContentErrorResponse = ErrorEnvelope
-
-type EnableProjectFederationResponse = ProjectFederationBody
-
-type EnableProjectFederationErrorResponse = ErrorEnvelope
-
-type PollFederationProjectEventsResponse = PollEventsBody
-
-type PollFederationProjectEventsErrorResponse = ErrorEnvelope
-
-type IngestFederationProjectEventsResponse = FederationIngestEventsBody
-
-type IngestFederationProjectEventsErrorResponse = ErrorEnvelope
-
-type GetFederationProjectMetadataResponse = ProjectFederationBody
-
-type GetFederationProjectMetadataErrorResponse = ErrorEnvelope
-
-type RetryFederationQuarantineResponse = FederationQuarantineSummary
-
-type RetryFederationQuarantineErrorResponse = ErrorEnvelope
-
-type SkipFederationQuarantineResponse = FederationQuarantineSummary
-
-type SkipFederationQuarantineErrorResponse = ErrorEnvelope
-
-type OfferRelayDeliveriesResponse = RelayBatchResponse
-
-type OfferRelayDeliveriesErrorResponse = ErrorEnvelope
-
-type GetRelayResetResponse = RelayResetCheckpoint
-
-type GetRelayResetErrorResponse = ErrorEnvelope
-
-type AcceptRelayDeliveriesResponse = RelayAcceptance
-
-type AcceptRelayDeliveriesErrorResponse = ErrorEnvelope
-
-type AckRelayDeliveriesResponse = RelayAckResponseBody
-
-type AckRelayDeliveriesErrorResponse = ErrorEnvelope
-
-type DisconnectRelayEnrollmentResponse = DisconnectRelayResponseBody
-
-type DisconnectRelayEnrollmentErrorResponse = ErrorEnvelope
-
-type SearchFederationProjectResponse = FederationSearchResponseBody
-
-type SearchFederationProjectErrorResponse = ErrorEnvelope
-
-type GetProjectFederationStatusResponse = FederationStatusBody
-
-type GetProjectFederationStatusErrorResponse = ErrorEnvelope
-
 type ImportIssuesResponse = ImportBatchResult
 
 type ImportIssuesErrorResponse = ErrorEnvelope
-
-type DisableIssueSyncResponse = IssueSyncBody
-
-type DisableIssueSyncErrorResponse = ErrorEnvelope
-
-type EnableIssueSyncResponse = IssueSyncBody
-
-type EnableIssueSyncErrorResponse = ErrorEnvelope
-
-type RunIssueSyncOnceResponse = RunIssueSyncOnceResponseBody
-
-type RunIssueSyncOnceErrorResponse = ErrorEnvelope
-
-type GetIssueSyncStatusResponse = IssueSyncBody
-
-type GetIssueSyncStatusErrorResponse = ErrorEnvelope
 
 type ListIssuesResponse = ListIssuesResponseBody
 
@@ -454,38 +276,6 @@ type LinkAttachmentErrorResponse = ErrorEnvelope
 type AttachmentContentResponse = []byte
 
 type AttachmentContentErrorResponse = ErrorEnvelope
-
-type UnbindExternalRootResponse = ExternalRootBridgeOut
-
-type UnbindExternalRootErrorResponse = ErrorEnvelope
-
-type GetExternalRootBridgeResponse = ExternalRootBridgeOut
-
-type GetExternalRootBridgeErrorResponse = ErrorEnvelope
-
-type BindExternalRootResponse = ExternalRootBridgeOut
-
-type BindExternalRootErrorResponse = ErrorEnvelope
-
-type PauseExternalRootBridgeResponse = ExternalRootBridgeOut
-
-type PauseExternalRootBridgeErrorResponse = ErrorEnvelope
-
-type ReconcileExternalRootBridgeResponse = ExternalRootRunOut
-
-type ReconcileExternalRootBridgeErrorResponse = ErrorEnvelope
-
-type ResolveExternalCommentResponse = ExternalRootBridgeOut
-
-type ResolveExternalCommentErrorResponse = ErrorEnvelope
-
-type ResolveExternalFieldResponse = ExternalRootBridgeOut
-
-type ResolveExternalFieldErrorResponse = ErrorEnvelope
-
-type ResumeExternalRootBridgeResponse = ExternalRootBridgeOut
-
-type ResumeExternalRootBridgeErrorResponse = ErrorEnvelope
 
 type CreateCommentResponse = CommentResponseBody
 
@@ -611,42 +401,6 @@ type ReadyIssuesGlobalResponse = ReadyGlobalResponseBody
 
 type ReadyIssuesGlobalErrorResponse = ErrorEnvelope
 
-type ListTeamsResponse = ListTeamsResponseBody
-
-type ListTeamsErrorResponse = ErrorEnvelope
-
-type CreateTeamResponse = TeamResponseBody
-
-type CreateTeamErrorResponse = ErrorEnvelope
-
-type DeleteTeamResponse = AccessAdministrationResponseBody
-
-type DeleteTeamErrorResponse = ErrorEnvelope
-
-type ShowTeamResponse = ShowTeamResponseBody
-
-type ShowTeamErrorResponse = ErrorEnvelope
-
-type RemoveTeamMemberResponse = AccessAdministrationResponseBody
-
-type RemoveTeamMemberErrorResponse = ErrorEnvelope
-
-type AddTeamMemberResponse = AccessAdministrationResponseBody
-
-type AddTeamMemberErrorResponse = ErrorEnvelope
-
-type ListTokensResponse = ListTokensResponseBody
-
-type ListTokensErrorResponse = ErrorEnvelope
-
-type CreateTokenResponse = CreateTokenResponseBody
-
-type CreateTokenErrorResponse = ErrorEnvelope
-
-type RevokeTokenResponse = RevokeTokenResponseBody
-
-type RevokeTokenErrorResponse = ErrorEnvelope
-
 type ResolveUIIssueReferenceResponse = UIIssueReferenceResponseBody
 
 type ResolveUIIssueReferenceErrorResponse = ErrorEnvelope
@@ -669,54 +423,6 @@ type AuditClosesResp struct {
 	StatusCode   int
 	JSON200      *AuditClosesResponse
 	JSONDefault  *AuditClosesErrorResponse
-}
-
-type ListConnectorsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ListConnectorsResponse
-	JSONDefault  *ListConnectorsErrorResponse
-}
-
-type GetConnectorStatusResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetConnectorStatusResponse
-	JSONDefault  *GetConnectorStatusErrorResponse
-}
-
-type ReconcileExternalRootByKeyResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ReconcileExternalRootByKeyResponse
-	JSONDefault  *ReconcileExternalRootByKeyErrorResponse
-}
-
-type ListConnectorFieldsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ListConnectorFieldsResponse
-	JSONDefault  *ListConnectorFieldsErrorResponse
-}
-
-type UnmapConnectorFieldResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *UnmapConnectorFieldResponse
-	JSONDefault  *UnmapConnectorFieldErrorResponse
-}
-
-type MapConnectorFieldResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *MapConnectorFieldResponse
-	JSONDefault  *MapConnectorFieldErrorResponse
 }
 
 type DigestGlobalResp struct {
@@ -795,125 +501,6 @@ type StreamEventsResp struct {
 	Body         []byte
 	StatusCode   int
 	JSONDefault  *StreamEventsErrorResponse
-}
-
-type ConnectFederationBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ConnectFederationBridgeResponse
-	JSONDefault  *ConnectFederationBridgeErrorResponse
-}
-
-type GetFederationBridgeStatusResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetFederationBridgeStatusResponse
-	JSONDefault  *GetFederationBridgeStatusErrorResponse
-}
-
-type DisconnectFederationBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *DisconnectFederationBridgeResponse
-	JSONDefault  *DisconnectFederationBridgeErrorResponse
-}
-
-type ListFederationEnrollmentsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ListFederationEnrollmentsResponse
-	JSONDefault  *ListFederationEnrollmentsErrorResponse
-}
-
-type CreateFederationEnrollmentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *CreateFederationEnrollmentResponse
-	JSONDefault  *CreateFederationEnrollmentErrorResponse
-}
-
-type RotateFederationEnrollmentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RotateFederationEnrollmentResponse
-	JSONDefault  *RotateFederationEnrollmentErrorResponse
-}
-
-type ClearFederationSpokeNameResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ClearFederationSpokeNameResponse
-	JSONDefault  *ClearFederationSpokeNameErrorResponse
-}
-
-type SetFederationSpokeNameResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *SetFederationSpokeNameResponse
-	JSONDefault  *SetFederationSpokeNameErrorResponse
-}
-
-type RevokeFederationEnrollmentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RevokeFederationEnrollmentResponse
-	JSONDefault  *RevokeFederationEnrollmentErrorResponse
-}
-
-type CreateFederationReplicaResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *CreateFederationReplicaResponse
-	JSONDefault  *CreateFederationReplicaErrorResponse
-}
-
-type LeaveFederationReplicaResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *LeaveFederationReplicaResponse
-	JSONDefault  *LeaveFederationReplicaErrorResponse
-}
-
-type RebindFederationReplicaResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RebindFederationReplicaResponse
-	JSONDefault  *RebindFederationReplicaErrorResponse
-}
-
-type ConfigureFederationSigningResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSONDefault  *ConfigureFederationSigningErrorResponse
-}
-
-type RepinFederationRootKeyResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RepinFederationRootKeyResponse
-	JSONDefault  *RepinFederationRootKeyErrorResponse
-}
-
-type GetFederationStatusResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetFederationStatusResponse
-	JSONDefault  *GetFederationStatusErrorResponse
 }
 
 type HealthResp struct {
@@ -1042,22 +629,6 @@ type RenameProjectResp struct {
 	StatusCode   int
 	JSON200      *RenameProjectResponse
 	JSONDefault  *RenameProjectErrorResponse
-}
-
-type GetProjectAccessResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetProjectAccessResponse
-	JSONDefault  *GetProjectAccessErrorResponse
-}
-
-type SetProjectAccessResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *SetProjectAccessResponse
-	JSONDefault  *SetProjectAccessErrorResponse
 }
 
 type PurgeProjectResp struct {
@@ -1240,231 +811,12 @@ type PollProjectEventsResp struct {
 	JSONDefault  *PollProjectEventsErrorResponse
 }
 
-type GetProjectFederationResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type GetProjectFederationResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetProjectFederationResponse
-	Headers200   *GetProjectFederationResp200Headers
-	JSONDefault  *GetProjectFederationErrorResponse
-}
-
-type FederatedDocbankCapabilitiesResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *FederatedDocbankCapabilitiesResponse
-	JSONDefault  *FederatedDocbankCapabilitiesErrorResponse
-}
-
-type LinkFederatedDocbankResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *LinkFederatedDocbankResponse
-	JSONDefault  *LinkFederatedDocbankErrorResponse
-}
-
-type UploadFederatedDocbankResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *UploadFederatedDocbankResponse
-	JSONDefault  *UploadFederatedDocbankErrorResponse
-}
-
-type FederatedDocbankContentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSONDefault  *FederatedDocbankContentErrorResponse
-}
-
-type EnableProjectFederationResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type EnableProjectFederationResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *EnableProjectFederationResponse
-	Headers200   *EnableProjectFederationResp200Headers
-	JSONDefault  *EnableProjectFederationErrorResponse
-}
-
-type PollFederationProjectEventsResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeEventsIssueUID        string `header:"X-Poomsae-Events-Issue-UID"`
-	XPoomsaeFederationPollWaitMax string `header:"X-Poomsae-Federation-Poll-Wait-Max"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type PollFederationProjectEventsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *PollFederationProjectEventsResponse
-	Headers200   *PollFederationProjectEventsResp200Headers
-	JSONDefault  *PollFederationProjectEventsErrorResponse
-}
-
-type IngestFederationProjectEventsResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type IngestFederationProjectEventsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *IngestFederationProjectEventsResponse
-	Headers200   *IngestFederationProjectEventsResp200Headers
-	JSONDefault  *IngestFederationProjectEventsErrorResponse
-}
-
-type GetFederationProjectMetadataResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type GetFederationProjectMetadataResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetFederationProjectMetadataResponse
-	Headers200   *GetFederationProjectMetadataResp200Headers
-	JSONDefault  *GetFederationProjectMetadataErrorResponse
-}
-
-type RetryFederationQuarantineResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RetryFederationQuarantineResponse
-	JSONDefault  *RetryFederationQuarantineErrorResponse
-}
-
-type SkipFederationQuarantineResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *SkipFederationQuarantineResponse
-	JSONDefault  *SkipFederationQuarantineErrorResponse
-}
-
-type OfferRelayDeliveriesResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type OfferRelayDeliveriesResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *OfferRelayDeliveriesResponse
-	Headers200   *OfferRelayDeliveriesResp200Headers
-	JSONDefault  *OfferRelayDeliveriesErrorResponse
-}
-
-type GetRelayResetResp200Headers struct {
-	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
-	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
-}
-
-type GetRelayResetResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetRelayResetResponse
-	Headers200   *GetRelayResetResp200Headers
-	JSONDefault  *GetRelayResetErrorResponse
-}
-
-type AcceptRelayDeliveriesResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *AcceptRelayDeliveriesResponse
-	JSONDefault  *AcceptRelayDeliveriesErrorResponse
-}
-
-type AckRelayDeliveriesResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *AckRelayDeliveriesResponse
-	JSONDefault  *AckRelayDeliveriesErrorResponse
-}
-
-type DisconnectRelayEnrollmentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *DisconnectRelayEnrollmentResponse
-	JSONDefault  *DisconnectRelayEnrollmentErrorResponse
-}
-
-type SearchFederationProjectResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *SearchFederationProjectResponse
-	JSONDefault  *SearchFederationProjectErrorResponse
-}
-
-type GetProjectFederationStatusResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetProjectFederationStatusResponse
-	JSONDefault  *GetProjectFederationStatusErrorResponse
-}
-
 type ImportIssuesResp struct {
 	HTTPResponse *http.Response
 	Body         []byte
 	StatusCode   int
 	JSON200      *ImportIssuesResponse
 	JSONDefault  *ImportIssuesErrorResponse
-}
-
-type DisableIssueSyncResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *DisableIssueSyncResponse
-	JSONDefault  *DisableIssueSyncErrorResponse
-}
-
-type EnableIssueSyncResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *EnableIssueSyncResponse
-	JSONDefault  *EnableIssueSyncErrorResponse
-}
-
-type RunIssueSyncOnceResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RunIssueSyncOnceResponse
-	JSONDefault  *RunIssueSyncOnceErrorResponse
-}
-
-type GetIssueSyncStatusResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetIssueSyncStatusResponse
-	JSONDefault  *GetIssueSyncStatusErrorResponse
 }
 
 type ListIssuesResp struct {
@@ -1650,70 +1002,6 @@ type AttachmentContentResp struct {
 	Body         []byte
 	StatusCode   int
 	JSONDefault  *AttachmentContentErrorResponse
-}
-
-type UnbindExternalRootResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *UnbindExternalRootResponse
-	JSONDefault  *UnbindExternalRootErrorResponse
-}
-
-type GetExternalRootBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *GetExternalRootBridgeResponse
-	JSONDefault  *GetExternalRootBridgeErrorResponse
-}
-
-type BindExternalRootResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *BindExternalRootResponse
-	JSONDefault  *BindExternalRootErrorResponse
-}
-
-type PauseExternalRootBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *PauseExternalRootBridgeResponse
-	JSONDefault  *PauseExternalRootBridgeErrorResponse
-}
-
-type ReconcileExternalRootBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ReconcileExternalRootBridgeResponse
-	JSONDefault  *ReconcileExternalRootBridgeErrorResponse
-}
-
-type ResolveExternalCommentResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ResolveExternalCommentResponse
-	JSONDefault  *ResolveExternalCommentErrorResponse
-}
-
-type ResolveExternalFieldResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ResolveExternalFieldResponse
-	JSONDefault  *ResolveExternalFieldErrorResponse
-}
-
-type ResumeExternalRootBridgeResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ResumeExternalRootBridgeResponse
-	JSONDefault  *ResumeExternalRootBridgeErrorResponse
 }
 
 type CreateCommentResp200Headers struct {
@@ -1994,78 +1282,6 @@ type ReadyIssuesGlobalResp struct {
 	StatusCode   int
 	JSON200      *ReadyIssuesGlobalResponse
 	JSONDefault  *ReadyIssuesGlobalErrorResponse
-}
-
-type ListTeamsResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ListTeamsResponse
-	JSONDefault  *ListTeamsErrorResponse
-}
-
-type CreateTeamResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *CreateTeamResponse
-	JSONDefault  *CreateTeamErrorResponse
-}
-
-type DeleteTeamResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *DeleteTeamResponse
-	JSONDefault  *DeleteTeamErrorResponse
-}
-
-type ShowTeamResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ShowTeamResponse
-	JSONDefault  *ShowTeamErrorResponse
-}
-
-type RemoveTeamMemberResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RemoveTeamMemberResponse
-	JSONDefault  *RemoveTeamMemberErrorResponse
-}
-
-type AddTeamMemberResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *AddTeamMemberResponse
-	JSONDefault  *AddTeamMemberErrorResponse
-}
-
-type ListTokensResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *ListTokensResponse
-	JSONDefault  *ListTokensErrorResponse
-}
-
-type CreateTokenResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *CreateTokenResponse
-	JSONDefault  *CreateTokenErrorResponse
-}
-
-type RevokeTokenResp struct {
-	HTTPResponse *http.Response
-	Body         []byte
-	StatusCode   int
-	JSON200      *RevokeTokenResponse
-	JSONDefault  *RevokeTokenErrorResponse
 }
 
 type ResolveUIIssueReferenceResp struct {

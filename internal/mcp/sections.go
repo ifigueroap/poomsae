@@ -63,10 +63,7 @@ type toolSection struct {
 
 func registerSectionLoaders(server *sdkmcp.Server, options Options) error {
 	handlers := toolHandlers{options: options}
-	sections := toolSections(
-		options.StorageAdmin != nil,
-		options.EnableTokenAdmin && options.Scope.Mode() == ScopeAll,
-	)
+	sections := toolSections(options.StorageAdmin != nil)
 	if options.Events {
 		for i := range sections {
 			if sections[i].section == "coordination" {
@@ -128,7 +125,7 @@ func registerSectionLoaders(server *sdkmcp.Server, options Options) error {
 	return nil
 }
 
-func toolSections(storageAvailable, tokenAdminAvailable bool) []toolSection {
+func toolSections(storageAvailable bool) []toolSection {
 	return []toolSection{
 		{
 			loader: "poomsae.load_activity", section: "activity", title: "Load activity tools",
@@ -150,23 +147,6 @@ func toolSections(storageAvailable, tokenAdminAvailable bool) []toolSection {
 			loader: "poomsae.load_docs", section: "docs", title: "Load documentation tools",
 			description: "Load typed tools that search and read Poomsae's bundled user documentation, then refresh the MCP tool list.",
 			tools:       []string{"poomsae.read_doc", "poomsae.search_docs"}, available: true, register: registerDocsTools,
-		},
-		{
-			loader: "poomsae.load_external_roots", section: "external_roots", title: "Load external-root tools",
-			description: "Load typed connector discovery, field mapping, and issue bridge tools, then refresh the MCP tool list.",
-			tools: []string{
-				"poomsae.bridge_bind", "poomsae.bridge_pause", "poomsae.bridge_reconcile",
-				"poomsae.bridge_resolve_comment", "poomsae.bridge_resolve_field", "poomsae.bridge_resume",
-				"poomsae.bridge_show", "poomsae.bridge_unbind", "poomsae.connector_field_map",
-				"poomsae.connector_field_unmap", "poomsae.connector_fields", "poomsae.connectors",
-			},
-			available: true, register: registerExternalRootTools,
-		},
-		{
-			loader: "poomsae.load_federation", section: "federation", title: "Load federation tools",
-			description: "Load typed project bridge connect/status/disconnect, federation status, enrollment revocation, rebind, leave, quarantine, and root key repin tools, then refresh the MCP tool list.",
-			tools:       []string{"poomsae.federation_bridge_connect", "poomsae.federation_bridge_disconnect", "poomsae.federation_bridge_status", "poomsae.federation_enrollment_revoke", "poomsae.federation_leave", "poomsae.federation_quarantine", "poomsae.federation_rebind", "poomsae.federation_root_key_repin", "poomsae.federation_spoke_name", "poomsae.federation_status"},
-			available:   true, register: registerFederationTools,
 		},
 		{
 			loader: "poomsae.load_import", section: "import", title: "Load import tools",
@@ -192,12 +172,6 @@ func toolSections(storageAvailable, tokenAdminAvailable bool) []toolSection {
 			available:   true, register: registerIssueMutationTools,
 		},
 		{
-			loader: "poomsae.load_leases", section: "leases", title: "Load lease tools",
-			description: "Load typed federation lease status and mutation tools, then refresh the MCP tool list.",
-			tools:       []string{"poomsae.lease", "poomsae.lease_force_release", "poomsae.lease_status", "poomsae.lease_steal"},
-			available:   true, register: registerLeaseTools,
-		},
-		{
 			loader: "poomsae.load_projects", section: "projects", title: "Load project tools",
 			description: "Load typed project discovery, detail, and administration tools, then refresh the MCP tool list.",
 			tools:       []string{"poomsae.project_create", "poomsae.project_merge", "poomsae.project_purge", "poomsae.project_remove", "poomsae.project_restore", "poomsae.project_show", "poomsae.project_update", "poomsae.projects"},
@@ -215,25 +189,9 @@ func toolSections(storageAvailable, tokenAdminAvailable bool) []toolSection {
 			tools:       []string{"poomsae.storage_export", "poomsae.storage_import"}, available: storageAvailable, register: registerStorageTools,
 		},
 		{
-			loader: "poomsae.load_sync", section: "sync", title: "Load synchronization tools",
-			description: "Load typed GitHub synchronization tools, then refresh the MCP tool list.",
-			tools:       []string{"poomsae.sync_once", "poomsae.sync_status", "poomsae.sync_update"}, available: true, register: registerSyncTools,
-		},
-		{
 			loader: "poomsae.load_system", section: "system", title: "Load system tools",
 			description: "Load the typed redacted daemon system-information tool, then refresh the MCP tool list.",
 			tools:       []string{"poomsae.system"}, available: true, register: registerSystemTools,
-		},
-		{
-			loader: "poomsae.load_teams", section: "teams", title: "Load team access tools",
-			description: "Load owner team membership and project access tools when token administration is explicitly enabled with daemon-wide scope.",
-			tools:       []string{"poomsae.project_access_set", "poomsae.project_access_show", "poomsae.team_create", "poomsae.team_delete", "poomsae.team_member_set", "poomsae.team_show", "poomsae.teams"},
-			available:   tokenAdminAvailable, register: registerTeamTools,
-		},
-		{
-			loader: "poomsae.load_tokens", section: "tokens", title: "Load token tools",
-			description: "Load typed token administration tools when explicitly enabled at startup, then refresh the MCP tool list.",
-			tools:       []string{"poomsae.token_create", "poomsae.token_revoke", "poomsae.tokens"}, available: tokenAdminAvailable, register: registerTokenTools,
 		},
 	}
 }

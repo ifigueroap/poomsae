@@ -1,7 +1,6 @@
 package storageadmin
 
 import (
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,10 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
-	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func TestResolveArtifactRejectsPathEscape(t *testing.T) {
@@ -323,7 +320,7 @@ func TestNewRejectsPairwiseOverlappingSQLiteTargets(t *testing.T) {
 	// Pairwise overlap is enforced even when the active source is not
 	// SQLite, since force-importing one alias moves and deletes the whole
 	// sidecar set of its target.
-	for _, source := range []string{filepath.Join(t.TempDir(), "active.db"), "postgres://db.example/poomsae"} {
+	for _, source := range []string{filepath.Join(t.TempDir(), "active.db")} {
 		_, err := New(Config{
 			Root: root, SourceDSN: source,
 			Targets: map[string]string{"primary": "restore.db", "secondary": "restore.db-wal"},
@@ -336,123 +333,4 @@ func TestNewRejectsPairwiseOverlappingSQLiteTargets(t *testing.T) {
 	})
 	require.NoError(t, err, "distinct targets remain accepted")
 	require.NoError(t, admin.Close())
-}
-
-func TestFailedPostgresImportRemovesFreshSchema(t *testing.T) {
-	if testing.Short() {
-		t.Skip("requires postgres testcontainer")
-	}
-	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
-	t.Cleanup(cleanup)
-	t.Setenv("POOMSAE_HOME", t.TempDir())
-	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_cleanup")
-
-	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "invalid.jsonl"), []byte("not-json\n"), 0o600))
-	admin, err := New(Config{
-		Root: root, SourceDSN: filepath.Join(root, "active.db"),
-		Targets: map[string]string{"restore": dsn},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, admin.Close()) })
-
-	_, err = admin.Import(t.Context(), ImportOptions{Artifact: "invalid.jsonl", Target: "restore"})
-	require.Error(t, err)
-	version, err := storeopen.PeekSchemaVersion(t.Context(), dsn)
-	require.NoError(t, err)
-	require.Zero(t, version)
-}
-
-func TestPostgresImportRejectsInitializedTargetWithoutMutation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("requires postgres testcontainer")
-	}
-	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
-	t.Cleanup(cleanup)
-	t.Setenv("POOMSAE_HOME", t.TempDir())
-	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_initialized")
-
-	// Initialize the target so it is a real, non-fresh Poomsae database that
-	// is not the active source.
-	initialized, err := storeopen.Open(t.Context(), dsn)
-	require.NoError(t, err)
-	require.NoError(t, initialized.Close())
-	version, err := storeopen.PeekSchemaVersion(t.Context(), dsn)
-	require.NoError(t, err)
-	require.NotZero(t, version)
-
-	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "backup.jsonl"), []byte("{}\n"), 0o600))
-	sourcePath := filepath.Join(t.TempDir(), "active.db")
-	source, err := storeopen.Open(t.Context(), sourcePath)
-	require.NoError(t, err)
-	require.NoError(t, source.Close())
-	admin, err := New(Config{Root: root, SourceDSN: sourcePath, Targets: map[string]string{"restore": dsn}})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, admin.Close()) })
-
-	_, err = admin.Import(t.Context(), ImportOptions{Artifact: "backup.jsonl", Target: "restore"})
-	require.ErrorContains(t, err, "already contains a Poomsae schema")
-	after, err := storeopen.PeekSchemaVersion(t.Context(), dsn)
-	require.NoError(t, err)
-	require.Equal(t, version, after, "the preflight rejection must not touch the initialized schema")
-}
-
-func TestPostgresImportRefusesActiveDatabaseByIdentity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("requires postgres testcontainer")
-	}
-	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
-	t.Cleanup(cleanup)
-	t.Setenv("POOMSAE_HOME", t.TempDir())
-	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_identity")
-
-	alias, swappable := swapPostgresHost(t, dsn)
-	if !swappable {
-		t.Skip("container DSN has no swappable localhost/127.0.0.1 host")
-	}
-	require.NotEqual(t, config.DBHash(dsn), config.DBHash(alias),
-		"equivalent DSNs must hash differently for this test to exercise the identity guard")
-
-	// Give the active source a persisted instance identity, then confirm
-	// the alias spelling reaches the same server.
-	active, err := storeopen.Open(t.Context(), dsn)
-	require.NoError(t, err)
-	require.NoError(t, active.Close())
-	probe, probeErr := storeopen.OpenReadOnly(t.Context(), alias)
-	if probeErr != nil {
-		t.Skipf("alias host is not reachable in this environment: %v", probeErr)
-	}
-	require.NoError(t, probe.Close())
-
-	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "backup.jsonl"), []byte("{}\n"), 0o600))
-	admin, err := New(Config{Root: root, SourceDSN: dsn, Targets: map[string]string{"restore": alias}})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, admin.Close()) })
-
-	_, err = admin.Import(t.Context(), ImportOptions{Artifact: "backup.jsonl", Target: "restore"})
-	require.ErrorContains(t, err, "must differ from the active daemon storage")
-	version, err := storeopen.PeekSchemaVersion(t.Context(), dsn)
-	require.NoError(t, err)
-	require.NotZero(t, version, "identity refusal must not remove the active schema")
-}
-
-func swapPostgresHost(t *testing.T, dsn string) (string, bool) {
-	t.Helper()
-	parsed, err := url.Parse(dsn)
-	require.NoError(t, err)
-	port := parsed.Port()
-	switch parsed.Hostname() {
-	case "localhost":
-		parsed.Host = "127.0.0.1"
-	case "127.0.0.1":
-		parsed.Host = "localhost"
-	default:
-		return "", false
-	}
-	if port != "" {
-		parsed.Host += ":" + port
-	}
-	return parsed.String(), true
 }

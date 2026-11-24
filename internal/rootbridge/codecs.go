@@ -78,7 +78,7 @@ func (c scheduleCodec) ReadKata(issue db.Issue) (connector.FieldValue, error) {
 	return field, nil
 }
 
-func (c scheduleCodec) PoomsaePatch(issue db.Issue, value connector.FieldValue) (map[string]jsontext.Value, error) {
+func (c scheduleCodec) PoomsaePatch(_ db.Issue, value connector.FieldValue) (map[string]jsontext.Value, error) {
 	canonical, err := canonicalFieldValue(value)
 	if err != nil {
 		return nil, err

@@ -8,47 +8,21 @@
   import type { Snippet } from 'svelte'
   import type { SettingsSection as RouteSettingsSection } from '../lib/router'
 
-  export type SettingsSectionID = RouteSettingsSection | 'credentials'
+  export type SettingsSectionID = RouteSettingsSection
 
   interface Props {
     active: SettingsSectionID
     theme: 'light' | 'dark' | 'system'
     onThemeChange: (theme: 'light' | 'dark' | 'system') => void
-    credentialsAvailable: boolean
-    accessAvailable: boolean
     onSelect: (section: SettingsSectionID) => void
     search: Snippet
-    credentials: Snippet
-    access: Snippet
   }
 
-  let {
-    active,
-    theme,
-    onThemeChange,
-    credentialsAvailable,
-    accessAvailable,
-    onSelect,
-    search,
-    credentials,
-    access,
-  }: Props = $props()
-
-  let accessVisited = $state(false)
-  $effect(() => {
-    if (!accessAvailable) accessVisited = false
-    else if (active === 'access') accessVisited = true
-  })
+  let { active, theme, onThemeChange, onSelect, search }: Props = $props()
 
   let categories = $derived<SettingsCategory[]>([
     { id: 'appearance', label: 'Appearance', group: 'This browser' },
     { id: 'search', label: 'Search by meaning', group: 'This server' },
-    ...(credentialsAvailable
-      ? [{ id: 'credentials', label: 'Credentials', group: 'This server' }]
-      : []),
-    ...(accessAvailable
-      ? [{ id: 'access', label: 'Teams and visibility', group: 'This server' }]
-      : []),
   ])
 </script>
 
@@ -76,11 +50,6 @@
         </SettingsSection>
       {:else if id === 'search'}
         {@render search()}
-      {:else if id === 'credentials'}
-        {@render credentials()}
-      {/if}
-      {#if accessVisited && accessAvailable}
-        <div hidden={id !== 'access'}>{@render access()}</div>
       {/if}
     {/snippet}
   </SettingsLayout>

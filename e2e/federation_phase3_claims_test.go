@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,138 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestFederationClaimsTwoSpokeLifecycle(t *testing.T) {
-	ctx := t.Context()
-	fx := setupFederationClaimE2E(t, "phase3-claims-lifecycle")
-
-	issueA := waitForFederatedIssue(t, fx.spokeA.db, fx.hubIssue.UID, fx.spokeA.stderr)
-	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
-
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice")
-	require.True(t, aliceClaim.Granted)
-	assert.False(t, aliceClaim.Pending)
-	assert.Equal(t, "alice", aliceClaim.Holder.Holder)
-	require.NotNil(t, aliceClaim.Claim)
-	assert.Equal(t, "hard", aliceClaim.Claim.ClaimKind)
-
-	bobDenied := runKataJSONWantExit[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs, 5,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
-	assert.False(t, bobDenied.body.Granted)
-	require.NotNil(t, bobDenied.body.Claim)
-	assert.Equal(t, "alice", bobDenied.body.Claim.Holder)
-	assert.Contains(t, bobDenied.stderr, `"code":"claim_denied"`)
-
-	showB := runKataOK(t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "show", issueB.ShortID)
-	assert.Contains(t, showB.stdout, "lease: alice from instance ")
-	assert.Contains(t, showB.stdout, "(hard)")
-
-	runKataOK(t, fx.bin, fx.spokeA.dirs,
-		"--project", fx.hubProject.Name, "edit", issueA.ShortID, "--title", "alice edit", "--as", "alice")
-
-	bobEdit := runKataWantExit(t, fx.bin, fx.spokeB.dirs, 5,
-		"--json", "--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "bob rejected", "--as", "bob")
-	assert.Contains(t, bobEdit.stderr, `"code":"claim_denied"`)
-
-	released := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "release", issueA.ShortID, "--as", "alice")
-	require.True(t, released.Granted)
-	require.NotNil(t, released.Claim)
-	require.NotNil(t, released.Claim.ReleasedAt)
-
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
-	require.True(t, bobClaim.Granted)
-	assert.Equal(t, "bob", bobClaim.Holder.Holder)
-
-	runKataOK(t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "bob edit", "--as", "bob")
-
-	bobReleased := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "release", issueB.ShortID, "--as", "bob")
-	require.True(t, bobReleased.Granted)
-
-	runKataOK(t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "charlie edit", "--as", "charlie")
-
-	waitForFoldedProjectionMatch(t, fx.hub.DB, fx.spokeA.db,
-		fx.hubProject.ID, fx.spokeA.replica.Project.ID, fx.replayAfterID, fx.spokeA.stderr)
-	waitForFoldedProjectionMatch(t, fx.hub.DB, fx.spokeB.db,
-		fx.hubProject.ID, fx.spokeB.replica.Project.ID, fx.replayAfterID, fx.spokeB.stderr)
-
-	finalHubIssue, err := fx.hub.DB.IssueByUID(ctx, fx.hubIssue.UID, db.IncludeDeletedNo)
-	require.NoError(t, err)
-	assert.Equal(t, "charlie edit", finalHubIssue.Title)
-}
-
-func TestFederationTimedClaimExpires(t *testing.T) {
-	ctx := t.Context()
-	fx := setupFederationClaimE2E(t, "phase3-claims-expiry")
-
-	issueA := waitForFederatedIssue(t, fx.spokeA.db, fx.hubIssue.UID, fx.spokeA.stderr)
-	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
-
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice", "--ttl", "60s")
-	require.True(t, aliceClaim.Granted)
-	require.NotNil(t, aliceClaim.Claim)
-	require.NotNil(t, aliceClaim.Claim.ExpiresAt)
-	assert.Equal(t, "timed", aliceClaim.Claim.ClaimKind)
-
-	// Phase 3 has no automatic renewer. Drive the hub sweeper deterministically
-	// past the CLI's minimum 60s TTL instead of sleeping a full minute.
-	events, err := fx.hub.DB.ExpireTimedClaims(ctx, aliceClaim.Claim.ExpiresAt.Add(time.Second), 100)
-	require.NoError(t, err)
-	require.NotEmpty(t, events)
-
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
-	require.True(t, bobClaim.Granted)
-	assert.Equal(t, "bob", bobClaim.Holder.Holder)
-	require.NotNil(t, bobClaim.Claim)
-	assert.Equal(t, "hard", bobClaim.Claim.ClaimKind)
-}
-
-func TestFederationAdminForceReleaseAndStealCLI(t *testing.T) {
-	fx := setupFederationClaimE2E(t, "phase4b-admin-claim")
-
-	issueA := waitForFederatedIssue(t, fx.spokeA.db, fx.hubIssue.UID, fx.spokeA.stderr)
-	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
-	hubDirs := hubClaimCLIDirs(t, fx)
-
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice")
-	require.True(t, aliceClaim.Granted)
-
-	spokeForceRelease := runKataWantExit(t, fx.bin, fx.spokeA.dirs, 5,
-		"--json", "--project", fx.hubProject.Name, "federation", "lease", "force-release", issueA.ShortID,
-		"--as", "admin", "--reason", "stale holder")
-	assert.Contains(t, spokeForceRelease.stderr, "federated_read_only")
-
-	released := runKataJSON[e2eClaimActionBody](t, fx.bin, hubDirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "force-release", fx.hubIssue.ShortID,
-		"--as", "admin", "--reason", "stale holder")
-	require.True(t, released.Granted)
-	require.NotNil(t, released.Claim)
-	assert.Equal(t, "alice", released.Claim.Holder)
-	require.NotNil(t, released.Claim.ReleasedAt)
-
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
-	require.True(t, bobClaim.Granted)
-
-	stolen := runKataJSON[e2eClaimStealBody](t, fx.bin, hubDirs,
-		"--project", fx.hubProject.Name, "federation", "lease", "steal", fx.hubIssue.ShortID,
-		"--as", "carol", "--reason", "operator handoff")
-	assert.Equal(t, "bob", stolen.ReleasedHolder)
-	assert.Equal(t, "carol", stolen.NewHolder)
-	require.NotNil(t, stolen.Released.Claim)
-	assert.Equal(t, "bob", stolen.Released.Claim.Holder)
-	require.NotNil(t, stolen.Claimed.Claim)
-	assert.Equal(t, "carol", stolen.Claimed.Claim.Holder)
-}
 
 type federationClaimFixture struct {
 	bin           string
@@ -175,43 +42,6 @@ type federationClaimSpoke struct {
 	replica api.CreateFederationReplicaResponseBody
 }
 
-func setupFederationClaimE2E(t *testing.T, name string) federationClaimFixture {
-	t.Helper()
-	ctx := t.Context()
-	hub := testenv.New(t)
-	bin := buildKataBinary(t)
-
-	spokeA := startFederationClaimSpoke(ctx, t, bin)
-	spokeB := startFederationClaimSpoke(ctx, t, bin)
-
-	hubProject, err := hub.DB.CreateProject(ctx, "hub")
-	require.NoError(t, err)
-	hubIssue, _, err := hub.DB.CreateIssue(ctx, db.CreateIssueParams{
-		ProjectID: hubProject.ID,
-		Title:     name,
-		Body:      "shared claim lifecycle target",
-		Author:    "agent",
-	})
-	require.NoError(t, err)
-
-	var meta api.ProjectFederationBody
-	decodePOST(t, hub.HTTP, hub.URL+"/api/v1/projects/"+strconv.FormatInt(hubProject.ID, 10)+"/federation/enable",
-		map[string]any{"actor": "agent"}, &meta)
-
-	spokeA.replica = enrollFederationClaimSpoke(ctx, t, hub, hubProject, meta, spokeA, name+"-a", "alice")
-	spokeB.replica = enrollFederationClaimSpoke(ctx, t, hub, hubProject, meta, spokeB, name+"-b", "bob")
-
-	return federationClaimFixture{
-		bin:           bin,
-		hub:           hub,
-		hubProject:    hubProject,
-		hubIssue:      hubIssue,
-		replayAfterID: meta.ReplayHorizonEventID - 1,
-		spokeA:        spokeA,
-		spokeB:        spokeB,
-	}
-}
-
 func startFederationClaimSpoke(ctx context.Context, t *testing.T, bin string) federationClaimSpoke {
 	t.Helper()
 	dirs := newE2EDirs(t)
@@ -221,42 +51,6 @@ func startFederationClaimSpoke(ctx context.Context, t *testing.T, bin string) fe
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	return federationClaimSpoke{dirs: dirs, url: url, http: client, db: store, stderr: stderr}
-}
-
-func enrollFederationClaimSpoke(
-	ctx context.Context,
-	t *testing.T,
-	hub *testenv.Env,
-	hubProject db.Project,
-	meta api.ProjectFederationBody,
-	spoke federationClaimSpoke,
-	token string,
-	actor string,
-) api.CreateFederationReplicaResponseBody {
-	t.Helper()
-	created, err := hub.DB.CreateFederationEnrollment(ctx, db.CreateFederationEnrollmentParams{ //nolint:gosec // test-only bearer token
-		Token:            token,
-		SpokeInstanceUID: spoke.db.InstanceUID(),
-		ProjectID:        &hubProject.ID,
-		Capabilities:     "pull,push,claim",
-		Actor:            actor,
-	})
-	require.NoError(t, err)
-
-	var replica api.CreateFederationReplicaResponseBody
-	decodePOST(t, spoke.http, spoke.url+"/api/v1/federation/replicas", map[string]any{
-		"hub_url":                 hub.URL,
-		"hub_project_id":          hubProject.ID,
-		"hub_project_uid":         meta.ProjectUID,
-		"project_name":            meta.ProjectName,
-		"replay_horizon_event_id": meta.ReplayHorizonEventID,
-		"token":                   created.Token,
-		"capabilities":            "pull,push,claim",
-		"actor":                   actor,
-		"push_enabled":            true,
-	}, &replica)
-	require.True(t, replica.Binding.PushEnabled)
-	return replica
 }
 
 type e2eClaimRun struct {

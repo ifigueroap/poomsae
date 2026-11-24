@@ -24,19 +24,9 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/embedding"
-	"github.com/ifigueroap/poomsae/internal/federationsigning"
-	"github.com/ifigueroap/poomsae/internal/githubsync"
 	"github.com/ifigueroap/poomsae/internal/hooks"
-	"github.com/ifigueroap/poomsae/internal/issuesync"
-	"github.com/ifigueroap/poomsae/internal/linearsync"
 	"github.com/ifigueroap/poomsae/internal/mcpevents"
 	"github.com/ifigueroap/poomsae/internal/mcpicon"
-	"github.com/ifigueroap/poomsae/internal/notionsync"
-	"github.com/ifigueroap/poomsae/internal/planesync"
-	"github.com/ifigueroap/poomsae/internal/rootbridge"
-	"github.com/ifigueroap/poomsae/internal/tickticksync"
-	"github.com/ifigueroap/poomsae/internal/todoistsync"
-	"github.com/ifigueroap/poomsae/internal/twentysync"
 	"github.com/ifigueroap/poomsae/internal/vector"
 	"golang.org/x/net/netutil"
 )
@@ -47,14 +37,8 @@ import (
 // through). Hooks is optional and defaults to hooks.NewNoop() when nil so
 // mutation handlers can fan out events unconditionally.
 type ServerConfig struct {
-	EmbeddingProjectAllowed   func(context.Context, string) (bool, error)
-	FederationSigning         *federationsigning.Verifier
-	FederationSigningRequired bool
-	DB                        db.Storage
-	// RootSigning holds private local signing material. Nil leaves an embedded
-	// server without a signing authority; daemon startup loads its owner-only
-	// key. The key is never exposed through API configuration or status.
-	RootSigning *RootSigning
+	EmbeddingProjectAllowed func(context.Context, string) (bool, error)
+	DB                      db.Storage
 	// UIStore supplies coherent browser projections. Nil defaults to DB when
 	// the configured storage backend implements db.UIStore.
 	UIStore db.UIStore
@@ -74,61 +58,9 @@ type ServerConfig struct {
 	// MCPEventsDisabledReason is the status reason when MCPEvents is nil.
 	// Empty reports mcpevents.ReasonNotConfigured.
 	MCPEventsDisabledReason string
-	FederationWake          func()
-	// FederationPushPending drains existing direct push replication under caller-held coordination.
-	FederationPushPending func(context.Context, db.FederationBinding, config.FederationCredential) error
-	// FederationHubClient builds the bearer-pinned hub client for a stored
-	// credential. It is injected so the daemon does not import the client package.
-	FederationHubClient func(context.Context, config.FederationCredential) (*http.Client, error)
-	// FederationPullOnce performs one synchronous pull-only turn for the
-	// supplied binding and credential. It is used when a forwarded claim
-	// discovers that the issue has moved into another joined hub project.
-	FederationPullOnce func(context.Context, db.FederationBinding, config.FederationCredential) error
-	// FederationSyncOnce exchanges pending project events before an origin write.
-	FederationSyncOnce func(context.Context, db.FederationBinding, config.FederationCredential) error
 	// EmbeddingWake notifies the existing local worker after artifact commit.
-	EmbeddingWake                 func()
-	FederationCredentials         config.FederationCredentialStore
-	FederationCatalog             []config.CatalogDaemonConfig
-	FederationRebindFetchMetadata FederationRebindMetadataFetcher
-	// DisableFederationRebind omits the rebind operation when the embedding
-	// host does not expose a catalog and exact credential replacement.
-	DisableFederationRebind  bool
-	GitHubSyncProgress       *githubsync.ProgressTracker
-	GitHubSyncFetcher        githubsync.Fetcher
-	GitHubSyncConfig         config.GitHubSyncConfig
-	GitHubSyncFetcherFactory func(config.GitHubSyncConfig) githubsync.Fetcher
-	GitHubSyncRunnerFactory  GitHubSyncRunnerFactory
-	GitHubSyncWake           func()
-	NotionSyncConfig         config.NotionSyncConfig
-	NotionSyncFetcher        notionsync.Fetcher
-	NotionSyncProgress       *issuesync.ProgressTracker
-	NotionSyncWake           func()
-	TickTickSyncConfig       config.TickTickSyncConfig
-	TickTickSyncFetcher      tickticksync.Fetcher
-	TickTickSyncProgress     *issuesync.ProgressTracker
-	TickTickSyncWake         func()
-	PlaneSyncConfig          config.PlaneSyncConfig
-	PlaneSyncFetcher         planesync.Fetcher
-	PlaneSyncProgress        *issuesync.ProgressTracker
-	PlaneSyncWake            func()
-	LinearSyncConfig         config.LinearSyncConfig
-	LinearSyncFetcher        linearsync.Fetcher
-	LinearSyncProgress       *issuesync.ProgressTracker
-	LinearSyncWake           func()
-	TwentySyncConfig         config.TwentySyncConfig
-	TwentySyncFetcher        twentysync.Fetcher
-	TwentySyncProgress       *issuesync.ProgressTracker
-	TwentySyncWake           func()
-	TodoistSyncConfig        config.TodoistSyncConfig
-	TodoistSyncFetcher       todoistsync.Fetcher
-	TodoistSyncProgress      *issuesync.ProgressTracker
-	TodoistSyncWake          func()
-	Hooks                    hooks.Sink
-	ExternalRootRegistry     *rootbridge.Registry
-	ExternalRootService      *rootbridge.Service
-	ExternalRootReconciler   *rootbridge.Reconciler
-	ExternalRootWake         func(int64)
+	EmbeddingWake func()
+	Hooks         hooks.Sink
 	// CloseThrottle controls whether the opt-in sibling-burst and repeated-
 	// message guards run on close. Zero-value means "guards off".
 	CloseThrottle CloseThrottlePolicy
@@ -155,9 +87,7 @@ type ServerConfig struct {
 	// WebDaemons is the client daemon catalog exposed to the first-class web
 	// UI. Credentials remain server-side and are used only by the selected-
 	// daemon proxy. ActiveWebDaemon selects the initial catalog entry.
-	WebDaemons []config.CatalogDaemonConfig
-	// WebSyncHubs names mapped hubs without a browsing token.
-	WebSyncHubs     []string
+	WebDaemons      []config.CatalogDaemonConfig
 	ActiveWebDaemon string
 
 	// InsecureReadonly permits unauthenticated GETs on non-loopback TCP
@@ -169,10 +99,6 @@ type ServerConfig struct {
 	// bearer-derived principal). Nil uses slog.Default(); tests inject a
 	// per-test logger so output is observable and isolated.
 	Logger *slog.Logger
-
-	// federationPollWaits is owned by the server NewServer builds; it bounds
-	// and wakes held federation event polls.
-	federationPollWaits *federationPollWaits
 
 	// Embedder is the semantic-search embedding client. Nil means semantic
 	// search is disabled and the search handler falls back to lexical-only.
@@ -191,14 +117,6 @@ type ServerConfig struct {
 	ReconcilerHealth func() ReconcilerHealth
 	LocalEmbeddings  LocalEmbeddings
 
-	// FederationConfigHealth snapshots declarative federation convergence for
-	// /health. Nil means no mappings are configured, so the block is omitted.
-	FederationConfigHealth func() api.FederationConfigHealth
-
-	// FederationSyncRetry reports a spoke binding's automatic retry schedule
-	// for federation status. Nil means this server has no federation runner.
-	FederationSyncRetry func(projectID int64) (api.FederationSyncRetry, bool)
-
 	// HostAccess enables in-process authentication and authorization supplied
 	// by a mounting application. It is nil for the standalone daemon.
 	HostAccess HostAccessController
@@ -207,11 +125,6 @@ type ServerConfig struct {
 	// that its mounting application already authenticates this handler. It is
 	// not inferred from HTTP headers and never overrides HostAccess.
 	TrustCallerAuthentication bool
-
-	// HostFederationAccess optionally adds host-owned authorization after Poomsae
-	// authenticates a project-scoped federation enrollment.
-	HostFederationAccess         HostFederationAccessController
-	AuthorizeFederationReference func(context.Context, db.Transaction, HostFederationAccessRequest, HostFederationAccessRequest) error
 
 	// IdleAdmission admits ordinary HTTP requests as foreground daemon work.
 	// Nil disables idle lifecycle handling.
@@ -239,13 +152,6 @@ func (c ServerConfig) authPolicy() authPolicy {
 	}
 }
 
-func (c ServerConfig) federationCredentialStore() config.FederationCredentialStore {
-	if c.FederationCredentials != nil {
-		return c.FederationCredentials
-	}
-	return config.DefaultFederationCredentialStore()
-}
-
 // Publish returns the event publisher for this config. It is derived rather
 // than stored so it can never disagree with the Broadcaster and Hooks fields
 // the SSE handler and tests wire directly.
@@ -260,48 +166,14 @@ type CloseThrottlePolicy struct {
 	SiblingBurstWindow  time.Duration
 }
 
-// GitHubSyncRunner runs one durable GitHub sync binding.
-type GitHubSyncRunner interface {
-	RunOnce(context.Context, int64) (githubsync.RunResult, error)
-}
-
-// GitHubSyncRunnerConfig is the daemon-side configuration passed to a runner
-// factory. Tests use this seam to replace the runner without replacing DB state.
-type GitHubSyncRunnerConfig struct {
-	Progress  *githubsync.ProgressTracker
-	Store     db.Storage
-	Fetcher   githubsync.Fetcher
-	EventSink func(context.Context, int64, []db.Event) error
-	Logger    *slog.Logger
-}
-
-// GitHubSyncRunnerFactory creates a runner for one daemon-side sync request.
-type GitHubSyncRunnerFactory func(GitHubSyncRunnerConfig) GitHubSyncRunner
-
-// NewDefaultGitHubSyncRunner adapts the public daemon seam to githubsync.Runner.
-func NewDefaultGitHubSyncRunner(cfg GitHubSyncRunnerConfig) GitHubSyncRunner {
-	return githubsync.NewRunner(githubsync.RunnerConfig{
-		Progress:  cfg.Progress,
-		Store:     cfg.Store,
-		Fetcher:   cfg.Fetcher,
-		EventSink: cfg.EventSink,
-		Logger:    cfg.Logger,
-	})
-}
-
 // Server bundles the http handler and lifecycle.
 type Server struct {
-	federationIngestAdmission   chan struct{}
-	federationTransferAdmission chan struct{}
-	federationReadAdmission     chan struct{}
-	federationControlAdmission  chan struct{}
-	stopFederationPollBridge    func()
-	cfg                         ServerConfig
-	baseHandler                 http.Handler
-	handler                     http.Handler
-	api                         huma.API
-	authPolicy                  authPolicy
-	noProjectDataRoutes         noProjectDataRouteMatcher
+	cfg                 ServerConfig
+	baseHandler         http.Handler
+	handler             http.Handler
+	api                 huma.API
+	authPolicy          authPolicy
+	noProjectDataRoutes noProjectDataRouteMatcher
 
 	shutdownTimeout time.Duration
 }
@@ -319,55 +191,12 @@ type ListenerBinding struct {
 // NewServer wires routes onto a fresh http.ServeMux. The returned handler is
 // safe to mount in tests via httptest.NewServer.
 func NewServer(cfg ServerConfig) *Server {
-	if cfg.TwentySyncProgress == nil {
-		cfg.TwentySyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.TwentySyncFetcher == nil {
-		cfg.TwentySyncFetcher = twentySyncFetcher(cfg)
-	}
-	if cfg.TodoistSyncProgress == nil {
-		cfg.TodoistSyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.TodoistSyncFetcher == nil {
-		cfg.TodoistSyncFetcher = todoistSyncFetcher(cfg)
-	}
-	if cfg.TickTickSyncProgress == nil {
-		cfg.TickTickSyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.TickTickSyncFetcher == nil {
-		cfg.TickTickSyncFetcher = tickTickSyncFetcher(cfg)
-	}
-	if cfg.PlaneSyncProgress == nil {
-		cfg.PlaneSyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.PlaneSyncFetcher == nil {
-		cfg.PlaneSyncFetcher = planeSyncFetcher(cfg)
-	}
-	if cfg.LinearSyncProgress == nil {
-		cfg.LinearSyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.LinearSyncFetcher == nil {
-		cfg.LinearSyncFetcher = linearSyncFetcher(cfg)
-	}
-	if cfg.NotionSyncProgress == nil {
-		cfg.NotionSyncProgress = issuesync.NewProgressTracker()
-	}
-	if cfg.NotionSyncFetcher == nil {
-		cfg.NotionSyncFetcher = notionSyncFetcher(cfg)
-	}
-	if cfg.GitHubSyncProgress == nil {
-		cfg.GitHubSyncProgress = githubsync.NewProgressTracker()
-	}
 	if cfg.Broadcaster == nil {
 		cfg.Broadcaster = NewEventBroadcaster()
 	}
 	if cfg.Hooks == nil {
 		cfg.Hooks = hooks.NewNoop()
 	}
-	if cfg.FederationCredentials == nil {
-		cfg.FederationCredentials = config.DefaultFederationCredentialStore()
-	}
-	cfg.FederationCatalog = append([]config.CatalogDaemonConfig(nil), cfg.FederationCatalog...)
 	cfg.WebDaemons = append([]config.CatalogDaemonConfig(nil), cfg.WebDaemons...)
 	if cfg.UIStore == nil {
 		cfg.UIStore, _ = cfg.DB.(db.UIStore)
@@ -400,20 +229,9 @@ func NewServer(cfg ServerConfig) *Server {
 	withEmbeddingProfile(humaAPI, cfg.EmbeddingProfile)
 	withHostAccess(humaAPI, cfg.HostAccess)
 	withProjectOperationAuthorization(humaAPI, cfg.DB)
-	withRootAttribution(humaAPI, cfg.RootSigning)
-	withExternalRootAdministration(humaAPI, cfg.Auth.AllowIdentityConnectorAdministration)
 
-	controlAdmission := make(chan struct{}, 16)
-	cfg.federationPollWaits = newFederationPollWaits(cap(controlAdmission), federationPollCPUs())
-	s := &Server{
-		cfg: cfg, api: humaAPI,
-		federationIngestAdmission:   make(chan struct{}, 2),
-		federationTransferAdmission: make(chan struct{}, 2),
-		federationReadAdmission:     make(chan struct{}, 16),
-		federationControlAdmission:  controlAdmission,
-	}
+	s := &Server{cfg: cfg, api: humaAPI}
 	registerRoutes(humaAPI, mux, cfg)
-	s.stopFederationPollBridge = startFederationPollBridge(cfg)
 	if cfg.WebSessions != nil {
 		registerUISessionHandlers(mux, cfg.WebSessions)
 	}
@@ -465,20 +283,10 @@ func (s *Server) Handler() http.Handler { return s.handler }
 
 // HandlerFor returns the shared route stack wrapped for one listener.
 func (s *Server) HandlerFor(policy ListenerPolicy) (http.Handler, error) {
-	if policy.Kind == ListenerFederation {
-		base := s.withFederationSigning(s.baseHandler, true)
-		base = withProjectAuthorization(s.cfg.DB, s.cfg.HostAccess != nil, s.cfg.TrustCallerAuthentication,
-			s.authPolicy.SelfAuthenticatedRoutes, s.noProjectDataRoutes, base)
-		return base, nil
-	}
 	base := s.baseHandler
 	if base == nil {
 		base = s.handler
 	} else {
-		base = withFederationIngestPreauthorization(s.cfg, base)
-		base = s.withFederationSigning(base, false)
-		// Signed uploads read their body during verification, so the
-		// foreground lease must already cover that work.
 		base = withIdleAdmission(s.cfg.IdleAdmission, base)
 		base = withProjectAuthorization(s.cfg.DB, s.cfg.HostAccess != nil, s.cfg.TrustCallerAuthentication, s.authPolicy.SelfAuthenticatedRoutes, s.noProjectDataRoutes, base)
 		base = withTrustedProxyActor(s.cfg)(base)
@@ -507,12 +315,6 @@ func (s *Server) API() huma.API { return s.api }
 // Close releases signing replay ownership. Call it after HTTP handlers drain;
 // the database remains owned by the caller.
 func (s *Server) Close() error {
-	if s.stopFederationPollBridge != nil {
-		s.stopFederationPollBridge()
-	}
-	if s.cfg.FederationSigning != nil {
-		return s.cfg.FederationSigning.Close()
-	}
 	return nil
 }
 
@@ -579,7 +381,7 @@ func (s *Server) serve(
 		BaseContext: func(net.Listener) context.Context { return serveCtx },
 	}
 	if restricted {
-		httpSrv.MaxHeaderBytes = federationsigning.MaxHeaderBytes
+		httpSrv.MaxHeaderBytes = 1 << 20
 		httpSrv.ReadTimeout = 60 * time.Second
 		httpSrv.WriteTimeout = 60 * time.Second
 		httpSrv.IdleTimeout = 10 * time.Second
@@ -762,8 +564,6 @@ func registerRoutes(humaAPI huma.API, mux *http.ServeMux, cfg ServerConfig) {
 	registerLocalEmbeddingsHandlers(humaAPI, cfg)
 	registerDoctorHandlers(humaAPI, cfg)
 	registerInstanceHandlers(humaAPI, cfg)
-	registerTokenHandlers(humaAPI, cfg)
-	registerProjectAccessHandlers(humaAPI, cfg)
 	registerProjects(humaAPI, cfg)
 	registerIssues(humaAPI, cfg)
 	registerImportsHandlers(humaAPI, cfg)
@@ -782,9 +582,6 @@ func registerRoutes(humaAPI huma.API, mux *http.ServeMux, cfg ServerConfig) {
 	registerMove(humaAPI, cfg)
 	registerEventsHandlers(humaAPI, mux, cfg)
 	registerMCPEventsHandlers(humaAPI, cfg)
-	registerFederationHandlers(humaAPI, cfg)
-	registerIssueSyncHandlers(humaAPI, cfg)
-	registerExternalRootHandlers(humaAPI, cfg)
 	registerClaimHandlers(humaAPI, cfg)
 	registerDigestHandlers(humaAPI, cfg)
 	registerAuditHandlers(humaAPI, cfg)

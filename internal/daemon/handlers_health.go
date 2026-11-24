@@ -86,16 +86,6 @@ func registerHealthHandlers(humaAPI huma.API, cfg ServerConfig) {
 				out.Body.Docbank = docbankHealth(err)
 			}
 		}
-		if diagnostics && cfg.FederationConfigHealth != nil {
-			health := cfg.FederationConfigHealth()
-			out.Body.FederationConfig = &health
-		}
-		if diagnostics && cfg.RootSigning != nil {
-			out.Body.RootSigning, err = cfg.RootSigning.Health(ctx, cfg.DB)
-			if err != nil {
-				return nil, internalAPIError(err)
-			}
-		}
 		if cfg.IdleShutdownHealth != nil {
 			snapshot := cfg.IdleShutdownHealth()
 			if snapshot.Timeout > 0 && snapshot.State != IdleStateDisabled {

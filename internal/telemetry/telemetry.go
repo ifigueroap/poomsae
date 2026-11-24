@@ -212,11 +212,7 @@ type SendGroup struct {
 
 // Go runs fn on a new goroutine.
 func (g *SendGroup) Go(fn func()) {
-	g.wg.Add(1)
-	go func() {
-		defer g.wg.Done()
-		fn()
-	}()
+	g.wg.Go(fn)
 }
 
 // Wait blocks until every Go call finishes or timeout elapses.

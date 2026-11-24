@@ -230,186 +230,6 @@ func (e EmbeddingsHealthCredential) Validate() error {
 	}
 }
 
-type EnableIssueSyncRequestBodyStatusSync string
-
-const (
-	OneWay EnableIssueSyncRequestBodyStatusSync = "one-way"
-	TwoWay EnableIssueSyncRequestBodyStatusSync = "two-way"
-)
-
-// Validate checks if the EnableIssueSyncRequestBodyStatusSync value is valid
-func (e EnableIssueSyncRequestBodyStatusSync) Validate() error {
-	switch e {
-	case OneWay, TwoWay:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid EnableIssueSyncRequestBodyStatusSync value, got: %v", e))
-	}
-}
-
-type FederationBridgeBodyDirection string
-
-const (
-	Bidirectional FederationBridgeBodyDirection = "bidirectional"
-)
-
-// Validate checks if the FederationBridgeBodyDirection value is valid
-func (f FederationBridgeBodyDirection) Validate() error {
-	switch f {
-	case Bidirectional:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationBridgeBodyDirection value, got: %v", f))
-	}
-}
-
-type FederationBridgeBodyStatus string
-
-const (
-	Connected FederationBridgeBodyStatus = "connected"
-	Ready     FederationBridgeBodyStatus = "ready"
-)
-
-// Validate checks if the FederationBridgeBodyStatus value is valid
-func (f FederationBridgeBodyStatus) Validate() error {
-	switch f {
-	case Connected, Ready:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationBridgeBodyStatus value, got: %v", f))
-	}
-}
-
-type FederationBridgeDisconnectResultStatus string
-
-const (
-	Disconnected                                FederationBridgeDisconnectResultStatus = "disconnected"
-	FederationBridgeDisconnectResultStatusReady FederationBridgeDisconnectResultStatus = "ready"
-)
-
-// Validate checks if the FederationBridgeDisconnectResultStatus value is valid
-func (f FederationBridgeDisconnectResultStatus) Validate() error {
-	switch f {
-	case Disconnected, FederationBridgeDisconnectResultStatusReady:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationBridgeDisconnectResultStatus value, got: %v", f))
-	}
-}
-
-type FederationBridgeStatusBodyDirection string
-
-const (
-	FederationBridgeStatusBodyDirectionBidirectional FederationBridgeStatusBodyDirection = "bidirectional"
-	PullOnly                                         FederationBridgeStatusBodyDirection = "pull_only"
-)
-
-// Validate checks if the FederationBridgeStatusBodyDirection value is valid
-func (f FederationBridgeStatusBodyDirection) Validate() error {
-	switch f {
-	case FederationBridgeStatusBodyDirectionBidirectional, PullOnly:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationBridgeStatusBodyDirection value, got: %v", f))
-	}
-}
-
-type FederationBridgeStatusBodyState string
-
-const (
-	EnrollmentPending                        FederationBridgeStatusBodyState = "enrollment_pending"
-	FederationBridgeStatusBodyStateConnected FederationBridgeStatusBodyState = "connected"
-	Offline                                  FederationBridgeStatusBodyState = "offline"
-	Paused                                   FederationBridgeStatusBodyState = "paused"
-	Revoked                                  FederationBridgeStatusBodyState = "revoked"
-	SigningRejected                          FederationBridgeStatusBodyState = "signing_rejected"
-)
-
-// Validate checks if the FederationBridgeStatusBodyState value is valid
-func (f FederationBridgeStatusBodyState) Validate() error {
-	switch f {
-	case EnrollmentPending, FederationBridgeStatusBodyStateConnected, Offline, Paused, Revoked, SigningRejected:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationBridgeStatusBodyState value, got: %v", f))
-	}
-}
-
-type FederationProjectStatusRootSigningKey string
-
-const (
-	Available   FederationProjectStatusRootSigningKey = "available"
-	Unavailable FederationProjectStatusRootSigningKey = "unavailable"
-)
-
-// Validate checks if the FederationProjectStatusRootSigningKey value is valid
-func (f FederationProjectStatusRootSigningKey) Validate() error {
-	switch f {
-	case Available, Unavailable:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationProjectStatusRootSigningKey value, got: %v", f))
-	}
-}
-
-type FederationRootKeyRepinResultMethod string
-
-const (
-	None           FederationRootKeyRepinResultMethod = "none"
-	Pin            FederationRootKeyRepinResultMethod = "pin"
-	SignedRotation FederationRootKeyRepinResultMethod = "signed_rotation"
-	UnsignedRepin  FederationRootKeyRepinResultMethod = "unsigned_repin"
-)
-
-// Validate checks if the FederationRootKeyRepinResultMethod value is valid
-func (f FederationRootKeyRepinResultMethod) Validate() error {
-	switch f {
-	case None, Pin, SignedRotation, UnsignedRepin:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationRootKeyRepinResultMethod value, got: %v", f))
-	}
-}
-
-type FederationRootKeyRepinResultStatus string
-
-const (
-	Current                                 FederationRootKeyRepinResultStatus = "current"
-	FederationRootKeyRepinResultStatusReady FederationRootKeyRepinResultStatus = "ready"
-	Pinned                                  FederationRootKeyRepinResultStatus = "pinned"
-	Repinned                                FederationRootKeyRepinResultStatus = "repinned"
-	Rotated                                 FederationRootKeyRepinResultStatus = "rotated"
-)
-
-// Validate checks if the FederationRootKeyRepinResultStatus value is valid
-func (f FederationRootKeyRepinResultStatus) Validate() error {
-	switch f {
-	case Current, FederationRootKeyRepinResultStatusReady, Pinned, Repinned, Rotated:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationRootKeyRepinResultStatus value, got: %v", f))
-	}
-}
-
-// FederationSyncRetryReason refused: the hub rejected the credential (401 or 403); it waits up to 15 minutes between attempts, or longer when the hub also sent Retry-After, and retries at once when the credential or binding changes. unavailable: the hub throttled the request or was unavailable (429 or 503); it waits up to 5 minutes, or longer when the hub sent Retry-After. relay_cross_project_links: a relay hub refused the project's cross-project issue links.
-type FederationSyncRetryReason string
-
-const (
-	FederationSyncRetryReasonUnavailable FederationSyncRetryReason = "unavailable"
-	Refused                              FederationSyncRetryReason = "refused"
-	RelayCrossProjectLinks               FederationSyncRetryReason = "relay_cross_project_links"
-)
-
-// Validate checks if the FederationSyncRetryReason value is valid
-func (f FederationSyncRetryReason) Validate() error {
-	switch f {
-	case FederationSyncRetryReasonUnavailable, Refused, RelayCrossProjectLinks:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid FederationSyncRetryReason value, got: %v", f))
-	}
-}
-
 type IdleShutdownHealthState string
 
 const (
@@ -542,16 +362,16 @@ func (l ListGlobalIssueOutVerification) Validate() error {
 type LocalEmbeddingsStatusProvider string
 
 const (
-	BuiltIn                           LocalEmbeddingsStatusProvider = "built_in"
-	LocalEmbeddingsStatusProviderNone LocalEmbeddingsStatusProvider = "none"
-	Ollama                            LocalEmbeddingsStatusProvider = "ollama"
-	Other                             LocalEmbeddingsStatusProvider = "other"
+	BuiltIn LocalEmbeddingsStatusProvider = "built_in"
+	None    LocalEmbeddingsStatusProvider = "none"
+	Ollama  LocalEmbeddingsStatusProvider = "ollama"
+	Other   LocalEmbeddingsStatusProvider = "other"
 )
 
 // Validate checks if the LocalEmbeddingsStatusProvider value is valid
 func (l LocalEmbeddingsStatusProvider) Validate() error {
 	switch l {
-	case BuiltIn, LocalEmbeddingsStatusProviderNone, Ollama, Other:
+	case BuiltIn, None, Ollama, Other:
 		return nil
 	default:
 		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid LocalEmbeddingsStatusProvider value, got: %v", l))
@@ -683,41 +503,6 @@ func (r ReadyGlobalIssueOutVerification) Validate() error {
 	}
 }
 
-type RelayAckRequestBodyStream string
-
-const (
-	Artifacts RelayAckRequestBodyStream = "artifacts"
-	Events    RelayAckRequestBodyStream = "events"
-	Receipts  RelayAckRequestBodyStream = "receipts"
-)
-
-// Validate checks if the RelayAckRequestBodyStream value is valid
-func (r RelayAckRequestBodyStream) Validate() error {
-	switch r {
-	case Artifacts, Events, Receipts:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid RelayAckRequestBodyStream value, got: %v", r))
-	}
-}
-
-type SetProjectAccessRequestBodyVisibility string
-
-const (
-	All   SetProjectAccessRequestBodyVisibility = "all"
-	Teams SetProjectAccessRequestBodyVisibility = "teams"
-)
-
-// Validate checks if the SetProjectAccessRequestBodyVisibility value is valid
-func (s SetProjectAccessRequestBodyVisibility) Validate() error {
-	switch s {
-	case All, Teams:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid SetProjectAccessRequestBodyVisibility value, got: %v", s))
-	}
-}
-
 type ShowIssueOutVerification string
 
 const (
@@ -736,50 +521,16 @@ func (s ShowIssueOutVerification) Validate() error {
 	}
 }
 
-type TokenOutState string
-
-const (
-	Expired              TokenOutState = "expired"
-	Live                 TokenOutState = "live"
-	TokenOutStateRevoked TokenOutState = "revoked"
-)
-
-// Validate checks if the TokenOutState value is valid
-func (t TokenOutState) Validate() error {
-	switch t {
-	case Expired, Live, TokenOutStateRevoked:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid TokenOutState value, got: %v", t))
-	}
-}
-
-type TokenScopeInKind string
-
-const (
-	IssueSubtree TokenScopeInKind = "issue_subtree"
-)
-
-// Validate checks if the TokenScopeInKind value is valid
-func (t TokenScopeInKind) Validate() error {
-	switch t {
-	case IssueSubtree:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid TokenScopeInKind value, got: %v", t))
-	}
-}
-
 type TokenScopeOutKind string
 
 const (
-	TokenScopeOutKindIssueSubtree TokenScopeOutKind = "issue_subtree"
+	IssueSubtree TokenScopeOutKind = "issue_subtree"
 )
 
 // Validate checks if the TokenScopeOutKind value is valid
 func (t TokenScopeOutKind) Validate() error {
 	switch t {
-	case TokenScopeOutKindIssueSubtree:
+	case IssueSubtree:
 		return nil
 	default:
 		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid TokenScopeOutKind value, got: %v", t))
@@ -890,41 +641,6 @@ func (s ShowIssueByUIDQueryKind) Validate() error {
 		return nil
 	default:
 		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid ShowIssueByUIDQueryKind value, got: %v", s))
-	}
-}
-
-type OfferRelayDeliveriesQueryStream string
-
-const (
-	OfferRelayDeliveriesQueryStreamArtifacts OfferRelayDeliveriesQueryStream = "artifacts"
-	OfferRelayDeliveriesQueryStreamEvents    OfferRelayDeliveriesQueryStream = "events"
-	OfferRelayDeliveriesQueryStreamReceipts  OfferRelayDeliveriesQueryStream = "receipts"
-)
-
-// Validate checks if the OfferRelayDeliveriesQueryStream value is valid
-func (o OfferRelayDeliveriesQueryStream) Validate() error {
-	switch o {
-	case OfferRelayDeliveriesQueryStreamArtifacts, OfferRelayDeliveriesQueryStreamEvents, OfferRelayDeliveriesQueryStreamReceipts:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid OfferRelayDeliveriesQueryStream value, got: %v", o))
-	}
-}
-
-type SearchFederationProjectQueryStatus string
-
-const (
-	SearchFederationProjectQueryStatusClosed SearchFederationProjectQueryStatus = "closed"
-	SearchFederationProjectQueryStatusOpen   SearchFederationProjectQueryStatus = "open"
-)
-
-// Validate checks if the SearchFederationProjectQueryStatus value is valid
-func (s SearchFederationProjectQueryStatus) Validate() error {
-	switch s {
-	case SearchFederationProjectQueryStatusClosed, SearchFederationProjectQueryStatusOpen:
-		return nil
-	default:
-		return runtime.NewValidationErrorsFromString("Enum", fmt.Sprintf("must be a valid SearchFederationProjectQueryStatus value, got: %v", s))
 	}
 }
 

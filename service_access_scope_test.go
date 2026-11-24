@@ -121,36 +121,6 @@ func TestServiceAccessControllerScopesStableUIReferenceHydration(t *testing.T) {
 	assert.True(t, globalRequest.Operation.AllProjects)
 }
 
-func TestServiceAccessControllerScopesFederationEnrollmentBody(t *testing.T) {
-	controller := &recordingAccessController{}
-	_, server := newAccessTestServer(t, controller)
-	project := createProject(t, server.URL, "example-project")
-	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+
-		strconv.FormatInt(project.Project.ID, 10)+"/federation/enable",
-		`{"actor":"ignored"}`, nil)
-	controller.authorize = func(request poomsae.AccessRequest) error {
-		if request.Operation.ID == "createFederationEnrollment" {
-			return poomsae.ErrAccessDenied
-		}
-		return nil
-	}
-
-	body := bytes.NewBufferString(`{"spoke_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EA","project_id":` +
-		strconv.FormatInt(project.Project.ID, 10) +
-		`,"capabilities":"pull","actor":"ignored"}`)
-	request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/api/v1/federation/enrollments", body)
-	require.NoError(t, err)
-	request.Header.Set("Content-Type", "application/json")
-	response, err := server.Client().Do(request)
-	require.NoError(t, err)
-	defer func() { _ = response.Body.Close() }()
-	assert.Equal(t, http.StatusNotFound, response.StatusCode)
-
-	authorized := operationRequest(t, controller.snapshot(), "createFederationEnrollment", 0)
-	assert.Equal(t, []int64{project.Project.ID}, authorized.Operation.ProjectIDs)
-	assert.False(t, authorized.Operation.AllProjects)
-}
-
 func TestServiceAccessControllerScopesInboxDesignationGlobally(t *testing.T) {
 	controller := &recordingAccessController{}
 	_, server := newAccessTestServer(t, controller)
@@ -338,134 +308,6 @@ func TestServiceAccessControllerDeniesCrossProjectAuthorRewriteBeforeMutation(t 
 	require.NoError(t, json.NewDecoder(showResponse.Body).Decode(&shown))
 	require.Len(t, shown.Links, 1)
 	assert.Equal(t, "Example User", shown.Links[0].Author)
-}
-
-func TestServiceAccessControllerDerivesLeaseHolderFromSubject(t *testing.T) {
-	controller := &recordingAccessController{}
-	service, err := poomsae.New(t.Context(), poomsae.Config{
-		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		subject := r.Header.Get("X-Test-Subject")
-		switch subject {
-		case "":
-			subject = "user-one"
-		case "padded":
-			subject = " user-one "
-		}
-		principal := poomsae.Principal{Subject: subject, Actor: "Example User"}
-		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
-	})
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-	project := createProject(t, server.URL, "example-project")
-	issue := createAccessIssue(t, server, project.Project.ID, "leased issue")
-	projectID := strconv.FormatInt(project.Project.ID, 10)
-	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+projectID+"/federation/enable",
-		`{"actor":"ignored"}`, nil)
-	leasePath := server.URL + "/api/v1/projects/" + projectID + "/issues/" +
-		issue.Issue.ShortID + "/lease/actions/"
-
-	var acquired struct {
-		Holder struct {
-			Holder string `json:"holder"`
-		} `json:"holder"`
-	}
-	postJSON(t, server.Client(), leasePath+"acquire",
-		`{"holder":"caller-selected","client_kind":"cli","claim_kind":"hard"}`, &acquired)
-	assert.NotEmpty(t, acquired.Holder.Holder)
-	assert.NotEqual(t, "caller-selected", acquired.Holder.Holder)
-	issuePath := server.URL + "/api/v1/projects/" + projectID + "/issues/" + issue.Issue.ShortID
-	ownerEdit, err := http.NewRequestWithContext(t.Context(), http.MethodPatch, issuePath,
-		bytes.NewBufferString(`{"actor":"ignored","title":"owner edit"}`))
-	require.NoError(t, err)
-	ownerEdit.Header.Set("Content-Type", "application/json")
-	ownerEdit.Header.Set("If-Match", `"rev-1"`)
-	ownerEditResponse, err := server.Client().Do(ownerEdit)
-	require.NoError(t, err)
-	var edited accessIssue
-	require.NoError(t, json.NewDecoder(ownerEditResponse.Body).Decode(&edited))
-	_ = ownerEditResponse.Body.Close()
-	assert.Equal(t, http.StatusOK, ownerEditResponse.StatusCode)
-
-	otherEdit, err := http.NewRequestWithContext(t.Context(), http.MethodPatch, issuePath,
-		bytes.NewBufferString(`{"actor":"ignored","title":"other edit"}`))
-	require.NoError(t, err)
-	otherEdit.Header.Set("Content-Type", "application/json")
-	otherEdit.Header.Set("If-Match", `"rev-`+strconv.FormatInt(edited.Issue.Revision, 10)+`"`)
-	otherEdit.Header.Set("X-Test-Subject", "padded")
-	otherEditResponse, err := server.Client().Do(otherEdit)
-	require.NoError(t, err)
-	_ = otherEditResponse.Body.Close()
-	assert.Equal(t, http.StatusConflict, otherEditResponse.StatusCode)
-
-	impersonation, err := http.NewRequestWithContext(t.Context(), http.MethodPost, leasePath+"release",
-		bytes.NewBufferString(`{"holder":"`+acquired.Holder.Holder+`","client_kind":"cli"}`))
-	require.NoError(t, err)
-	impersonation.Header.Set("Content-Type", "application/json")
-	impersonation.Header.Set("X-Test-Subject", "padded")
-	impersonationResponse, err := server.Client().Do(impersonation)
-	require.NoError(t, err)
-	_ = impersonationResponse.Body.Close()
-	assert.Equal(t, http.StatusConflict, impersonationResponse.StatusCode)
-
-	ownerRelease, err := http.NewRequestWithContext(t.Context(), http.MethodPost, leasePath+"release",
-		bytes.NewBufferString(`{"holder":"another-caller-value","client_kind":"cli"}`))
-	require.NoError(t, err)
-	ownerRelease.Header.Set("Content-Type", "application/json")
-	ownerRelease.Header.Set("X-Test-Subject", "user-one")
-	ownerResponse, err := server.Client().Do(ownerRelease)
-	require.NoError(t, err)
-	defer func() { _ = ownerResponse.Body.Close() }()
-	assert.Equal(t, http.StatusOK, ownerResponse.StatusCode)
-}
-
-func TestServiceAccessControllerRejectsMalformedHostPrincipalBeforeBearerFallback(t *testing.T) {
-	controller := &recordingAccessController{}
-	service, err := poomsae.New(t.Context(), poomsae.Config{
-		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		principal := poomsae.Principal{Subject: "user-one", Actor: "Example User"}
-		if r.Header.Get("X-Test-Malformed") != "" {
-			principal = poomsae.Principal{Subject: " ", Actor: " "}
-		}
-		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
-	})
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-	project := createProject(t, server.URL, "example-project")
-	issue := createAccessIssue(t, server, project.Project.ID, "leased issue")
-	projectID := strconv.FormatInt(project.Project.ID, 10)
-	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+projectID+"/federation/enable",
-		`{"actor":"ignored"}`, nil)
-	basePath := server.URL + "/api/v1/projects/" + projectID + "/issues/" + issue.Issue.ShortID + "/lease"
-
-	requests := []struct {
-		method string
-		path   string
-		body   string
-	}{
-		{http.MethodPost, basePath + "/actions/acquire", `{"holder":"forged","client_kind":"cli","claim_kind":"hard"}`},
-		{http.MethodGet, basePath, ""},
-	}
-	before := len(controller.snapshot())
-	for _, tc := range requests {
-		request, err := http.NewRequestWithContext(t.Context(), tc.method, tc.path, bytes.NewBufferString(tc.body))
-		require.NoError(t, err)
-		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("Authorization", "Bearer invalid-token")
-		request.Header.Set("X-Test-Malformed", "1")
-		response, err := server.Client().Do(request)
-		require.NoError(t, err)
-		_ = response.Body.Close()
-		assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
-	}
-	assert.Len(t, controller.snapshot(), before)
 }
 
 func TestServiceAccessControllerConcealsUnauthorizedLinkTargetState(t *testing.T) {
@@ -680,36 +522,6 @@ func TestServiceAccessControllerConcealsForeignRecurrenceIdentity(t *testing.T) 
 			"error":  map[string]any{"code": "not_found", "message": "resource not found"},
 		}, body)
 	}
-}
-
-func TestServiceAccessControllerSuppliesFederationReplicaActor(t *testing.T) {
-	controller := &recordingAccessController{}
-	_, server := newAccessTestServer(t, controller)
-	body := bytes.NewBufferString(`{
-		"hub_url":"https://hub.example",
-		"hub_project_id":42,
-		"hub_project_uid":"01HZNQ7VFPK1XGD8R5MABCD4EX",
-		"project_name":"replica-project",
-		"replay_horizon_event_id":1,
-		"actor":"forged actor"
-	}`)
-	request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/api/v1/federation/replicas", body)
-	require.NoError(t, err)
-	request.Header.Set("Content-Type", "application/json")
-	response, err := server.Client().Do(request)
-	require.NoError(t, err)
-	defer func() { _ = response.Body.Close() }()
-	responseBody := new(bytes.Buffer)
-	_, err = responseBody.ReadFrom(response.Body)
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, response.StatusCode, "response body: %s", responseBody.String())
-	var created struct {
-		Binding struct {
-			Actor string `json:"actor"`
-		} `json:"binding"`
-	}
-	require.NoError(t, json.NewDecoder(bytes.NewReader(responseBody.Bytes())).Decode(&created))
-	assert.Equal(t, "Example User", created.Binding.Actor)
 }
 
 func TestServiceAccessControllerAuthorizesProjectsContributingChildCounts(t *testing.T) {

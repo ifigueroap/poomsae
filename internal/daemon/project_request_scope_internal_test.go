@@ -22,17 +22,6 @@ func TestRequestProjectScopeSurvivesClaimAuthority(t *testing.T) {
 	require.True(t, decision.owner, "validated owner authority remains intact")
 }
 
-func TestRequestProjectScopeIntersectsFederationAuthority(t *testing.T) {
-	decision := &ProjectAccessDecision{ProjectUIDs: []string{"01HAAAAAAAAAAAAAAAAAAAAAAA"}, fixedUIDs: []string{"01HAAAAAAAAAAAAAAAAAAAAAAA"}}
-	ctx := context.WithValue(t.Context(), projectAccessContextKey{}, decision)
-	ctx = withFederationProjectAuthority(ctx, federationAuthorization{projectUID: "01HBBBBBBBBBBBBBBBBBBBBBBB"})
-	projects, restricted := db.AuthorizedProjects(ctx)
-	require.True(t, restricted)
-	require.Empty(t, projects)
-	require.Empty(t, decision.ProjectUIDs)
-	require.Error(t, authorizeProjectTarget(ctx, "01HBBBBBBBBBBBBBBBBBBBBBBB"))
-}
-
 type requestScopeRevisionStore struct {
 	db.Storage
 }

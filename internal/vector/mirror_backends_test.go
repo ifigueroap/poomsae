@@ -17,7 +17,7 @@ import (
 // A refresh must match the live feed through edits, project moves, deletion,
 // and restoration, even when its first page contains only unchanged issues.
 func TestRefreshMirrorMatchesLiveFeedAcrossBackends(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			store, idx := openVectorBackend(t, backend)
@@ -95,7 +95,7 @@ func TestRefreshMirrorMatchesLiveFeedAcrossBackends(t *testing.T) {
 }
 
 func TestListIssueContentExcludesDirectSpokesAcrossBackends(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			store, idx := openVectorBackend(t, backend)
@@ -152,7 +152,7 @@ func TestListIssueContentExcludesDirectSpokesAcrossBackends(t *testing.T) {
 }
 
 func TestRefreshMirrorProjectPolicyRemovesVectors(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			store, idx := openVectorBackend(t, backend)

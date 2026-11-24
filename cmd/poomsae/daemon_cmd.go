@@ -28,19 +28,15 @@ import (
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/embedding"
-	"github.com/ifigueroap/poomsae/internal/federation"
-	"github.com/ifigueroap/poomsae/internal/federationsigning"
 	"github.com/ifigueroap/poomsae/internal/githubsync"
 	"github.com/ifigueroap/poomsae/internal/hooks"
 	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/ifigueroap/poomsae/internal/linearsync"
 	"github.com/ifigueroap/poomsae/internal/notionsync"
 	"github.com/ifigueroap/poomsae/internal/planesync"
-	"github.com/ifigueroap/poomsae/internal/rootbridge"
 	"github.com/ifigueroap/poomsae/internal/telemetry"
 	"github.com/ifigueroap/poomsae/internal/todoistsync"
 	"github.com/ifigueroap/poomsae/internal/twentysync"
@@ -83,8 +79,11 @@ var newTelemetryReporter = func(opts telemetry.Options) telemetry.Client {
 	return telemetry.NewReporterOrDisabled(opts)
 }
 
-var runExternalRootRunner = func(ctx context.Context, runner *rootbridge.Runner) error {
-	return runner.Run(ctx)
+// afterStorageReady blocks until ctx is canceled. Tests replace it to observe
+// that startup has opened the store and finished cutover.
+var afterStorageReady = func(ctx context.Context) error {
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 type issueSyncDaemonRunner interface {
@@ -128,9 +127,6 @@ var openEmbeddingVectorIndex = func(
 	store db.Storage,
 	vectorsPath string,
 ) (*vector.Index, error) {
-	if postgresStore, ok := store.(*pgstore.Store); ok {
-		return vector.OpenPostgres(ctx, postgresStore.DB)
-	}
 	return vector.Open(ctx, vectorsPath)
 }
 
@@ -742,11 +738,6 @@ func daemonStatusCmd() *cobra.Command {
 					return err
 				}
 			}
-			if selected.RootSigning != nil {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  warning: %s\n", daemon.RootSigningWarning(*selected.RootSigning)); err != nil {
-					return err
-				}
-			}
 			if len(out.Daemons) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No poomsae daemon is running in the current POOMSAE_HOME.")
 				return statusErr
@@ -1034,9 +1025,6 @@ func preflightDaemonStartup(ctx context.Context, listen string, insecureReadonly
 	if err != nil {
 		return daemonStartupPreflight{}, err
 	}
-	if err := validateFederationStartupConfig(dcfg); err != nil {
-		return daemonStartupPreflight{}, err
-	}
 	if listen != "" {
 		dcfg.Sources["listen"] = "--listen"
 	} else if dcfg.Listen == "" {
@@ -1090,17 +1078,6 @@ func preflightDaemonStartup(ctx context.Context, listen string, insecureReadonly
 	backend, err := storeopen.BackendForDSN(dbPath)
 	if err != nil {
 		return daemonStartupPreflight{}, err
-	}
-	if backend == storeopen.BackendPostgres {
-		storeConfig.Postgres = pgstore.ConfigFromValues(
-			dcfg.Storage.Postgres.Schema,
-			dcfg.Storage.Postgres.Mode,
-			dcfg.Storage.Postgres.SchemaOwner,
-			dcfg.Storage.Postgres.AllowInsecure,
-		)
-		if err := storeConfig.Postgres.Validate(); err != nil {
-			return daemonStartupPreflight{}, err
-		}
 	}
 	if backend == storeopen.BackendSQLite {
 		storeConfig.SQLiteBusyTimeout, err = dcfg.Storage.SQLite.BusyTimeoutDuration()
@@ -1404,18 +1381,6 @@ func runDaemonProcess(
 		}
 	}()
 
-	rootSigning, err := daemon.LoadRootSigning(ctx, store, filepath.Join(ns.DataDir, "federation-root.key"))
-	if err != nil {
-		return fmt.Errorf("load root attribution signing key: %w", err)
-	}
-	rootSigningHealth, err := rootSigning.Health(ctx, store)
-	if err != nil {
-		return fmt.Errorf("check root attribution signing key: %w", err)
-	}
-	if rootSigningHealth != nil {
-		_, _ = fmt.Fprintln(diagnostics, "poomsae daemon: "+daemon.RootSigningWarning(*rootSigningHealth))
-	}
-
 	runtimeEndpoint := runtimeEndpointForListener(endpoint, listener)
 	webEndpoint, err := daemon.ResolveWebEndpoint(daemon.WebEndpointOptions{
 		NamespaceID: ns.DBHash,
@@ -1544,6 +1509,12 @@ func runDaemonProcess(
 
 	broadcaster := daemon.NewEventBroadcaster()
 	publisher := daemon.NewEventPublisher(broadcaster, disp)
+	startClaimSweeper(ctx, workers, waitableDrainAdmission, store, publisher, daemonLog)
+	workers.Go(func() {
+		if err := afterStorageReady(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("storage ready: %v", err)
+		}
+	})
 	embedder, vectorIndex, reconcilerHealth, embeddingWake, err := startEmbeddingReconciler(
 		ctx, workers, waitableDrainAdmission, dcfg.Search.Embeddings, startup.Embedder, startup.VectorsPath, store, broadcaster, daemonLog, publisher,
 	)
@@ -1583,115 +1554,10 @@ func runDaemonProcess(
 			restart.watch(ctx, restartSignals, idleAdmission, func() error { return restart.accept(ctx, ns.DataDir, rec) }, daemonLog, shutdownTrigger.Call)
 		})
 	}
-	syncOutcome := daemon.NewSyncOutcomeObserver(telemetryReporter)
-	federationRetries := federation.NewSyncRetries()
-	federationWake := startFederationRunner(
-		ctx, workers, waitableDrainAdmission, store, publisher, daemonLog, federationRetries, syncOutcome, embeddingWake,
-	)
 	startDueNotificationSweeper(
 		ctx, workers, waitableDrainAdmission, store, publisher, dcfg.Timezone, daemonLog,
 	)
 	startAssignmentSweeper(ctx, workers, waitableDrainAdmission, store, publisher, daemonLog)
-	federationConfigHealth := startFederationConfigReconciler(
-		ctx, workers, waitableDrainAdmission, dcfg, store, federationWake, func(event db.Event, fork activity.Admission) {
-			publisher.EventFrom(event.ProjectID, event, fork)
-		}, publisher.Reset, daemonLog,
-	)
-	gitHubSyncFetcher := newConfiguredGitHubSyncFetcher(dcfg.GitHubSync)
-	gitHubSyncProgress := githubsync.NewProgressTracker()
-	gitHubSyncProgress.OnResult = syncOutcome
-	gitHubSyncWake := startGitHubSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, gitHubSyncFetcher, publisher, daemonLog, gitHubSyncProgress,
-	)
-	notionSyncFetcher := newConfiguredNotionSyncFetcher(dcfg.NotionSync)
-	notionSyncProgress := issuesync.NewProgressTracker()
-	notionSyncProgress.OnResult = syncOutcome
-	notionSyncWake := startNotionSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, notionSyncFetcher, publisher, daemonLog, notionSyncProgress,
-	)
-
-	planeSyncFetcher := newConfiguredPlaneSyncFetcher(dcfg.PlaneSync)
-	planeSyncProgress := issuesync.NewProgressTracker()
-	planeSyncProgress.OnResult = syncOutcome
-	planeSyncWake := startPlaneSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, planeSyncFetcher, publisher, daemonLog, planeSyncProgress,
-	)
-	linearSyncFetcher := newConfiguredLinearSyncFetcher(dcfg.LinearSync)
-	linearSyncProgress := issuesync.NewProgressTracker()
-	linearSyncProgress.OnResult = syncOutcome
-	linearSyncWake := startLinearSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, linearSyncFetcher, publisher, daemonLog, linearSyncProgress,
-	)
-	twentySyncFetcher := newConfiguredTwentySyncFetcher(dcfg.TwentySync)
-	twentySyncProgress := issuesync.NewProgressTracker()
-	twentySyncProgress.OnResult = syncOutcome
-	twentySyncWake := startTwentySyncRunner(
-		ctx, workers, waitableDrainAdmission, store, twentySyncFetcher, publisher, daemonLog, twentySyncProgress,
-	)
-	todoistSyncFetcher := newConfiguredTodoistSyncFetcher(dcfg.TodoistSync)
-	todoistSyncProgress := issuesync.NewProgressTracker()
-	todoistSyncProgress.OnResult = syncOutcome
-	todoistSyncWake := startTodoistSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, todoistSyncFetcher, publisher, daemonLog, todoistSyncProgress,
-	)
-	tickTickSyncFetcher := newConfiguredTickTickSyncFetcher(dcfg.TickTickSync)
-	tickTickSyncProgress := issuesync.NewProgressTracker()
-	tickTickSyncProgress.OnResult = syncOutcome
-	tickTickSyncWake := startTickTickSyncRunner(
-		ctx, workers, waitableDrainAdmission, store, tickTickSyncFetcher, publisher, daemonLog, tickTickSyncProgress,
-	)
-
-	externalRootRegistry, err := rootbridge.NewRegistry(ctx, dcfg.Connectors, nil)
-	if err != nil {
-		return err
-	}
-	externalRootReconciler := rootbridge.NewReconciler(store, externalRootRegistry, rootbridge.ReconcilerConfig{
-		RetryAt:         rootbridge.ExternalRootRetryAt(nil),
-		DefaultTimezone: dcfg.Timezone,
-	})
-	externalRootEventSinkFrom := func(event db.Event, fork activity.Admission) {
-		broadcaster.Broadcast(daemon.StreamMsg{Kind: "event", Event: &event, ProjectID: event.ProjectID})
-		hooks.EnqueueFrom(disp, event, fork)
-	}
-	externalRootEventSink := func(event db.Event) { externalRootEventSinkFrom(event, nil) }
-	externalRootService := rootbridge.NewServiceWithEventSinkAndDefaultTimezone(
-		store,
-		externalRootRegistry,
-		func(ctx context.Context, bindingID int64, claimToken string) ([]db.Event, error) {
-			result, err := externalRootReconciler.Run(ctx, bindingID, rootbridge.RunOptions{
-				ClaimToken: claimToken,
-				EventSink:  externalRootEventSink,
-			})
-			return result.Events, err
-		},
-		externalRootEventSink,
-		dcfg.Timezone,
-	)
-	externalRootRunner := &rootbridge.Runner{
-		Store: store, Reconciler: externalRootReconciler,
-		EventSinkFrom:  externalRootEventSinkFrom,
-		DrainAdmission: waitableDrainAdmission,
-		ErrorSink: func(err error) {
-			daemonLog.Printf("external roots: %s", db.SafeExternalRootError(err.Error()))
-		},
-	}
-	externalRootWake := externalRootRunner.Wake
-	workers.Go(func() {
-		if err := runExternalRootRunner(ctx, externalRootRunner); err != nil && !errors.Is(err, context.Canceled) {
-			daemonLog.Printf("external roots: %s", db.SafeExternalRootError(err.Error()))
-		}
-	})
-	startExternalRootEventWake(ctx, workers, store, broadcaster, externalRootWake)
-
-	var signingVerifier *federationsigning.Verifier
-	if dcfg.Federation.Signing.ExternalURL != "" {
-		var err error
-		signingVerifier, err = federationsigning.NewVerifier(dcfg.Federation.Signing.ExternalURL, dcfg.Federation.Signing.Keys, dcfg.Federation.Signing.ReplayStateFile)
-		if err != nil {
-			return fmt.Errorf("initialize federation signing: %w", err)
-		}
-		defer func() { _ = signingVerifier.Close() }()
-	}
 	docbankClient := docbank.New(dcfg.Docbank)
 	var mcpHandler http.Handler
 	if dcfg.MCP.Enabled {
@@ -1725,97 +1591,39 @@ func runDaemonProcess(
 			})
 		}
 	}
-	if pg, ok := store.(*pgstore.Store); ok {
-		localSetup.vectorReady = func(ctx context.Context) error {
-			idx, err := vector.OpenPostgres(ctx, pg.DB)
-			if err != nil {
-				return fmt.Errorf("install pgvector in this daemon's database, then try again: %w", err)
-			}
-			return idx.Close()
-		}
-	}
-
 	// Start the Events worker only after the last fallible startup step, so an
 	// earlier failure cannot leave it running past the store closing.
 	mcpEvents, mcpEventsReason := startDaemonMCPEvents(ctx, workers, dcfg, ns.DBHash, store, broadcaster, daemonLog)
 	srv := daemon.NewServer(daemon.ServerConfig{
-		LocalEmbeddings:           localSetup,
-		MCPHandler:                mcpHandler,
-		FederationSigning:         signingVerifier,
-		FederationSigningRequired: dcfg.Federation.Signing.Required,
-		DB:                        store,
-		RootSigning:               rootSigning,
-		DefaultTimezone:           dcfg.Timezone,
-		StartedAt:                 time.Now().UTC(),
-		Endpoint:                  &endpoint,
-		Hooks:                     disp,
-		Broadcaster:               broadcaster,
-		MCPEvents:                 mcpEvents,
-		MCPEventsDisabledReason:   mcpEventsReason,
-		FederationWake:            federationWake,
-		FederationSyncOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
-			return federation.SyncFederationOnceWithPulledEvents(ctx, store, binding, credential, client.Opts{}, publisher.Events)
-		},
-		FederationPullOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
-			return federation.SyncFederationPullOnlyOnceWithPulledEvents(ctx, store, binding, credential, client.Opts{}, publisher.Events)
-		},
-		EmbeddingWake:          embeddingWake,
-		FederationCatalog:      append([]config.CatalogDaemonConfig(nil), dcfg.Daemons...),
-		WebDaemons:             append([]config.CatalogDaemonConfig(nil), dcfg.Daemons...),
-		WebSyncHubs:            dcfg.WebSyncHubs(),
-		ActiveWebDaemon:        dcfg.ActiveDaemon,
-		GitHubSyncFetcher:      gitHubSyncFetcher,
-		GitHubSyncConfig:       dcfg.GitHubSync,
-		GitHubSyncWake:         gitHubSyncWake,
-		GitHubSyncProgress:     gitHubSyncProgress,
-		NotionSyncFetcher:      notionSyncFetcher,
-		NotionSyncConfig:       dcfg.NotionSync,
-		NotionSyncWake:         notionSyncWake,
-		NotionSyncProgress:     notionSyncProgress,
-		TickTickSyncFetcher:    tickTickSyncFetcher,
-		TickTickSyncConfig:     dcfg.TickTickSync,
-		TickTickSyncWake:       tickTickSyncWake,
-		TickTickSyncProgress:   tickTickSyncProgress,
-		PlaneSyncFetcher:       planeSyncFetcher,
-		PlaneSyncConfig:        dcfg.PlaneSync,
-		PlaneSyncWake:          planeSyncWake,
-		PlaneSyncProgress:      planeSyncProgress,
-		LinearSyncFetcher:      linearSyncFetcher,
-		LinearSyncConfig:       dcfg.LinearSync,
-		LinearSyncWake:         linearSyncWake,
-		LinearSyncProgress:     linearSyncProgress,
-		TwentySyncFetcher:      twentySyncFetcher,
-		TwentySyncConfig:       dcfg.TwentySync,
-		TwentySyncWake:         twentySyncWake,
-		TwentySyncProgress:     twentySyncProgress,
-		TodoistSyncFetcher:     todoistSyncFetcher,
-		TodoistSyncConfig:      dcfg.TodoistSync,
-		TodoistSyncWake:        todoistSyncWake,
-		TodoistSyncProgress:    todoistSyncProgress,
-		ExternalRootRegistry:   externalRootRegistry,
-		ExternalRootService:    externalRootService,
-		ExternalRootReconciler: externalRootReconciler,
-		ExternalRootWake:       externalRootWake,
-		FederationPushPending:  federation.DirectSpokePushPending(store),
-		FederationHubClient:    federation.CredentialHTTPClient,
+		LocalEmbeddings:         localSetup,
+		MCPHandler:              mcpHandler,
+		DB:                      store,
+		DefaultTimezone:         dcfg.Timezone,
+		StartedAt:               time.Now().UTC(),
+		Endpoint:                &endpoint,
+		Hooks:                   disp,
+		Broadcaster:             broadcaster,
+		MCPEvents:               mcpEvents,
+		MCPEventsDisabledReason: mcpEventsReason,
+		EmbeddingWake:           embeddingWake,
+		WebDaemons:              append([]config.CatalogDaemonConfig(nil), dcfg.Daemons...),
+		ActiveWebDaemon:         dcfg.ActiveDaemon,
 		CloseThrottle: daemon.CloseThrottlePolicy{
 			SiblingBurstEnabled: dcfg.Close.Throttle.ThrottleEnabled(),
 			SiblingBurstWindow:  closeThrottleWindow,
 		},
-		Auth:                   dcfg.Auth,
-		WebSessions:            webSessions,
-		Telemetry:              telemetryReporter,
-		WebHandler:             webHandler,
-		InsecureReadonly:       insecureReadonly,
-		Embedder:               embedder,
-		Docbank:                docbankClient,
-		DocbankFolder:          dcfg.Docbank.Folder,
-		VectorIndex:            vectorIndex,
-		ReconcilerHealth:       reconcilerHealth,
-		FederationConfigHealth: federationConfigHealth,
-		FederationSyncRetry:    federationRetries.FederationSyncRetry,
-		IdleAdmission:          idleAdmission,
-		IdleShutdownHealth:     idleHealth,
+		Auth:               dcfg.Auth,
+		WebSessions:        webSessions,
+		Telemetry:          telemetryReporter,
+		WebHandler:         webHandler,
+		InsecureReadonly:   insecureReadonly,
+		Embedder:           embedder,
+		Docbank:            docbankClient,
+		DocbankFolder:      dcfg.Docbank.Folder,
+		VectorIndex:        vectorIndex,
+		ReconcilerHealth:   reconcilerHealth,
+		IdleAdmission:      idleAdmission,
+		IdleShutdownHealth: idleHealth,
 	})
 	defer func() { _ = srv.Close() }()
 	var stopAdmission func()
@@ -1875,16 +1683,6 @@ func runDaemonProcess(
 		})
 	}
 
-	var federationIngressAddress string
-	if dcfg.Federation.Ingress.Enabled {
-		ingress, err := new(net.ListenConfig).Listen(ctx, "tcp", dcfg.Federation.Ingress.Listen)
-		if err != nil {
-			return fmt.Errorf("listen for restricted federation: %w", err)
-		}
-		defer func() { _ = ingress.Close() }()
-		federationIngressAddress = ingress.Addr().String()
-		bindings = append(bindings, daemon.ListenerBinding{Listener: ingress, Policy: daemon.ListenerPolicy{Kind: daemon.ListenerFederation}})
-	}
 	var runtimeFile string
 	defer func() {
 		if runtimeFile != "" {
@@ -1898,9 +1696,6 @@ func runDaemonProcess(
 				return err
 			}
 			runtimeFile = path
-			if federationIngressAddress != "" {
-				_, _ = fmt.Fprintf(diagnostics, "federation ingress listening at %s\n", federationIngressAddress)
-			}
 			if idleController != nil {
 				idleController.Start()
 			}
@@ -2123,47 +1918,14 @@ func captureDaemonTelemetryEvent(ctx context.Context, store db.Storage, reporter
 	_ = reporter.Capture(event, properties)
 }
 
-func startFederationRunner(
+func startClaimSweeper(
 	ctx context.Context,
 	workers *daemonWorkerGroup,
 	drainAdmission activity.WaitableAdmission,
 	store db.Storage,
 	publisher daemon.EventPublisher,
 	daemonLog *log.Logger,
-	retries *federation.SyncRetries,
-	onSpokeResult func(string, int64, error),
-	onSyncComplete ...func(),
-) func() {
-	wake := make(chan struct{}, 1)
-	wakeRunner := func() {
-		select {
-		case wake <- struct{}{}:
-		default:
-		}
-	}
-	workers.Go(func() { daemon.ForwardFederationWakes(ctx, publisher.Broadcaster, store.InstanceUID(), wakeRunner) })
-	runner := &federation.Runner{
-		DB:             store,
-		Interval:       federationRunnerInterval(),
-		Wake:           wake,
-		DrainAdmission: drainAdmission,
-		Retries:        retries,
-		OnError: func(err error) {
-			daemonLog.Printf("federation: %v", err)
-		},
-		OnSpokeResult: func(projectID int64, err error) { onSpokeResult("federation", projectID, err) },
-		OnPulledEventsFrom: func(projectID int64, events []db.Event, fork activity.Admission) {
-			publisher.EventsFrom(projectID, events, fork)
-		},
-	}
-	if len(onSyncComplete) > 0 {
-		runner.OnSyncComplete = onSyncComplete[0]
-	}
-	workers.Go(func() {
-		if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			daemonLog.Printf("federation: %v", err)
-		}
-	})
+) {
 	sweeper := daemon.NewTimedClaimSweeper(store, publisher)
 	sweeper.IdleAdmission = drainAdmission
 	sweeper.OnError = func(err error) {
@@ -2174,7 +1936,6 @@ func startFederationRunner(
 			daemonLog.Printf("claim sweeper: %v", err)
 		}
 	})
-	return wakeRunner
 }
 
 // vectorsPathForDSN places the semantic-search sidecar next to the SQLite
@@ -2271,7 +2032,7 @@ func startEmbeddingReconciler(
 	if len(publishers) > 0 {
 		publisher = publishers[0]
 	}
-	reconciler := daemon.NewConfiguredEmbeddingReconciler(store, idx, embedder, ec, publisher, drainAdmission, config.DefaultFederationCredentialStore(), federation.EmbeddingProducerConnected, federation.EmbeddingProducerAuthorized, nil)
+	reconciler := daemon.NewConfiguredEmbeddingReconciler(store, idx, embedder, ec, publisher, drainAdmission, config.DefaultFederationCredentialStore(), nil, nil, nil)
 	workers.Go(func() {
 		if err := reconciler.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			daemonLog.Printf("reconciler: %v", err)
@@ -2309,18 +2070,6 @@ func startEmbeddingNudge(
 			}
 		}
 	})
-}
-
-func federationRunnerInterval() time.Duration {
-	raw := os.Getenv("POOMSAE_FEDERATION_PULL_INTERVAL_MS")
-	if raw == "" {
-		return 30 * time.Second
-	}
-	ms, err := strconv.Atoi(raw)
-	if err != nil || ms <= 0 {
-		return 30 * time.Second
-	}
-	return time.Duration(ms) * time.Millisecond
 }
 
 func startGitHubSyncRunner(

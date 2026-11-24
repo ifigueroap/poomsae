@@ -9,13 +9,13 @@ Install poomsae on your machine, bind a workspace, and create your first issue.
 On macOS or Linux, run the release installer:
 
 ```sh
-curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash
 ```
 
 On Windows PowerShell, run:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex"
 ```
 
 See [Install](install.md) for package upgrades and alternative installation

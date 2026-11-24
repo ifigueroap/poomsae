@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -73,18 +72,6 @@ func TestStatusAgentReportsAuthenticatedIdentityAndAssignment(t *testing.T) {
 	assert.NotContains(t, out, operatorToken)
 }
 
-func TestStatusAgentReportsActiveTimedLease(t *testing.T) {
-	env, dir, _, ref := setupFederatedHubIssue(t, "report active lease")
-	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref, "--ttl", "30m")
-
-	out := runCLIAs(t, env, dir, "alice", "--agent", "status", ref)
-
-	assert.Contains(t, out, "hold=active")
-	assert.Contains(t, out, "holder=alice")
-	assert.Contains(t, out, "lease_kind=timed")
-	assert.True(t, strings.Contains(out, "expires_at="), out)
-}
-
 func TestStatusJSONReportsDaemonActorAndHold(t *testing.T) {
 	env, dir, pid := setupCLIWorkspaceOptions(t,
 		testenv.WithAuthToken("bootstrap-token"),
@@ -115,17 +102,6 @@ func TestStatusJSONReportsDaemonActorAndHold(t *testing.T) {
 	assert.Equal(t, "unassigned", got["hold"])
 	assert.NotContains(t, got, "claim")
 	assert.NotContains(t, out, operatorToken)
-}
-
-func TestStatusHumanShowsLeaseExpiry(t *testing.T) {
-	env, dir, _, ref := setupFederatedHubIssue(t, "report lease expiry")
-	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref, "--ttl", "30m")
-
-	out := runCLIAs(t, env, dir, "alice", "status", ref)
-
-	assert.Contains(t, out, "hold=active")
-	assert.Contains(t, out, "lease: alice from instance "+env.DB.InstanceUID()+" (timed)")
-	assert.Regexp(t, `(?m)^expires: \d{4}-\d{2}-\d{2}T`, out)
 }
 
 func TestStatusDisplaysTimedAssignmentExpiry(t *testing.T) {

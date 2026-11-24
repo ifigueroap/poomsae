@@ -7,7 +7,7 @@ import {
   orvalFetch,
   responseTriggeredAuthenticationTransition,
 } from './client'
-import { attachmentContent, getReadUISnapshotUrl, listTeams } from './generated'
+import { attachmentContent, getReadUISnapshotUrl, listProjects } from './generated'
 
 describe('Poomsae browser API credentials', () => {
   it('serializes exploded array query parameters as repeated keys', () => {
@@ -156,7 +156,7 @@ it('honors a server delay before retrying a generated teams read', async () => {
     .mockResolvedValueOnce(Response.json({ teams: [] }))
   setGeneratedFetch(fetcher)
   try {
-    const result = listTeams({ signal: new AbortController().signal, retry: true })
+    const result = listProjects(undefined, { signal: new AbortController().signal, retry: true })
     await vi.advanceTimersByTimeAsync(9999)
     expect(fetcher).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1)
@@ -182,7 +182,7 @@ it.each([
     .mockResolvedValueOnce(Response.json({ teams: [] }))
   setGeneratedFetch(fetcher)
   try {
-    const pending = listTeams({ signal: new AbortController().signal, retry: true })
+    const pending = listProjects(undefined, { signal: new AbortController().signal, retry: true })
     if (result === 'error') {
       const failure = expect(pending).rejects.toThrow()
       await vi.advanceTimersByTimeAsync(0)
@@ -215,7 +215,7 @@ it('retries a generated read when the response body connection drops', async () 
     .mockResolvedValueOnce(Response.json({ teams: [] }))
   setGeneratedFetch(fetcher)
   try {
-    const result = listTeams({ signal: new AbortController().signal, retry: true })
+    const result = listProjects(undefined, { signal: new AbortController().signal, retry: true })
     const outcome = expect(result).resolves.toMatchObject({ status: 200 })
     await vi.advanceTimersByTimeAsync(1000)
     await outcome

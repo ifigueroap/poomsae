@@ -35,59 +35,6 @@ func TestCredentialsViewCapabilityGateDoesNotFetchWhenUnavailable(t *testing.T) 
 	assert.Contains(t, stripANSI(out.viewContent()), "0 credentials\n\nthis connection cannot view credentials")
 }
 
-func TestCredentialsViewLoadsThroughUndoClient(t *testing.T) {
-	var requests atomic.Int32
-	srv := mockDaemon(t, map[string]http.HandlerFunc{
-		"/api/v1/tokens": func(w http.ResponseWriter, _ *http.Request) {
-			requests.Add(1)
-			respondJSON(t, w, map[string]any{"tokens": []any{}, "observed_at": time.Now()})
-		},
-	})
-	m := newTestModel()
-	m.api = newUndoClient(NewClient(srv.URL, srv.Client()))
-	m, _ = m.handleAuthCapabilities(authCapabilitiesMsg{auth: AuthInfo{TokenAuditRead: true}})
-	_, cmd := updateModel(m, keyRune('C'))
-	require.NotNil(t, cmd)
-	loaded, ok := cmd().(credentialsLoadedMsg)
-	require.True(t, ok)
-	require.NoError(t, loaded.err)
-	require.EqualValues(t, 1, requests.Load())
-}
-
-func TestCredentialsViewStartsLoadingWhenCapabilityDiscoveryCompletes(t *testing.T) {
-	var requests atomic.Int32
-	srv := mockDaemon(t, map[string]http.HandlerFunc{
-		"/api/v1/tokens": func(w http.ResponseWriter, _ *http.Request) {
-			requests.Add(1)
-			respondJSON(t, w, map[string]any{"tokens": []any{}, "observed_at": time.Now()})
-		},
-	})
-	m := newTestModel()
-	m.api = NewClient(srv.URL, srv.Client())
-	m.authCapabilitiesRequired = true
-	m.authCapabilitiesReady = false
-
-	opened, cmd := updateModel(m, keyRune('C'))
-
-	assert.Equal(t, viewCredentials, opened.view)
-	require.NotNil(t, cmd, "entering during discovery must ensure a capability request is in flight")
-	assert.Contains(t, stripANSI(opened.viewContent()), "loading credential inventory")
-	assert.NotContains(t, stripANSI(opened.viewContent()), "credentials unavailable")
-
-	ready, fetchCmd := updateModel(opened, authCapabilitiesMsg{
-		connGen: opened.connGen,
-		auth:    AuthInfo{TokenAuditRead: true},
-	})
-
-	assert.True(t, ready.credentials.available)
-	assert.True(t, ready.credentials.loading)
-	require.NotNil(t, fetchCmd)
-	loaded, ok := fetchCmd().(credentialsLoadedMsg)
-	require.True(t, ok)
-	assert.Equal(t, ready.credentials.gen, loaded.gen)
-	assert.Equal(t, int32(1), requests.Load())
-}
-
 func TestCredentialsViewReportsCapabilityDiscoveryErrorAndRetries(t *testing.T) {
 	m := newTestModel()
 	m.authCapabilitiesRequired = true

@@ -380,29 +380,6 @@ func TestAuthMiddleware_KeylessHealthRejectsExplicitAuthorization(t *testing.T) 
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
-func TestAuthMiddleware_FederationTransportPathsBypassAdminBearer(t *testing.T) {
-	mw := requireBearer(authPolicy{
-		Token:                   "expected-token",
-		SelfAuthenticatedRoutes: selfAuthenticatedRoutesForTest(t),
-	})
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusAccepted)
-	}))
-
-	for _, tc := range []struct {
-		method string
-		path   string
-	}{
-		{method: http.MethodGet, path: "/api/v1/projects/1/federation/events"},
-		{method: http.MethodGet, path: "/api/v1/projects/1/federation/metadata"},
-		{method: http.MethodPost, path: "/api/v1/projects/1/federation/events:ingest"},
-	} {
-		rr := httptest.NewRecorder()
-		h.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), tc.method, tc.path, nil))
-		assert.Equal(t, http.StatusAccepted, rr.Code, "%s %s should bypass daemon bearer middleware", tc.method, tc.path)
-	}
-}
-
 func TestAuthMiddleware_FederationTransportBypassRequiresExactRouteAndMethod(t *testing.T) {
 	mw := requireBearer(authPolicy{
 		Token:                   "expected-token",

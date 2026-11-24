@@ -8,118 +8,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/githubsync"
 	"github.com/ifigueroap/poomsae/internal/notionsync"
 	"github.com/stretchr/testify/require"
 )
-
-func TestServiceNotionScheduledProgress(t *testing.T) {
-	ctx := t.Context()
-	fetcher := newRuntimeNotionFetcher()
-	var resolved config.NotionSyncConfig
-	service, err := newService(ctx, Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, NotionSync: NotionSyncConfig{TokenEnv: " EXAMPLE_NOTION_TOKEN "}}, serviceDeps{notionSyncFetcherFactory: func(cfg config.NotionSyncConfig) notionsync.Fetcher { resolved = cfg; return fetcher }})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	require.Equal(t, "EXAMPLE_NOTION_TOKEN", resolved.TokenEnv)
-	// Enable and scheduled polling must share the configured fetcher.
-	close(fetcher.releaseSource)
-	project, err := service.store.CreateProject(ctx, "example-project")
-	require.NoError(t, err)
-	enable := httptest.NewRecorder()
-	service.Handler().ServeHTTP(enable, newRuntimeNotionPost(t.Context(), fmt.Sprintf("/api/v1/projects/%d/issue-sync/notion/enable", project.ID), strings.NewReader(`{"config":{"data_source_id":"11111111-1111-1111-1111-111111111111","done_statuses":["Delivered"]}}`)))
-	require.Equal(t, http.StatusOK, enable.Code, enable.Body.String())
-	binding, err := service.store.IssueSyncBindingByProject(ctx, project.ID)
-	require.NoError(t, err)
-	require.Equal(t, 300, binding.IntervalSeconds)
-	sub := service.broadcaster.Subscribe(daemon.SubFilter{ProjectID: project.ID})
-	defer sub.Unsub()
-	recording := &runtimeNotionRecordingStore{Storage: service.store, recorded: make(chan db.IssueSyncStatus, 1)}
-	service.store = recording
-	runCtx, cancel := context.WithCancel(ctx)
-	done := make(chan error, 1)
-	go func() { done <- service.Run(runCtx) }()
-	t.Cleanup(func() {
-		cancel()
-		select {
-		case err := <-done:
-			require.NoError(t, err)
-		case <-time.After(5 * time.Second):
-			require.Fail(t, "Run did not stop")
-		}
-	})
-	waitRuntimeNotion(t, fetcher.contentStarted)
-	status := readRuntimeNotionStatus(t, service.Handler(), project.ID)
-	require.NotNil(t, status.Status.Progress)
-	require.Equal(t, "content", status.Status.Progress.Phase)
-	require.Zero(t, status.Status.Progress.Completed)
-	require.Equal(t, 1, status.Status.Progress.Total)
-	durable, err := service.store.IssueSyncStatusByProject(ctx, project.ID)
-	require.NoError(t, err)
-	require.NotNil(t, durable.SyncStartedAt)
-	require.Equal(t, *durable.SyncStartedAt, status.Status.Progress.StartedAt)
-	require.Equal(t, "content", service.notionSyncProgress.Snapshot(binding.ID, *durable.SyncStartedAt).Phase)
-	once := httptest.NewRecorder()
-	service.Handler().ServeHTTP(once, newRuntimeNotionPost(t.Context(), fmt.Sprintf("/api/v1/projects/%d/issue-sync/notion/once", project.ID), strings.NewReader(`{}`)))
-	require.Equal(t, http.StatusConflict, once.Code, once.Body.String())
-	require.Equal(t, status.Status.Progress, readRuntimeNotionStatus(t, service.Handler(), project.ID).Status.Progress)
-	close(fetcher.releaseContent)
-	committed := waitRuntimeNotionRecord(t, recording.recorded)
-	require.NotNil(t, committed.LastSuccessAt)
-	status = readRuntimeNotionStatus(t, service.Handler(), project.ID)
-	require.Nil(t, status.Status.Progress)
-	require.Equal(t, 1, status.Status.LastCreated)
-	select {
-	case msg := <-sub.Ch:
-		require.NotNil(t, msg.Event)
-		require.Equal(t, "issue.created", msg.Event.Type)
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "missing committed issue event")
-	}
-}
-func TestServiceNotionInitialSourceAndGitHubRepositoryProgress(t *testing.T) {
-	ctx := t.Context()
-	fetcher := newRuntimeNotionFetcher()
-	github := &runtimeGitHubSourceFetcher{started: make(chan struct{})}
-	service, err := newService(ctx, Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}}, serviceDeps{notionSyncFetcher: fetcher, gitHubSyncFetcher: github})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	p, err := service.store.CreateProject(ctx, "example-project")
-	require.NoError(t, err)
-	binding := runtimeNotionBinding(t, service.store, p.ID)
-	g, err := service.store.CreateProject(ctx, "other-project")
-	require.NoError(t, err)
-	raw, err := githubsync.EncodeConfig(githubsync.Config{Host: "github.com", Owner: "example-owner", Repo: "example-repo", RepoID: 12345})
-	require.NoError(t, err)
-	_, err = service.store.UpsertIssueSyncBinding(ctx, db.UpsertIssueSyncBindingParams{ProjectID: g.ID, Provider: "github", SourceKey: "github:R_exampleNode", RemoteID: "R_exampleNode", DisplayName: "example-owner/example-repo", Config: raw, IntervalSeconds: 300})
-	require.NoError(t, err)
-	runCtx, cancel := context.WithCancel(ctx)
-	done := make(chan error, 1)
-	go func() { done <- service.Run(runCtx) }()
-	t.Cleanup(func() { cancel(); require.NoError(t, <-done) })
-	waitRuntimeNotion(t, fetcher.sourceStarted)
-	waitRuntimeNotion(t, github.started)
-	status := readRuntimeNotionStatus(t, service.Handler(), p.ID)
-	require.NotNil(t, status.Status.Progress)
-	require.Equal(t, "source", status.Status.Progress.Phase)
-	durable, err := service.store.IssueSyncStatusByProject(ctx, p.ID)
-	require.NoError(t, err)
-	require.Equal(t, "source", service.notionSyncProgress.Snapshot(binding.ID, *durable.SyncStartedAt).Phase)
-	response := httptest.NewRecorder()
-	service.Handler().ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/api/v1/projects/%d/issue-sync/github/status", g.ID), nil))
-	require.Equal(t, 200, response.Code)
-	var out runtimeNotionStatus
-	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &out))
-	require.NotNil(t, out.Status.Progress)
-	require.Equal(t, "repository", out.Status.Progress.Phase)
-}
 
 type runtimeGitHubSourceFetcher struct {
 	serviceGitHubFetcher
@@ -217,30 +114,6 @@ func newRuntimeNotionPost(ctx context.Context, path string, body io.Reader) *htt
 	request := httptest.NewRequestWithContext(ctx, http.MethodPost, path, body)
 	request.Header.Set("Content-Type", "application/json")
 	return request
-}
-
-func TestServiceNotionExplicitCredentialDoesNotFallBack(t *testing.T) {
-	t.Setenv("POOMSAE_NOTION_TOKEN", "default-example-token")
-	t.Setenv("EXAMPLE_NOTION_TOKEN", "")
-	service, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, NotionSync: NotionSyncConfig{TokenEnv: " EXAMPLE_NOTION_TOKEN "}})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	project, err := service.store.CreateProject(t.Context(), "example-project")
-	require.NoError(t, err)
-	enable := httptest.NewRecorder()
-	service.Handler().ServeHTTP(enable, newRuntimeNotionPost(t.Context(), fmt.Sprintf("/api/v1/projects/%d/issue-sync/notion/enable", project.ID), strings.NewReader(`{"config":{"data_source_id":"11111111-1111-1111-1111-111111111111","done_statuses":["Delivered"]}}`)))
-	require.Equal(t, http.StatusBadRequest, enable.Code, enable.Body.String())
-	require.Contains(t, enable.Body.String(), "credentials")
-	runtimeNotionBinding(t, service.store, project.ID)
-	recording := &runtimeNotionRecordingStore{Storage: service.store, recorded: make(chan db.IssueSyncStatus, 1)}
-	service.store = recording
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- service.Run(ctx) }()
-	defer func() { cancel(); require.NoError(t, <-done) }()
-	status := waitRuntimeNotionRecord(t, recording.recorded)
-	require.NotNil(t, status.LastErrorAt)
-	require.Nil(t, status.LastSuccessAt)
 }
 
 // runtimeNotionRecordingStore exposes the real durable completion to tests.

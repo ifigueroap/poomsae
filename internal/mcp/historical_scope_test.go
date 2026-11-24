@@ -3,7 +3,6 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -184,22 +183,4 @@ func TestFixedMCPScopeKeepsSharedClientUnrestricted(t *testing.T) {
 		}
 	}
 	require.True(t, found, "binding one MCP session must not narrow another user of the original client")
-}
-
-func TestFixedMCPScopeLeaseAuthorityRetainsLimits(t *testing.T) {
-	for _, outside := range []bool{false, true} {
-		t.Run(fmt.Sprint(outside), func(t *testing.T) {
-			store, _, session, source, _, excluded, issue := mcpFixedScopeFixture(t)
-			if outside {
-				mcpMoveOutside(t, store, source, excluded, issue)
-			}
-			for _, project := range []db.Project{source, excluded} {
-				_, err := store.EnableProjectFederation(t.Context(), project.ID, "worker")
-				require.NoError(t, err)
-			}
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.lease_status", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID}})
-			require.NoError(t, err)
-			require.Equal(t, outside, result.IsError, string(mustJSON(t, result)))
-		})
-	}
 }

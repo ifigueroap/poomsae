@@ -808,20 +808,7 @@ func uiValidationError(field, message string, data map[string]any) error {
 }
 
 func loadUIPolicy(ctx context.Context, cfg ServerConfig) (uiPolicy, error) {
-	anyEnabledSpoke := false
-	if cfg.DB != nil {
-		bindings, err := cfg.DB.ListFederationBindings(ctx)
-		if err != nil {
-			return uiPolicy{}, err
-		}
-		for _, binding := range bindings {
-			if binding.Role == db.FederationRoleSpoke && binding.Enabled {
-				anyEnabledSpoke = true
-				break
-			}
-		}
-	}
-	return effectiveUIPolicy(ctx, cfg, anyEnabledSpoke), nil
+	return effectiveUIPolicy(ctx, cfg, false), nil
 }
 
 func effectiveUIPolicy(ctx context.Context, cfg ServerConfig, anyEnabledSpoke bool) uiPolicy {

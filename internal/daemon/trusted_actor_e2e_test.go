@@ -285,65 +285,11 @@ func TestTrustedProxyHeader_ModeOffUnchanged(t *testing.T) {
 // Project-operation authorization rejects token administration with 404
 // not_found before dispatch. The handler retains ensureTokenAdminAllowed as
 // a second check; a trusted actor header never grants token administration.
-func TestTrustedProxyHeader_TokenAdminForbidden(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
-
-	body := map[string]any{
-		"actor": "alice",
-		"name":  "test-token",
-	}
-	resp, raw := doReq(t, ts, "POST", "/api/v1/tokens",
-		body, map[string]string{"X-Poomsae-Actor": "alice"})
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "body: %s", raw)
-
-	var env struct {
-		Error struct {
-			Code string `json:"code"`
-		} `json:"error"`
-	}
-	require.NoError(t, json.Unmarshal(raw, &env))
-	assert.Equal(t, "not_found", env.Error.Code,
-		"trusted-proxy principals must not be allowed to mint or revoke tokens")
-
-	// And the same boundary holds for list and revoke.
-	resp, raw = doReq(t, ts, "GET", "/api/v1/tokens", nil,
-		map[string]string{"X-Poomsae-Actor": "alice"})
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "list body: %s", raw)
-
-	resp, raw = doReq(t, ts, "POST", "/api/v1/tokens/42/actions/revoke", nil,
-		map[string]string{"X-Poomsae-Actor": "alice"})
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "revoke body: %s", raw)
-}
 
 // TestTrustedProxyHeader_TokenAdminForbiddenWithoutHeader pins the same
 // boundary for PrincipalTrustedProxyAbsent. Project-operation authorization
 // returns 404 not_found before dispatch, and ensureTokenAdminAllowed remains
 // a second check in the handler for both trusted-proxy principal variants.
-func TestTrustedProxyHeader_TokenAdminForbiddenWithoutHeader(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
-
-	body := map[string]any{
-		"actor": "alice",
-		"name":  "test-token",
-	}
-	resp, raw := doReq(t, ts, "POST", "/api/v1/tokens", body, nil)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "body: %s", raw)
-
-	var env struct {
-		Error struct {
-			Code string `json:"code"`
-		} `json:"error"`
-	}
-	require.NoError(t, json.Unmarshal(raw, &env))
-	assert.Equal(t, "not_found", env.Error.Code,
-		"trusted-proxy absent principals must also be rejected from token admin")
-
-	resp, raw = doReq(t, ts, "GET", "/api/v1/tokens", nil, nil)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "list body: %s", raw)
-
-	resp, raw = doReq(t, ts, "POST", "/api/v1/tokens/42/actions/revoke", nil, nil)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode, "revoke body: %s", raw)
-}
 
 // TestTrustedProxyHeader_TUIBypassRequiresCloseValidation keeps the trusted-
 // proxy actor mode aligned with PR #65's token-derived identity rules: once the

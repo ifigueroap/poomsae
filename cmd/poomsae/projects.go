@@ -48,7 +48,7 @@ func newProjectsCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "projects", Short: "list and inspect poomsae projects"}
 	cmd.AddCommand(projectsListCmd(), projectsCreateCmd(), projectsShowCmd(), projectsRenameCmd(),
 		projectsMergeCmd(), projectsRemoveCmd(), projectsRestoreCmd(),
-		projectsDetachCmd(), projectsPurgeCmd(), projectsRewriteAuthorCmd(), projectsAccessCmd())
+		projectsDetachCmd(), projectsPurgeCmd(), projectsRewriteAuthorCmd())
 	return cmd
 }
 

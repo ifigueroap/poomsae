@@ -113,48 +113,6 @@ for (const viewport of [
   })
 }
 
-test('credential controls stay in place when clearing a search makes the page scroll', async ({
-  page,
-  poomsae,
-}) => {
-  await page.setViewportSize({ width: 1400, height: 900 })
-  await poomsae.launch(page)
-  await page.route('**/api/v1/ui/snapshot?*', async (route) => {
-    const response = await route.fetch()
-    if (response.status() !== 200) return route.fulfill({ response })
-    const snapshot = (await response.json()) as { capabilities: Record<string, unknown> }
-    snapshot.capabilities.token_audit_read = true
-    return route.fulfill({ response, json: snapshot })
-  })
-  await page.route('**/api/v1/tokens', (route) =>
-    route.fulfill({
-      json: {
-        tokens: Array.from({ length: 60 }, (_, index) => ({
-          id: index,
-          name: `example-name-${index}`,
-          actor: 'user-a',
-          state: 'live',
-          created_at: '2026-01-01T00:00:00Z',
-        })),
-      },
-    }),
-  )
-  await page.goto(`${poomsae.origin}/poomsae?view=credentials`)
-  const search = page.getByRole('searchbox', { name: 'Search credentials' })
-  await search.fill('example-name-59')
-  const filler = page.getByText('example-name-0', { exact: true })
-  await expect(filler).toBeHidden()
-
-  await expectNoShiftWhenScrollbarAppears(
-    page.locator('.kit-settings__scroll'),
-    page.getByRole('button', { name: 'Refresh credentials' }),
-    async () => {
-      await search.fill('')
-      await expect(filler).toBeVisible()
-    },
-  )
-})
-
 test('move picker counts stay in place when clearing its search makes the list scroll', async ({
   page,
   poomsae,

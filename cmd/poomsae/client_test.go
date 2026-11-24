@@ -83,21 +83,6 @@ func TestRemoteCommand_UnavailableMapsToCLIError(t *testing.T) {
 	assert.Contains(t, stderr, `"kind":"daemon_unavailable"`)
 }
 
-func TestFederationEnroll_UnavailableHubKeepsOperationalError(t *testing.T) {
-	t.Setenv("POOMSAE_HOME", t.TempDir())
-	t.Setenv("POOMSAE_SERVER", "http://127.0.0.1:1")
-	t.Setenv("POOMSAE_AUTH_TOKEN", "")
-	t.Chdir(t.TempDir())
-
-	_, stderr, err := executeRootCapture(t, t.Context(), "federation", "enroll", "hub-project",
-		"--hub-url", "http://127.0.0.1:1", "--spoke-instance", "example-spoke",
-		"--capabilities", "pull", "--actor", "user-a", "--json")
-	require.Error(t, err)
-	assert.Equal(t, ExitInternal, exitCodeForErr(err, true))
-	assert.Contains(t, stderr, `"kind":"internal"`)
-	assert.NotContains(t, stderr, `"kind":"daemon_unavailable"`)
-}
-
 func TestDaemonClients_ClassifyOnlyTheirOwnDialFailures(t *testing.T) {
 	resetFlags(t)
 	t.Setenv("POOMSAE_HOME", t.TempDir())
@@ -816,7 +801,7 @@ func TestLocalProfileCompatibilityClientsKeepResolvedCredential(t *testing.T) {
 	defer server.Close()
 	resolved := client.ResolvedDaemon{BaseURL: server.URL, Token: "work-token", LocalProfile: &client.LocalProfileIdentity{Home: t.TempDir()}}
 	ctx := context.WithValue(t.Context(), resolvedDaemonContextKey{}, resolved)
-	for _, build := range []func(context.Context, string) (*http.Client, error){httpClientFor, longRunningClientFor, streamingClientFor, federationSpokeHTTPClient} {
+	for _, build := range []func(context.Context, string) (*http.Client, error){httpClientFor, longRunningClientFor, streamingClientFor} {
 		hc, err := build(ctx, server.URL)
 		require.NoError(t, err)
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/api/v1/projects", nil)

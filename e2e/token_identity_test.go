@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -20,43 +19,11 @@ import (
 
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
-	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const identityBootstrapToken = "identity-bootstrap-token"
-
-func TestTokenIdentity_OverridesClientActor(t *testing.T) {
-	env := testenv.New(t, testenv.WithAuthToken("bootstrap-token"), testenv.WithRequireTokenIdentity())
-	project, err := env.DB.CreateProject(t.Context(), "identity-e2e")
-	require.NoError(t, err)
-
-	createTokenResp := doJSONWithBearer(t, env.HTTP, http.MethodPost, env.URL+"/api/v1/tokens",
-		"bootstrap-token", map[string]any{"actor": "alice", "name": "laptop"})
-	require.Equal(t, http.StatusOK, createTokenResp.status, createTokenResp.body)
-	var tokenOut struct {
-		Plaintext string `json:"plaintext"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(createTokenResp.body), &tokenOut))
-	require.NotEmpty(t, tokenOut.Plaintext)
-
-	createIssueResp := doJSONWithBearer(t, env.HTTP, http.MethodPost,
-		env.URL+"/api/v1/projects/"+strconv.FormatInt(project.ID, 10)+"/issues",
-		tokenOut.Plaintext, map[string]any{"actor": "mallory", "title": "identity override"})
-	require.Equal(t, http.StatusOK, createIssueResp.status, createIssueResp.body)
-	var mutation struct {
-		Event struct {
-			Actor string `json:"actor"`
-		} `json:"event"`
-		Issue struct {
-			Author string `json:"author"`
-		} `json:"issue"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(createIssueResp.body), &mutation))
-	assert.Equal(t, "alice", mutation.Event.Actor)
-	assert.Equal(t, "alice", mutation.Issue.Author)
-}
 
 func TestTokenIdentity_RemoteCLIUsesUserTokenActor(t *testing.T) {
 	if testing.Short() {

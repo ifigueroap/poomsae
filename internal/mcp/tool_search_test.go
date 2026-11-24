@@ -323,7 +323,7 @@ func TestToolSearchFiltersAdminAndScope(t *testing.T) {
 					options.StorageAdmin = admin
 				}
 				session := connectRawTestServerWithOptions(t, options)
-				for _, name := range []string{"poomsae.token_create", "poomsae.team_create", "poomsae.storage_export"} {
+				for _, name := range []string{"poomsae.storage_export"} {
 					output := searchToolSession(t, session, name, 10)
 					found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == name })
 					require.Equal(t, enabled && scope.Mode() == ScopeAll, found, name)
@@ -331,7 +331,7 @@ func TestToolSearchFiltersAdminAndScope(t *testing.T) {
 				output := searchToolSession(t, session, "poomsae.storage_import", 1)
 				found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == "poomsae.storage_import" })
 				require.Equal(t, enabled, found, "storage import supports every project scope when configured")
-				for _, name := range []string{"poomsae.project_create", "poomsae.project_merge", "poomsae.connector_field_map", "poomsae.federation_rebind", "poomsae.federation_bridge_status"} {
+				for _, name := range []string{"poomsae.project_create", "poomsae.project_merge"} {
 					output := searchToolSession(t, session, name, 10)
 					found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == name })
 					require.Equal(t, scope.Mode() == ScopeAll, found, name)

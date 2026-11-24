@@ -15,9 +15,9 @@
   import MenuIcon from '@lucide/svelte/icons/menu'
   import PlusIcon from '@lucide/svelte/icons/plus'
 
-  import type { TokenOut, UIIssueReference } from '../lib/api/generated'
+  import type { UIIssueReference } from '../lib/api/generated'
   import type { WebDaemonInfo } from '../lib/daemons/client'
-  import type { PoomsaeRoute, SettingsSection, ShareableFilters, SystemView } from '../lib/router'
+  import type { PoomsaeRoute, ShareableFilters, SystemView } from '../lib/router'
   import {
     deriveKataAreas,
     defaultKataTaskSearchFilters,
@@ -41,10 +41,6 @@
     type UISnapshot,
   } from '../lib/state/snapshot'
   import { defaultPreferences, type Preferences } from '../lib/state/preferences'
-  import AccessManagement from './AccessManagement.svelte'
-  import type { MutationContext, MutationResult } from '../lib/mutations/controller'
-  import CredentialAudit from './CredentialAudit.svelte'
-  import ProjectSyncStatus from './ProjectSyncStatus.svelte'
   import IssueCollection from './IssueCollection.svelte'
   import IssueDetail from './IssueDetail.svelte'
   import IssueFilters from './IssueFilters.svelte'
@@ -61,7 +57,6 @@
   type ChildParent = { projectID: number; projectUID: string; issueUID: string }
 
   interface Props {
-    syncRefreshGeneration?: number
     route: AppRoute
     requestedRoute?: AppRoute | undefined
     snapshot: UISnapshot
@@ -81,21 +76,11 @@
     stale?: boolean | undefined
     readOnly?: boolean | undefined
     daemonError?: string | undefined
-    credentialTokens?: readonly TokenOut[] | undefined
-    credentialLoading?: boolean | undefined
-    credentialError?: string | undefined
     searchSettingsPostFetch?: typeof fetch | undefined
     canAdministerDaemon?: boolean | undefined
     onPreferencesChange?: ((preferences: Preferences) => void) | undefined
     onSelectDaemon?: ((id: string) => void) | undefined
     onOpenDaemon?: (() => void) | undefined
-    onAccessMutation?:
-      | ((
-          draft: unknown,
-          mutate: (context: MutationContext) => Promise<MutationResult>,
-        ) => Promise<boolean>)
-      | undefined
-    onRefreshCredentials?: (() => void | Promise<void>) | undefined
     onSearchEmpty?: (() => void) | undefined
     onNavigate: (route: AppRoute) => void | Promise<void>
     onCreateProject: (
@@ -143,7 +128,6 @@
   }
 
   let {
-    syncRefreshGeneration = 0,
     route: acceptedRoute,
     requestedRoute = undefined,
     snapshot,
@@ -163,16 +147,11 @@
     stale = false,
     readOnly = false,
     daemonError = undefined,
-    credentialTokens = [],
-    credentialLoading = false,
-    credentialError = undefined,
     searchSettingsPostFetch = fetch,
     canAdministerDaemon = false,
     onPreferencesChange = () => {},
     onSelectDaemon = () => {},
     onOpenDaemon = () => {},
-    onAccessMutation = undefined,
-    onRefreshCredentials = () => {},
     onSearchEmpty = undefined,
     onNavigate,
     onCreateProject,
@@ -284,22 +263,12 @@
     const host = remote ? new URL(remote).hostname : globalThis.location?.hostname
     return host && !loopbackHost(host) ? host : undefined
   })
-  let accessAdministrationAvailable = $derived(
-    snapshot.capabilities.access_admin === true &&
-      !credentialExpired &&
-      !stale &&
-      !reconnecting &&
-      !daemonError &&
-      !daemonSwitching &&
-      (!activeDaemonID || activeConnection?.local === true),
-  )
-  let credentialAuditAvailable = $derived(snapshot.capabilities.token_audit_read === true)
-  // Settings opens on Search by meaning. A section this session can't use
-  // shows Appearance instead, without reading anything it isn't allowed to.
+  // Settings opens on Search by meaning. Credentials and team access are not
+  // part of this install, so those sections show Appearance.
   let settingsSection = $derived.by<SettingsSectionID>(() => {
-    if (route.view === 'credentials') return credentialAuditAvailable ? 'credentials' : 'appearance'
+    if (route.view === 'credentials') return 'appearance'
     const section = route.section ?? 'search'
-    return section === 'access' && !accessAdministrationAvailable ? 'appearance' : section
+    return section === 'access' ? 'appearance' : section
   })
   let inboxProject = $derived(
     projection.projects.find((project) => project.metadata.role === 'inbox'),
@@ -440,20 +409,17 @@
     })
   }
 
-  // Credentials keeps its own address; every other section is a Settings one.
   function openSettingsSection(section: SettingsSectionID): void {
     if (
       section === settingsSection &&
-      (section === 'credentials'
-        ? route.view === 'credentials'
-        : route.view === 'settings' && (route.section ?? 'search') === section)
+      route.view === 'settings' &&
+      (route.section ?? 'search') === section
     )
       return
     navigate({
       kind: 'poomsae',
-      ...(section === 'credentials'
-        ? { view: 'credentials' as const }
-        : { view: 'settings' as const, section: section as SettingsSection }),
+      view: 'settings',
+      section,
       graph: false,
       filters: emptyShareableFilters(),
     })
@@ -826,7 +792,7 @@
     </div>
 
     <div class="poomsae-main">
-      {#if mutationMessage && !captureOpen && (settingsSection !== 'access' || !daemonRoute || !accessAdministrationAvailable || !onAccessMutation)}
+      {#if mutationMessage && !captureOpen}
         <p class="mutation-message" role="alert">{mutationMessage}</p>
       {/if}
       {#if daemonRoute}
@@ -834,8 +800,6 @@
           active={settingsSection}
           theme={preferences.theme}
           onThemeChange={(theme) => onPreferencesChange({ ...preferences, theme })}
-          credentialsAvailable={credentialAuditAvailable}
-          accessAvailable={accessAdministrationAvailable}
           onSelect={openSettingsSection}
         >
           {#snippet search()}
@@ -847,26 +811,6 @@
                 remoteHost={settingsHost}
               />
             {/key}
-          {/snippet}
-          {#snippet credentials()}
-            <CredentialAudit
-              tokens={credentialTokens}
-              loading={credentialLoading}
-              error={credentialError}
-              onRefresh={onRefreshCredentials}
-            />
-          {/snippet}
-          {#snippet access()}
-            {#if onAccessMutation}
-              {#key `${activeDaemonID ?? 'direct'}:${draftFenceGeneration}`}
-                <AccessManagement
-                  projects={snapshot.catalog}
-                  pending={mutationPending || loading || !accessAdministrationAvailable}
-                  message={captureOpen ? undefined : mutationMessage}
-                  onMutation={onAccessMutation}
-                />
-              {/key}
-            {/if}
           {/snippet}
         </SettingsView>
       {:else}
@@ -908,24 +852,11 @@
   </IconButton>
 {/snippet}
 
-{#snippet projectSync()}
-  {#if selectedProject && !daemonRoute && !stale && !daemonSwitching && !reconnecting && !credentialExpired && !daemonError && !scopedAuthority && (!activeDaemonID || activeConnection?.local === true)}
-    {#key `${activeDaemonID ?? 'direct'}:${draftFenceGeneration}:${selectedProject.uid}`}
-      <ProjectSyncStatus
-        projectID={selectedProject.id}
-        projectUID={selectedProject.uid}
-        refreshGeneration={syncRefreshGeneration}
-      />
-    {/key}
-  {/if}
-{/snippet}
-
 {#snippet listPane()}
   <div class="list-column poomsae-list">
     {#if route.issueUID && route.graph}
       {#if projection.selected_graph && projection.selected_detail}
         {#snippet graphActions()}
-          {@render projectSync()}
           {@render paneDirection()}
         {/snippet}
         <IssueGraph
@@ -955,7 +886,6 @@
         />
       {/snippet}
       {#snippet projectRecurrences()}
-        {@render projectSync()}
         {#if selectedProject && !scopedAuthority}
           {#key selectedProject.uid}
             <ProjectRecurrences

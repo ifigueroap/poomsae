@@ -19,13 +19,13 @@ image.
 On macOS or Linux, run the shell installer:
 
 ```sh
-curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash
 ```
 
 On Windows PowerShell, run:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex"
 ```
 
 Both installers detect your OS and CPU architecture, download the latest
@@ -34,8 +34,8 @@ verify it against `SHA256SUMS` before installing. For v0.14.x and newer
 versions, they also ask the extracted binary to validate its embedded Web UI
 before installing the binary, while still supporting canonical older releases
 that predate that check. If you prefer to inspect the scripts first,
-read them at <https://github.com/ifigueroap/poomsae/install.sh> and
-<https://github.com/ifigueroap/poomsae/install.ps1>.
+read them at <https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh> and
+<https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1>.
 
 The shell installer shows a download progress line when you run it in a
 terminal. It aborts transfers that stall for 30 seconds and tries each download

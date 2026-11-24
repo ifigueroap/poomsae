@@ -8,7 +8,6 @@
   import AppShell from './components/AppShell.svelte'
   import PoomsaeDaemonSwitcher from './components/PoomsaeDaemonSwitcher.svelte'
   import LaunchHint from './components/LaunchHint.svelte'
-  import LoginView from './components/LoginView.svelte'
   import RouteError from './components/RouteError.svelte'
   import StatusPage from './components/shared/StatusPage.svelte'
   import VersionMismatch from './components/VersionMismatch.svelte'
@@ -27,7 +26,6 @@
     deleteRecurrence as deleteRecurrenceRequest,
     editIssue as editIssueRequest,
     initProject,
-    listTokens,
     moveIssue as moveIssueRequest,
     patchIssueMetadata,
     patchProjectMetadata,
@@ -45,7 +43,6 @@
     type RecurrenceTemplateUpdateInput,
     type UIIssueReference,
     type UIReferencesResponseBody,
-    type TokenOut,
   } from './lib/api/generated'
   import {
     createDaemonFetch,
@@ -58,7 +55,6 @@
     AuthenticationRequiredError,
     clearSessionCredentials,
     consumeLaunchFragment,
-    exchangeLoginToken,
     isAuthenticationRequiredError,
     loadSessionCredentials,
     openLocalSession,
@@ -182,12 +178,6 @@
   let daemonError = $state<string | undefined>()
   let referenceAbort: AbortController | undefined
   let referenceGeneration = 0
-  let credentialTokens = $state<TokenOut[]>([])
-  let syncRefreshGeneration = $state(0)
-  let credentialLoading = $state(false)
-  let credentialError = $state<string | undefined>()
-  let credentialAbort: AbortController | undefined
-  let credentialGeneration = 0
   let destroyed = false
   const observedFetch: typeof fetch = async (input, init) => {
     const response = await fetch(input, init)
@@ -275,22 +265,6 @@
     refresh: refreshMutationAuthority,
     onAuthenticationRequired: requireAuthentication,
   })
-  const accessMutations = new MutationController({
-    authority: () => ({
-      canMutate: canAdministerAccess(),
-      actorPolicy: authority?.snapshot?.capabilities.actor_policy ?? 'readonly',
-    }),
-    refresh: async () => {
-      await refreshSnapshot(true)
-      return canAdministerAccess()
-    },
-    onAuthenticationRequired: requireAuthentication,
-  })
-
-  function canAdministerAccess(): boolean {
-    return authority?.snapshot?.capabilities.access_admin === true && canAdministerDaemon()
-  }
-
   function canAdministerDaemon(): boolean {
     const expiresAt = authority?.snapshot?.capabilities.expires_at
     return (
@@ -392,10 +366,6 @@
   onMount(() => {
     const visibility = () => {
       scheduler.visibilityChanged(!document.hidden)
-      if (!document.hidden) {
-        syncRefreshGeneration++
-        if (!credentialLoading) void refreshCredentials()
-      }
     }
     const focus = () => {
       scheduler.focused()
@@ -420,12 +390,6 @@
     window.addEventListener('pageshow', environment)
     window.addEventListener('popstate', popstate)
     window.addEventListener('poomsae:versionMismatch', showVersionMismatch)
-    const credentialRefreshTimer = window.setInterval(() => {
-      if (!document.hidden) {
-        syncRefreshGeneration++
-        if (!credentialLoading) void refreshCredentials()
-      }
-    }, 30_000)
     reportAppOpened()
     if (route.kind !== 'route-error' && launch.kind !== 'login') {
       if (loadSessionCredentials() !== undefined) {
@@ -441,7 +405,6 @@
       window.removeEventListener('pageshow', environment)
       window.removeEventListener('popstate', popstate)
       window.removeEventListener('poomsae:versionMismatch', showVersionMismatch)
-      window.clearInterval(credentialRefreshTimer)
       stopQuietSubscription?.()
       browserTelemetry?.stop()
       sessionEnded?.stop()
@@ -462,12 +425,6 @@
   function updatePreferences(next: Preferences): void {
     preferences = next
     savePreferences(next)
-  }
-
-  async function login(token: string, requestedPath: string): Promise<void> {
-    const session = await exchangeLoginToken(token, requestedPath)
-    invalidateDaemonRoster()
-    await navigateAfterAuthentication(session.returnPath)
   }
 
   function invalidateDaemonRoster(): void {
@@ -1040,8 +997,8 @@
   }
 
   function authenticationView(authentication: AuthenticationMode | undefined): ShellMode {
-    if (authentication === 'login') return 'login'
-    return advertisedAuthentication === 'login' ? 'login' : 'launch'
+    if (authentication === 'login' || advertisedAuthentication === 'login') return 'launch'
+    return 'launch'
   }
 
   function rejectCredentialsAndRequireAuthentication(): boolean {
@@ -1115,7 +1072,6 @@
     if (authority?.snapshot) automaticSessionAttempted = undefined
     if (authority?.snapshot) void loadReferences()
     if (authority?.snapshot) scheduler.start(authority.snapshot.capabilities.updates)
-    if (authority?.snapshot) void refreshCredentials()
     return accepted
   }
 
@@ -1347,67 +1303,9 @@
     return false
   }
 
-  async function refreshCredentials(): Promise<void> {
-    if (
-      destroyed ||
-      document.hidden ||
-      route.kind === 'route-error' ||
-      route.view !== 'credentials' ||
-      authority?.snapshot?.capabilities.token_audit_read !== true
-    ) {
-      return
-    }
-    const generation = credentialGeneration + 1
-    credentialGeneration = generation
-    credentialAbort?.abort()
-    const abort = new AbortController()
-    credentialAbort = abort
-    const daemonID = activeDaemonID
-    credentialLoading = true
-    credentialError = undefined
-    try {
-      const result = await listTokens({ signal: abort.signal })
-      if (
-        destroyed ||
-        abort.signal.aborted ||
-        generation !== credentialGeneration ||
-        daemonID !== activeDaemonID
-      ) {
-        return
-      }
-      if (result.status === 200) {
-        credentialTokens = result.data.tokens
-        credentialError = undefined
-      } else if (result.status === 401) {
-        fenceCredentialAudit()
-        requireAuthentication()
-      } else {
-        credentialTokens = []
-        credentialError = "Couldn't load credentials."
-      }
-    } catch {
-      if (
-        !destroyed &&
-        !abort.signal.aborted &&
-        generation === credentialGeneration &&
-        daemonID === activeDaemonID
-      ) {
-        credentialTokens = []
-        credentialError = "Couldn't load credentials."
-      }
-    } finally {
-      if (generation === credentialGeneration) credentialLoading = false
-      if (credentialAbort === abort) credentialAbort = undefined
-    }
-  }
-
   function fenceCredentialAudit(): void {
-    credentialGeneration += 1
-    credentialAbort?.abort()
-    credentialAbort = undefined
-    credentialTokens = []
-    credentialLoading = false
-    credentialError = undefined
+    // Credential administration is not part of this build. The calls stay so
+    // route changes still drop any in-flight credential work from older sessions.
   }
 
   function isDaemonView(view: AppRoute['view']): boolean {
@@ -1476,10 +1374,8 @@
         })}
     />
   {:else}
-    {#if mode === 'launch'}
+    {#if mode === 'launch' || mode === 'login'}
       <LaunchHint issueRef={undefined} />
-    {:else if mode === 'login'}
-      <LoginView {returnPath} onLogin={login} />
     {/if}
     {#if daemonInfos.length > 0 && (mode === 'launch' || mode === 'login')}
       <PoomsaeDaemonSwitcher
@@ -1494,7 +1390,6 @@
     {/if}
     {#if authority?.snapshot && mode === 'ready'}
       <AppShell
-        {syncRefreshGeneration}
         {searchSettingsPostFetch}
         route={acceptedRoute ?? route}
         requestedRoute={route !== acceptedRoute ? route : undefined}
@@ -1517,11 +1412,6 @@
         stale={authority.stale}
         readOnly={!authority.snapshot.capabilities.writable}
         {daemonError}
-        {credentialTokens}
-        {credentialLoading}
-        {credentialError}
-        onAccessMutation={(draft, mutate) => runMutation({ draft }, mutate, accessMutations)}
-        onRefreshCredentials={refreshCredentials}
         canAdministerDaemon={canAdministerDaemon()}
         onSelectDaemon={(id) => void switchDaemon(id)}
         onOpenDaemon={() => void refreshDaemonRoster()}

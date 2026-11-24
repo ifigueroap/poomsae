@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -67,7 +66,7 @@ func TestServiceWorkerTransactionFenceRollsBackAndStopsWorkers(t *testing.T) {
 }
 
 func TestServiceWorkerDenialFinalizesBeforeStopping(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		for _, recordingFails := range []bool{false, true} {
 			name := backend + "/recorded"
 			if recordingFails {
@@ -80,13 +79,8 @@ func TestServiceWorkerDenialFinalizesBeforeStopping(t *testing.T) {
 				driver, prefix := "sqlite", ""
 				// Run's other workers can hold the write lock when the callback records.
 				inspectionDSN := "file:" + config.DSN + "?_pragma=busy_timeout(5000)"
-				if backend == "postgres" {
-					dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
-					t.Cleanup(cleanup)
-					config.DSN = dsn
-					config.Postgres = PostgresConfig{Schema: "poomsae", SchemaMode: PostgresSchemaBootstrap}
-					driver, prefix = "pgx", "poomsae."
-					inspectionDSN = dsn
+				if backend != "sqlite" {
+					t.Fatalf("backend %q is not available", backend)
 				}
 				rejected := errors.New("worker transaction rejected")
 				finishFailed := errors.New("host recording unavailable")

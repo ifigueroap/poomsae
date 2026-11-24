@@ -89,7 +89,7 @@ func TestToolCatalogBudgetUsesWireEncoding(t *testing.T) {
 }
 
 func TestToolCatalogBudgetFailsOneByteOver(t *testing.T) {
-	fixture := toolSections(false, false)[1]
+	fixture := toolSections(false)[1]
 	catalog := func(padding int) *sdkmcp.ListToolsResult {
 		server, err := New(defaultCatalogOptions(inertTestClient(t)))
 		require.NoError(t, err)

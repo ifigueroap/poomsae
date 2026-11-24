@@ -8,18 +8,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ifigueroap/poomsae/internal/federationsigning"
 	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
 	"github.com/ifigueroap/poomsae/internal/api"
 	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 var errRelayCrossProjectLinks = errors.New("hub relay cross-project links refusal")
@@ -98,41 +95,7 @@ func (c *Client) PollIssueEvents(ctx context.Context, hubProjectID int64, issueU
 func (c *Client) pollProjectEvents(
 	ctx context.Context, hubProjectID int64, issueUID string, afterID int64, limit int, wait time.Duration,
 ) (api.PollEventsBody, time.Duration, error) {
-	httpClient := c.client
-	if wait > 0 {
-		httpClient = noRedirects(httpClient)
-	}
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{httpClient}))
-	if err != nil {
-		return api.PollEventsBody{}, 0, err
-	}
-	query := &generated.PollFederationProjectEventsQuery{AfterID: &afterID}
-	if issueUID != "" {
-		query.IssueUID = &issueUID
-	}
-	if limit > 0 {
-		query.Limit = new(int64(limit))
-	}
-	if wait > 0 {
-		query.Wait = new(int64(wait / time.Second))
-	}
-	response, callErr := apiClient.PollFederationProjectEventsWithResponse(ctx, &generated.PollFederationProjectEventsRequestOptions{PathParams: &generated.PollFederationProjectEventsPath{ProjectID: hubProjectID}, Query: query})
-	var body api.PollEventsBody
-	if response == nil {
-		return body, 0, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &body)
-	if body.Events == nil {
-		body.Events = []api.EventEnvelope{}
-	}
-	if err != nil {
-		return body, 0, err
-	}
-	advertised, parseErr := strconv.Atoi(response.HTTPResponse.Header.Get(federationPollWaitMaxHeader))
-	if parseErr != nil || advertised <= 0 {
-		return body, 0, nil
-	}
-	return body, time.Duration(advertised) * time.Second, nil
+	return api.PollEventsBody{}, 0, errors.New("federation polling is not available")
 }
 
 // IngestProjectEvents pushes local spoke events into the hub transport
@@ -160,59 +123,7 @@ func (c *Client) IngestProjectEventsWithOptions(
 	events []api.FederationIngestEventEnvelope,
 	opts IngestProjectEventsOptions,
 ) (api.FederationIngestEventsBody, error) {
-	httpClient := c.client
-	if len(opts.MoveSourceTokens) > 0 {
-		// Supplemental credentials belong to this mount. A redirect can name a
-		// different mount on the same origin and can replay the request body.
-		httpClient = noRedirects(httpClient)
-	}
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{httpClient}))
-	if err != nil {
-		return api.FederationIngestEventsBody{}, err
-	}
-	// Schema30 accepts every pre-cron envelope supported here. Database
-	// schema versions are not feature negotiation: ordinary traffic remains
-	// compatible, while cron publication requires positive hub support and
-	// reply-bearing comments require a hub that understands replies.
-	schemaVersion := 30
-	requiredFeatures := ""
-	for _, event := range events {
-		version, required, err := db.FederationEventPayloadWireVersion(event.Type, event.Payload)
-		if err != nil {
-			return api.FederationIngestEventsBody{}, err
-		}
-		schemaVersion = max(schemaVersion, version)
-		if required != "" {
-			requiredFeatures = db.MergeEventFeatures(requiredFeatures, required)
-		}
-	}
-	if requiredFeatures != "" {
-		_, supported, err := c.projectFederationFeatures(ctx, hubProjectID)
-		if err != nil {
-			return api.FederationIngestEventsBody{}, err
-		}
-		if err := db.RequireEventFeatures(supported, requiredFeatures); err != nil {
-			return api.FederationIngestEventsBody{}, err
-		}
-	}
-	data, err := json.Marshal(api.FederationIngestEventsRequestBody{
-		SchemaVersion: schemaVersion, AdoptionBaseline: opts.AdoptionBaseline,
-		AdoptionBaselineEndEventID: opts.AdoptionBaselineEndEventID, Events: events, MoveSourceTokens: opts.MoveSourceTokens,
-	})
-	if err != nil {
-		return api.FederationIngestEventsBody{}, err
-	}
-	var payload generated.IngestFederationProjectEventsBody
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return api.FederationIngestEventsBody{}, err
-	}
-	response, callErr := apiClient.IngestFederationProjectEventsWithResponse(ctx, &generated.IngestFederationProjectEventsRequestOptions{PathParams: &generated.IngestFederationProjectEventsPath{ProjectID: hubProjectID}, Body: &payload})
-	var body api.FederationIngestEventsBody
-	if response == nil {
-		return body, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &body)
-	return body, err
+	return api.FederationIngestEventsBody{}, errors.New("federation ingest is not available")
 }
 
 // ProjectFederation fetches the hub metadata needed to bind a spoke replica.
@@ -221,132 +132,35 @@ func (c *Client) ProjectFederation(ctx context.Context, hubProjectID int64) (api
 	return body, err
 }
 func (c *Client) projectFederationFeatures(ctx context.Context, hubProjectID int64) (api.ProjectFederationBody, string, error) {
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return api.ProjectFederationBody{}, "", err
-	}
-	response, callErr := apiClient.GetFederationProjectMetadataWithResponse(ctx, &generated.GetFederationProjectMetadataRequestOptions{PathParams: &generated.GetFederationProjectMetadataPath{ProjectID: hubProjectID}})
-	var body api.ProjectFederationBody
-	if response == nil {
-		return body, "", callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &body)
-	return body, response.HTTPResponse.Header.Get(db.EventFeaturesHeader), err
+	return api.ProjectFederationBody{}, "", errors.New("federation metadata is not available")
 }
 
 // RelayReset retrieves a retained root-signed checkpoint through the same
 // origin-pinned enrollment credential as ordinary relay delivery.
-func (c *Client) RelayReset(ctx context.Context, projectID int64) (db.RelayResetCheckpoint, error) {
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return db.RelayResetCheckpoint{}, err
-	}
-	response, callErr := apiClient.GetRelayResetWithResponse(ctx, &generated.GetRelayResetRequestOptions{PathParams: &generated.GetRelayResetPath{ProjectID: projectID}})
-	var checkpoint db.RelayResetCheckpoint
-	if response == nil {
-		return checkpoint, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &checkpoint)
-	return checkpoint, err
+func (c *Client) RelayReset(context.Context, int64) (db.RelayResetCheckpoint, error) {
+	return db.RelayResetCheckpoint{}, errors.New("federation relay is not available")
 }
 
 // OfferRelayDeliveries polls the existing enrolled connection. Offers retain
 // their identity until the receiver commits and acknowledges their prefix.
-func (c *Client) OfferRelayDeliveries(ctx context.Context, projectID int64, stream string, limit int, epoch ...int64) (db.RelayBatch, error) {
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return db.RelayBatch{}, err
-	}
-	queryStream := generated.OfferRelayDeliveriesQueryStream(stream)
-	queryLimit := int64(limit)
-	query := &generated.OfferRelayDeliveriesQuery{Stream: &queryStream, Limit: &queryLimit}
-	if len(epoch) > 0 {
-		query.Epoch = &epoch[0]
-	}
-	response, callErr := apiClient.OfferRelayDeliveriesWithResponse(ctx, &generated.OfferRelayDeliveriesRequestOptions{PathParams: &generated.OfferRelayDeliveriesPath{ProjectID: projectID}, Query: query})
-	var batch db.RelayBatch
-	if response == nil {
-		return batch, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &batch)
-	return batch, err
+func (c *Client) OfferRelayDeliveries(context.Context, int64, string, int, ...int64) (db.RelayBatch, error) {
+	return db.RelayBatch{}, errors.New("federation relay is not available")
 }
 
 // AcceptRelayDeliveries submits an authenticated hop batch and returns its accepted prefix.
-func (c *Client) AcceptRelayDeliveries(ctx context.Context, projectID int64, batch db.RelayBatch) (db.RelayAcceptance, error) {
-	required, err := db.RelayBatchRequiredFeatures(batch)
-	if err != nil {
-		return db.RelayAcceptance{}, err
-	}
-	if required != "" {
-		_, supported, err := c.projectFederationFeatures(ctx, projectID)
-		if err != nil {
-			return db.RelayAcceptance{}, err
-		}
-		if err := db.RequireEventFeatures(supported, required); err != nil {
-			return db.RelayAcceptance{}, err
-		}
-	}
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return db.RelayAcceptance{}, err
-	}
-	raw, err := json.Marshal(batch)
-	if err != nil {
-		return db.RelayAcceptance{}, err
-	}
-	var payload generated.AcceptRelayDeliveriesBody
-	if err = json.Unmarshal(raw, &payload); err != nil {
-		return db.RelayAcceptance{}, err
-	}
-	response, callErr := apiClient.AcceptRelayDeliveriesWithResponse(ctx, &generated.AcceptRelayDeliveriesRequestOptions{PathParams: &generated.AcceptRelayDeliveriesPath{ProjectID: projectID}, Body: &payload})
-	var accepted db.RelayAcceptance
-	if response == nil {
-		return accepted, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &accepted)
-	return accepted, err
+func (c *Client) AcceptRelayDeliveries(context.Context, int64, db.RelayBatch) (db.RelayAcceptance, error) {
+	return db.RelayAcceptance{}, errors.New("federation relay is not available")
 }
 
 // DownloadRelayArtifacts requests complete misses from the same origin-pinned
 // relay route. The sender resolves each digest against its emitted epoch.
-func (c *Client) DownloadRelayArtifacts(ctx context.Context, projectID, epoch int64, digests []string) (db.RelayBatch, error) {
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return db.RelayBatch{}, err
-	}
-	stream := generated.OfferRelayDeliveriesQueryStream(db.RelayStreamArtifact)
-	response, callErr := apiClient.OfferRelayDeliveriesWithResponse(ctx, &generated.OfferRelayDeliveriesRequestOptions{PathParams: &generated.OfferRelayDeliveriesPath{ProjectID: projectID}, Query: &generated.OfferRelayDeliveriesQuery{Stream: &stream, ArtifactDigest: digests, Epoch: &epoch}})
-	var batch db.RelayBatch
-	if response == nil {
-		return batch, callErr
-	}
-	err = decodeReplicationResponse(response.HTTPResponse, response.Body, &batch)
-	if err == nil && (batch.Stream != db.RelayStreamArtifact || len(batch.Envelopes) != 0 || len(batch.Artifacts) != len(digests)) {
-		return db.RelayBatch{}, db.ErrFederationIngestValidation
-	}
-	return batch, err
+func (c *Client) DownloadRelayArtifacts(context.Context, int64, int64, []string) (db.RelayBatch, error) {
+	return db.RelayBatch{}, errors.New("federation relay is not available")
 }
 
 // AckRelayDeliveries acknowledges an exact emitted prefix for the authenticated hop.
-func (c *Client) AckRelayDeliveries(ctx context.Context, projectID, epoch int64, stream string, accepted db.RelayAcceptance) error {
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(replicationDoer{c.client}))
-	if err != nil {
-		return err
-	}
-	payload := generated.AckRelayDeliveriesBody{Epoch: epoch, Stream: generated.RelayAckRequestBodyStream(stream), Through: accepted.Through, Digest: accepted.Digest}
-	response, callErr := apiClient.AckRelayDeliveriesWithResponse(ctx, &generated.AckRelayDeliveriesRequestOptions{PathParams: &generated.AckRelayDeliveriesPath{ProjectID: projectID}, Body: &payload})
-	if response == nil {
-		return callErr
-	}
-	var body api.RelayAckResponse
-	if err = decodeReplicationResponse(response.HTTPResponse, response.Body, &body.Body); err != nil {
-		return err
-	}
-	if !body.Body.Acknowledged {
-		return fmt.Errorf("relay acknowledgement was not retained")
-	}
-	return nil
+func (c *Client) AckRelayDeliveries(context.Context, int64, int64, string, db.RelayAcceptance) error {
+	return errors.New("federation relay is not available")
 }
 
 // Keep the replication error body bounded before the generated runtime reads it.

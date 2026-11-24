@@ -6,74 +6,14 @@ import (
 	"encoding/json"
 	"encoding/json/jsontext"
 	"net/http"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
-	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSmoke_FederationPhase1PullReplication(t *testing.T) {
-	ctx := t.Context()
-	hub := testenv.New(t)
-	spokeDirs := newE2EDirs(t)
-	bin := buildKataBinary(t)
-	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=25"))
-	spokeURL, spokeHTTP := connectDaemon(t, spokeDirs, spokeStderr)
-	spokeDB, err := sqlitestore.Open(ctx, spokeDirs.dbPath)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = spokeDB.Close() })
-
-	hubProject, err := hub.DB.CreateProject(ctx, "hub")
-	require.NoError(t, err)
-	hubIssue, _, err := hub.DB.CreateIssue(ctx, db.CreateIssueParams{
-		ProjectID: hubProject.ID,
-		Title:     "replicated work",
-		Body:      "from the hub",
-		Author:    "agent",
-		Labels:    []string{"area:db"},
-	})
-	require.NoError(t, err)
-	_, _, err = hub.DB.CreateComment(ctx, db.CreateCommentParams{
-		IssueID: hubIssue.ID,
-		Author:  "agent",
-		Body:    "baseline comment",
-	})
-	require.NoError(t, err)
-
-	var meta api.ProjectFederationBody
-	decodePOST(t, hub.HTTP, hub.URL+"/api/v1/projects/"+strconv.FormatInt(hubProject.ID, 10)+"/federation/enable",
-		map[string]any{"actor": "agent"}, &meta)
-	created, err := hub.DB.CreateFederationEnrollment(ctx, db.CreateFederationEnrollmentParams{
-		Token:            "phase1-pull-token",
-		SpokeInstanceUID: spokeDB.InstanceUID(),
-		ProjectID:        &hubProject.ID,
-		Capabilities:     "pull",
-		Actor:            "agent",
-	})
-	require.NoError(t, err)
-
-	var replica api.CreateFederationReplicaResponseBody
-	decodePOST(t, spokeHTTP, spokeURL+"/api/v1/federation/replicas", map[string]any{
-		"hub_url":                 hub.URL,
-		"hub_project_id":          hubProject.ID,
-		"hub_project_uid":         meta.ProjectUID,
-		"project_name":            meta.ProjectName,
-		"replay_horizon_event_id": meta.ReplayHorizonEventID,
-		"token":                   created.Token,
-		"actor":                   "agent",
-	}, &replica)
-
-	got := waitForFederatedIssue(t, spokeDB, hubIssue.UID, spokeStderr)
-	assert.Equal(t, "replicated work", got.Title)
-	assert.Equal(t, "from the hub", got.Body)
-	assertFoldedProjectionMatch(t, hub.DB, spokeDB, hubProject.ID, replica.Project.ID, meta.ReplayHorizonEventID-1)
-}
 
 func decodePOST(t *testing.T, client *http.Client, url string, body, out any) {
 	t.Helper()

@@ -132,33 +132,6 @@ func TestProjectAuthorizationStillScopesOrdinaryAnonymousAPIRoutes(t *testing.T)
 	}
 }
 
-func TestProjectAuthorizationDefersSelfAuthenticatedFederationRoutes(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
-	if err != nil {
-		t.Fatalf("open store: %v", err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	project, err := store.CreateProject(t.Context(), "spoke-project")
-	if err != nil {
-		t.Fatalf("create project: %v", err)
-	}
-	probe := &projectAuthorizationProbeStore{Storage: store}
-	srv := NewServer(ServerConfig{DB: probe})
-	t.Cleanup(func() { _ = srv.Close() })
-	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
-		"/api/v1/projects/"+strconv.FormatInt(project.ID, 10)+"/federation/metadata", nil)
-	request.Header.Set("Authorization", "Bearer invalid-federation-token")
-	response := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(response, request)
-
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("invalid federation credential status = %d, want %d", response.Code, http.StatusForbidden)
-	}
-	if probe.revisionReads != 2 || probe.projectLists != 0 || probe.policyReads != 0 || probe.anonymousUIDReads != 1 {
-		t.Fatalf("self-authenticated route project queries = revision:%d list:%d policy:%d anonymous_uid:%d; want revision:2, list:0, policy:0, anonymous_uid:1", probe.revisionReads, probe.projectLists, probe.policyReads, probe.anonymousUIDReads)
-	}
-}
-
 func TestProjectAuthorizationOwnerSelectsTeamsRestrictedProjectForTransportRoute(t *testing.T) {
 	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	if err != nil {

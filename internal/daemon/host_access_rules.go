@@ -51,26 +51,15 @@ var hostAccessRules = buildHostAccessRules()
 func buildHostAccessRules() map[string]hostAccessRule {
 	rules := make(map[string]hostAccessRule)
 	registerHostAccessRules(rules, hostAccessRule{
-		SelfAuthenticated: true, AcceptsFederationBearer: true, NoProjectData: true,
-	}, "disconnectRelayEnrollment")
-	registerHostAccessRules(rules, hostAccessRule{
 		SelfAuthenticated: true, AcceptsFederationBearer: true,
-	}, "federatedDocbankCapabilities", "uploadFederatedDocbank", "linkFederatedDocbank", "federatedDocbankContent")
-	registerHostAccessRules(rules, hostAccessRule{
-		SelfAuthenticated: true, AcceptsFederationBearer: true,
-	}, "getRelayReset", "offerRelayDeliveries", "acceptRelayDeliveries", "ackRelayDeliveries", "getFederationProjectMetadata", "searchFederationProject",
-		"ingestFederationProjectEvents", "acquireIssueLease", "renewIssueLease",
+	}, "acquireIssueLease", "renewIssueLease",
 		"releaseIssueLease", "getIssueLeaseStatus", "claimIssue",
 		"createCronJob", "replaceCronJob", "archiveCronJob", "restoreCronJob")
-	registerHostAccessRules(rules, hostAccessRule{
-		SelfAuthenticated: true, AcceptsFederationBearer: true, URLProjectAuthority: true,
-	}, "pollFederationProjectEvents")
 	registerHostAccessRules(rules, hostAccessRule{SelfAuthenticated: true},
 		"forceReleaseIssueLease")
 	registerHostAccessRules(rules, hostAccessRule{ResolvedByHandler: true},
 		"mergeProject", "moveIssue", "listAllIssues", "readUIReferences", "resolveUIIssueReference", "readProjectByName",
-		"readUILaunchTarget", "patchProjectMetadata", "createFederationEnrollment",
-		"rotateFederationEnrollment", "getLocalEmbeddings", "turnOnLocalEmbeddings")
+		"readUILaunchTarget", "patchProjectMetadata", "getLocalEmbeddings", "turnOnLocalEmbeddings")
 	registerHostAccessRules(rules, hostAccessRule{RequiresAllProjects: true},
 		"purgeIssue", "purgeProject", "closeIssue", "readyIssues", "showIssueByUID",
 		"importIssues", "pollProjectEvents", "streamEvents", "auditCloses",

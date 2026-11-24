@@ -34,20 +34,14 @@ var sectionLoaderNames = []string{
 	"poomsae.load_coordination",
 	"poomsae.load_cron",
 	"poomsae.load_docs",
-	"poomsae.load_external_roots",
-	"poomsae.load_federation",
 	"poomsae.load_import",
 	"poomsae.load_issue_discovery",
 	"poomsae.load_issue_lifecycle",
 	"poomsae.load_issue_mutation",
-	"poomsae.load_leases",
 	"poomsae.load_projects",
 	"poomsae.load_recurrence",
 	"poomsae.load_storage",
-	"poomsae.load_sync",
 	"poomsae.load_system",
-	"poomsae.load_teams",
-	"poomsae.load_tokens",
 }
 
 func TestServerPublishesOnlySectionLoadersInitially(t *testing.T) {
@@ -70,7 +64,7 @@ func TestServerPublishesStartupSectionsInitially(t *testing.T) {
 	admin, err := storageadmin.New(storageadmin.Config{Root: t.TempDir(), SourceDSN: "source.db"})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, admin.Close()) })
-	for _, section := range toolSections(true, true) {
+	for _, section := range toolSections(true) {
 		t.Run(section.section, func(t *testing.T) {
 			options := Options{
 				Client: inertTestClient(t), Scope: NewAllScope(), Actor: "example-agent", Version: "test-version",
@@ -127,8 +121,8 @@ func TestServerRejectsInvalidStartupSections(t *testing.T) {
 		{name: "case variant", sections: []string{"Docs"}, want: `unknown MCP startup section "Docs"`},
 		{name: "duplicate", sections: []string{"docs", "docs"}, want: `duplicate MCP startup section "docs"`},
 		{name: "storage unavailable", sections: []string{"storage"}, want: `MCP startup section "storage" is unavailable`},
-		{name: "tokens disabled", sections: []string{"tokens"}, want: `MCP startup section "tokens" is unavailable`},
-		{name: "teams disabled", sections: []string{"teams"}, want: `MCP startup section "teams" is unavailable`},
+		{name: "tokens removed", sections: []string{"tokens"}, want: `unknown MCP startup section "tokens"`},
+		{name: "teams removed", sections: []string{"teams"}, want: `unknown MCP startup section "teams"`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			server, err := New(Options{
@@ -213,36 +207,6 @@ func TestSectionLoaderActivatesOnlyItsTypedToolsAndIsIdempotent(t *testing.T) {
 	})
 }
 
-func TestTokenSectionRequiresExplicitStartupCapability(t *testing.T) {
-	session := connectRawTestServerWithOptions(t, Options{
-		Client: inertTestClient(t), Scope: NewAllScope(),
-		Actor: "example-agent", Version: "test-version",
-	})
-
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "poomsae.load_tokens", Arguments: map[string]any{},
-	})
-	require.NoError(t, err)
-	require.False(t, result.IsError)
-	var output ToolSectionOutput
-	require.NoError(t, json.Unmarshal(mustJSON(t, result.StructuredContent), &output))
-	require.False(t, output.Available)
-	require.False(t, output.Loaded)
-
-	enabled := connectRawTestServerWithOptions(t, Options{
-		Client: inertTestClient(t), Scope: NewAllScope(), EnableTokenAdmin: true,
-		Actor: "example-agent", Version: "test-version",
-	})
-	result, err = enabled.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "poomsae.load_tokens", Arguments: map[string]any{},
-	})
-	require.NoError(t, err)
-	require.False(t, result.IsError)
-	require.NoError(t, json.Unmarshal(mustJSON(t, result.StructuredContent), &output))
-	require.True(t, output.Available)
-	require.True(t, output.Loaded)
-}
-
 func TestServerToolOutputSchemasAreObjects(t *testing.T) {
 	admin, err := storageadmin.New(storageadmin.Config{Root: t.TempDir(), SourceDSN: "source.db"})
 	require.NoError(t, err)
@@ -288,21 +252,9 @@ func TestServerPublishesCurrentToolsOnly(t *testing.T) {
 	wantNames := []string{
 		"poomsae.assign",
 		"poomsae.audit_closes",
-		"poomsae.bridge_bind",
-		"poomsae.bridge_pause",
-		"poomsae.bridge_reconcile",
-		"poomsae.bridge_resolve_comment",
-		"poomsae.bridge_resolve_field",
-		"poomsae.bridge_resume",
-		"poomsae.bridge_show",
-		"poomsae.bridge_unbind",
 		"poomsae.claim",
 		"poomsae.close",
 		"poomsae.comment",
-		"poomsae.connector_field_map",
-		"poomsae.connector_field_unmap",
-		"poomsae.connector_fields",
-		"poomsae.connectors",
 		"poomsae.create",
 		"poomsae.cron_capabilities",
 		"poomsae.cron_job",
@@ -326,24 +278,10 @@ func TestServerPublishesCurrentToolsOnly(t *testing.T) {
 		"poomsae.edit",
 		"poomsae.edit_comment",
 		"poomsae.events",
-		"poomsae.federation_bridge_connect",
-		"poomsae.federation_bridge_disconnect",
-		"poomsae.federation_bridge_status",
-		"poomsae.federation_enrollment_revoke",
-		"poomsae.federation_leave",
-		"poomsae.federation_quarantine",
-		"poomsae.federation_rebind",
-		"poomsae.federation_root_key_repin",
-		"poomsae.federation_spoke_name",
-		"poomsae.federation_status",
 		"poomsae.graph",
 		"poomsae.import_issues",
 		"poomsae.inbox",
 		"poomsae.labels",
-		"poomsae.lease",
-		"poomsae.lease_force_release",
-		"poomsae.lease_status",
-		"poomsae.lease_steal",
 		"poomsae.list",
 		"poomsae.move",
 		"poomsae.next",
@@ -371,20 +309,7 @@ func TestServerPublishesCurrentToolsOnly(t *testing.T) {
 		"poomsae.set_schedule",
 		"poomsae.show",
 		"poomsae.status",
-		"poomsae.sync_once",
-		"poomsae.sync_status",
-		"poomsae.sync_update",
 		"poomsae.system",
-		"poomsae.project_access_set",
-		"poomsae.project_access_show",
-		"poomsae.team_create",
-		"poomsae.team_delete",
-		"poomsae.team_member_set",
-		"poomsae.team_show",
-		"poomsae.teams",
-		"poomsae.token_create",
-		"poomsae.token_revoke",
-		"poomsae.tokens",
 		"poomsae.unassign",
 		"poomsae.wait",
 	}

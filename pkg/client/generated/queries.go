@@ -47,10 +47,6 @@ type StreamEventsQuery struct {
 	ProjectID *int64 `json:"project_id,omitempty"`
 }
 
-type GetFederationStatusQuery struct {
-	Include *string `json:"include,omitempty"`
-}
-
 type ListAllIssuesQuery struct {
 	// ProjectIds Restrict to these positive project IDs; mutually exclusive with project_id
 	ProjectIds []int64 `json:"project_ids,omitempty"`
@@ -199,135 +195,6 @@ type PollProjectEventsQuery struct {
 	Actor *string `json:"actor,omitempty"`
 }
 
-type GetProjectFederationQuery struct {
-	// RelayProtocolVersion Check existing cross-project links before relay enrollment. Links within a shared group are allowed; other links return 409 relay_cross_project_links.
-	RelayProtocolVersion *int64 `json:"relay_protocol_version,omitempty" validate:"omitempty,gte=1,lte=1"`
-}
-
-func (g GetProjectFederationQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(g))
-}
-
-type FederatedDocbankCapabilitiesQuery struct {
-	ProjectUID string  `json:"project_uid" validate:"required"`
-	Origin     *string `json:"origin,omitempty"`
-}
-
-func (f FederatedDocbankCapabilitiesQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(f))
-}
-
-type LinkFederatedDocbankQuery struct {
-	Origin     string `json:"origin" validate:"required"`
-	ProjectUID string `json:"project_uid" validate:"required"`
-}
-
-func (l LinkFederatedDocbankQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(l))
-}
-
-type UploadFederatedDocbankQuery struct {
-	Origin     string `json:"origin" validate:"required"`
-	ProjectUID string `json:"project_uid" validate:"required"`
-	Name       string `json:"name" validate:"required"`
-}
-
-func (u UploadFederatedDocbankQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(u))
-}
-
-type FederatedDocbankContentQuery struct {
-	ProjectUID string `json:"project_uid" validate:"required"`
-	Origin     string `json:"origin" validate:"required"`
-}
-
-func (f FederatedDocbankContentQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(f))
-}
-
-type PollFederationProjectEventsQuery struct {
-	AfterID *int64 `json:"after_id,omitempty"`
-
-	// IssueUID Read retained history only for an issue currently owned by this project, independently of the project cursor.
-	IssueUID *string `json:"issue_uid,omitempty"`
-	Limit    *int64  `json:"limit,omitempty"`
-
-	// Wait Seconds the hub may hold a caught-up project poll until an event commits. The hub caps it at the value in X-Poomsae-Federation-Poll-Wait-Max and answers at once when it cannot hold the request.
-	Wait *int64 `json:"wait,omitempty"`
-}
-
-type OfferRelayDeliveriesQuery struct {
-	Stream         *OfferRelayDeliveriesQueryStream `json:"stream,omitempty"`
-	Limit          *int64                           `json:"limit,omitempty" validate:"omitempty,gte=1,lte=1024"`
-	ArtifactDigest []string                         `json:"artifact_digest,omitempty"`
-	Epoch          *int64                           `json:"epoch,omitempty" validate:"omitempty,gte=0"`
-}
-
-func (o OfferRelayDeliveriesQuery) Validate() error {
-	var errors runtime.ValidationErrors
-	if o.Stream != nil {
-		if v, ok := any(o.Stream).(runtime.Validator); ok {
-			if err := v.Validate(); err != nil {
-				errors = errors.Append("Stream", err)
-			}
-		}
-	}
-	if o.Limit != nil {
-		if err := typesValidator.Var(o.Limit, "omitempty,gte=1,lte=1024"); err != nil {
-			errors = errors.Append("Limit", err)
-		}
-	}
-	if len(o.ArtifactDigest) > 32 {
-		errors = errors.Add("ArtifactDigest", fmt.Sprintf("must have at most 32 items, got %d", len(o.ArtifactDigest)))
-	}
-	if o.Epoch != nil {
-		if err := typesValidator.Var(o.Epoch, "omitempty,gte=0"); err != nil {
-			errors = errors.Append("Epoch", err)
-		}
-	}
-	if len(errors) == 0 {
-		return nil
-	}
-	return errors
-}
-
-type SearchFederationProjectQuery struct {
-	Q string `json:"q" validate:"required"`
-
-	// Auto Fall back to keyword search when the hub cannot run semantic search. Absent means strict semantic.
-	Auto         *bool                               `json:"auto,omitempty"`
-	Limit        *int64                              `json:"limit,omitempty"`
-	Status       *SearchFederationProjectQueryStatus `json:"status,omitempty"`
-	Label        []string                            `json:"label,omitempty"`
-	ExcludeLabel []string                            `json:"exclude_label,omitempty"`
-}
-
-func (s SearchFederationProjectQuery) Validate() error {
-	var errors runtime.ValidationErrors
-	if err := typesValidator.Var(s.Q, "required"); err != nil {
-		errors = errors.Append("Q", err)
-	}
-	if s.Status != nil {
-		if v, ok := any(s.Status).(runtime.Validator); ok {
-			if err := v.Validate(); err != nil {
-				errors = errors.Append("Status", err)
-			}
-		}
-	}
-	if len(errors) == 0 {
-		return nil
-	}
-	return errors
-}
-
-type GetProjectFederationStatusQuery struct {
-	// Compact Omit relay checkpoint capacity measurement. Error details are unchanged unless omit_errors is also set.
-	Compact *bool `json:"compact,omitempty"`
-
-	// OmitErrors Remove error text from the status: the sync error, held-back batch errors, the embedding producer error, and the relay checkpoint error. State, timestamps, and counts remain, and has_sync_error reports whether a sync error was removed.
-	OmitErrors *bool `json:"omit_errors,omitempty"`
-}
-
 type ListIssuesQuery struct {
 	// Cursor Opaque next_cursor from a matching stable-order page
 	Cursor *string `json:"cursor,omitempty"`
@@ -408,14 +275,6 @@ type AddAttachmentQuery struct {
 
 func (a AddAttachmentQuery) Validate() error {
 	return runtime.ConvertValidatorError(typesValidator.Struct(a))
-}
-
-type UnbindExternalRootQuery struct {
-	Actor *string `json:"actor,omitempty"`
-}
-
-type GetExternalRootBridgeQuery struct {
-	Actor *string `json:"actor,omitempty"`
 }
 
 type ReachableIssueGraphQuery struct {

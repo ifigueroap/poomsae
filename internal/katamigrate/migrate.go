@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"go.kenn.io/kit/atomicfile"
 	kitdaemon "go.kenn.io/kit/daemon"
 
 	"github.com/ifigueroap/poomsae/internal/config"
@@ -183,7 +184,7 @@ func firstExistingDir(paths []string) string {
 }
 
 func dirExists(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) //nolint:gosec // path is a kata or poomsae data directory, not request input
 	if err != nil {
 		return false
 	}
@@ -267,7 +268,7 @@ func copyTree(ctx context.Context, src, dst string) error {
 			if err != nil {
 				return err
 			}
-			return os.Symlink(link, target)
+			return os.Symlink(link, target) //nolint:gosec // link target is copied from the source tree the user asked to migrate
 		case info.IsDir():
 			return os.MkdirAll(target, info.Mode().Perm())
 		case info.Mode().IsRegular():
@@ -278,7 +279,7 @@ func copyTree(ctx context.Context, src, dst string) error {
 	}); err != nil {
 		return fmt.Errorf("copy %s: %w", src, err)
 	}
-	if err := os.Rename(tmp, dst); err != nil {
+	if err := atomicfile.RenameNoReplace(tmp, dst); err != nil {
 		return fmt.Errorf("place %s: %w", dst, err)
 	}
 	return nil
@@ -289,7 +290,7 @@ func copyRegular(src, dst string, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode) //nolint:gosec // mode matches the source file
 	if err != nil {
 		return err
@@ -375,7 +376,7 @@ func legacyDatabaseOutside(source string) (string, bool) {
 	if err == nil && (abs == sourceAbs || strings.HasPrefix(abs, sourceAbs+string(os.PathSeparator))) {
 		return "", false
 	}
-	if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() {
+	if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() { //nolint:gosec // path is the sqlite file named by the copied config
 		return "", false
 	}
 	return abs, true
@@ -396,7 +397,7 @@ func rewriteCopiedConfig(source, dest string) error {
 	if text == string(data) {
 		return nil
 	}
-	return os.WriteFile(path, []byte(text), 0o600)
+	return os.WriteFile(path, []byte(text), 0o600) //nolint:gosec // path is the config file inside the new poomsae directory
 }
 
 func migrateSchema(ctx context.Context, path string) (int, error) {

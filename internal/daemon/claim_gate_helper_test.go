@@ -87,50 +87,6 @@ func TestClaimGateHelperPendingClaimDoesNotBlockUnclaimedIssue(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClaimGateHelperSpokeRefreshesHubStatusBeforeCheckingCache(t *testing.T) {
-	ctx := t.Context()
-	store := openClaimGateHelperDB(t)
-	project, issue := createClaimGateHelperIssue(t, store)
-	claimUID := newClaimGateHelperUID(t)
-	called := false
-	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		require.Equal(t, "/api/v1/projects/99/issues/"+issue.UID+"/lease", r.URL.Path)
-		_ = json.NewEncoder(w).Encode(api.ClaimStatusBody{
-			Held: true,
-			Holder: api.ClaimPrincipalOut{
-				HolderInstanceUID: store.InstanceUID(),
-				Holder:            "agent",
-				ClientKind:        "",
-			},
-			Claim: &api.IssueClaimOut{
-				ClaimUID:          claimUID,
-				IssueUID:          issue.UID,
-				Holder:            "agent",
-				HolderInstanceUID: store.InstanceUID(),
-				ClientKind:        "",
-				ClaimKind:         "hard",
-				AcquiredAt:        time.Now().Add(-time.Minute).UTC(),
-				Revision:          1,
-				UpdatedAt:         time.Now().UTC(),
-			},
-			HubNow: time.Now().UTC(),
-		})
-	}))
-	t.Cleanup(hub.Close)
-	enableClaimGateHelperSpoke(t, store, project, hub.URL, 99)
-
-	err := requireFederatedIssueClaim(ctx, ServerConfig{DB: store}, project.ID, issue, "agent")
-
-	require.NoError(t, err)
-	assert.True(t, called)
-	status, err := store.ClaimStatus(ctx, project.ID, issue.ShortID, time.Now().UTC())
-	require.NoError(t, err)
-	require.True(t, status.Held)
-	require.NotNil(t, status.Claim)
-	assert.Equal(t, claimUID, status.Claim.ClaimUID)
-}
-
 func TestClaimGateHelperSpokeTransportFailureFallsBackToCachedClaim(t *testing.T) {
 	ctx := t.Context()
 	store := openClaimGateHelperDB(t)
@@ -203,82 +159,6 @@ func TestClaimGateHelperRelayOfflineResponseFallsBackToCachedClaim(t *testing.T)
 	assert.Equal(t, claimUID, status.Claim.ClaimUID)
 }
 
-func TestClaimGateHelperTwoRelaysPreserveOfflineFallbackAndErrors(t *testing.T) {
-	tests := []struct {
-		name       string
-		rootStatus int
-		rootCode   string
-		offline    bool
-		wantStatus int
-		wantCode   string
-	}{
-		{name: "offline root uses leaf cached lease", offline: true},
-		{name: "authorization failure remains an error", rootStatus: http.StatusForbidden, rootCode: "forbidden", wantStatus: http.StatusForbidden, wantCode: "hub_claim_failed"},
-		{name: "lease denial remains an error", rootStatus: http.StatusConflict, rootCode: "claim_denied", wantStatus: http.StatusConflict, wantCode: "hub_claim_failed"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := t.Context()
-			leafStore := openClaimGateHelperDB(t)
-			leafProject, issue := createClaimGateHelperIssue(t, leafStore)
-			relay2Store := openClaimGateHelperDB(t)
-			relay2Project, _ := createClaimGateHelperIssue(t, relay2Store)
-			relay1Store := openClaimGateHelperDB(t)
-			relay1Project, _ := createClaimGateHelperIssue(t, relay1Store)
-
-			var rootURL string
-			if tt.offline {
-				root := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-				rootURL = root.URL
-				root.Close()
-			} else {
-				root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					api.WriteEnvelope(w, tt.rootStatus, tt.rootCode, "root rejected claim status")
-				}))
-				t.Cleanup(root.Close)
-				rootURL = root.URL
-			}
-
-			enableClaimGateHelperSpoke(t, relay1Store, relay1Project, rootURL, 99)
-			relay1 := newClaimGateHelperStatusServer(t, relay1Store, relay1Project.ID)
-			t.Cleanup(relay1.Close)
-			enableClaimGateHelperSpoke(t, relay2Store, relay2Project, relay1.URL, relay1Project.ID)
-			relay2 := newClaimGateHelperStatusServer(t, relay2Store, relay2Project.ID)
-			t.Cleanup(relay2.Close)
-			enableClaimGateHelperSpoke(t, leafStore, leafProject, relay2.URL, relay2Project.ID)
-
-			now := time.Now().UTC()
-			claimUID := newClaimGateHelperUID(t)
-			require.NoError(t, leafStore.ApplyClaimStatus(ctx, leafProject.ID, issue.UID, db.ClaimStatus{
-				Held: true,
-				Holder: db.ClaimPrincipal{
-					HolderInstanceUID: leafStore.InstanceUID(),
-					Holder:            "agent",
-				},
-				Claim: &db.IssueClaim{
-					ClaimUID: claimUID, ProjectID: leafProject.ID, IssueID: issue.ID, IssueUID: issue.UID,
-					Holder: "agent", HolderInstanceUID: leafStore.InstanceUID(), ClaimKind: "hard",
-					AcquiredAt: now.Add(-time.Minute), Revision: 1, UpdatedAt: now,
-				},
-				HubNow: now,
-			}))
-
-			err := requireFederatedIssueClaim(ctx, ServerConfig{DB: leafStore}, leafProject.ID, issue, "agent")
-			if tt.offline {
-				require.NoError(t, err, "offline status must survive both relays so the leaf can use its cached lease")
-				status, statusErr := leafStore.ClaimStatusReadOnly(ctx, leafProject.ID, issue.UID, now)
-				require.NoError(t, statusErr)
-				require.True(t, status.Held)
-				require.NotNil(t, status.Claim)
-				assert.Equal(t, claimUID, status.Claim.ClaimUID)
-				return
-			}
-			assertClaimGateHelperAPIError(t, err, tt.wantStatus, tt.wantCode)
-		})
-	}
-}
-
 func newClaimGateHelperStatusServer(t *testing.T, store *sqlitestore.Store, projectID int64) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -326,56 +206,6 @@ func TestClaimGateHelperSpokeHubNotFoundFallsBackForPendingPushIssue(t *testing.
 	require.NoError(t, err)
 }
 
-func TestClaimGateHelperSpokeHubNotFoundStillFailsAfterIssuePushed(t *testing.T) {
-	ctx := t.Context()
-	store := openClaimGateHelperDB(t)
-	project, issue := createClaimGateHelperIssue(t, store)
-	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/v1/projects/99/issues/"+issue.UID+"/lease", r.URL.Path)
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": http.StatusNotFound,
-			"error": map[string]any{
-				"code":    "issue_not_found",
-				"message": "issue not found",
-			},
-		})
-	}))
-	t.Cleanup(hub.Close)
-	enableClaimGateHelperSpoke(t, store, project, hub.URL, 99)
-	events, err := store.PendingFederationPushEvents(ctx, project.ID, store.InstanceUID(), 0, 10)
-	require.NoError(t, err)
-	require.NotEmpty(t, events)
-	require.NoError(t, store.AdvanceFederationPushCursor(ctx, project.ID, events[len(events)-1].ID))
-
-	err = requireFederatedIssueClaim(ctx, ServerConfig{DB: store}, project.ID, issue, "agent")
-
-	assertClaimGateHelperAPIError(t, err, http.StatusNotFound, "hub_claim_failed")
-}
-
-func TestClaimGateHelperSpokeHubProjectNotFoundStillFailsForPendingPushIssue(t *testing.T) {
-	ctx := t.Context()
-	store := openClaimGateHelperDB(t)
-	project, issue := createClaimGateHelperIssue(t, store)
-	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/v1/projects/99/issues/"+issue.UID+"/lease", r.URL.Path)
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": http.StatusNotFound,
-			"error": map[string]any{
-				"code":    "project_not_found",
-				"message": "project not found",
-			},
-		})
-	}))
-	t.Cleanup(hub.Close)
-	enableClaimGateHelperSpoke(t, store, project, hub.URL, 99)
-
-	err := requireFederatedIssueClaim(ctx, ServerConfig{DB: store}, project.ID, issue, "agent")
-
-	assertClaimGateHelperAPIError(t, err, http.StatusNotFound, "hub_claim_failed")
-}
-
 func TestClaimGateHelperPushSpokeUsesBoundActorForGate(t *testing.T) {
 	ctx := t.Context()
 	store := openClaimGateHelperDB(t)
@@ -405,37 +235,6 @@ func TestClaimGateHelperPushSpokeUsesBoundActorForGate(t *testing.T) {
 	err := requireFederatedIssueClaim(ctx, ServerConfig{DB: store}, project.ID, issue, "client-actor")
 
 	require.NoError(t, err)
-}
-
-func TestClaimGateHelperPullOnlySpokeRejectsEvenWithCachedClaim(t *testing.T) {
-	ctx := t.Context()
-	store := openClaimGateHelperDB(t)
-	project, issue := createClaimGateHelperIssue(t, store)
-	enableClaimGateHelperSpokeWithPush(t, store, project, "http://127.0.0.1:1", 99, false)
-	require.NoError(t, store.ApplyClaimStatus(ctx, project.ID, issue.UID, db.ClaimStatus{
-		Held: true,
-		Holder: db.ClaimPrincipal{
-			HolderInstanceUID: store.InstanceUID(),
-			Holder:            "agent",
-			ClientKind:        "",
-		},
-		Claim: &db.IssueClaim{
-			ClaimUID:          newClaimGateHelperUID(t),
-			IssueUID:          issue.UID,
-			Holder:            "agent",
-			HolderInstanceUID: store.InstanceUID(),
-			ClientKind:        "",
-			ClaimKind:         "hard",
-			AcquiredAt:        time.Now().Add(-time.Minute).UTC(),
-			Revision:          1,
-			UpdatedAt:         time.Now().UTC(),
-		},
-		HubNow: time.Now().UTC(),
-	}))
-
-	err := requireFederatedIssueClaim(ctx, ServerConfig{DB: store}, project.ID, issue, "agent")
-
-	assertClaimGateHelperAPIError(t, err, http.StatusConflict, "federated_read_only")
 }
 
 func openClaimGateHelperDB(t *testing.T) *sqlitestore.Store {
@@ -515,35 +314,3 @@ func assertClaimGateHelperAPIError(t *testing.T, err error, status int, code str
 // including federation refusals, so a caller restore would refuse cannot tell
 // the issue exists. A hub error forwarded with its status is a fault, not a
 // refusal, and keeps that status and code.
-func TestRequireDeletedHistoryAccessMapsRefusalsToNotFoundAndKeepsHubErrors(t *testing.T) {
-	tests := []struct {
-		name       string
-		hubStatus  int // zero: spoke with push disabled, no hub involved
-		wantStatus int
-		wantCode   string
-	}{
-		{name: "federated read only is refused", wantStatus: http.StatusNotFound, wantCode: "issue_not_found"},
-		{name: "hub rate limit keeps its status", hubStatus: http.StatusTooManyRequests, wantStatus: http.StatusTooManyRequests, wantCode: "hub_claim_failed"},
-		{name: "hub unauthorized reports a rejected hub credential", hubStatus: http.StatusUnauthorized, wantStatus: http.StatusBadGateway, wantCode: "hub_credential_rejected"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := t.Context()
-			store := openClaimGateHelperDB(t)
-			project, issue := createClaimGateHelperIssue(t, store)
-			if tt.hubStatus == 0 {
-				enableClaimGateHelperSpokeWithPush(t, store, project, "http://127.0.0.1:1", 99, false)
-			} else {
-				hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					api.WriteEnvelope(w, tt.hubStatus, "hub_rejected", "hub rejected claim status")
-				}))
-				t.Cleanup(hub.Close)
-				enableClaimGateHelperSpoke(t, store, project, hub.URL, 99)
-			}
-
-			err := requireDeletedHistoryAccess(ctx, ServerConfig{DB: store}, project.ID, issue, "agent")
-
-			assertClaimGateHelperAPIError(t, err, tt.wantStatus, tt.wantCode)
-		})
-	}
-}

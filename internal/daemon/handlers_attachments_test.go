@@ -19,8 +19,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
 	"github.com/ifigueroap/poomsae/internal/metadata"
@@ -171,47 +169,6 @@ func TestAttachmentUploadRechecksAuthority(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, string(iss.Metadata), string(stored.Metadata), "upload must leave attachment metadata unchanged")
 			assertAPIError(t, out.resp.StatusCode, raw, tc.status, tc.code)
-		})
-	}
-}
-
-func TestAttachmentAdmissionBeforeBody(t *testing.T) {
-	for _, tc := range []struct {
-		name                 string
-		configured, readOnly bool
-		filename             string
-		want                 int
-		code                 string
-	}{
-		{"unconfigured", false, false, "shot.png", 503, "docbank_not_configured"},
-		{"read-only", true, true, "shot.png", 409, "federated_read_only"},
-		{"invalid name", true, false, "bad%FF.png", 400, "attachment_invalid"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			env, f := attachmentEnv(t)
-			p, iss := seedProjectAndIssue(t, env)
-			if tc.readOnly {
-				_, err := env.DB.UpsertFederationBinding(t.Context(), db.FederationBinding{
-					ProjectID: p.ID, Role: db.FederationRoleSpoke, Enabled: true, PushEnabled: false, HubURL: "https://hub.example", HubProjectID: 1, HubProjectUID: p.UID,
-				})
-				require.NoError(t, err)
-			}
-			cfg := daemon.ServerConfig{DB: env.DB}
-			if tc.configured {
-				cfg.Docbank = docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-				cfg.DocbankFolder = "/poomsae"
-			}
-			body := &testfix.ReadCountingBody{}
-			endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments?name=%s&actor=operator", p.ID, iss.ShortID, tc.filename)
-			req := httptest.NewRequestWithContext(t.Context(), "POST", endpoint, body)
-			req.RemoteAddr = "127.0.0.1:1234"
-			req.Header.Set("Content-Type", "application/octet-stream")
-			res := httptest.NewRecorder()
-			daemon.NewServer(cfg).Handler().ServeHTTP(res, req)
-			require.Equal(t, tc.want, res.Code, res.Body.String())
-			require.Contains(t, res.Body.String(), tc.code)
-			require.Zero(t, body.Reads)
-			require.Empty(t, f.Requests())
 		})
 	}
 }
@@ -435,24 +392,6 @@ func TestAttachmentReuseUnreadableReference(t *testing.T) {
 			require.Equal(t, eventID, afterEventID)
 		})
 	}
-}
-
-func TestAttachmentUploadReuseConcurrentPostgres(t *testing.T) {
-	if testing.Short() {
-		t.Skip("requires postgres testcontainer")
-	}
-	dsn, cleanup := pgstoretest.NewDatabase(t, t.Context())
-	t.Cleanup(cleanup)
-	store, err := pgstore.Open(t.Context(), dsn)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = store.Close() })
-	f := docbanktest.New(t)
-	client := docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-	d := daemon.NewServer(daemon.ServerConfig{DB: store, StartedAt: time.Now().UTC(), Broadcaster: daemon.NewEventBroadcaster(), Docbank: client, DocbankFolder: "/poomsae"})
-	t.Cleanup(func() { _ = d.Close() })
-	server := httptest.NewServer(d.Handler())
-	t.Cleanup(server.Close)
-	checkAttachmentUploadReuseConcurrent(t, &testenv.Env{URL: server.URL, HTTP: server.Client()}, store, f)
 }
 
 func checkAttachmentUploadReuseConcurrent(t *testing.T, env *testenv.Env, store db.Storage, f *docbanktest.Fake) {

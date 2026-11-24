@@ -31,9 +31,8 @@ func TestApplySharedEmbeddingChoice(t *testing.T) {
 	got, err = applySharedEmbeddingChoice(t.Context(), cfg.Embeddings, "poomsae.db")
 	require.NoError(t, err)
 	require.Equal(t, config.EmbeddingsConfig{Local: true, Model: "nomic-embed-text", Dims: 768}, got)
-	got, err = applySharedEmbeddingChoice(t.Context(), config.EmbeddingsConfig{}, "postgres://example.invalid/poomsae")
-	require.NoError(t, err)
-	require.Equal(t, config.EmbeddingsConfig{}, got)
+	_, err = applySharedEmbeddingChoice(t.Context(), config.EmbeddingsConfig{}, "postgres://example.invalid/poomsae")
+	require.ErrorContains(t, err, "postgres storage is not available")
 }
 
 func TestLocalEmbeddingsSetup(t *testing.T) {
@@ -259,9 +258,12 @@ func TestLocalEmbeddingsDaemonDownloadConsent(t *testing.T) {
 			client, _, err := preflightEmbeddingStartup(cfg.Embeddings, dsn)
 			require.NoError(t, err)
 			_, err = client.Embed(t.Context(), []string{"x"})
-			if tc.chosen && !tc.postgres {
+			switch {
+			case tc.postgres:
+				require.ErrorContains(t, err, "postgres storage is not available")
+			case tc.chosen:
 				require.ErrorContains(t, err, "installation reached")
-			} else {
+			default:
 				require.ErrorContains(t, err, "poomsae daemon local-embeddings")
 			}
 		})

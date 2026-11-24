@@ -414,7 +414,9 @@ func registerProjectsHandlers(humaAPI huma.API, cfg ServerConfig) {
 			return nil, api.NewError(409, "project_already_archived",
 				"project is already archived", "", nil)
 		case errors.Is(err, db.ErrFederationResetBlockedByPendingPush), errors.Is(err, db.ErrFederationResetBlockedByDownstream):
-			return nil, federationReplicaAPIError(err)
+			return nil, api.NewError(http.StatusConflict, "federation_lifecycle_blocked",
+				"federation change requires resolved deliveries and detached downstream enrollments",
+				"sync retained work through root acceptance and explicitly revoke or detach descendants, then retry", nil)
 		}
 		if openErr, ok := errors.AsType[*db.ProjectHasOpenIssuesError](err); ok {
 			return nil, api.NewError(409, "project_has_open_issues",

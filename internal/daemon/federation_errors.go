@@ -7,6 +7,8 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db"
 )
 
+// federationReadOnlyError maps storage refusals that still mention a federated
+// project. This daemon no longer forwards those writes.
 func federationReadOnlyError(err error) error {
 	if errors.Is(err, db.ErrFederatedMoveUnsupported) {
 		return api.NewError(409, "federated_move_unsupported",

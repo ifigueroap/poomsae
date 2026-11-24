@@ -26,11 +26,11 @@ brew install poomsae
 ```
 
 ```sh { .poomsae-install-command .poomsae-install-command--fallback-hidden data-install-platform-content="linux" hidden="hidden" }
-curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash
 ```
 
 ```powershell { .poomsae-install-command .poomsae-install-command--fallback-hidden data-install-platform-content="windows" hidden="hidden" }
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex"
 ```
 </section>
 

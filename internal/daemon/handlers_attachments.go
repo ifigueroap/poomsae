@@ -119,7 +119,6 @@ func recheckAttachmentWrite(ctx context.Context, cfg ServerConfig, projectID int
 }
 
 func registerAttachmentHandlers(h huma.API, cfg ServerConfig) {
-	registerFederatedDocbankHandlers(h, cfg)
 	huma.Register(h, huma.Operation{OperationID: "linkAttachment", Method: "POST", Path: attachmentPath + "/links"}, func(ctx context.Context, in *api.LinkAttachmentRequest) (*api.AddAttachmentResponse, error) {
 		return linkAttachment(ctx, cfg, in)
 	})
@@ -132,38 +131,15 @@ func registerAttachmentHandlers(h huma.API, cfg ServerConfig) {
 		if err != nil {
 			return nil, err
 		}
-		var claimResult claimRefreshResult
-		if err := requireFederatedIssueClaimWithResult(ctx, cfg, iss, actor, true, &claimResult); err != nil {
+		if err := requireFederatedIssueClaim(ctx, cfg, iss.ProjectID, iss, actor); err != nil {
 			return nil, err
 		}
 		if !metadata.ValidAttachmentName(in.Name) {
 			return nil, attachmentError(400, "attachment_invalid")
 		}
-		binding, err := docbankUpstream(ctx, cfg, iss.ProjectID)
+		e, err := uploadDocbankAttachment(ctx, cfg, iss, in.Name, ctx.Value(attachmentUploadContextKey{}).(io.Reader), func() error { return recheckAttachmentWrite(ctx, cfg, iss.ProjectID, iss, actor) })
 		if err != nil {
 			return nil, err
-		}
-		var e metadata.Attachment
-		if binding != nil && binding.Role == db.FederationRoleSpoke {
-			project, err := activeProjectByID(ctx, cfg.DB, iss.ProjectID)
-			if err != nil {
-				return nil, err
-			}
-			e, err = forwardDocbankDescriptor(ctx, cfg, project, binding, iss, &claimResult, "", in.Name, nil, ctx.Value(attachmentUploadContextKey{}).(io.Reader))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			e, err = uploadDocbankAttachment(ctx, cfg, iss, in.Name, ctx.Value(attachmentUploadContextKey{}).(io.Reader), func() error { return recheckAttachmentWrite(ctx, cfg, iss.ProjectID, iss, actor) })
-			if err != nil {
-				return nil, err
-			}
-			if binding != nil {
-				e.Origin, err = rootDocbankOrigin(ctx, cfg, iss.ProjectID)
-				if err != nil {
-					return nil, err
-				}
-			}
 		}
 		var reuseVersion *uuid.UUID
 		if in.ReuseExisting {
@@ -188,32 +164,19 @@ func registerAttachmentHandlers(h huma.API, cfg ServerConfig) {
 		if !valid {
 			return nil, attachmentError(400, "attachment_invalid")
 		}
-		var resp *http.Response
 		local, err := localAttachmentOrigin(ctx, cfg, iss.ProjectID, e.Origin)
 		if err != nil {
 			return nil, err
 		}
-		if local {
-			if cfg.Docbank == nil {
-				return nil, attachmentError(503, "docbank_not_configured")
-			}
-			resp, err = cfg.Docbank.Content(ctx, e.DocbankVersion)
-			if err != nil {
-				return nil, docbankError(err, docbankContentErrors)
-			}
-		} else {
-			project, err := activeProjectByID(ctx, cfg.DB, iss.ProjectID)
-			if err != nil {
-				return nil, err
-			}
-			binding, err := docbankUpstream(ctx, cfg, project.ID)
-			if err != nil {
-				return nil, err
-			}
-			resp, err = originDocbankContent(ctx, cfg, project, binding, e)
-			if err != nil {
-				return nil, err
-			}
+		if !local {
+			return nil, attachmentError(410, "attachment_origin_unavailable")
+		}
+		if cfg.Docbank == nil {
+			return nil, attachmentError(503, "docbank_not_configured")
+		}
+		resp, err := cfg.Docbank.Content(ctx, e.DocbankVersion)
+		if err != nil {
+			return nil, docbankError(err, docbankContentErrors)
 		}
 		typ, disposition := "application/octet-stream", "attachment"
 		if inlineAttachmentType(e.MediaType) {

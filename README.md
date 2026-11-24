@@ -62,13 +62,13 @@ federation; a shared daemon can use Postgres by setting `POOMSAE_DSN`.
 Linux and macOS:
 
 ```sh
-curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash
 ```
 
 Windows PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex"
 ```
 
 The installer detects your OS and CPU architecture, downloads the latest GitHub
