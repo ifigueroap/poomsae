@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -43,7 +44,7 @@ exists, the command leaves it unchanged. Per-project .kata.toml and
 
 func warnLegacyEnv(w io.Writer) {
 	if warning := config.LegacyEnvWarning(config.ApplyLegacyKataEnv()); warning != "" {
-		fmt.Fprintln(w, warning)
+		_, _ = fmt.Fprintln(w, warning)
 	}
 }
 
@@ -51,15 +52,13 @@ func warnLegacyEnv(w io.Writer) {
 // runs. migrate-from-kata performs that copy itself so the summary is not
 // printed twice.
 func maybeMigrateFromKata(ctx context.Context, stderr io.Writer) {
-	for _, arg := range os.Args[1:] {
-		if arg == "migrate-from-kata" {
-			return
-		}
+	if slices.Contains(os.Args[1:], "migrate-from-kata") {
+		return
 	}
 	warnLegacyEnv(stderr)
 	result, err := katamigrate.Migrate(ctx, katamigrate.Options{})
 	if err != nil {
-		fmt.Fprintf(stderr, "poomsae: kata migration: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "poomsae: kata migration: %v\n", err)
 		return
 	}
 	if result.Changed() {

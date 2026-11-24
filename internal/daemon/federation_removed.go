@@ -1,11 +1,10 @@
+//nolint:revive // Exported names stay so existing call sites compile; each one refuses federation.
 package daemon
 
 import (
 	"context"
 	"errors"
-	"net/http"
 
-	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/db"
 )
@@ -88,12 +87,8 @@ func LeaveFederationReplica(context.Context, db.Storage, config.FederationManage
 	return db.FederationBinding{}, ErrFederationReplicaCredentialConflict
 }
 
-// Federation enrollment is not part of this daemon. The types below remain so
-// claim, attachment, and cron call sites compile, and every authorization
-// attempt is refused.
-
-var errHostFederationAccessUnavailable = errors.New("host federation access unavailable")
-
+// ErrHostFederationAdmissionLimited refuses a federation request because this
+// daemon does not admit hub or spoke traffic.
 var ErrHostFederationAdmissionLimited = errors.New("host federation request admission limited")
 
 type HostFederationAccessRequest struct {
@@ -115,74 +110,4 @@ type HostFederationAccessController interface {
 type HostFederationOperation struct {
 	ID       string
 	Mutation bool
-}
-
-func federationTransportOperation(operationID string) HostFederationOperation {
-	return HostFederationOperation{ID: operationID, Mutation: true}
-}
-
-type federationPrincipal struct {
-	RelayBindingUID      string
-	RelayProtocolVersion int
-	ScopedProjectID      int64
-	SpokeInstanceUID     string
-	Actor                string
-}
-
-type federationAuthorization struct {
-	principal        federationPrincipal
-	transactionFence db.TransactionFence
-}
-
-func authorizeFederationRequest(
-	ctx context.Context,
-	_ ServerConfig,
-	_ string,
-	_ int64,
-	_ string,
-	_ HostFederationOperation,
-) (context.Context, federationPrincipal, error) {
-	return ctx, federationPrincipal{}, federationCredentialDenied()
-}
-
-func authorizeFederationRequestForCapabilities(
-	ctx context.Context,
-	_ ServerConfig,
-	_ string,
-	_ int64,
-	_ []string,
-	_ HostFederationOperation,
-) (context.Context, federationPrincipal, error) {
-	return ctx, federationPrincipal{}, federationCredentialDenied()
-}
-
-func evaluateFederationRequest(
-	_ context.Context,
-	_ ServerConfig,
-	_ string,
-	_ int64,
-	_ string,
-	_ HostFederationOperation,
-) (federationAuthorization, error) {
-	return federationAuthorization{}, federationCredentialDenied()
-}
-
-func federationBridgeHubRejection(status int) *api.APIError {
-	data := map[string]any{"hub_status": status}
-	switch {
-	case status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusPreconditionRequired:
-		return api.NewError(http.StatusBadGateway, "hub_credential_rejected", "selected hub rejected the presented credential", "check the hub account, its project access and the hub's signing policy", data)
-	case status < 500:
-		status = http.StatusBadGateway
-	}
-	return api.NewError(status, "hub_request_rejected", "selected hub rejected the request", "check account access and selected project", data)
-}
-
-func federationCredentialDenied() error {
-	return api.NewError(http.StatusForbidden, "auth_invalid",
-		"federation credential is not currently authorized", "", nil)
-}
-
-func (ServerConfig) federationCredentialStore() config.FederationCredentialStore {
-	return config.DefaultFederationCredentialStore()
 }

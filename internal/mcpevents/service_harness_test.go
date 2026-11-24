@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
@@ -39,20 +37,6 @@ type opener func(t *testing.T) db.Storage
 func forEachBackendOpener(t *testing.T, fn func(t *testing.T, open opener)) {
 	t.Helper()
 	t.Run("sqlite", func(t *testing.T) { fn(t, openSQLite) })
-	t.Run("postgres", func(t *testing.T) {
-		if testing.Short() {
-			t.Skip("requires postgres")
-		}
-		fn(t, func(t *testing.T) db.Storage {
-			t.Helper()
-			dsn, cleanup := pgstoretest.NewDatabase(t, t.Context())
-			t.Cleanup(cleanup)
-			store, err := pgstore.Open(t.Context(), dsn)
-			require.NoError(t, err)
-			t.Cleanup(func() { require.NoError(t, store.Close()) })
-			return store
-		})
-	})
 }
 
 // forEachBackend runs fn once per backend against one fresh store.

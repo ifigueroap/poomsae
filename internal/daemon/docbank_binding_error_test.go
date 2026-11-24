@@ -3,20 +3,11 @@ package daemon_test
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"runtime"
 	"strings"
 	"sync/atomic"
-	"testing"
-	"uuid"
 
-	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/docbank"
-	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
-	"github.com/ifigueroap/poomsae/internal/testenv"
-	"github.com/stretchr/testify/require"
 )
 
 type failingDocbankBindingStore struct {
@@ -42,37 +33,3 @@ func (s *failingDocbankBindingStore) FederationBindingByProject(ctx context.Cont
 
 // A transient binding failure must never turn a federated root write into an
 // unmarked legacy attachment or bypass its configured exposure subtree.
-func TestDocbankUpstreamBindingLookupFailsClosed(t *testing.T) {
-	for _, operation := range []string{"upload", "link"} {
-		t.Run(operation, func(t *testing.T) {
-			vault := docbanktest.New(t)
-			var fault *failingDocbankBindingStore
-			env := testenv.New(t, func(cfg *daemon.ServerConfig) {
-				fault = &failingDocbankBindingStore{Storage: cfg.DB}
-				cfg.DB = fault
-				cfg.Docbank = docbank.NewClient(vault.Server.URL, func() (string, error) { return "test-key", nil })
-				cfg.DocbankFolder = "/poomsae"
-			})
-			project, issue := seedProjectAndIssue(t, env)
-			_, err := env.DB.EnableProjectFederation(t.Context(), project.ID, "operator")
-			require.NoError(t, err)
-			endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments", project.ID, issue.UID)
-			var status int
-			var body []byte
-			if operation == "upload" {
-				status, body = attachmentUpload(t, env, endpoint, "file.pdf", strings.NewReader("fixture"))
-			} else {
-				version := uuid.MustParse(linkVersion)
-				vault.Seed("/private/file.pdf", docbank.Node{ID: 42, Name: "file.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("fixture")})
-				// The claim gate succeeds; the upstream binding lookup fails.
-				status, body, err = postAttachmentLink(t, env, endpoint+"/links", `{"path":"/private/file.pdf","actor":"operator"}`)
-				require.NoError(t, err)
-			}
-			require.True(t, fault.injected.Load(), "fixture must exercise the binding failure")
-			require.Equal(t, http.StatusInternalServerError, status, string(body))
-			stored, err := env.DB.IssueByUID(t.Context(), issue.UID, db.IncludeDeletedNo)
-			require.NoError(t, err)
-			require.NotContains(t, stored.Metadata, "attachment.", "failed origin decision must not persist a reference")
-		})
-	}
-}

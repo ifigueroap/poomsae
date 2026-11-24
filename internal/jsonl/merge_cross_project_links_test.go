@@ -129,13 +129,6 @@ func TestMergeRestoresCrossProjectLinksSQLite(t *testing.T) {
 	}
 }
 
-func TestMergeRestoresCrossProjectLinksPostgres(t *testing.T) {
-	for name, secondFirst := range map[string]bool{"source order": false, "reverse order": true} {
-		t.Run(name, func(t *testing.T) {
-			checkMergeRestoresCrossProjectLinks(t, openPostgresImportTarget(t), secondFirst)
-		})
-	}
-}
 
 // Ordinary link writes refuse a link between projects when either one is
 // relayed between hubs, because the relay cannot deliver it. A merge leaves
@@ -179,9 +172,6 @@ func TestMergeSkipsLinkAcrossRelayedProjectSQLite(t *testing.T) {
 	checkMergeSkipsLinkAcrossRelayedProject(t, openImportTargetDB(t))
 }
 
-func TestMergeSkipsLinkAcrossRelayedProjectPostgres(t *testing.T) {
-	checkMergeSkipsLinkAcrossRelayedProject(t, openPostgresImportTarget(t))
-}
 
 func checkMergePreservesLinkToUnconnectedProject(t *testing.T, target db.Storage) {
 	ctx := t.Context()
@@ -200,9 +190,6 @@ func checkMergePreservesLinkToUnconnectedProject(t *testing.T, target db.Storage
 	require.ElementsMatch(t, undirectedRelatedEdges(source.edges), undirectedRelatedEdges(crossProjectLinkEdges(t, target, endpoints...)))
 }
 
-func TestMergePreservesLinkToUnconnectedProjectPostgres(t *testing.T) {
-	checkMergePreservesLinkToUnconnectedProject(t, openPostgresImportTarget(t))
-}
 
 // Two snapshots taken at different times can each be valid and still disagree.
 // The first project was exported while A1 was a child of A2. That link was
@@ -252,9 +239,6 @@ func TestMergeSkipsParentCycleSQLite(t *testing.T) {
 	checkMergeSkipsParentCycle(t, openImportTargetDB(t))
 }
 
-func TestMergeSkipsParentCyclePostgres(t *testing.T) {
-	checkMergeSkipsParentCycle(t, openPostgresImportTarget(t))
-}
 
 // The first project was exported while its task was a child of a task in the
 // same project. The task then moved under a task of the second project, and
@@ -303,6 +287,3 @@ func TestMergeKeepsExistingParentSQLite(t *testing.T) {
 	checkMergeKeepsExistingParent(t, openImportTargetDB(t))
 }
 
-func TestMergeKeepsExistingParentPostgres(t *testing.T) {
-	checkMergeKeepsExistingParent(t, openPostgresImportTarget(t))
-}

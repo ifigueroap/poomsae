@@ -28,7 +28,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/embedding"
@@ -38,7 +37,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/linearsync"
 	"github.com/ifigueroap/poomsae/internal/notionsync"
 	"github.com/ifigueroap/poomsae/internal/planesync"
-	"github.com/ifigueroap/poomsae/internal/rootbridge"
 	"github.com/ifigueroap/poomsae/internal/telemetry"
 	"github.com/ifigueroap/poomsae/internal/todoistsync"
 	"github.com/ifigueroap/poomsae/internal/twentysync"
@@ -81,8 +79,11 @@ var newTelemetryReporter = func(opts telemetry.Options) telemetry.Client {
 	return telemetry.NewReporterOrDisabled(opts)
 }
 
-var runExternalRootRunner = func(ctx context.Context, runner *rootbridge.Runner) error {
-	return runner.Run(ctx)
+// afterStorageReady blocks until ctx is canceled. Tests replace it to observe
+// that startup has opened the store and finished cutover.
+var afterStorageReady = func(ctx context.Context) error {
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 type issueSyncDaemonRunner interface {
@@ -126,9 +127,6 @@ var openEmbeddingVectorIndex = func(
 	store db.Storage,
 	vectorsPath string,
 ) (*vector.Index, error) {
-	if postgresStore, ok := store.(*pgstore.Store); ok {
-		return vector.OpenPostgres(ctx, postgresStore.DB)
-	}
 	return vector.Open(ctx, vectorsPath)
 }
 
@@ -1081,17 +1079,6 @@ func preflightDaemonStartup(ctx context.Context, listen string, insecureReadonly
 	if err != nil {
 		return daemonStartupPreflight{}, err
 	}
-	if backend == storeopen.BackendPostgres {
-		storeConfig.Postgres = pgstore.ConfigFromValues(
-			dcfg.Storage.Postgres.Schema,
-			dcfg.Storage.Postgres.Mode,
-			dcfg.Storage.Postgres.SchemaOwner,
-			dcfg.Storage.Postgres.AllowInsecure,
-		)
-		if err := storeConfig.Postgres.Validate(); err != nil {
-			return daemonStartupPreflight{}, err
-		}
-	}
 	if backend == storeopen.BackendSQLite {
 		storeConfig.SQLiteBusyTimeout, err = dcfg.Storage.SQLite.BusyTimeoutDuration()
 		if err != nil {
@@ -1523,6 +1510,11 @@ func runDaemonProcess(
 	broadcaster := daemon.NewEventBroadcaster()
 	publisher := daemon.NewEventPublisher(broadcaster, disp)
 	startClaimSweeper(ctx, workers, waitableDrainAdmission, store, publisher, daemonLog)
+	workers.Go(func() {
+		if err := afterStorageReady(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("storage ready: %v", err)
+		}
+	})
 	embedder, vectorIndex, reconcilerHealth, embeddingWake, err := startEmbeddingReconciler(
 		ctx, workers, waitableDrainAdmission, dcfg.Search.Embeddings, startup.Embedder, startup.VectorsPath, store, broadcaster, daemonLog, publisher,
 	)

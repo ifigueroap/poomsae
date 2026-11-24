@@ -20,8 +20,8 @@ Renew before expiry by claiming again with `--ttl`, without `--if-unowned`.
 Install:
 
 - macOS: `brew install poomsae`
-- Linux: `curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash`
-- Windows: `irm https://github.com/ifigueroap/poomsae/install.ps1 | iex`
+- Linux: `curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash`
+- Windows: `irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex`
 
 One Go binary, no runtime dependencies. See
 [all install options](https://github.com/ifigueroap/poomsae/docs/get-started/install/).

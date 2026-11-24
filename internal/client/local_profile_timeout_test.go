@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -75,29 +74,12 @@ func TestNamedReadOnlyProfileDiscoveryDefersIdentityProbe(t *testing.T) {
 	require.Zero(t, identityCalls.Load(), "discovery must not make an identity request with POOMSAE_HTTP_TIMEOUT")
 }
 
-func TestLocalProfileStorageProbeHonorsTimeout(t *testing.T) {
-	t.Setenv("POOMSAE_HTTP_TIMEOUT", "50ms")
-	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	release := make(chan struct{})
-	defer close(release)
-	defer func() { _ = listener.Close() }()
-	go func() {
-		connection, err := listener.Accept()
-		if err == nil {
-			defer func() { _ = connection.Close() }()
-			<-release
-		}
-	}()
-	profile := config.LocalProfileConfig{DSN: fmt.Sprintf("postgres://profile_test:synthetic-secret@%s/example_db?sslmode=disable", listener.Addr()), Config: &config.DaemonConfig{}}
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-	started := time.Now()
-	_, err = InspectLocalProfileStorage(ctx, profile)
+func TestLocalProfileStorageProbeRejectsPostgresWithoutLeakingSecrets(t *testing.T) {
+	profile := config.LocalProfileConfig{DSN: "postgres://profile_test:synthetic-secret@127.0.0.1:1/example_db?sslmode=disable", Config: &config.DaemonConfig{}} //nolint:gosec // synthetic secret; the test asserts it does not leak
+	_, err := InspectLocalProfileStorage(t.Context(), profile)
 	require.ErrorIs(t, err, ErrProfileStorageUnavailable)
-	require.Contains(t, err.Error(), "timeout")
+	require.Contains(t, err.Error(), "not available")
 	require.NotContains(t, err.Error(), "synthetic-secret")
-	require.Less(t, time.Since(started), time.Second, "a stalled database must honor the configured inspection budget")
 }
 
 func TestLocalProfileIdentityProbeDistinguishesAuthenticationFailures(t *testing.T) {

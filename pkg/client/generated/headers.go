@@ -11,10 +11,6 @@ type StreamEventsHeaders struct {
 	LastEventID *int64 `json:"Last-Event-ID,omitempty"`
 }
 
-type LeaveFederationReplicaHeaders struct {
-	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
-}
-
 type PurgeProjectHeaders struct {
 	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
@@ -32,71 +28,6 @@ type ReplaceCronJobHeaders struct {
 }
 
 type RestoreCronJobHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type FederatedDocbankCapabilitiesHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type LinkFederatedDocbankHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type UploadFederatedDocbankHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type FederatedDocbankContentHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type PollFederationProjectEventsHeaders struct {
-	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
-	Authorization         *string `json:"Authorization,omitempty"`
-}
-
-type IngestFederationProjectEventsHeaders struct {
-	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
-	Authorization         *string `json:"Authorization,omitempty"`
-}
-
-type GetFederationProjectMetadataHeaders struct {
-	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
-	Authorization         *string `json:"Authorization,omitempty"`
-}
-
-type RetryFederationQuarantineHeaders struct {
-	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
-}
-
-type SkipFederationQuarantineHeaders struct {
-	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
-}
-
-type OfferRelayDeliveriesHeaders struct {
-	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
-	Authorization         *string `json:"Authorization,omitempty"`
-}
-
-type GetRelayResetHeaders struct {
-	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
-	Authorization         *string `json:"Authorization,omitempty"`
-}
-
-type AcceptRelayDeliveriesHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type AckRelayDeliveriesHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type DisconnectRelayEnrollmentHeaders struct {
-	Authorization *string `json:"Authorization,omitempty"`
-}
-
-type SearchFederationProjectHeaders struct {
 	Authorization *string `json:"Authorization,omitempty"`
 }
 

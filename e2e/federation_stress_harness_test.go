@@ -204,47 +204,6 @@ func (fx *federationStressFixture) assertNoPendingPushBacklogEventually(t federa
 	require.Empty(t, last, "pending federation push backlog did not drain")
 }
 
-func (fx *federationStressFixture) enrollSpoke(t federationStressTB, spoke *federationStressNode) {
-	t.Helper()
-	token := "stress-" + spoke.name + "-token"
-	var inst struct {
-		InstanceUID string `json:"instance_uid"`
-	}
-	stressDecodeGET(t, spoke.http, spoke.url+"/api/v1/instance", &inst)
-	var created api.FederationEnrollmentOut
-	stressDecodePOST(t, fx.hub.http, fx.hub.url+"/api/v1/federation/enrollments", map[string]any{
-		"token":              token,
-		"spoke_instance_uid": inst.InstanceUID,
-		"project_id":         fx.hub.projectID,
-		"capabilities":       "pull,push,claim",
-		"actor":              "stress",
-	}, &created)
-
-	var replica api.CreateFederationReplicaResponseBody
-	stressDecodePOST(t, spoke.http, spoke.url+"/api/v1/federation/replicas", map[string]any{
-		"hub_url":                   fx.hub.url,
-		"hub_project_id":            fx.hub.projectID,
-		"hub_project_uid":           fx.meta.ProjectUID,
-		"project_name":              fx.meta.ProjectName,
-		"replay_horizon_event_id":   fx.meta.ReplayHorizonEventID,
-		"baseline_through_event_id": fx.meta.BaselineThroughEventID,
-		"token":                     created.Token,
-		"capabilities":              "pull,push,claim",
-		"actor":                     "stress",
-		"push_enabled":              true,
-	}, &replica)
-	require.True(t, replica.Binding.PushEnabled)
-	spoke.replica = replica
-	spoke.projectID = replica.Project.ID
-	spoke.cred = config.FederationCredential{
-		HubURL:       fx.hub.url,
-		HubProjectID: fx.hub.projectID,
-		Token:        created.Token,
-		Capabilities: "claim,pull,push",
-		Actor:        "stress",
-	}
-}
-
 func (fx *federationStressFixture) pendingPushBacklogs(t federationStressTB) []string {
 	t.Helper()
 	ctx := context.Background()

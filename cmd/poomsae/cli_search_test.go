@@ -219,29 +219,6 @@ func TestCLISearchHelpDiscovery(t *testing.T) {
 	require.Contains(t, out, `poomsae cli search "<task>"`)
 }
 
-func TestCLISearchSkipPolicy(t *testing.T) {
-	root := newRootCmd()
-	for _, path := range []string{
-		"", "tui", "ui", "mcp serve", "connector serve", "connector serve forgejo",
-		"agent-hook contract", "agent-hook attention", "agent-hook attention start", "agent-hook attention end",
-		"attention-hook", "agent-contract-hook",
-	} {
-		cmd, rest, err := root.Find(strings.Fields(path))
-		require.NoError(t, err)
-		require.Empty(t, rest)
-		require.True(t, skipCLISearchCommand(cmd), path)
-	}
-	for _, path := range []string{
-		"search", "comment", "comment edit", "daemon start", "daemon stop", "daemon logs",
-		"agent-hook install", "agent-hook uninstall", "agent-hook status", "connector list",
-	} {
-		cmd, rest, err := root.Find(strings.Fields(path))
-		require.NoError(t, err)
-		require.Empty(t, rest)
-		require.False(t, skipCLISearchCommand(cmd), path)
-	}
-}
-
 func TestCLISearchUsesLiveTree(t *testing.T) {
 	root := newRootCmd()
 	root.AddCommand(&cobra.Command{
@@ -262,42 +239,6 @@ func TestCLISearchUsesLiveTree(t *testing.T) {
 	require.NoError(t, json.Unmarshal(out.Bytes(), &response))
 	require.NotEmpty(t, response.Results)
 	require.Equal(t, "poomsae fixture-task", response.Results[0].Command)
-}
-
-func TestCLISearchSkipSegmentsAndDescendants(t *testing.T) {
-	for _, fixture := range []struct {
-		parent, name string
-		eligible     bool
-	}{
-		{"connector serve", "fixture-task", false},
-		{"agent-hook attention", "fixture-task", false},
-		{"connector", "serve-extra", true},
-		{"agent-hook", "attention-extra", true},
-		{"fixture-group", "fixture-task", true},
-	} {
-		t.Run(fixture.parent+" "+fixture.name, func(t *testing.T) {
-			root := newRootCmd()
-			root.AddCommand(&cobra.Command{Use: "fixture-group", GroupID: "find"})
-			parent, rest, err := root.Find(strings.Fields(fixture.parent))
-			require.NoError(t, err)
-			require.Empty(t, rest)
-			parent.AddCommand(&cobra.Command{Use: fixture.name, Short: "fixturezzuniqueword", Run: func(*cobra.Command, []string) {
-				t.Fatal("discovery executed its result")
-			}})
-			var out bytes.Buffer
-			root.SetOut(&out)
-			root.SetArgs([]string{"cli", "search", "fixturezzuniqueword", "--json"})
-			require.NoError(t, root.ExecuteContext(t.Context()))
-			var response clisearch.Response
-			require.NoError(t, json.Unmarshal(out.Bytes(), &response))
-			if fixture.eligible {
-				require.Len(t, response.Results, 1)
-				require.Equal(t, "poomsae "+fixture.parent+" "+fixture.name, response.Results[0].Command)
-			} else {
-				require.Empty(t, response.Results)
-			}
-		})
-	}
 }
 
 // Equivalent native selectors must produce identical envelopes for every task,

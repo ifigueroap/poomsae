@@ -11,7 +11,7 @@ import (
 // Pending scans must seek past the cursor even while earlier rows stay pending.
 func TestPendingForGenerationCursor(t *testing.T) {
 	ctx := t.Context()
-	store, idx := openVectorBackend(t, "postgres")
+	store, idx := openVectorBackend(t, "sqlite")
 	project, err := store.CreateProject(ctx, "cursor-project")
 	require.NoError(t, err)
 	var issues []db.Issue

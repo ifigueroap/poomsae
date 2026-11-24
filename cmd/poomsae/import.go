@@ -1,17 +1,13 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
-	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/spf13/cobra"
@@ -140,10 +136,7 @@ func runKataJSONLImport(cmd *cobra.Command, input, target string, force, newInst
 		return err
 	}
 	if backend == storeopen.BackendPostgres {
-		if merge {
-			return runPostgresJSONLMerge(cmd, input, target)
-		}
-		return runPostgresJSONLImport(cmd, input, target, force, newInstance, asStandalone)
+		return &cliError{Message: "postgres storage is not available", Kind: kindValidation, ExitCode: ExitValidation}
 	}
 	if merge {
 		return runSQLiteJSONLMerge(cmd, input, target)
@@ -240,119 +233,6 @@ func runSQLiteJSONLMerge(cmd *cobra.Command, input, target string) error {
 		return fmt.Errorf("close merge target: %w", err)
 	}
 	return writeImportSuccess(cmd, target)
-}
-
-func runPostgresJSONLMerge(cmd *cobra.Command, input, target string) error {
-	identity, err := config.CanonicalDSNIdentity(target)
-	if err != nil {
-		return err
-	}
-	pgConfig, err := postgresRestoreConfig(cmd.Context())
-	if err != nil {
-		return err
-	}
-	version, err := pgstore.PeekSchemaVersionWithConfig(cmd.Context(), target, pgConfig)
-	if err != nil {
-		return err
-	}
-	if version == 0 {
-		return &cliError{Message: "merge target does not exist", Kind: kindValidation, ExitCode: ExitValidation}
-	}
-	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
-	if err != nil {
-		return fmt.Errorf("open import input: %w", err)
-	}
-	defer func() { _ = in.Close() }()
-	store, err := pgstore.OpenWithConfig(cmd.Context(), target, pgConfig)
-	if err != nil {
-		return err
-	}
-	if err := jsonl.ImportWithOptions(cmd.Context(), in, store, jsonl.ImportOptions{MergeProject: true}); err != nil {
-		_ = store.Close()
-		return err
-	}
-	if err := store.Close(); err != nil {
-		return fmt.Errorf("close merge target: %w", err)
-	}
-	return writeImportSuccess(cmd, identity)
-}
-
-func runPostgresJSONLImport(cmd *cobra.Command, input, target string, force, newInstance, asStandalone bool) error {
-	identity, err := config.CanonicalDSNIdentity(target)
-	if err != nil {
-		return err
-	}
-	pgConfig, err := postgresRestoreConfig(cmd.Context())
-	if err != nil {
-		return err
-	}
-	version, err := pgstore.PeekSchemaVersionWithConfig(cmd.Context(), target, pgConfig)
-	if err != nil {
-		return err
-	}
-	if version != 0 && !force {
-		if asStandalone {
-			return &cliError{Message: "standalone copy requires a fresh target; choose another --target", Kind: kindValidation, ExitCode: ExitValidation}
-		}
-		return &cliError{
-			Message:  "target already exists; pass --force to replace it",
-			Kind:     kindValidation,
-			ExitCode: ExitValidation,
-		}
-	}
-	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
-	if err != nil {
-		return fmt.Errorf("open import input: %w", err)
-	}
-	defer func() { _ = in.Close() }()
-	store, err := pgstore.OpenWithConfig(cmd.Context(), target, pgConfig)
-	if err != nil {
-		return err
-	}
-	installedFreshSchema := store.InstalledFreshSchema()
-	instanceUID := store.InstanceUID()
-	if err := jsonl.ImportWithOptions(cmd.Context(), in, store, jsonl.ImportOptions{
-		RequireFreshTarget: version == 0,
-		NewInstance:        newInstance,
-		AsStandalone:       asStandalone,
-	}); err != nil {
-		_ = store.Close()
-		if installedFreshSchema {
-			return errors.Join(err, removeFreshPostgresTargetAfterFailure(
-				cmd.Context(), target, instanceUID, pgConfig,
-			))
-		}
-		return err
-	}
-	if err := store.Close(); err != nil {
-		return fmt.Errorf("close import target: %w", err)
-	}
-	return writeImportSuccess(cmd, identity)
-}
-
-func postgresRestoreConfig(ctx context.Context) (pgstore.Config, error) {
-	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
-	if err != nil {
-		return pgstore.Config{}, err
-	}
-	pgConfig := pgstore.ConfigFromValues(
-		storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
-		storageConfig.AllowInsecure,
-	)
-	// Import is an explicit offline schema-owner operation. It must prepare a
-	// fresh target even when the long-running runtime is validation-only.
-	pgConfig.SchemaMode = pgstore.SchemaModeBootstrap
-	return pgConfig, nil
-}
-
-func removeFreshPostgresTargetAfterFailure(
-	parent context.Context,
-	target, instanceUID string,
-	pgConfig pgstore.Config,
-) error {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
-	defer cancel()
-	return pgstore.RemoveFreshSchemaWithConfig(ctx, target, instanceUID, pgConfig)
 }
 
 func writeImportSuccess(cmd *cobra.Command, target string) error {

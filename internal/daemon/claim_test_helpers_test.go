@@ -2,8 +2,6 @@ package daemon_test
 
 import (
 	"encoding/json/jsontext"
-	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"sync"
 	"testing"
@@ -17,15 +15,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/hooks"
 	"github.com/ifigueroap/poomsae/internal/testenv"
 )
-
-const (
-	federationTestSpokeUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
-	claimTestOtherSpokeUID = "01HZNQ7VFPK1XGD8R5MABCD4EY"
-)
-
-func bearer(token string) map[string]string {
-	return map[string]string{"Authorization": "Bearer " + token}
-}
 
 type claimResponseBody struct {
 	Granted    bool           `json:"granted"`
@@ -194,42 +183,11 @@ func createClaimForwardingPair(
 	return hub, spoke, hubProject, spokeProject, issue, enrollment.Token
 }
 
-func setClaimBindingHubURL(t *testing.T, spoke *testenv.Env, projectID int64, hubURL string) {
-	t.Helper()
-	binding, err := spoke.DB.FederationBindingByProject(t.Context(), projectID)
-	require.NoError(t, err)
-	binding.HubURL = hubURL
-	_, err = spoke.DB.UpsertFederationBinding(t.Context(), binding)
-	require.NoError(t, err)
-}
-
 func claimActionPath(projectID int64, ref, action string) string {
 	if action == "claim" {
 		action = "acquire"
 	}
 	return issuePathRef(projectID, ref, "lease/actions/"+action)
-}
-
-func claimStatusPath(projectID int64, ref string) string {
-	return issuePathRef(projectID, ref, "lease")
-}
-
-func fastFailClaimHubURL(t *testing.T) string {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		hijacker, ok := w.(http.Hijacker)
-		if !ok {
-			http.Error(w, "hijacking unsupported", http.StatusInternalServerError)
-			return
-		}
-		conn, _, err := hijacker.Hijack()
-		if err != nil {
-			return
-		}
-		_ = conn.Close()
-	}))
-	t.Cleanup(srv.Close)
-	return srv.URL
 }
 
 func setupClaimGateIssue(t *testing.T, federated bool) (*testenv.Env, db.Project, db.Issue) {
@@ -318,20 +276,4 @@ func writeShowClaimSpokeBinding(
 		Token:        token,
 		Capabilities: capabilities,
 	}))
-}
-
-func showIssueCachedClaim(issue db.Issue, holder string, at time.Time) *db.IssueClaim {
-	return &db.IssueClaim{
-		ClaimUID:          "01HZNQ7VFPK1XGD8R5MABCD4CC",
-		ProjectID:         issue.ProjectID,
-		IssueID:           issue.ID,
-		IssueUID:          issue.UID,
-		Holder:            holder,
-		HolderInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4CD",
-		ClientKind:        "cli",
-		ClaimKind:         "hard",
-		AcquiredAt:        at,
-		Revision:          1,
-		UpdatedAt:         at,
-	}
 }

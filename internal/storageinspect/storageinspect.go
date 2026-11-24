@@ -14,7 +14,6 @@ import (
 
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 )
 
@@ -25,8 +24,7 @@ type Inspector struct{}
 // the profile's existing storage. A schema read failure still reports the UID.
 func (Inspector) ReadProfileIdentity(ctx context.Context, profile config.LocalProfileConfig) (string, int, error) {
 	if isPostgres(profile.DSN) {
-		pg := profile.Config.Storage.Postgres
-		return pgstore.InspectMetadataWithConfig(ctx, profile.DSN, pgstore.ConfigFromValues(pg.Schema, pg.Mode, pg.SchemaOwner, pg.AllowInsecure))
+		return "", 0, errors.New("postgres storage is not available")
 	}
 	store, err := OpenProfileReadOnly(ctx, profile)
 	if err != nil {
@@ -62,12 +60,7 @@ func (Inspector) PeekCurrentSchema(ctx context.Context) (int, bool, error) {
 			return 0, false, nil
 		}
 	case storeopen.BackendPostgres:
-		pg, err := config.PoomsaePostgresStorageConfig(ctx)
-		if err != nil {
-			return 0, false, err
-		}
-		mode := pgstore.ConfigFromValues(pg.Schema, pg.Mode, pg.SchemaOwner, pg.AllowInsecure).SchemaMode
-		validateOnly = mode == pgstore.SchemaModeValidate
+		return 0, false, errors.New("postgres storage is not available")
 	}
 	version, err := storeopen.PeekSchemaVersion(ctx, dsn)
 	return version, validateOnly, err
@@ -87,11 +80,7 @@ func OpenProfileReadOnly(ctx context.Context, profile config.LocalProfileConfig)
 		}
 		return storeopen.OpenWithConfig(ctx, profile.DSN, storeopen.Config{SQLiteBusyTimeout: busyTimeout}, db.ReadOnly())
 	}
-	pg := profile.Config.Storage.Postgres
-	// OpenWithConfig plus ReadOnly preserves the selected schema and cannot
-	// bootstrap it. OpenReadOnly's default PostgreSQL dispatch uses current-home
-	// configuration, so it is deliberately not used for a selected PG profile.
-	return storeopen.OpenWithConfig(ctx, profile.DSN, storeopen.Config{Postgres: pgstore.ConfigFromValues(pg.Schema, pg.Mode, pg.SchemaOwner, pg.AllowInsecure)}, db.ReadOnly())
+	return nil, errors.New("postgres storage is not available")
 }
 
 func isPostgres(dsn string) bool {

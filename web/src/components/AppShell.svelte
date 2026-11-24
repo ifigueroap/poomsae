@@ -15,9 +15,9 @@
   import MenuIcon from '@lucide/svelte/icons/menu'
   import PlusIcon from '@lucide/svelte/icons/plus'
 
-  import type { TokenOut, UIIssueReference } from '../lib/api/generated'
+  import type { UIIssueReference } from '../lib/api/generated'
   import type { WebDaemonInfo } from '../lib/daemons/client'
-  import type { PoomsaeRoute, SettingsSection, ShareableFilters, SystemView } from '../lib/router'
+  import type { PoomsaeRoute, ShareableFilters, SystemView } from '../lib/router'
   import {
     deriveKataAreas,
     defaultKataTaskSearchFilters,
@@ -41,7 +41,6 @@
     type UISnapshot,
   } from '../lib/state/snapshot'
   import { defaultPreferences, type Preferences } from '../lib/state/preferences'
-  import type { MutationContext, MutationResult } from '../lib/mutations/controller'
   import IssueCollection from './IssueCollection.svelte'
   import IssueDetail from './IssueDetail.svelte'
   import IssueFilters from './IssueFilters.svelte'
@@ -58,7 +57,6 @@
   type ChildParent = { projectID: number; projectUID: string; issueUID: string }
 
   interface Props {
-    syncRefreshGeneration?: number
     route: AppRoute
     requestedRoute?: AppRoute | undefined
     snapshot: UISnapshot
@@ -78,21 +76,11 @@
     stale?: boolean | undefined
     readOnly?: boolean | undefined
     daemonError?: string | undefined
-    credentialTokens?: readonly TokenOut[] | undefined
-    credentialLoading?: boolean | undefined
-    credentialError?: string | undefined
     searchSettingsPostFetch?: typeof fetch | undefined
     canAdministerDaemon?: boolean | undefined
     onPreferencesChange?: ((preferences: Preferences) => void) | undefined
     onSelectDaemon?: ((id: string) => void) | undefined
     onOpenDaemon?: (() => void) | undefined
-    onAccessMutation?:
-      | ((
-          draft: unknown,
-          mutate: (context: MutationContext) => Promise<MutationResult>,
-        ) => Promise<boolean>)
-      | undefined
-    onRefreshCredentials?: (() => void | Promise<void>) | undefined
     onSearchEmpty?: (() => void) | undefined
     onNavigate: (route: AppRoute) => void | Promise<void>
     onCreateProject: (
@@ -140,7 +128,6 @@
   }
 
   let {
-    syncRefreshGeneration = 0,
     route: acceptedRoute,
     requestedRoute = undefined,
     snapshot,
@@ -160,16 +147,11 @@
     stale = false,
     readOnly = false,
     daemonError = undefined,
-    credentialTokens = [],
-    credentialLoading = false,
-    credentialError = undefined,
     searchSettingsPostFetch = fetch,
     canAdministerDaemon = false,
     onPreferencesChange = () => {},
     onSelectDaemon = () => {},
     onOpenDaemon = () => {},
-    onAccessMutation = undefined,
-    onRefreshCredentials = () => {},
     onSearchEmpty = undefined,
     onNavigate,
     onCreateProject,
@@ -427,20 +409,17 @@
     })
   }
 
-  // Credentials keeps its own address; every other section is a Settings one.
   function openSettingsSection(section: SettingsSectionID): void {
     if (
       section === settingsSection &&
-      (section === 'credentials'
-        ? route.view === 'credentials'
-        : route.view === 'settings' && (route.section ?? 'search') === section)
+      route.view === 'settings' &&
+      (route.section ?? 'search') === section
     )
       return
     navigate({
       kind: 'poomsae',
-      ...(section === 'credentials'
-        ? { view: 'credentials' as const }
-        : { view: 'settings' as const, section: section as SettingsSection }),
+      view: 'settings',
+      section,
       graph: false,
       filters: emptyShareableFilters(),
     })

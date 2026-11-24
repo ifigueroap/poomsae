@@ -19,7 +19,6 @@ import (
 
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/ifigueroap/poomsae/internal/jsonl"
 )
@@ -39,21 +38,15 @@ const (
 type Config struct {
 	// SQLiteBusyTimeout overrides SQLite busy handlers; zero keeps 5s.
 	SQLiteBusyTimeout time.Duration
-	Postgres          pgstore.Config
 }
 
 // InstalledFreshPostgresSchema reports whether store's open created its
 // configured Postgres schema. False is the safe answer for other backends and
 // for Postgres schemas that already existed.
-func InstalledFreshPostgresSchema(store db.Storage) bool {
-	reporter, ok := store.(interface{ InstalledFreshSchema() bool })
-	return ok && reporter.InstalledFreshSchema()
-}
+func InstalledFreshPostgresSchema(db.Storage) bool { return false }
 
 // DefaultConfig returns the standalone storage startup policy.
-func DefaultConfig() Config {
-	return Config{Postgres: pgstore.DefaultConfig()}
-}
+func DefaultConfig() Config { return Config{} }
 
 // BackendForDSN resolves a DSN without opening or mutating its target.
 func BackendForDSN(dsn string) (Backend, error) {
@@ -62,7 +55,7 @@ func BackendForDSN(dsn string) (Backend, error) {
 	case !hasScheme || scheme == "sqlite":
 		return BackendSQLite, nil
 	case scheme == "postgres" || scheme == "postgresql":
-		return BackendPostgres, nil
+		return BackendPostgres, errors.New("postgres storage is not available")
 	default:
 		return "", fmt.Errorf("unsupported dsn scheme %q", scheme)
 	}
@@ -83,16 +76,6 @@ func Open(ctx context.Context, dsn string, opts ...db.OpenOption) (db.Storage, e
 	backend, err := BackendForDSN(dsn)
 	if err != nil {
 		return nil, err
-	}
-	if backend == BackendPostgres {
-		storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
-		openConfig.Postgres = pgstore.ConfigFromValues(
-			storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
-			storageConfig.AllowInsecure,
-		)
 	}
 	if backend == BackendSQLite {
 		storageConfig, err := config.PoomsaeSQLiteStorageConfig(ctx)
@@ -115,16 +98,8 @@ func OpenWithConfig(ctx context.Context, dsn string, openConfig Config, opts ...
 	if err := Validate(dsn); err != nil {
 		return nil, err
 	}
-	backend, err := BackendForDSN(dsn)
-	if err != nil {
+	if _, err := BackendForDSN(dsn); err != nil {
 		return nil, err
-	}
-	if backend == BackendPostgres {
-		pgConfig := openConfig.Postgres
-		if pgConfig == (pgstore.Config{}) {
-			pgConfig = pgstore.DefaultConfig()
-		}
-		return pgstore.OpenWithConfig(ctx, dsn, pgConfig, opts...)
 	}
 	_, _, hasScheme := splitScheme(dsn)
 	path := dsn
@@ -141,20 +116,8 @@ func OpenWithConfig(ctx context.Context, dsn string, openConfig Config, opts ...
 // migrations. A missing Postgres schema reports version zero; SQLite keeps its
 // existing missing-file error so callers can distinguish it from a v0 file.
 func PeekSchemaVersion(ctx context.Context, dsn string) (int, error) {
-	backend, err := BackendForDSN(dsn)
-	if err != nil {
+	if _, err := BackendForDSN(dsn); err != nil {
 		return 0, err
-	}
-	if backend == BackendPostgres {
-		storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
-		if err != nil {
-			return 0, err
-		}
-		pgConfig := pgstore.ConfigFromValues(
-			storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
-			storageConfig.AllowInsecure,
-		)
-		return pgstore.PeekSchemaVersionWithConfig(ctx, dsn, pgConfig)
 	}
 	_, _, hasScheme := splitScheme(dsn)
 	path := dsn
@@ -167,23 +130,8 @@ func PeekSchemaVersion(ctx context.Context, dsn string) (int, error) {
 // RemoveFreshPostgresTarget rolls back a schema installed for a failed first
 // import. pgstore verifies the exact instance identity and absence of domain
 // state under exclusive table locks before dropping anything.
-func RemoveFreshPostgresTarget(ctx context.Context, dsn, instanceUID string) error {
-	backend, err := BackendForDSN(dsn)
-	if err != nil {
-		return err
-	}
-	if backend != BackendPostgres {
-		return fmt.Errorf("fresh target cleanup requires a postgres DSN")
-	}
-	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
-	if err != nil {
-		return err
-	}
-	pgConfig := pgstore.ConfigFromValues(
-		storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
-		storageConfig.AllowInsecure,
-	)
-	return pgstore.RemoveFreshSchemaWithConfig(ctx, dsn, instanceUID, pgConfig)
+func RemoveFreshPostgresTarget(context.Context, string, string) error {
+	return errors.New("postgres storage is not available")
 }
 
 // OpenReadOnly opens the backend selected by dsn read-only. The cutover

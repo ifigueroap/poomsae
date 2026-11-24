@@ -22,7 +22,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/embedding"
@@ -310,6 +309,17 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	return newService(ctx, cfg, serviceDeps{})
 }
 
+func embeddingSidecar(dsn string) (string, error) {
+	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
+		return "", errors.New("poomsae: postgres storage is not available")
+	}
+	path := strings.TrimPrefix(dsn, "sqlite://")
+	if stem, ok := strings.CutSuffix(path, ".db"); ok {
+		return stem + ".vectors.db", nil
+	}
+	return path + ".vectors", nil
+}
+
 func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, error) {
 	if strings.TrimSpace(cfg.DSN) == "" {
 		return nil, errors.New("poomsae: storage DSN is required")
@@ -325,15 +335,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	if err := config.ValidateEmbeddings(cfg.Embeddings); err != nil {
 		return nil, fmt.Errorf("poomsae: embeddings: %w", err)
-	}
-	if cfg.Embeddings.Enabled() {
-		backend, err := storeopen.BackendForDSN(cfg.DSN)
-		if err != nil {
-			return nil, fmt.Errorf("poomsae: open storage: %w", err)
-		}
-		if backend != storeopen.BackendPostgres {
-			return nil, errors.New("poomsae: embeddings require Postgres")
-		}
 	}
 	usesAccess := cfg.Access != nil
 	usesToken := strings.TrimSpace(cfg.Auth.Token) != ""
@@ -403,15 +404,7 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 		}
 	}
 
-	openCfg := storeopen.DefaultConfig()
-	pgCfg := cfg.Postgres
-	openCfg.Postgres = pgstore.ConfigFromValues(
-		pgCfg.Schema,
-		string(pgCfg.SchemaMode),
-		pgCfg.SchemaOwner,
-		pgCfg.AllowInsecureTransport,
-	)
-	store, err := storeopen.OpenWithConfig(ctx, cfg.DSN, openCfg, db.Serving())
+	store, err := storeopen.OpenWithConfig(ctx, cfg.DSN, storeopen.DefaultConfig(), db.Serving())
 	if err != nil {
 		return nil, fmt.Errorf("poomsae: open storage: %w", err)
 	}
@@ -419,11 +412,13 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	var index *vector.Index
 	var unavailable string
 	if cfg.Embeddings.Enabled() {
-		pg := store.(*pgstore.Store)
-		index, err = vector.OpenPostgres(ctx, pg.DB)
-		if errors.Is(err, vector.ErrPgvectorMissing) {
-			unavailable = err.Error()
-		} else if err != nil {
+		sidecar, sidecarErr := embeddingSidecar(cfg.DSN)
+		if sidecarErr != nil {
+			_ = store.Close()
+			return nil, sidecarErr
+		}
+		index, err = vector.Open(ctx, sidecar)
+		if err != nil {
 			_ = store.Close()
 			return nil, fmt.Errorf("poomsae: embedding index: %w", err)
 		}

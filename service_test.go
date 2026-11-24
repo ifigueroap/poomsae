@@ -306,7 +306,7 @@ func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 		want       string
 	}{
 		{"partial", poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234"}, "poomsae: embeddings:"},
-		{"sqlite", poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2}, "embeddings require Postgres"},
+		{"sqlite", poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2, MaxBatchTokens: 100}, "embedding batching"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "service.db")
@@ -319,7 +319,7 @@ func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 	}
 	t.Run("invalid batch budget", func(t *testing.T) {
 		service, err := poomsae.New(t.Context(), poomsae.Config{
-			DSN: "postgres://poomsae@127.0.0.1:1/poomsae?sslmode=disable", Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
+			DSN: filepath.Join(t.TempDir(), "service.db"), Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 			Embeddings: poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2, MaxBatchTokens: 100},
 		})
 		if service != nil {
@@ -327,16 +327,4 @@ func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 		}
 		require.ErrorContains(t, err, "embedding batching")
 	})
-}
-
-func TestServiceSemanticSearchWithoutEmbeddings(t *testing.T) {
-	service, err := poomsae.New(t.Context(), poomsae.Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: poomsae.AuthConfig{TrustCallerAuthentication: true}})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	server := httptest.NewServer(service.Handler())
-	t.Cleanup(server.Close)
-	project := createProject(t, server.URL, "example-project")
-	status, _, body := searchTitles(t.Context(), server, project.Project.ID, "search", "semantic")
-	require.Equal(t, http.StatusBadRequest, status)
-	require.Contains(t, body, "embeddings are not configured")
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
-	"github.com/ifigueroap/poomsae/internal/rootbridge"
 	"github.com/ifigueroap/poomsae/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
@@ -149,15 +148,15 @@ func TestStoreStaysOwnedAfterCutoverThroughSymlink(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	t.Setenv("POOMSAE_DB", link)
-	// The external-root runner starts after storage opens, so cutover is done.
-	originalRun := runExternalRootRunner
+	// afterStorageReady runs once the store is open, so cutover is done.
+	originalReady := afterStorageReady
 	started := make(chan struct{}, 1)
-	runExternalRootRunner = func(ctx context.Context, _ *rootbridge.Runner) error {
+	afterStorageReady = func(ctx context.Context) error {
 		started <- struct{}{}
 		<-ctx.Done()
 		return ctx.Err()
 	}
-	t.Cleanup(func() { runExternalRootRunner = originalRun })
+	t.Cleanup(func() { afterStorageReady = originalReady })
 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)

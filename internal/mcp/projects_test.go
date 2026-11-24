@@ -15,7 +15,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
-	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestDigestActorFiltersRoundTripAndAuditActorDisplay(t *testing.T) {
@@ -98,39 +97,6 @@ func TestAdministrationToolsRoundTripAgainstDaemon(t *testing.T) {
 	system := callAdministrationTool(t, session, "poomsae.system", map[string]any{})
 	require.NotEmpty(t, system["instance_uid"])
 	require.NotContains(t, system, "db_path")
-	// Enrollment credentials are minted through the CLI/daemon, never MCP.
-	renamed, err := store.ProjectByName(t.Context(), "renamed-project")
-	require.NoError(t, err)
-	actor := "example-agent"
-	_, err = client.EnableProjectFederation(t.Context(), &generated.EnableProjectFederationRequestOptions{
-		PathParams: &generated.EnableProjectFederationPath{ProjectID: renamed.ID},
-		Body:       &generated.EnableProjectFederationBody{Actor: &actor},
-	})
-	require.NoError(t, err)
-	enrolled, err := client.CreateFederationEnrollment(t.Context(), &generated.CreateFederationEnrollmentRequestOptions{Body: &generated.CreateFederationEnrollmentBody{
-		Actor: &actor, ProjectID: renamed.ID,
-		SpokeInstanceUID: system["instance_uid"].(string), Capabilities: "pull",
-	}})
-	require.NoError(t, err)
-	enrollmentID := enrolled.ID
-	spokeUID := system["instance_uid"].(string)
-	named := callAdministrationTool(t, session, "poomsae.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "name": "laptop"})
-	require.Equal(t, "laptop", named["spoke_name"])
-	federation := callAdministrationTool(t, session, "poomsae.federation_status", map[string]any{})
-	require.NotEmpty(t, federation["enrollments"])
-	require.NotContains(t, federation["enrollments"].([]any)[0].(map[string]any), "token")
-	require.Equal(t, "laptop", federation["enrollments"].([]any)[0].(map[string]any)["spoke_name"])
-	callAdministrationTool(t, session, "poomsae.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "clear": true})
-	federation = callAdministrationTool(t, session, "poomsae.federation_status", map[string]any{})
-	require.NotContains(t, federation["enrollments"].([]any)[0].(map[string]any), "spoke_name")
-	callAdministrationTool(t, session, "poomsae.federation_enrollment_revoke", map[string]any{"id": enrollmentID})
-	token := callAdministrationTool(t, session, "poomsae.token_create", map[string]any{"token_actor": "automation-agent", "name": "automation"})
-	require.NotEmpty(t, token["token"])
-	tokenID := token["record"].(map[string]any)["id"]
-	tokens := callAdministrationTool(t, session, "poomsae.tokens", map[string]any{})
-	require.NotEmpty(t, tokens["tokens"])
-	require.NotContains(t, tokens["tokens"].([]any)[0].(map[string]any), "token")
-	callAdministrationTool(t, session, "poomsae.token_revoke", map[string]any{"id": tokenID})
 	callAdministrationTool(t, session, "poomsae.project_create", map[string]any{"name": "lifecycle-project"})
 	callAdministrationTool(t, session, "poomsae.project_remove", map[string]any{"project": "lifecycle-project"})
 	callAdministrationTool(t, session, "poomsae.project_restore", map[string]any{"project": "lifecycle-project"})

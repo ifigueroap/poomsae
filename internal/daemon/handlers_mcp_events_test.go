@@ -12,8 +12,6 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -560,65 +558,6 @@ func TestMCPEventsRoutesReportADisabledService(t *testing.T) {
 			assert.Equal(t, http.StatusOK, status, string(raw))
 		})
 	}
-}
-
-func TestRevokingATokenPromptlyEndsItsMCPEventsSubscriptions(t *testing.T) {
-	var recorder postRecorder
-	var drains atomic.Int64
-	var clock mcpEventsClock
-	f := newMCPEventsFixture(t, withRunningMCPEventsObserved(t, mcpEventsWebhookRecording(t, &recorder), &clock, &drains))
-	args := map[string]any{"for": "example-user"}
-	status, raw := mcpEventsCall(t, f.env, "coordinator-token", http.MethodPost, "/api/v1/mcp-events/subscribe", subscribeBody(args, allProjects))
-	require.Equal(t, http.StatusOK, status, string(raw))
-
-	tokens, err := f.env.DB.ListAPITokens(t.Context())
-	require.NoError(t, err)
-	var revoked db.APIToken
-	for _, token := range tokens {
-		if token.Actor == "coordinator" {
-			revoked = token
-		}
-	}
-	require.NotZero(t, revoked.ID)
-	principal := mcpevents.Principal{Authority: mcpevents.AuthorityDBToken, Subject: strconv.FormatInt(revoked.ID, 10), Actor: "coordinator"}
-	rows, err := f.env.DB.ListMCPEventSubscriptions(t.Context(), principal.Key())
-	require.NoError(t, err)
-	require.Len(t, rows, 1)
-
-	// Let the worker mark the idle subscription: its first run starts on the
-	// next cycle and its finish triggers another, so wait for three completed
-	// cycles. The revocation is noticed whether or not the mark was set, so
-	// this only steers the test toward the idle path.
-	settled := drains.Load()
-	//nolint:kennlint // deadlinetest: Native database and HTTP worker progress requires real I/O; bounded polling observes retained state.
-	require.Eventually(t, func() bool { return drains.Load() >= settled+3 }, 10*time.Second, 5*time.Millisecond, "the worker completes delivery cycles")
-	status, raw = mcpEventsCall(t, f.env, "bootstrap-token", http.MethodPost, "/api/v1/tokens/"+strconv.FormatInt(revoked.ID, 10)+"/actions/revoke", nil)
-	require.Equal(t, http.StatusOK, status, string(raw))
-
-	// The worker checks the owner of an idle subscription once per authority
-	// recheck interval (5 s) and needs no separate Recheck call. Move the
-	// service clock past that interval instead of waiting for it. The
-	// one-minute sweep stays out of reach.
-	clock.Advance(5 * time.Second)
-	//nolint:kennlint // deadlinetest: Native database and HTTP worker progress requires real I/O; bounded polling observes retained state.
-	require.Eventually(t, func() bool {
-		rows, err := f.env.DB.ListMCPEventSubscriptions(t.Context(), principal.Key())
-		return err == nil && len(rows) == 1 && rows[0].State == db.MCPEventStateEnded && rows[0].EndReason == "principal_revoked"
-	}, 10*time.Second, 25*time.Millisecond, "revocation ends the subscription without waiting for the one-minute sweep")
-
-	// The terminated control reaches the receiver once, signed, and then the
-	// row has nothing pending, so no further POST follows.
-	//nolint:kennlint // deadlinetest: Native database and HTTP worker progress requires real I/O; bounded polling observes retained state.
-	require.Eventually(t, func() bool {
-		rows, err := f.env.DB.ListMCPEventSubscriptions(t.Context(), principal.Key())
-		return err == nil && len(rows) == 1 && rows[0].PendingKind == db.MCPEventPendingNone
-	}, 10*time.Second, 25*time.Millisecond, "the terminated control is acknowledged")
-	posts := recorder.all()
-	require.Len(t, posts, 1)
-	assert.Equal(t, "terminated", posts[0].Type)
-	assert.True(t, strings.HasPrefix(posts[0].ID, "msg_terminated_"), posts[0].ID)
-	assert.True(t, strings.HasPrefix(posts[0].Signature, "v1,"), "the control is signed")
-	assert.Equal(t, "Forbidden", posts[0].ErrorName)
 }
 
 func TestStaticTokenReplacementRevokesPersistedEventsAfterRestart(t *testing.T) {

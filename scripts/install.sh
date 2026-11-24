@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # poomsae installer
-# Usage: curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh | bash
 
 set -euo pipefail
 

@@ -17,7 +17,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/daemon"
 
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/ifigueroap/poomsae/internal/embedding"
 	"github.com/ifigueroap/poomsae/internal/testenv"
@@ -40,25 +39,23 @@ func openVectorBackend(t *testing.T, backend string) (db.Storage, *vector.Index)
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, idx.Close()) })
 	} else {
-		dsn, cleanup := testenv.NewPostgresWithPgvectorContainer(t, ctx)
-		t.Cleanup(cleanup)
-		s, err := pgstore.Open(ctx, dsn)
-		require.NoError(t, err)
-		store = s
-		t.Cleanup(func() { require.NoError(t, s.Close()) })
-		idx, err = vector.OpenPostgres(ctx, s.DB)
-		require.NoError(t, err)
-		release, err := idx.AcquireReconcilerLease(ctx)
-		require.NoError(t, err)
-		t.Cleanup(func() { require.NoError(t, release()) })
+		t.Fatalf("backend %q is not available", backend)
 	}
 	return store, idx
+}
+
+func mappedEmbedder(t *testing.T, vectorFor func(string) []float32) *embedding.Client {
+	t.Helper()
+	server := testenv.NewEmbeddingServer(t, vectorFor)
+	client, err := embedding.New(embedding.Config{BaseURL: server.URL, Model: "sqlite-e2e", Dims: 2})
+	require.NoError(t, err)
+	return client
 }
 
 // The project boundary belongs before distance ranking and its candidate limit:
 // arbitrarily closer private chunks must never crowd out an authorized result.
 func TestProjectAccessVectorCandidatesBeforeLimit(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			store, idx := openVectorBackend(t, backend)
@@ -146,7 +143,7 @@ func TestProjectAccessVectorCandidatesBeforeLimit(t *testing.T) {
 // R7/A12: importing all received chunks answers real KNN without document
 // encoding, rejects a stale local revision, and enforces the recipient recipe.
 func TestEmbeddingArtifactImportSemanticRetrieval(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			store, idx := openVectorBackend(t, backend)
@@ -215,7 +212,7 @@ func TestEmbeddingArtifactImportSemanticRetrieval(t *testing.T) {
 // R7/A12: a complete compatible received artifact is reconciled before paid
 // fill, and its second chunk answers an actual query from the same encoder.
 func TestEmbeddingArtifactReuseBeforeFill(t *testing.T) {
-	for _, backend := range []string{"sqlite", "postgres"} {
+	for _, backend := range []string{"sqlite"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx := t.Context()
 			var documentCalls, queryCalls atomic.Int32
@@ -252,14 +249,7 @@ func TestEmbeddingArtifactReuseBeforeFill(t *testing.T) {
 				require.NoError(t, err)
 				t.Cleanup(func() { require.NoError(t, idx.Close()) })
 			} else {
-				dsn, cleanup := testenv.NewPostgresWithPgvectorContainer(t, ctx)
-				t.Cleanup(cleanup)
-				s, err := pgstore.Open(ctx, dsn)
-				require.NoError(t, err)
-				store = s
-				t.Cleanup(func() { require.NoError(t, s.Close()) })
-				idx, err = vector.OpenPostgres(ctx, s.DB)
-				require.NoError(t, err)
+				t.Fatalf("backend %q is not available", backend)
 			}
 			project, err := store.CreateProject(ctx, "artifact-reuse-project")
 			require.NoError(t, err)

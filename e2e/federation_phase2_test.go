@@ -3,145 +3,14 @@
 package e2e_test
 
 import (
-	"encoding/json"
-	"net/http"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
-	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSmoke_FederationPhase2BidirectionalSync(t *testing.T) {
-	ctx := t.Context()
-	hub := testenv.New(t)
-	spokeDirs := newE2EDirs(t)
-	bin := buildKataBinary(t)
-	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=60000"))
-	spokeURL, spokeHTTP := connectDaemon(t, spokeDirs, spokeStderr)
-	spokeDB, err := sqlitestore.Open(ctx, spokeDirs.dbPath)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = spokeDB.Close() })
-
-	req, reqErr := http.NewRequestWithContext(t.Context(), http.MethodGet, spokeURL+"/api/v1/instance", nil)
-	require.NoError(t, reqErr)
-	resp, err := spokeHTTP.Do(req) //nolint:gosec // test loopback
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	var inst struct {
-		InstanceUID string `json:"instance_uid"`
-	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&inst))
-	require.Equal(t, spokeDB.InstanceUID(), inst.InstanceUID)
-
-	hubProject, err := hub.DB.CreateProject(ctx, "hub")
-	require.NoError(t, err)
-	hubIssue, _, err := hub.DB.CreateIssue(ctx, db.CreateIssueParams{
-		ProjectID: hubProject.ID,
-		Title:     "hub baseline",
-		Body:      "from hub",
-		Author:    "agent",
-	})
-	require.NoError(t, err)
-	var meta api.ProjectFederationBody
-	decodePOST(t, hub.HTTP, hub.URL+"/api/v1/projects/"+strconv.FormatInt(hubProject.ID, 10)+"/federation/enable",
-		map[string]any{"actor": "agent"}, &meta)
-	created, err := hub.DB.CreateFederationEnrollment(ctx, db.CreateFederationEnrollmentParams{
-		Token:            "phase2-bidirectional-token",
-		SpokeInstanceUID: inst.InstanceUID,
-		ProjectID:        nil,
-		Capabilities:     "pull,push",
-		Actor:            "agent",
-	})
-	require.NoError(t, err)
-
-	var replica api.CreateFederationReplicaResponseBody
-	decodePOST(t, spokeHTTP, spokeURL+"/api/v1/federation/replicas", map[string]any{
-		"hub_url":                 hub.URL,
-		"hub_project_id":          hubProject.ID,
-		"hub_project_uid":         meta.ProjectUID,
-		"project_name":            meta.ProjectName,
-		"replay_horizon_event_id": meta.ReplayHorizonEventID,
-		"token":                   created.Token,
-		"capabilities":            "pull,push",
-		"actor":                   "agent",
-		"push_enabled":            true,
-	}, &replica)
-	require.True(t, replica.Binding.PushEnabled)
-
-	got := waitForFederatedIssue(t, spokeDB, hubIssue.UID, spokeStderr)
-	require.Equal(t, "hub baseline", got.Title)
-	assertFoldedProjectionMatch(t, hub.DB, spokeDB, hubProject.ID, replica.Project.ID, meta.ReplayHorizonEventID-1)
-
-	_, _, err = hub.DB.CreateComment(ctx, db.CreateCommentParams{
-		IssueID: hubIssue.ID,
-		Author:  "agent",
-		Body:    "hub follow-up before spoke wake",
-	})
-	require.NoError(t, err)
-
-	resp = postJSON(t, spokeHTTP, spokeURL+"/api/v1/projects/"+strconv.FormatInt(replica.Project.ID, 10)+"/issues",
-		map[string]any{"title": "spoke pushed", "body": "from spoke", "actor": "agent"})
-	defer func() { _ = resp.Body.Close() }()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	pushed := waitForFederatedTitle(t, hub.DB, "spoke pushed", spokeStderr, 2*time.Second)
-	assert.Equal(t, "from spoke", pushed.Body)
-	waitForFoldedProjectionMatch(t, hub.DB, spokeDB, hubProject.ID, replica.Project.ID, meta.ReplayHorizonEventID-1, spokeStderr)
-}
-
-func TestFederationPhase2PushWakeLatency(t *testing.T) {
-	ctx := t.Context()
-	hub := testenv.New(t)
-	spokeDirs := newE2EDirs(t)
-	bin := buildKataBinary(t)
-	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=60000"))
-	spokeURL, spokeHTTP := connectDaemon(t, spokeDirs, spokeStderr)
-	spokeDB, err := sqlitestore.Open(ctx, spokeDirs.dbPath)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = spokeDB.Close() })
-
-	hubProject, err := hub.DB.CreateProject(ctx, "hub")
-	require.NoError(t, err)
-	var meta api.ProjectFederationBody
-	decodePOST(t, hub.HTTP, hub.URL+"/api/v1/projects/"+strconv.FormatInt(hubProject.ID, 10)+"/federation/enable",
-		map[string]any{"actor": "agent"}, &meta)
-	created, err := hub.DB.CreateFederationEnrollment(ctx, db.CreateFederationEnrollmentParams{ //nolint:gosec // test-only bearer token
-		Token:            "phase2-push-token",
-		SpokeInstanceUID: spokeDB.InstanceUID(),
-		ProjectID:        &hubProject.ID,
-		Capabilities:     "pull,push",
-		Actor:            "agent",
-	})
-	require.NoError(t, err)
-
-	var replica api.CreateFederationReplicaResponseBody
-	decodePOST(t, spokeHTTP, spokeURL+"/api/v1/federation/replicas", map[string]any{
-		"hub_url":                 hub.URL,
-		"hub_project_id":          hubProject.ID,
-		"hub_project_uid":         meta.ProjectUID,
-		"project_name":            meta.ProjectName,
-		"replay_horizon_event_id": meta.ReplayHorizonEventID,
-		"token":                   created.Token,
-		"actor":                   "agent",
-	}, &replica)
-	_, err = spokeDB.EnableFederationPush(ctx, replica.Project.ID, 0)
-	require.NoError(t, err)
-
-	resp := postJSON(t, spokeHTTP, spokeURL+"/api/v1/projects/"+strconv.FormatInt(replica.Project.ID, 10)+"/issues",
-		map[string]any{"title": "pushed quickly", "actor": "agent"})
-	defer func() { _ = resp.Body.Close() }()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	got := waitForFederatedTitle(t, hub.DB, "pushed quickly", spokeStderr, 2*time.Second)
-	assert.Equal(t, "pushed quickly", got.Title)
-}
 
 func waitForFederatedTitle(
 	t *testing.T,

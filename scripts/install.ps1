@@ -1,5 +1,5 @@
 # poomsae installer for Windows
-# Usage: powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
+# Usage: powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1 | iex"
 
 $ErrorActionPreference = 'Stop'
 

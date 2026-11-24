@@ -185,23 +185,8 @@ func (c *Client) ReportScreenViewed(ctx context.Context, screen string) error {
 
 // ListTokens returns the daemon's redacted credential audit inventory and
 // the instant at which the daemon classified each token's state.
-func (c *Client) ListTokens(ctx context.Context) ([]TokenInfo, time.Time, error) {
-	var resp struct {
-		Tokens     []TokenInfo `json:"tokens"`
-		ObservedAt time.Time   `json:"observed_at"`
-	}
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return nil, time.Time{}, err
-	}
-	wire, callErr := apiClient.ListTokensWithResponse(ctx)
-	if wire == nil {
-		return nil, time.Time{}, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return nil, time.Time{}, err
-	}
-	return resp.Tokens, resp.ObservedAt, nil
+func (c *Client) ListTokens(context.Context) ([]TokenInfo, time.Time, error) {
+	return nil, time.Time{}, errors.New("token administration is not available")
 }
 
 // ListIssues returns the issues for projectID filtered by f.
@@ -931,180 +916,43 @@ func (c *Client) EnsureProject(ctx context.Context, name, actor string) (Project
 }
 
 // FederationStatus returns redacted federation status for all local bindings.
-func (c *Client) FederationStatus(ctx context.Context) (FederationStatusBody, error) {
-	var resp FederationStatusBody
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return resp, err
-	}
-	wire, callErr := apiClient.GetFederationStatusWithResponse(ctx, nil)
-	if wire == nil {
-		return resp, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+func (c *Client) FederationStatus(context.Context) (FederationStatusBody, error) {
+	return FederationStatusBody{}, errors.New("federation is not available")
 }
 
-// EnableFederation enables federation metadata for an existing project.
-func (c *Client) EnableFederation(ctx context.Context, projectID int64, actor string) (ProjectFederationMetadata, error) {
-	var resp ProjectFederationMetadata
-
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return resp, err
-	}
-	wire, callErr := apiClient.EnableProjectFederationWithResponse(ctx, &generated.EnableProjectFederationRequestOptions{PathParams: &generated.EnableProjectFederationPath{ProjectID: projectID}, Body: &generated.EnableProjectFederationBody{Actor: &actor}})
-	if wire == nil {
-		return resp, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+// EnableFederation reports that project federation is not available.
+func (c *Client) EnableFederation(context.Context, int64, string) (ProjectFederationMetadata, error) {
+	return ProjectFederationMetadata{}, errors.New("federation is not available")
 }
 
-// CreateFederationEnrollment creates a temporary hub enrollment token.
-func (c *Client) CreateFederationEnrollment(ctx context.Context, body CreateFederationEnrollmentInput) (FederationEnrollment, error) {
-	var resp FederationEnrollment
-	encoded, err := json.Marshal(body)
-	if err != nil {
-		return resp, err
-	}
-	var payload generated.CreateFederationEnrollmentBody
-	if err := json.Unmarshal(encoded, &payload); err != nil {
-		return resp, err
-	}
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return resp, err
-	}
-	wire, callErr := apiClient.CreateFederationEnrollmentWithResponse(ctx, &generated.CreateFederationEnrollmentRequestOptions{Body: &payload})
-	if wire == nil {
-		return resp, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+// CreateFederationEnrollment reports that federation enrollment is not available.
+func (c *Client) CreateFederationEnrollment(context.Context, CreateFederationEnrollmentInput) (FederationEnrollment, error) {
+	return FederationEnrollment{}, errors.New("federation is not available")
 }
 
-// CreateFederationReplica joins or adopts a local project as a spoke.
-func (c *Client) CreateFederationReplica(ctx context.Context, body CreateFederationReplicaInput) (FederationReplicaResult, error) {
-	var resp FederationReplicaResult
-	encoded, err := json.Marshal(body)
-	if err != nil {
-		return resp, err
-	}
-	var payload generated.CreateFederationReplicaBody
-	if err := json.Unmarshal(encoded, &payload); err != nil {
-		return resp, err
-	}
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return resp, err
-	}
-	wire, callErr := apiClient.CreateFederationReplicaWithResponse(ctx, &generated.CreateFederationReplicaRequestOptions{Body: &payload})
-	if wire == nil {
-		return resp, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+// CreateFederationReplica reports that federation replicas are not available.
+func (c *Client) CreateFederationReplica(context.Context, CreateFederationReplicaInput) (FederationReplicaResult, error) {
+	return FederationReplicaResult{}, errors.New("federation is not available")
 }
 
-// ListFederationEnrollments lists the hub's federation transport grants. Used
-// by the leave flow to find the active enrollments to revoke before teardown.
-// Tokens are never returned by this endpoint.
-func (c *Client) ListFederationEnrollments(ctx context.Context) ([]FederationEnrollment, error) {
-	var resp struct {
-		Enrollments []FederationEnrollment `json:"enrollments"`
-	}
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return nil, err
-	}
-	wire, callErr := apiClient.ListFederationEnrollmentsWithResponse(ctx)
-	if wire == nil {
-		return nil, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return nil, err
-	}
-	return resp.Enrollments, nil
+// ListFederationEnrollments reports that federation enrollment is not available.
+func (c *Client) ListFederationEnrollments(context.Context) ([]FederationEnrollment, error) {
+	return nil, errors.New("federation is not available")
 }
 
-// NameFederationSpoke sets a hub-local name, or clears it when name is empty.
-func (c *Client) NameFederationSpoke(ctx context.Context, instanceUID, name string) (string, error) {
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return "", err
-	}
-	var result struct {
-		SpokeName string `json:"spoke_name"`
-	}
-	if name == "" {
-		wire, callErr := apiClient.ClearFederationSpokeNameWithResponse(ctx, &generated.ClearFederationSpokeNameRequestOptions{
-			PathParams: &generated.ClearFederationSpokeNamePath{SpokeInstanceUID: instanceUID},
-		})
-		if wire == nil {
-			return "", callErr
-		}
-		err = decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &result)
-	} else {
-		wire, callErr := apiClient.SetFederationSpokeNameWithResponse(ctx, &generated.SetFederationSpokeNameRequestOptions{
-			PathParams: &generated.SetFederationSpokeNamePath{SpokeInstanceUID: instanceUID},
-			Body:       &generated.SetFederationSpokeNameBody{Name: name},
-		})
-		if wire == nil {
-			return "", callErr
-		}
-		err = decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &result)
-	}
-	return result.SpokeName, err
+// NameFederationSpoke reports that spoke names are not available.
+func (c *Client) NameFederationSpoke(context.Context, string, string) (string, error) {
+	return "", errors.New("federation is not available")
 }
 
-// RevokeFederationEnrollment revokes one hub enrollment by ID. Revocation is
-// idempotent at the daemon; an already-revoked row still reports revoked.
-func (c *Client) RevokeFederationEnrollment(ctx context.Context, enrollmentID int64) error {
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return err
-	}
-	wire, callErr := apiClient.RevokeFederationEnrollmentWithResponse(ctx, &generated.RevokeFederationEnrollmentRequestOptions{PathParams: &generated.RevokeFederationEnrollmentPath{EnrollmentID: enrollmentID}})
-	if wire == nil {
-		return callErr
-	}
-	return decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, nil)
+// RevokeFederationEnrollment reports that federation enrollment is not available.
+func (c *Client) RevokeFederationEnrollment(context.Context, int64) error {
+	return errors.New("federation is not available")
 }
 
-// LeaveFederationReplica tears down a local spoke replica (detach or archive).
-// This is the local-only daemon primitive; the hub revoke is composed by the
-// caller before invoking it, mirroring the CLI leave orchestration.
-func (c *Client) LeaveFederationReplica(ctx context.Context, projectID int64, body LeaveFederationReplicaInput) (LeaveFederationReplicaResult, error) {
-	var resp LeaveFederationReplicaResult
-	encoded, err := json.Marshal(body)
-	if err != nil {
-		return resp, err
-	}
-	var payload generated.LeaveFederationReplicaBody
-	if err := json.Unmarshal(encoded, &payload); err != nil {
-		return resp, err
-	}
-	apiClient, err := c.generatedClient()
-	if err != nil {
-		return resp, err
-	}
-	wire, callErr := apiClient.LeaveFederationReplicaWithResponse(ctx, &generated.LeaveFederationReplicaRequestOptions{PathParams: &generated.LeaveFederationReplicaPath{ProjectID: projectID}, Body: &payload})
-	if wire == nil {
-		return resp, callErr
-	}
-	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+// LeaveFederationReplica reports that federation replicas are not available.
+func (c *Client) LeaveFederationReplica(context.Context, int64, LeaveFederationReplicaInput) (LeaveFederationReplicaResult, error) {
+	return LeaveFederationReplicaResult{}, errors.New("federation is not available")
 }
 
 // ListProjectsWithStats returns every active project with per-project

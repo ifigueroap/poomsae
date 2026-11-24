@@ -2201,7 +2201,7 @@ hosted release installer.
   `POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1`; token administration
   remains blocked without authentication.
 - Added a hosted Windows PowerShell release installer at
-  `https://github.com/ifigueroap/poomsae/install.ps1`, including release-asset selection,
+  `https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1`, including release-asset selection,
   checksum verification, user-local install, and user `Path` updates.
 
 **Improvements**

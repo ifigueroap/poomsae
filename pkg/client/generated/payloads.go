@@ -6,30 +6,6 @@ import (
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
 )
 
-type ReconcileExternalRootByKeyBody = ReconcileExternalRootByKeyRequestBody
-
-type MapConnectorFieldBody = MapConnectorFieldRequestBody
-
-type ConnectFederationBridgeBody = ConnectFederationBridgeRequestBody
-
-type DisconnectFederationBridgeBody = DisconnectFederationBridgeRequestBody
-
-type CreateFederationEnrollmentBody = CreateFederationEnrollmentRequestBody
-
-type RotateFederationEnrollmentBody = RotateFederationEnrollmentRequestBody
-
-type SetFederationSpokeNameBody = SetFederationSpokeNameRequestBody
-
-type CreateFederationReplicaBody = CreateFederationReplicaRequestBody
-
-type LeaveFederationReplicaBody = LeaveFederationReplicaRequestBody
-
-type RebindFederationReplicaBody = RebindFederationReplicaRequestBody
-
-type ConfigureFederationSigningBody = ConfigureFederationSigningRequestBody
-
-type RepinFederationRootKeyBody = RepinFederationRootKeyRequestBody
-
 type McpEventsSubscribeBody = MCPEventsSubscribeBody
 
 type McpEventsUnsubscribeBody = MCPEventsUnsubscribeBody
@@ -39,8 +15,6 @@ type InitProjectBody = InitProjectRequestBody
 type ResolveProjectBody = ResolveProjectRequestBody
 
 type RenameProjectBody = RenameProjectRequestBody
-
-type SetProjectAccessBody = SetProjectAccessRequestBody
 
 type PurgeProjectBody = ProjectPurgeRequestBody
 
@@ -62,31 +36,7 @@ type ReplaceCronWorkflowBody = PutCronWorkflowBody
 
 type RestoreCronWorkflowBody = CronDefinitionActionBody
 
-type LinkFederatedDocbankBody = LinkAttachmentInput
-
-type UploadFederatedDocbankBody = runtime.File
-
-type EnableProjectFederationBody = EnableProjectFederationRequestBody
-
-type IngestFederationProjectEventsBody = FederationIngestEventsRequestBody
-
-type RetryFederationQuarantineBody = RetryFederationQuarantineRequestBody
-
-type SkipFederationQuarantineBody = SkipFederationQuarantineRequestBody
-
-type AcceptRelayDeliveriesBody = RelayBatch
-
-type AckRelayDeliveriesBody = RelayAckRequestBody
-
-type DisconnectRelayEnrollmentBody = DisconnectRelayRequestBody
-
 type ImportIssuesBody = ImportRequestBody
-
-type DisableIssueSyncBody = DisableIssueSyncRequestBody
-
-type EnableIssueSyncBody = EnableIssueSyncRequestBody
-
-type RunIssueSyncOnceBody = RunIssueSyncOnceRequestBody
 
 type CreateIssueBody = CreateIssueRequestBody
 
@@ -116,18 +66,6 @@ type AddAttachmentBody = runtime.File
 
 type LinkAttachmentBody = LinkAttachmentInput
 
-type BindExternalRootBody = BindExternalRootRequestBody
-
-type PauseExternalRootBridgeBody = ExternalRootActionRequestBody
-
-type ReconcileExternalRootBridgeBody = ExternalRootActionRequestBody
-
-type ResolveExternalCommentBody = ResolveExternalCommentRequestBody
-
-type ResolveExternalFieldBody = ResolveExternalFieldRequestBody
-
-type ResumeExternalRootBridgeBody = ExternalRootActionRequestBody
-
 type CreateCommentBody = CommentRequestBody
 
 type EditCommentBody = EditCommentRequestBody
@@ -155,9 +93,5 @@ type PatchProjectMetadataBody = PatchProjectMetadataRequestBody
 type CreateRecurrenceBody = CreateRecurrenceRequestBody
 
 type PatchRecurrenceBody = PatchRecurrenceRequestBody
-
-type CreateTeamBody = CreateTeamRequestBody
-
-type CreateTokenBody = CreateTokenRequestBody
 
 type CaptureTelemetryEventBody = CaptureTelemetryEventRequestBody

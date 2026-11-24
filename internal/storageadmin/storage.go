@@ -16,11 +16,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"go.kenn.io/kit/pathresolve"
@@ -511,35 +508,7 @@ func (a *Admin) Import(ctx context.Context, options ImportOptions) (ImportResult
 		return ImportResult{}, err
 	}
 	if backend == storeopen.BackendPostgres {
-		if config.DBHash(a.sourceDSN) == config.DBHash(targetValue) {
-			return ImportResult{}, errors.New("storage import target must differ from the active daemon storage")
-		}
-		if options.Force {
-			return ImportResult{}, errors.New("force replacement of PostgreSQL storage is not available through MCP")
-		}
-		pgConfig, err := postgresRestoreConfig(ctx)
-		if err != nil {
-			return ImportResult{}, err
-		}
-		// Preflight without mutation: an initialized target is rejected
-		// before any schema work can touch it, and a missing schema is
-		// created under the explicit restore bootstrap configuration
-		// rather than the daemon's ambient schema mode.
-		version, err := pgstore.PeekSchemaVersionWithConfig(ctx, targetValue, pgConfig)
-		if err != nil {
-			return ImportResult{}, err
-		}
-		if version != 0 {
-			same, sameErr := a.targetIsActiveStorage(ctx, targetValue)
-			if sameErr != nil {
-				return ImportResult{}, sameErr
-			}
-			if same {
-				return ImportResult{}, errors.New("storage import target must differ from the active daemon storage")
-			}
-			return ImportResult{}, errors.New("storage target already contains a Poomsae schema; PostgreSQL restore requires a fresh target")
-		}
-		return a.importFresh(ctx, input, targetValue, options, "postgres", &pgConfig)
+		return ImportResult{}, errors.New("postgres storage is not available")
 	}
 	targetName, err := sqliteTargetName(targetValue)
 	if err != nil {
@@ -585,7 +554,7 @@ func (a *Admin) Import(ctx context.Context, options ImportOptions) (ImportResult
 	}
 	defer func() { _ = os.RemoveAll(privateDirectory) }() //nolint:gosec // directory was created above
 	temporary := filepath.Join(privateDirectory, "restore.db")
-	result, err := a.importFresh(ctx, input, temporary, options, "sqlite", nil)
+	result, err := a.importFresh(ctx, input, temporary, options, "sqlite")
 	if err != nil {
 		return ImportResult{}, err
 	}
@@ -629,27 +598,13 @@ func (a *Admin) Import(ctx context.Context, options ImportOptions) (ImportResult
 	return result, nil
 }
 
-func (a *Admin) importFresh(ctx context.Context, input io.Reader, target string, options ImportOptions, backend string, pgConfig *pgstore.Config) (ImportResult, error) {
-	var store db.Storage
-	var err error
-	if pgConfig != nil {
-		store, err = pgstore.OpenWithConfig(ctx, target, *pgConfig)
-	} else {
-		store, err = storeopen.Open(ctx, target)
-	}
+func (a *Admin) importFresh(ctx context.Context, input io.Reader, target string, options ImportOptions, backend string) (ImportResult, error) {
+	store, err := storeopen.Open(ctx, target)
 	if err != nil {
 		return ImportResult{}, err
 	}
-	installedFreshPostgres := storeopen.InstalledFreshPostgresSchema(store)
-	instanceUID := store.InstanceUID()
 	fail := func(importErr error) (ImportResult, error) {
 		closeErr := store.Close()
-		if installedFreshPostgres && pgConfig != nil {
-			cleanupContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			defer cancel()
-			cleanupErr := pgstore.RemoveFreshSchemaWithConfig(cleanupContext, target, instanceUID, *pgConfig)
-			return ImportResult{}, errors.Join(importErr, closeErr, cleanupErr)
-		}
 		return ImportResult{}, errors.Join(importErr, closeErr)
 	}
 	if err := jsonl.ImportWithOptions(ctx, input, store, jsonl.ImportOptions{RequireFreshTarget: true, NewInstance: options.NewInstance}); err != nil {
@@ -659,56 +614,6 @@ func (a *Admin) importFresh(ctx context.Context, input io.Reader, target string,
 		return ImportResult{}, err
 	}
 	return ImportResult{Artifact: options.Artifact, Target: options.Target, Backend: backend}, nil
-}
-
-// postgresRestoreConfig mirrors the CLI import flow: restore is an explicit
-// schema-owner operation that must prepare a fresh target even when the
-// daemon runtime is validation-only.
-func postgresRestoreConfig(ctx context.Context) (pgstore.Config, error) {
-	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
-	if err != nil {
-		return pgstore.Config{}, err
-	}
-	pgConfig := pgstore.ConfigFromValues(
-		storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
-		storageConfig.AllowInsecure,
-	)
-	pgConfig.SchemaMode = pgstore.SchemaModeBootstrap
-	return pgConfig, nil
-}
-
-// targetIsActiveStorage compares persisted instance identities so an
-// equivalent DSN spelling of the active database is named as such. Both
-// handles open read-only; nothing is mutated.
-func (a *Admin) targetIsActiveStorage(ctx context.Context, target string) (bool, error) {
-	sourceUID, err := instanceUIDOf(ctx, a.sourceDSN)
-	if err != nil || sourceUID == "" {
-		return false, err
-	}
-	targetUID, err := instanceUIDOf(ctx, target)
-	if err != nil {
-		return false, err
-	}
-	return targetUID != "" && targetUID == sourceUID, nil
-}
-
-// instanceUIDOf reads a storage target's persisted instance identity over a
-// read-only handle.
-func instanceUIDOf(ctx context.Context, dsn string) (string, error) {
-	store, err := storeopen.OpenReadOnly(ctx, dsn)
-	if err != nil {
-		return "", fmt.Errorf("open storage identity: %w", err)
-	}
-	defer func() { _ = store.Close() }()
-	uid := store.InstanceUID()
-	if uid == "" {
-		// A read-only handle may not have cached the identity; a refresh
-		// failure means no persisted identity exists yet.
-		if refreshErr := store.RefreshInstanceUID(ctx); refreshErr == nil {
-			uid = store.InstanceUID()
-		}
-	}
-	return uid, nil
 }
 
 func moveSQLiteSetWithLink(from, to string, link func(string, string) error) error {

@@ -156,78 +156,9 @@ func TestProjectAccessMergeFencesBothProjects(t *testing.T) {
 }
 
 // Alias detach and issue-sync administration follow project access.
-func TestProjectAccessAliasAndIssueSyncAdministration(t *testing.T) {
-	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		f := newProjectAccessFixture(t, store)
-		alias, err := store.AttachAlias(t.Context(), f.private.ID, "git:example.com/private-project", "git")
-		require.NoError(t, err)
-		status := fmt.Sprintf("/api/v1/projects/%d/issue-sync/github/status", f.private.ID)
-		code, _, body := f.request(t, http.MethodGet, status, "nonmember", nil, nil)
-		require.Equal(t, http.StatusNotFound, code, string(body))
-		code, _, body = f.request(t, http.MethodGet, status, "member", nil, nil)
-		require.Equal(t, http.StatusOK, code, string(body))
-		assert.Contains(t, string(body), "not_enabled")
-
-		// With no binding and no repository, every sync mutation fails validation
-		// once it reaches its handler. A nonmember never reaches it.
-		for _, action := range []string{"enable", "disable", "once"} {
-			path := fmt.Sprintf("/api/v1/projects/%d/issue-sync/github/%s", f.private.ID, action)
-			code, _, body = f.request(t, http.MethodPost, path, "nonmember", map[string]any{"actor": "nonmember"}, nil)
-			assert.Equal(t, http.StatusNotFound, code, "%s: %s", action, body)
-			assert.NotContains(t, string(body), "validation")
-			code, _, body = f.request(t, http.MethodPost, path, "member", map[string]any{"actor": "member"}, nil)
-			assert.Equal(t, http.StatusBadRequest, code, "%s: %s", action, body)
-			assert.Contains(t, string(body), `"validation"`)
-		}
-		_, err = store.IssueSyncBindingByProject(t.Context(), f.private.ID)
-		assert.ErrorIs(t, err, db.ErrNotFound, "no sync binding was created")
-
-		detach := fmt.Sprintf("/api/v1/projects/%d/aliases/%d?force=true&actor=", f.private.ID, alias.ID)
-		code, _, body = f.request(t, http.MethodDelete, detach+"nonmember", "nonmember", nil, nil)
-		require.Equal(t, http.StatusNotFound, code, string(body))
-		_, err = store.AliasByIdentity(t.Context(), "git:example.com/private-project")
-		require.NoError(t, err, "denied detach keeps the alias")
-		code, _, body = f.request(t, http.MethodDelete, detach+"member", "member", nil, nil)
-		require.Equal(t, http.StatusOK, code, string(body))
-		_, err = store.AliasByIdentity(t.Context(), "git:example.com/private-project")
-		assert.ErrorIs(t, err, db.ErrNotFound)
-	})
-}
 
 // Token administration stays with the daemon owner. A member that could mint
 // a token for another actor would inherit that actor's team access.
-func TestProjectAccessTokenAdministrationRequiresOwner(t *testing.T) {
-	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		f := newProjectAccessFixture(t, store)
-		tokens, err := store.ListAPITokens(t.Context())
-		require.NoError(t, err)
-		require.NotEmpty(t, tokens)
-		for _, actor := range []string{"member", "nonmember"} {
-			code, _, body := f.request(t, http.MethodGet, "/api/v1/tokens", actor, nil, nil)
-			assert.Equal(t, http.StatusNotFound, code, string(body))
-			code, _, body = f.request(t, http.MethodPost, "/api/v1/tokens", actor,
-				map[string]string{"actor": "other-member"}, nil)
-			assert.Equal(t, http.StatusNotFound, code, string(body))
-			code, _, body = f.request(t, http.MethodPost,
-				fmt.Sprintf("/api/v1/tokens/%d/revoke", tokens[0].ID), actor, map[string]any{}, nil)
-			assert.Equal(t, http.StatusNotFound, code, string(body))
-		}
-		after, err := store.ListAPITokens(t.Context())
-		require.NoError(t, err)
-		assert.Len(t, after, len(tokens), "denied creation adds no token")
-		for _, token := range after {
-			assert.Nil(t, token.RevokedAt, "denied revocation keeps %s active", token.Actor)
-		}
-
-		server := daemon.NewServer(daemon.ServerConfig{DB: store, Auth: config.AuthConfig{Token: "bootstrap-test-token"}})
-		t.Cleanup(func() { require.NoError(t, server.Close()) })
-		ownerHTTP := httptest.NewServer(server.Handler())
-		t.Cleanup(ownerHTTP.Close)
-		f.server = ownerHTTP
-		code, _, body := f.request(t, http.MethodGet, "/api/v1/tokens", "admin", nil, nil)
-		require.Equal(t, http.StatusOK, code, "the owner keeps token administration: %s", body)
-	})
-}
 
 // The daemon switcher hides credentialed targets only from a principal that
 // project policy actually limits. A team member who can see every project

@@ -322,28 +322,6 @@ func TestRemoteMCPProjectResolutionWithoutBinding(t *testing.T) {
 	}
 }
 
-func TestRemoteFederationProjectResolutionWithoutBinding(t *testing.T) {
-	env := testenv.New(t, testenv.WithAuthToken("fixture-token"))
-	workspace := t.TempDir()
-	t.Chdir(workspace)
-	t.Setenv("EXAMPLE_HUB_TOKEN", "fixture-token")
-	server, recorder := projectResolutionProxy(t, env, filepath.Join(t.TempDir(), "missing"))
-	for _, missing := range []bool{false, true} {
-		args := []string{"federation", "enroll", "--json", "--hub-url", server.URL,
-			"--spoke-instance", "01ARZ3NDEKTSV4RRFFQ69G5FAV", "--capabilities", "pull",
-			"--hub-token-env", "EXAMPLE_HUB_TOKEN"}
-		want := unboundRemoteProjectError()
-		if missing {
-			path := filepath.Join(workspace, "missing")
-			args = append(args, "--workspace", path)
-			want = missingWorkspaceError(path)
-		}
-		_, _, err := executeRootCapture(t, t.Context(), args...)
-		assert.Empty(t, recorder.take(), "hub scope resolution must not send client paths")
-		assertCLIErrorMatches(t, err, want)
-	}
-}
-
 func TestLocalProjectResolutionKeepsPathFallback(t *testing.T) {
 	env := testenv.New(t)
 	resetFlags(t)

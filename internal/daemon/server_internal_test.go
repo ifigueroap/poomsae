@@ -66,16 +66,6 @@ func TestServerConfig_NilHooks_FillsNoop(t *testing.T) {
 	}
 }
 
-func TestFederationRebindHostPolicyIsRestrictedMutation(t *testing.T) {
-	policy, ok := hostOperationPolicy("rebindFederationReplica")
-	if !ok {
-		t.Fatal("rebindFederationReplica has no host operation policy")
-	}
-	if !policy.Mutation || !policy.restricted || policy.Kind != hostOperationFederationAdministration {
-		t.Fatalf("unexpected rebind host policy: %+v", policy)
-	}
-}
-
 func TestGetIssueMetadataHostPolicyIsTaskRead(t *testing.T) {
 	policy, ok := hostOperationPolicy("getIssueMetadata")
 	if !ok {

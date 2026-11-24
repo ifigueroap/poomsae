@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/api"
 	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
@@ -65,154 +64,6 @@ func respondJSON(t *testing.T, w http.ResponseWriter, body any) {
 	}
 }
 
-func TestTUIFederationClientsKeepAuthRolesSeparate(t *testing.T) {
-	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
-	ctx := t.Context()
-	var spokeInstanceAuth, spokeStatusAuth, spokeJoinAuth string
-	var hubListAuth, hubEnsureAuth, hubEnsureActor, hubEnableAuth, hubEnrollmentAuth, hubMetadataAuth string
-	var joinBody CreateFederationReplicaInput
-	hubProjectID := int64(42)
-
-	spokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/instance":
-			spokeInstanceAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, InstanceInfo{
-				InstanceUID:   "01HZNQ7VFPK1XGD8R5MABCD4EA",
-				Version:       "dev",
-				SchemaVersion: 1,
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/federation/status":
-			spokeStatusAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, api.FederationStatusBody{Statuses: []api.FederationProjectStatus{}})
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/federation/replicas":
-			spokeJoinAuth = r.Header.Get("Authorization")
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&joinBody))
-			respondJSON(t, w, api.CreateFederationReplicaResponseBody{})
-		default:
-			t.Fatalf("unexpected spoke request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(spokeSrv.Close)
-
-	hubSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/projects":
-			hubListAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, map[string]any{"projects": []map[string]any{{"id": hubProjectID, "name": "spoke-project"}}})
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/projects":
-			hubEnsureAuth = r.Header.Get("Authorization")
-			var body struct {
-				Actor string `json:"actor"`
-			}
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			hubEnsureActor = body.Actor
-			respondJSON(t, w, map[string]any{"project": map[string]any{"id": hubProjectID, "name": "spoke-project"}})
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/projects/42/federation/enable":
-			hubEnableAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, api.ProjectFederationBody{
-				ProjectID:              hubProjectID,
-				ProjectUID:             "01HZNQ7VFPK1XGD8R5MABCD4EX",
-				ProjectName:            "spoke-project",
-				ReplayHorizonEventID:   9,
-				BaselineThroughEventID: 11,
-			})
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/federation/enrollments":
-			hubEnrollmentAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, api.FederationEnrollmentOut{
-				ID:               7,
-				SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
-				ProjectID:        &hubProjectID,
-				Capabilities:     "claim,pull,push",
-				Actor:            "wesm",
-				Token:            "enrollment-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/projects/42/federation/metadata":
-			hubMetadataAuth = r.Header.Get("Authorization")
-			respondJSON(t, w, api.ProjectFederationBody{
-				ProjectID:              hubProjectID,
-				ProjectUID:             "01HZNQ7VFPK1XGD8R5MABCD4EX",
-				ProjectName:            "spoke-project",
-				ReplayHorizonEventID:   9,
-				BaselineThroughEventID: 11,
-			})
-		default:
-			t.Fatalf("unexpected hub request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(hubSrv.Close)
-
-	spokeHTTP, err := clientpkg.NewHTTPClientForTarget(ctx, spokeSrv.URL,
-		clientpkg.TargetAuth{Token: "spoke-token"}, clientpkg.Opts{})
-	require.NoError(t, err)
-	spoke := NewClient(spokeSrv.URL, spokeHTTP)
-	hubAdmin, _, err := newHubAdminClient(ctx, daemonTarget{
-		Name:  "hub",
-		Token: "hub-admin-token",
-		URL:   hubSrv.URL,
-		resolved: clientpkg.ResolvedDaemon{
-			Source: clientpkg.DaemonSourceInjected, BaseURL: hubSrv.URL, Token: "hub-admin-token",
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = spoke.GetInstance(ctx)
-	require.NoError(t, err)
-	_, err = spoke.FederationStatus(ctx)
-	require.NoError(t, err)
-	_, err = hubAdmin.ListProjects(ctx)
-	require.NoError(t, err)
-	_, err = hubAdmin.EnsureProject(ctx, "spoke-project", "user-a")
-	require.NoError(t, err)
-	_, err = hubAdmin.EnableFederation(ctx, hubProjectID, "requested")
-	require.NoError(t, err)
-	enrollment, err := hubAdmin.CreateFederationEnrollment(ctx, CreateFederationEnrollmentInput{
-		SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
-		ProjectID:        &hubProjectID,
-		Capabilities:     "claim,pull,push",
-		Actor:            "requested",
-	})
-	require.NoError(t, err)
-	hubEnrollment, err := newHubEnrollmentClient(ctx, hubSrv.URL, enrollment.Token, false)
-	require.NoError(t, err)
-	metadata, err := hubEnrollment.ProjectFederation(ctx, hubProjectID)
-	require.NoError(t, err)
-	_, err = spoke.CreateFederationReplica(ctx, CreateFederationReplicaInput{
-		HubURL:                 hubSrv.URL,
-		HubProjectID:           hubProjectID,
-		HubProjectUID:          metadata.ProjectUID,
-		ProjectName:            metadata.ProjectName,
-		ReplayHorizonEventID:   metadata.ReplayHorizonEventID,
-		BaselineThroughEventID: metadata.BaselineThroughEventID,
-		Token:                  enrollment.Token,
-		Capabilities:           "claim,pull,push",
-		Actor:                  enrollment.Actor,
-		PushEnabled:            true,
-		AdoptExisting:          true,
-	})
-	require.NoError(t, err)
-
-	assert.Equal(t, "Bearer spoke-token", spokeInstanceAuth)
-	assert.Equal(t, "Bearer spoke-token", spokeStatusAuth)
-	assert.Equal(t, "Bearer spoke-token", spokeJoinAuth)
-	assert.Equal(t, "Bearer hub-admin-token", hubListAuth)
-	assert.Equal(t, "Bearer hub-admin-token", hubEnsureAuth)
-	assert.Equal(t, "user-a", hubEnsureActor)
-	assert.Equal(t, "Bearer hub-admin-token", hubEnableAuth)
-	assert.Equal(t, "Bearer hub-admin-token", hubEnrollmentAuth)
-	assert.Equal(t, "Bearer enrollment-token", hubMetadataAuth)
-	assert.Equal(t, "enrollment-token", joinBody.Token)
-	assert.Equal(t, "claim,pull,push", joinBody.Capabilities)
-	assert.True(t, joinBody.PushEnabled)
-	assert.True(t, joinBody.AdoptExisting)
-	for _, got := range []string{
-		spokeInstanceAuth, spokeStatusAuth, spokeJoinAuth,
-		hubListAuth, hubEnsureAuth, hubEnableAuth, hubEnrollmentAuth, hubMetadataAuth,
-	} {
-		assert.NotEqual(t, "Bearer global-token", got)
-	}
-}
-
 func TestClientGetInstanceDecodesAuthPrincipal(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		respondJSON(t, w, map[string]any{
@@ -231,38 +82,6 @@ func TestClientGetInstanceDecodesAuthPrincipal(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "db_token", instance.Auth.Kind)
 	assert.Equal(t, "operator", instance.Auth.Actor)
-}
-
-func TestClientListTokensDecodesRedactedAuditInventory(t *testing.T) {
-	created := time.Date(2026, 9, 15, 10, 0, 0, 0, time.UTC)
-	observed := created.Add(time.Hour)
-	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/api/v1/tokens", r.URL.Path)
-		respondJSON(t, w, map[string]any{
-			"tokens": []map[string]any{{
-				"id": 41, "actor": "operator", "name": "automation",
-				"scope": map[string]any{
-					"kind": "issue_subtree", "project_uid": "01PROJECT",
-					"root_issue_uid": "01ROOT",
-				},
-				"created_at": created, "state": "live",
-			}},
-			"observed_at": observed,
-		})
-	})
-
-	tokens, gotObserved, err := c.ListTokens(t.Context())
-
-	require.NoError(t, err)
-	require.Len(t, tokens, 1)
-	assert.Equal(t, int64(41), tokens[0].ID)
-	assert.Equal(t, "automation", *tokens[0].Name)
-	require.NotNil(t, tokens[0].Scope)
-	assert.Equal(t, "01PROJECT", tokens[0].Scope.ProjectUID)
-	assert.Equal(t, "01ROOT", tokens[0].Scope.RootIssueUID)
-	assert.Equal(t, "live", tokens[0].State)
-	assert.Equal(t, observed, gotObserved)
 }
 
 func TestTUIHubAdminClientRejectsPlainHTTPHostnameWithoutAllowInsecure(t *testing.T) {

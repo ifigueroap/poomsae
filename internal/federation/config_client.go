@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/ifigueroap/poomsae/internal/client"
 	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/db"
 	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
@@ -143,57 +141,8 @@ func catalogToken(catalog config.CatalogDaemonConfig) (string, error) {
 
 // EnsureProject resolves or creates name, enables federation, and returns the
 // enabled project's stable federation metadata.
-func (c *HubClient) EnsureProject(
-	ctx context.Context, name, actor string,
-) (HubProject, error) {
-	project, err := c.resolveProject(ctx, name)
-	if err != nil {
-		var hubErr *HubError
-		if !errors.As(err, &hubErr) || hubErr == nil || hubErr.StatusCode != http.StatusNotFound {
-			return HubProject{}, err
-		}
-		project, err = c.createProject(ctx, name, actor)
-		if err != nil {
-			// A concurrent creator can win between resolve and create. One
-			// strict re-resolve makes that race idempotent without hiding other
-			// conflicts.
-			if errors.As(err, &hubErr) && hubErr != nil && hubErr.StatusCode == http.StatusConflict {
-				project, err = c.resolveProject(ctx, name)
-			}
-			if err != nil {
-				return HubProject{}, err
-			}
-		}
-	}
-
-	var enabled projectFederationResponse
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(hubDoer{client: c.http, operation: "enable project federation"}))
-	if err != nil {
-		return HubProject{}, hubError(ErrHubValidation, "enable project federation", 0)
-	}
-	responseHTTP, callErr := apiClient.EnableProjectFederationWithResponse(ctx, &generated.EnableProjectFederationRequestOptions{PathParams: &generated.EnableProjectFederationPath{ProjectID: project.ID}, Body: &generated.EnableProjectFederationBody{Actor: &actor}})
-	if responseHTTP == nil {
-		return HubProject{}, hubCallError(callErr, "enable project federation")
-	}
-	err = json.Unmarshal(responseHTTP.Body, &enabled)
-	if err != nil {
-		return HubProject{}, hubError(ErrHubValidation, "enable project federation", responseHTTP.StatusCode)
-	}
-	result := HubProject{
-		ID:                     enabled.ProjectID,
-		UID:                    enabled.ProjectUID,
-		Name:                   enabled.ProjectName,
-		ReplayHorizonEventID:   enabled.ReplayHorizonEventID,
-		BaselineThroughEventID: enabled.BaselineThroughEventID,
-	}
-	if result.ID <= 0 || !poomsaeuid.Valid(result.UID) || result.Name == "" ||
-		result.ReplayHorizonEventID <= 0 ||
-		result.ID != project.ID ||
-		result.UID != project.UID ||
-		result.Name != project.Name {
-		return HubProject{}, hubError(ErrHubValidation, "enable project federation", http.StatusOK)
-	}
-	return result, nil
+func (c *HubClient) EnsureProject(context.Context, string, string) (HubProject, error) {
+	return HubProject{}, hubError(ErrHubValidation, "enable project federation", http.StatusNotFound)
 }
 
 // ResolveProject looks up a project without creating it or enabling
@@ -278,73 +227,19 @@ type enrollmentWireResponse struct {
 }
 
 // EnsureEnrollment idempotently ensures the request's explicit token.
-func (c *HubClient) EnsureEnrollment(
-	ctx context.Context, request EnrollmentRequest,
-) (Enrollment, error) {
-	return c.enrollmentRequest(ctx, false,
-		"ensure enrollment", request)
+func (c *HubClient) EnsureEnrollment(context.Context, EnrollmentRequest) (Enrollment, error) {
+	return Enrollment{}, hubError(ErrHubValidation, "ensure enrollment", http.StatusNotFound)
 }
 
 // RotateEnrollment replaces only the matching spoke/project enrollment scope.
-func (c *HubClient) RotateEnrollment(
-	ctx context.Context, request EnrollmentRequest,
-) (Enrollment, error) {
-	return c.enrollmentRequest(ctx, true,
-		"rotate enrollment", request)
+func (c *HubClient) RotateEnrollment(context.Context, EnrollmentRequest) (Enrollment, error) {
+	return Enrollment{}, hubError(ErrHubValidation, "rotate enrollment", http.StatusNotFound)
 }
 
 // RevokeEnrollment compensates an enrollment or rotation whose local
 // reservation was explicitly removed while the hub request was in flight.
-func (c *HubClient) RevokeEnrollment(ctx context.Context, enrollmentID int64) error {
-	if enrollmentID <= 0 {
-		return hubError(ErrHubValidation, "revoke enrollment", 0)
-	}
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(hubDoer{client: c.http, operation: "revoke enrollment"}))
-	if err != nil {
-		return hubError(ErrHubValidation, "revoke enrollment", 0)
-	}
-	response, callErr := apiClient.RevokeFederationEnrollmentWithResponse(ctx, &generated.RevokeFederationEnrollmentRequestOptions{PathParams: &generated.RevokeFederationEnrollmentPath{EnrollmentID: enrollmentID}})
-	if response == nil {
-		return hubCallError(callErr, "revoke enrollment")
-	}
-	return nil
-}
-
-func (c *HubClient) enrollmentRequest(
-	ctx context.Context, rotate bool, operation string, request EnrollmentRequest,
-) (Enrollment, error) {
-	var response enrollmentWireResponse
-	apiClient, err := generated.NewDefaultClient(c.baseURL, runtime.WithHTTPClient(hubDoer{client: c.http, operation: operation}))
-	if err != nil {
-		return Enrollment{}, hubError(ErrHubValidation, operation, 0)
-	}
-	payload := generated.CreateFederationEnrollmentBody{
-		ProjectID: request.ProjectID, SpokeInstanceUID: request.SpokeInstanceUID,
-		Token: &request.Token, Capabilities: request.Capabilities, Actor: &request.Actor,
-		AllowAdoptionSnapshotAuthors: &request.AllowAdoptionSnapshotAuthors,
-	}
-	var data []byte
-	if rotate {
-		result, callErr := apiClient.RotateFederationEnrollmentWithResponse(ctx, &generated.RotateFederationEnrollmentRequestOptions{Body: &generated.RotateFederationEnrollmentBody{ProjectID: request.ProjectID, SpokeInstanceUID: request.SpokeInstanceUID, Token: request.Token, Capabilities: request.Capabilities, Actor: &request.Actor, AllowAdoptionSnapshotAuthors: &request.AllowAdoptionSnapshotAuthors}})
-		if result == nil {
-			return Enrollment{}, hubCallError(callErr, operation)
-		}
-		data = result.Body
-	} else {
-		result, callErr := apiClient.CreateFederationEnrollmentWithResponse(ctx, &generated.CreateFederationEnrollmentRequestOptions{Body: &payload})
-		if result == nil {
-			return Enrollment{}, hubCallError(callErr, operation)
-		}
-		data = result.Body
-	}
-	if err := json.Unmarshal(data, &response); err != nil {
-		return Enrollment{}, hubError(ErrHubValidation, operation, http.StatusOK)
-	}
-	actor := strings.TrimSpace(response.Actor)
-	if response.ID <= 0 || db.ValidateTokenActor(actor) != nil {
-		return Enrollment{}, hubError(ErrHubValidation, operation, http.StatusOK)
-	}
-	return Enrollment{ID: response.ID, Actor: actor}, nil
+func (c *HubClient) RevokeEnrollment(context.Context, int64) error {
+	return hubError(ErrHubValidation, "revoke enrollment", http.StatusNotFound)
 }
 
 // hubDoer applies the catalog client's bounded, secret-free response policy

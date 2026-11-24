@@ -213,14 +213,6 @@ all_projects = true
 				require.NoError(t, err)
 				defer func() { _ = session.Close() }()
 				assertMCPHTTPPublicIcon(t, httpClient, endpoint, tt.host, session.InitializeResult().ServerInfo)
-				if tt.checkMountPolicy {
-					loaded, err := session.CallTool(callCtx, &sdkmcp.CallToolParams{Name: "poomsae.load_tokens"})
-					require.NoError(t, err)
-					require.False(t, loaded.IsError)
-					section := loaded.StructuredContent.(map[string]any)
-					require.Equal(t, false, section["available"])
-					require.Equal(t, false, section["loaded"])
-				}
 				tools, err := session.ListTools(callCtx, nil)
 				require.NoError(t, err)
 				if tt.startup != "" {

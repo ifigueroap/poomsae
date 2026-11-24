@@ -1176,7 +1176,7 @@ func yamlAgentHookMergedField(node *yaml.Node, key string, seen map[*yaml.Node]b
 }
 
 func agentHookProtectionToken(agent agenthook.Agent, data []byte) (string, error) {
-	token := "poomsae-protected-hook-"
+	token := "poomsae-protected-hook-" //nolint:gosec // marker prefix, not a credential
 	var document any
 	var node yaml.Node
 	if len(bytes.TrimSpace(data)) > 0 {

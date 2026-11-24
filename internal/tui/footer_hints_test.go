@@ -202,68 +202,7 @@ func TestViewChromeHelpRows_ModalPrecedesInput(t *testing.T) {
 	}
 }
 
-func TestAuxiliaryViewFooters_ModalPrecedesActions(t *testing.T) {
-	projects := setupProjectsView()
-	daemons := setupDaemonView()
-	federation := setupFederationView()
-	federation.width, federation.height = 120, 24
 
-	tests := []struct {
-		name       string
-		model      Model
-		render     func(Model) string
-		normalWant string
-	}{
-		{
-			name:       "projects",
-			model:      projects,
-			render:     renderProjects,
-			normalWant: "q quit",
-		},
-		{
-			name:       "daemons",
-			model:      daemons,
-			render:     renderDaemons,
-			normalWant: "[q] quit",
-		},
-		{
-			name:       "federation",
-			model:      federation,
-			render:     renderFederation,
-			normalWant: "[?] help",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			normalFooter := lastRenderedLine(tt.render(tt.model))
-			if !strings.Contains(normalFooter, tt.normalWant) {
-				t.Fatalf("ordinary footer = %q, want %q action", normalFooter, tt.normalWant)
-			}
-
-			modalModel := tt.model
-			modalModel.modal = modalQuitConfirm
-			if got := lastRenderedLine(tt.render(modalModel)); got != "y confirm▕ n/esc cancel" {
-				t.Fatalf("quit modal footer = %q", got)
-			}
-		})
-	}
-}
-
-func TestFederationDetailEmpty_ModalFooterPrecedesEarlyReturn(t *testing.T) {
-	m := setupFederationView()
-	m.width, m.height = 120, 24
-	m.federation.mode = federationModeDetail
-	m.federation.statuses = nil
-
-	if got := lastRenderedLine(renderFederation(m)); got != "no federation selected" {
-		t.Fatalf("ordinary empty-detail footer = %q", got)
-	}
-
-	m.modal = modalQuitConfirm
-	if got := lastRenderedLine(renderFederation(m)); got != "y confirm▕ n/esc cancel" {
-		t.Fatalf("quit modal empty-detail footer = %q", got)
-	}
-}
 
 func lastRenderedLine(rendered string) string {
 	lines := strings.Split(stripANSI(rendered), "\n")

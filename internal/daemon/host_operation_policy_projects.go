@@ -12,31 +12,7 @@ func registerProjectOperationPolicies(policies map[string]HostOperationPolicy) {
 		"restoreProject", "detachProjectAlias", "renameProject", "patchProjectMetadata")
 
 	registerHostOperations(policies, HostOperationPolicy{
-		Kind: hostOperationTokenAdministration, Capability: hostCapabilityManage,
-		restricted: true,
-	}, "listTokens", "listTeams", "showTeam", "getProjectAccess")
-	registerHostOperations(policies, HostOperationPolicy{
-		Kind: hostOperationTokenAdministration, Capability: hostCapabilityManage,
-		Mutation: true, restricted: true,
-	}, "createToken", "revokeToken", "createTeam", "deleteTeam", "addTeamMember", "removeTeamMember", "setProjectAccess")
-
-	registerHostOperations(policies, HostOperationPolicy{
 		Kind: hostOperationIntegrationAdministration, Capability: hostCapabilityManage,
 		restricted: true,
-	}, "getIssueSyncStatus", "doctor")
-	registerHostOperations(policies, HostOperationPolicy{
-		Kind: hostOperationIntegrationAdministration, Capability: hostCapabilityManage,
-		Mutation: true, restricted: true,
-	}, "enableIssueSync", "disableIssueSync", "runIssueSyncOnce")
-
-	registerHostOperations(policies, HostOperationPolicy{
-		Kind: hostOperationIntegrationAdministration, Capability: hostCapabilityManage,
-		restricted: true,
-	}, "listConnectors", "getConnectorStatus", "listConnectorFields", "getExternalRootBridge")
-	registerHostOperations(policies, HostOperationPolicy{
-		Kind: hostOperationIntegrationAdministration, Capability: hostCapabilityManage,
-		Mutation: true, restricted: true,
-	}, "mapConnectorField", "unmapConnectorField", "bindExternalRoot", "reconcileExternalRootBridge",
-		"reconcileExternalRootByKey", "pauseExternalRootBridge", "resumeExternalRootBridge",
-		"resolveExternalField", "resolveExternalComment", "unbindExternalRoot")
+	}, "doctor")
 }

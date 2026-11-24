@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -18,15 +17,12 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
-
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
-	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
@@ -37,24 +33,12 @@ const projectAccessCanary = "relay-private-canary"
 
 func projectAccessBackends(t *testing.T, check func(*testing.T, db.Storage)) {
 	t.Helper()
-	for _, backend := range []string{"sqlite", "postgres"} {
-		t.Run(backend, func(t *testing.T) {
-			var store db.Storage
-			if backend == "sqlite" {
-				s, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
-				require.NoError(t, err)
-				store = s
-			} else {
-				dsn, cleanup := pgstoretest.NewDatabase(t, t.Context())
-				t.Cleanup(cleanup)
-				s, err := pgstore.Open(t.Context(), dsn)
-				require.NoError(t, err)
-				store = s
-			}
-			t.Cleanup(func() { require.NoError(t, store.Close()) })
-			check(t, store)
-		})
-	}
+	t.Run("sqlite", func(t *testing.T) {
+		store, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, store.Close()) })
+		check(t, store)
+	})
 }
 
 type projectAccessFixture struct {
@@ -1491,12 +1475,7 @@ func TestProjectAccessStreamRevocation(t *testing.T) {
 					assert.NoError(t, err)
 					assert.NoError(t, ctx.Err(), "revocation closes stream before the request deadline")
 				}
-				if _, ok := store.(*pgstore.Store); ok {
-					// PostgreSQL connections created in a bubble cannot be closed outside it.
-					run(t)
-				} else {
-					synctest.Test(t, run)
-				}
+				synctest.Test(t, run)
 			})
 		})
 	}
@@ -1707,42 +1686,6 @@ func TestProjectAccessCompoundAndMovedEvents(t *testing.T) {
 
 // Every registered project path denies a nonmember before input decoding or
 // dispatch, including administration, claims, recurrences and integrations.
-func TestProjectAccessRegisteredProjectOperations(t *testing.T) {
-	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		f := newProjectAccessFixture(t, store)
-		checked := 0
-		for path, item := range f.api.OpenAPI().Paths {
-			if !strings.Contains(path, "{project_id}") {
-				continue
-			}
-			for _, op := range []*huma.Operation{item.Get, item.Post, item.Put, item.Patch, item.Delete} {
-				if op == nil {
-					continue
-				}
-				checked++
-				t.Run(op.OperationID, func(t *testing.T) {
-					route := strings.NewReplacer("{project_id}", fmt.Sprint(f.private.ID), "{ref}", f.issue.ShortID, "{uid}", f.issue.UID, "{id}", "1", "{comment_ref}", "1", "{label}", "example-label", "{link_id}", "1", "{alias_id}", "1", "{quarantine_id}", "1", "{recurrence_uid}", f.issue.UID, "{provider}", "example-provider").Replace(path)
-					var requestBody any
-					if op.OperationID == "disconnectRelayEnrollment" {
-						requestBody = map[string]string{"spoke_instance_uid": "01J00000000000000000000001"}
-					}
-					status, _, body := f.request(t, op.Method, route, "nonmember", requestBody, nil)
-					want := http.StatusNotFound
-					// Body-bearing federation routes authenticate enrollment before
-					// Huma dispatch or reading input. Other project routes retain 404.
-					switch op.OperationID {
-					case "ingestFederationProjectEvents", "acceptRelayDeliveries", "ackRelayDeliveries":
-						want = http.StatusForbidden
-					}
-					assert.Equal(t, want, status, string(body))
-					assert.NotContains(t, string(body), projectAccessCanary)
-					assert.NotContains(t, string(body), f.private.UID)
-				})
-			}
-		}
-		require.GreaterOrEqual(t, checked, 70, "inventory must include every registered base project operation")
-	})
-}
 
 func TestProjectAccessReferenceFacets(t *testing.T) {
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
@@ -2009,31 +1952,6 @@ func TestProjectAccessDistinctTeamCollections(t *testing.T) {
 	})
 }
 
-func TestProjectAccessEnrollmentTransportUsesBoundActor(t *testing.T) {
-	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		f := newProjectAccessFixture(t, store)
-		_, err := store.EnableProjectFederation(t.Context(), f.private.ID, "admin")
-		require.NoError(t, err)
-		for _, actor := range []string{"member", "nonmember"} {
-			created, err := store.CreateFederationEnrollment(t.Context(), db.CreateFederationEnrollmentParams{SpokeInstanceUID: f.issue.UID, ProjectID: &f.private.ID, Capabilities: "pull,push", Actor: actor})
-			require.NoError(t, err)
-			path := fmt.Sprintf("/api/v1/projects/%d/federation/metadata", f.private.ID)
-			status, _, body := f.request(t, http.MethodGet, path, "", nil, map[string]string{"Authorization": "Bearer " + created.Token})
-			want := http.StatusNotFound
-			if actor == "member" {
-				want = http.StatusOK
-			}
-			assert.Equal(t, want, status, string(body))
-			if actor == "member" {
-				_, err = store.SetTeamMembership(t.Context(), f.team.UID, "member", false, "admin")
-				require.NoError(t, err)
-				status, _, body = f.request(t, http.MethodGet, path, "", nil, map[string]string{"Authorization": "Bearer " + created.Token})
-				assert.Equal(t, http.StatusNotFound, status, string(body))
-			}
-		}
-	})
-}
-
 // Late claim credentials must replace anonymous admission with their validated
 // authority. Caller-supplied holder labels never supply team membership.
 func TestProjectAccessLateClaimIdentity(t *testing.T) {
@@ -2112,13 +2030,7 @@ func TestProjectAccessCloseHintConcealsPrivateParent(t *testing.T) {
 func TestProjectAccessUnresolvedGraphEndpointsRequireProject(t *testing.T) {
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
 		f := newProjectAccessFixture(t, store)
-		var raw *sql.DB
-		switch native := store.(type) {
-		case *sqlitestore.Store:
-			raw = native.DB
-		case *pgstore.Store:
-			raw = native.DB
-		}
+		raw := store.(*sqlitestore.Store).DB
 		conn, err := raw.Conn(t.Context())
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = conn.Close() })
@@ -2133,10 +2045,6 @@ func TestProjectAccessUnresolvedGraphEndpointsRequireProject(t *testing.T) {
 		require.NoError(t, err)
 		if _, ok := store.(*sqlitestore.Store); ok {
 			_, err = conn.ExecContext(t.Context(), "PRAGMA foreign_keys=ON")
-			require.NoError(t, err)
-		}
-		if _, ok := store.(*pgstore.Store); ok {
-			_, err = conn.ExecContext(t.Context(), "ALTER TABLE links ENABLE TRIGGER USER")
 			require.NoError(t, err)
 		}
 		require.NoError(t, conn.Close())

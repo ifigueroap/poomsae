@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"encoding/json/jsontext"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -444,33 +443,6 @@ func TestGeneratedPollEventsPreservesPayload(t *testing.T) {
 	assert.JSONEq(t, `{"labels":["bug"],"nested":{"ok":true}}`, string(body.Events[0].Payload))
 }
 
-func TestGeneratedFederationIngestEventPreservesPayload(t *testing.T) {
-	payload := jsontext.Value(`{"items":[{"id":1}],"source":"hub-project"}`)
-	event := generated.FederationIngestEventEnvelope{
-		Actor:             "tester",
-		ContentHash:       "hash",
-		CreatedAt:         time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EventID:           7,
-		EventUID:          "evt_01",
-		HlcPhysicalMs:     1,
-		OriginInstanceUID: "origin_01",
-		Payload:           payload,
-		ProjectName:       "spoke-project",
-		ProjectUID:        "proj_01",
-		Type:              "issue.updated",
-	}
-
-	raw, err := json.Marshal(event)
-	require.NoError(t, err)
-	var encoded map[string]jsontext.Value
-	require.NoError(t, json.Unmarshal(raw, &encoded))
-	assert.JSONEq(t, string(payload), string(encoded["payload"]))
-
-	var decoded generated.FederationIngestEventEnvelope
-	require.NoError(t, json.Unmarshal(raw, &decoded))
-	assert.JSONEq(t, string(payload), string(decoded.Payload))
-}
-
 func mustParseQuery(t *testing.T, raw string) map[string][]string {
 	t.Helper()
 	values, err := url.ParseQuery(raw)
@@ -498,24 +470,3 @@ func (b *closeTrackingBody) Close() error {
 }
 
 const testStreamTimeout = 2 * time.Second
-
-func TestGeneratedReplicaCreationSendsRequestFields(t *testing.T) {
-	var received struct {
-		HubURL      string `json:"hub_url"`
-		ProjectName string `json:"project_name"`
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&received))
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"project":{},"binding":{}}`)
-	}))
-	defer server.Close()
-	apiClient, err := NewWithHTTPClient(server.URL, server.Client())
-	require.NoError(t, err)
-	var request generated.CreateFederationReplicaBody
-	require.NoError(t, json.Unmarshal([]byte(`{"hub_url":"https://hub.example","hub_project_id":7,"hub_project_uid":"example-uid","project_name":"spoke-project","replay_horizon_event_id":0}`), &request))
-	_, err = apiClient.CreateFederationReplicaWithResponse(t.Context(), &generated.CreateFederationReplicaRequestOptions{Body: &request})
-	require.NoError(t, err)
-	assert.Equal(t, "https://hub.example", received.HubURL)
-	assert.Equal(t, "spoke-project", received.ProjectName)
-}

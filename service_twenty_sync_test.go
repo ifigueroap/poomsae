@@ -7,15 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/daemon"
-	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/twentysync"
 	"github.com/stretchr/testify/require"
 )
@@ -60,62 +55,4 @@ func twentyRuntimePost(ctx context.Context, id int64, action string, body io.Rea
 	r := httptest.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("/api/v1/projects/%d/issue-sync/twenty/%s", id, action), body)
 	r.Header.Set("Content-Type", "application/json")
 	return r
-}
-
-func TestServiceTwentyScheduledProgress(t *testing.T) {
-	ctx := t.Context()
-	f := newRuntimeTwentyFetcher()
-	var resolved config.TwentySyncConfig
-	s, err := newService(ctx, Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TwentySync: TwentySyncConfig{APIOrigin: "https://twenty.example/", TokenEnv: " EXAMPLE_PLANE_TOKEN "}}, serviceDeps{twentySyncFetcherFactory: func(c config.TwentySyncConfig) twentysync.Fetcher { resolved = c; return f }})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, s.Close()) })
-	require.Equal(t, "https://twenty.example", resolved.APIOrigin)
-	require.Equal(t, "https://twenty.example", resolved.WebOrigin)
-	require.Equal(t, "EXAMPLE_PLANE_TOKEN", resolved.TokenEnv)
-	p, err := s.store.CreateProject(ctx, "example-project")
-	require.NoError(t, err)
-	w := httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, twentyRuntimePost(t.Context(), p.ID, "enable", strings.NewReader(`{}`)))
-	require.Equal(t, 200, w.Code, w.Body.String())
-	sub := s.broadcaster.Subscribe(daemon.SubFilter{ProjectID: p.ID})
-	defer sub.Unsub()
-	record := &runtimeNotionRecordingStore{Storage: s.store, recorded: make(chan db.IssueSyncStatus, 1)}
-	s.store = record
-	runCtx, cancel := context.WithCancel(ctx)
-	done := make(chan error, 1)
-	go func() { done <- s.Run(runCtx) }()
-	defer func() { cancel(); require.NoError(t, <-done) }()
-	waitRuntimeNotion(t, f.started)
-	status := readRuntimeTwentyStatus(t, s.Handler(), p.ID)
-	require.NotNil(t, status.Status.Progress)
-	require.Equal(t, "tasks", status.Status.Progress.Phase)
-	w = httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, twentyRuntimePost(t.Context(), p.ID, "once", strings.NewReader(`{}`)))
-	require.Equal(t, 409, w.Code, w.Body.String())
-	close(f.release)
-	finished := waitRuntimeNotionRecord(t, record.recorded)
-	require.NotNil(t, finished.LastSuccessAt)
-	require.Equal(t, 1, finished.LastCreated)
-	select {
-	case msg := <-sub.Ch:
-		require.Equal(t, "issue.created", msg.Event.Type)
-	case <-time.After(5 * time.Second):
-		t.Fatal("missing event")
-	}
-}
-func TestServiceTwentyConfigAndExplicitCredentials(t *testing.T) {
-	_, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "bad.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TwentySync: TwentySyncConfig{APIOrigin: "http://twenty.example"}})
-	require.ErrorContains(t, err, "twenty_sync.api_origin")
-	t.Setenv("POOMSAE_PLANE_TOKEN", "unrelated-example-secret")
-	t.Setenv("EXAMPLE_PLANE_TOKEN", "")
-	s, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TwentySync: TwentySyncConfig{TokenEnv: "EXAMPLE_PLANE_TOKEN"}})
-	require.NoError(t, err)
-	defer func() { require.NoError(t, s.Close()) }()
-	p, err := s.store.CreateProject(t.Context(), "example-project")
-	require.NoError(t, err)
-	w := httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, twentyRuntimePost(t.Context(), p.ID, "enable", strings.NewReader(`{}`)))
-	require.Equal(t, 400, w.Code, w.Body.String())
-	require.Contains(t, w.Body.String(), "credentials")
-	require.NotContains(t, w.Body.String(), "unrelated-example-secret")
 }

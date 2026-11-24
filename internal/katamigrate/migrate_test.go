@@ -34,7 +34,7 @@ func TestMigrateCopiesDataAndLeavesOriginal(t *testing.T) {
 	require.NoError(t, store.Close())
 
 	workspace := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"), []byte("version = 1\n\n[project]\nname = \"example\"\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"), []byte("version = 1\n\n[project]\nname = \"example\"\n"), 0o600)) //nolint:gosec // fixture under t.TempDir
 	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"), []byte("version = 1\n\n[server]\nurl = \"http://127.0.0.1:9\"\n"), 0o600))
 
 	t.Setenv("KATA_HOME", src)
@@ -58,10 +58,10 @@ func TestMigrateCopiesDataAndLeavesOriginal(t *testing.T) {
 	assert.FileExists(t, filepath.Join(src, "kata.db"))
 	assert.FileExists(t, filepath.Join(dst, "kata.db"))
 
-	project, err := os.ReadFile(filepath.Join(workspace, ".poomsae.toml"))
+	project, err := os.ReadFile(filepath.Join(workspace, ".poomsae.toml")) //nolint:gosec // fixture under t.TempDir
 	require.NoError(t, err)
 	assert.Equal(t, "version = 1\n\n[project]\nname = \"example\"\n", string(project))
-	original, err := os.ReadFile(filepath.Join(workspace, ".kata.toml"))
+	original, err := os.ReadFile(filepath.Join(workspace, ".kata.toml")) //nolint:gosec // fixture under t.TempDir
 	require.NoError(t, err)
 	assert.Equal(t, string(project), string(original))
 
@@ -107,7 +107,7 @@ func TestMigrateStopsKataDaemon(t *testing.T) {
 	}
 	src := t.TempDir()
 	dst := filepath.Join(t.TempDir(), "dest")
-	cmd := exec.Command("sleep", "30")
+	cmd := exec.CommandContext(t.Context(), "sleep", "30")
 	require.NoError(t, cmd.Start())
 	t.Cleanup(func() {
 		if cmd.Process != nil {
@@ -174,11 +174,11 @@ func TestApplyLegacyKataEnvDoesNotOverridePoomsae(t *testing.T) {
 func TestAdoptLegacyProjectFilesIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	body := []byte("version = 1\n\n[project]\nname = \"example\"\n")
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.toml"), body, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.toml"), body, 0o600)) //nolint:gosec // fixture under t.TempDir
 	copied, err := config.AdoptLegacyProjectFiles(dir)
 	require.NoError(t, err)
 	require.Equal(t, []string{filepath.Join(dir, ".poomsae.toml")}, copied)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), []byte("keep\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), []byte("keep\n"), 0o600)) //nolint:gosec // fixture under t.TempDir
 	again, err := config.AdoptLegacyProjectFiles(dir)
 	require.NoError(t, err)
 	assert.Empty(t, again)
@@ -201,7 +201,7 @@ func unsetEnv(t *testing.T, key string) {
 
 func mustRead(t *testing.T, path string) string {
 	t.Helper()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // fixture under t.TempDir
 	require.NoError(t, err)
 	return string(data)
 }

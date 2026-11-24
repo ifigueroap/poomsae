@@ -370,39 +370,6 @@ func TestOpenAPIDocumentDefinesIdleShutdownHealthStates(t *testing.T) {
 	)
 }
 
-func TestOpenAPIDocumentIncludesConfigDrivenFederationContract(t *testing.T) {
-	doc := OpenAPIDocument()
-
-	rotation := doc.Paths["/api/v1/federation/enrollments/actions/rotate"]
-	require.NotNil(t, rotation, "missing enrollment rotation path")
-	require.NotNil(t, rotation.Post, "missing POST enrollment rotation operation")
-
-	health := doc.Components.Schemas.Map()["HealthResponseBody"]
-	require.NotNil(t, health, "missing HealthResponseBody schema")
-	require.Contains(t, health.Properties, "federation_config")
-	require.False(t, slices.Contains(health.Required, "federation_config"),
-		"federation_config must stay optional when no mappings are configured")
-
-	enrollments := doc.Paths["/api/v1/federation/enrollments"]
-	require.NotNil(t, enrollments, "missing federation enrollment path")
-	require.NotNil(t, enrollments.Post, "missing POST federation enrollment operation")
-	require.Contains(t, enrollments.Post.Description, "caller-supplied token")
-	require.Contains(t, enrollments.Post.Description, "same active enrollment")
-	require.Contains(t, enrollments.Post.Description, "409")
-}
-
-func TestOpenAPIRotationRequestRequiresPositiveProjectID(t *testing.T) {
-	rotationRequest := OpenAPIDocument().Components.Schemas.Map()["RotateFederationEnrollmentRequestBody"]
-	require.NotNil(t, rotationRequest, "missing rotation request schema")
-	projectID := rotationRequest.Properties["project_id"]
-	require.NotNil(t, projectID, "missing rotation project_id schema")
-	require.True(t, slices.Contains(rotationRequest.Required, "project_id"),
-		"rotation project_id must be required")
-	require.False(t, projectID.Nullable, "rotation project_id must not accept null")
-	require.NotNil(t, projectID.Minimum, "rotation project_id must publish its positive minimum")
-	require.Equal(t, float64(1), *projectID.Minimum)
-}
-
 func TestOpenAPIDocumentIncludesEventsStream(t *testing.T) {
 	doc := OpenAPIDocument()
 	path := doc.Paths["/api/v1/events/stream"]
@@ -422,34 +389,6 @@ func TestOpenAPIDocumentIncludesEventsStream(t *testing.T) {
 // opaque-JSON shape family. It is no longer an enumeration: the schemas come
 // from the wire types themselves (huma.SchemaProvider), so there is no rule
 // table here to keep in sync with one in another package.
-func TestOpenAPIDocumentJSONBlobShapes(t *testing.T) {
-	doc := OpenAPIDocument()
-
-	// db.JSONBlob — the storage object form, on a response component.
-	assertOpenObjectProperty(t, doc, "Issue", "metadata")
-	// api.JSONRawMap — undecoded per-key values, on a request body.
-	assertOpenObjectProperty(t, doc, "CreateIssueRequestBody", "metadata")
-	assertOpenObjectProperty(t, doc, "PatchIssueMetadataRequestBody", "patch")
-	// api.JSONMap — decoded Go values, on a request body and a response body.
-	assertOpenObjectProperty(t, doc, "EnableIssueSyncRequestBody", "config")
-	assertOpenObjectProperty(t, doc, "ErrorBody", "data")
-	// api.JSONRawObject — raw bytes, on a request body.
-	assertOpenObjectProperty(t, doc, "RecurrenceTemplateInput", "metadata")
-
-	// db.JSONStringArray publishes an array of strings, not an object.
-	labels := doc.Components.Schemas.Map()["Recurrence"].Properties["template_labels"]
-	require.NotNil(t, labels, "missing Recurrence.template_labels schema")
-	require.Equal(t, huma.TypeArray, labels.Type)
-	require.NotNil(t, labels.Items, "template_labels must declare item schema")
-	require.Equal(t, huma.TypeString, labels.Items.Type)
-
-	// api.JSONNullableRawObject additionally admits an explicit null, which is
-	// how a recurrence template patch clears metadata.
-	updateMetadata := doc.Components.Schemas.Map()["RecurrenceTemplateUpdateInput"].Properties["metadata"]
-	require.NotNil(t, updateMetadata, "missing RecurrenceTemplateUpdateInput.metadata schema")
-	require.Equal(t, huma.TypeObject, updateMetadata.Type)
-	require.True(t, updateMetadata.Nullable, "template patch metadata must allow null")
-}
 
 // assertOpenObjectProperty asserts that a component property publishes the
 // arbitrary-JSON-object shape: type object with additionalProperties

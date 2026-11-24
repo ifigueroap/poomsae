@@ -27,9 +27,9 @@ func TestRoot_HelpListsUniversalFlags(t *testing.T) {
 	assertNoFederationStorageInternals(t, out)
 }
 
-func TestRootHelpMentionsFederationWithoutStorageInternals(t *testing.T) {
+func TestRootHelpDoesNotMentionFederation(t *testing.T) {
 	out := string(executeRoot(t, newRootCmd(), "--help"))
-	assert.Contains(t, strings.ToLower(out), "federation")
+	assert.NotContains(t, strings.ToLower(out), "federation")
 	assertNoFederationStorageInternals(t, out)
 }
 
@@ -192,17 +192,12 @@ func TestRoot_Plan3VerbsAdvertised(t *testing.T) {
 	}
 }
 
-func TestRoot_LeaseVerbsAreFederationScoped(t *testing.T) {
+func TestRootDoesNotRegisterFederationCommands(t *testing.T) {
 	registered := rootSubcommands()
-	// `claim` lives at root for the simple ownership claim (PR #49); the
-	// federation write-lease verbs stay under `federation lease`.
-	_, ok := registered["release"]
+	_, ok := registered["federation"]
+	assert.False(t, ok, "root must not register federation")
+	_, ok = registered["release"]
 	assert.False(t, ok, "root must not register federation lease command \"release\"")
-	federation, ok := registered["federation"]
-	require.True(t, ok, "root must register federation")
-	lease, _, err := federation.Find([]string{"lease"})
-	require.NoError(t, err)
-	assert.Equal(t, "lease", lease.Name())
 }
 
 func TestRoot_QuickstartAdvertised(t *testing.T) {
