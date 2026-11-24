@@ -14,7 +14,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/ifigueroap/poomsae/internal/client"
 	"github.com/ifigueroap/poomsae/internal/config"
-	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
@@ -570,11 +569,6 @@ func printDaemonDiagnosis(cmd *cobra.Command, result daemonDiagnosis) error {
 	}
 	if result.Message != "" {
 		if _, err = fmt.Fprintf(cmd.OutOrStdout(), "  reason: %s\n", result.Message); err != nil {
-			return err
-		}
-	}
-	if result.RootSigning != nil {
-		if _, err = fmt.Fprintf(cmd.OutOrStdout(), "  warning: %s\n", daemon.RootSigningWarning(*result.RootSigning)); err != nil {
 			return err
 		}
 	}

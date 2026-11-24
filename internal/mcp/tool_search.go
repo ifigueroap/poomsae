@@ -138,7 +138,7 @@ func validateToolSearch(input ToolSearchInput) error {
 
 func newToolSearchCatalog(options Options) (*toolSearchCatalog, error) {
 	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "poomsae-tool-metadata", Version: options.Version}, nil)
-	sections := toolSections(options.StorageAdmin != nil, options.EnableTokenAdmin && options.Scope.Mode() == ScopeAll)
+	sections := toolSections(options.StorageAdmin != nil)
 	for _, section := range sections {
 		if section.available {
 			section.register(server, toolHandlers{options: options})

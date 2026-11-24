@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"encoding/json/v2"
 	"errors"
 	"net/http"
 	"strings"
@@ -12,8 +11,7 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db"
 )
 
-// Leave the local lease check and mutation time inside the CLI request budget.
-// Explicit lease actions retain the hub client's longer timeout.
+// Leave the local lease check inside the CLI request budget.
 const mutationClaimStatusRefreshTimeout = 500 * time.Millisecond
 
 func requireFederatedIssueClaim(
@@ -79,57 +77,25 @@ func requireFederatedIssueClaimForPrincipalWithRefresh(
 	return checkFederatedIssueClaim(ctx, cfg, issue, principal, refresh, false, nil)
 }
 
-// Service calls must admit external I/O through a transaction fence and retain
-// every component of the authenticated forwarded lease identity.
-func checkFederatedIssueClaim(ctx context.Context, cfg ServerConfig, issue db.Issue, principal db.ClaimPrincipal, refresh, service bool, result *claimRefreshResult) error {
-	// Claims belong to the resolved issue in its current project.
+// checkFederatedIssueClaim enforces a local lease only for an enabled hub
+// binding still stored on this daemon. Spoke bindings are not forwarded.
+func checkFederatedIssueClaim(ctx context.Context, cfg ServerConfig, issue db.Issue, principal db.ClaimPrincipal, _, _ bool, _ *claimRefreshResult) error {
 	projectID := issue.ProjectID
-
-	finishTransport, err := beginClaimFederationTransport(ctx, cfg, projectID)
-	if err != nil {
-		return err
-	}
-	defer finishTransport()
-
 	binding, err := cfg.DB.FederationBindingByProject(ctx, projectID)
 	if errors.Is(err, db.ErrNotFound) {
-		if service {
-			return attachmentError(503, "federation_offline")
-		}
 		return nil
 	}
 	if err != nil {
 		return internalAPIError(err)
 	}
-	if !binding.Enabled {
-		if service {
-			return attachmentError(503, "federation_offline")
-		}
+	if !binding.Enabled || binding.Role != db.FederationRoleHub {
 		return nil
 	}
-	if binding.Role == db.FederationRoleSpoke && !binding.PushEnabled {
-		return federationReadOnlyError(db.ErrFederatedReadOnly)
-	}
-
-	// A relay caches a downstream lease in that incoming hop's identity, just
-	// as its acquire response is remapped. Only local callers need the first
-	// binding transform here; forwarding to the next hop transforms separately.
-	if !service || binding.RelayConfig == nil || principal.HolderInstanceUID == cfg.DB.InstanceUID() {
-		principal = boundSpokeClaimPrincipal(binding, principal, cfg.DB.InstanceUID())
-	}
-
-	if refresh && binding.Role == db.FederationRoleSpoke {
-		if err := refreshSpokeClaimStatusForGate(ctx, cfg, binding, issue, result); err != nil {
-			return err
-		}
-	}
-
 	err = cfg.DB.CheckClaimGate(ctx, db.ClaimGateParams{
-		ApplyTransactionFence: service,
-		ProjectID:             projectID,
-		IssueRef:              issue.UID,
-		Principal:             principal,
-		Now:                   time.Now().UTC(),
+		ProjectID: projectID,
+		IssueRef:  issue.UID,
+		Principal: principal,
+		Now:       time.Now().UTC(),
 	})
 	if err != nil {
 		return claimGateAPIError(err)
@@ -145,7 +111,6 @@ func requireFederatedHubIssueClaim(
 	actor string,
 ) error {
 	projectID := issue.ProjectID
-
 	binding, err := cfg.DB.FederationBindingByProject(ctx, projectID)
 	if errors.Is(err, db.ErrNotFound) {
 		return nil
@@ -159,147 +124,12 @@ func requireFederatedHubIssueClaim(
 	return requireFederatedIssueClaim(ctx, cfg, projectID, issue, actor)
 }
 
-func refreshSpokeClaimStatusForGate(
-	ctx context.Context,
-	cfg ServerConfig,
-	binding db.FederationBinding,
-	issue db.Issue,
-	result *claimRefreshResult,
-) error {
-	remoteCtx, cancelRemote := context.WithTimeout(ctx, mutationClaimStatusRefreshTimeout)
-	defer cancelRemote()
-	remote, cred, err := claimForwardClient(remoteCtx, cfg, binding)
-	if err != nil {
-		if remoteCtx.Err() != nil || isOfflineClaimRefreshError(err) {
-			return nil
-		}
-		return err
-	}
-	resp, err := remote.ClaimStatus(remoteCtx, cred.HubProjectID, issue.UID)
-	if err != nil {
-		if isTransportClaimError(err) || isOfflineClaimHubStatusError(err) {
-			return nil
-		}
-		pending, pendingErr := isPendingSpokePushClaimStatusMiss(ctx, cfg, binding, issue, err)
-		if pendingErr != nil {
-			return pendingErr
-		}
-		var status *claimHubStatusError
-		missingRelayIssue := result != nil && binding.RelayConfig != nil && errors.As(err, &status) && status != nil && status.StatusCode == http.StatusNotFound && (hubStatusErrorCode(status) == "issue_not_found" || hubStatusErrorCode(status) == "hub_claim_failed")
-		if pending || missingRelayIssue {
-			if result != nil {
-				*result = claimRefreshResult{binding: binding, known: true, missing: true}
-			}
-			return nil
-		}
-		return claimForwardError(err)
-	}
-	if result != nil {
-		*result = claimRefreshResult{binding: binding, known: true}
-	}
-	resp, err = remapCachedClaimStatus(ctx, cfg.DB, binding.ProjectID, issue.UID, resp)
-	if err != nil {
-		return claimAPIError(err)
-	}
-	if err := cfg.DB.ApplyClaimStatus(ctx, binding.ProjectID, issue.UID, claimStatusFromAPI(resp)); err != nil {
-		return claimAPIError(err)
-	}
-	return nil
-}
-
-func isPendingSpokePushClaimStatusMiss(
-	ctx context.Context,
-	cfg ServerConfig,
-	binding db.FederationBinding,
-	issue db.Issue,
-	err error,
-) (bool, error) {
-	var statusErr *claimHubStatusError
-	if !errors.As(err, &statusErr) || statusErr.StatusCode != http.StatusNotFound {
-		return false, nil
-	}
-	if hubStatusErrorCode(statusErr) != "issue_not_found" {
-		return false, nil
-	}
-	if binding.Role != db.FederationRoleSpoke || !binding.PushEnabled {
-		return false, nil
-	}
-	pending, err := pendingPushMayMaterializeIssue(ctx, cfg.DB, binding, issue.UID)
-	if err != nil {
-		return false, internalAPIError(err)
-	}
-	return pending, nil
-}
-
-func hubStatusErrorCode(err *claimHubStatusError) string {
-	if err == nil {
-		return ""
-	}
-	var env api.ErrorEnvelope
-	if json.Unmarshal([]byte(err.Body), &env) != nil {
-		return ""
-	}
-	return strings.TrimSpace(env.Error.Code)
-}
-
-func pendingPushMayMaterializeIssue(
-	ctx context.Context,
-	store db.Storage,
-	binding db.FederationBinding,
-	issueUID string,
-) (bool, error) {
-	afterID := binding.PushCursorEventID
-	for {
-		events, err := store.PendingFederationPushEvents(ctx, binding.ProjectID, store.InstanceUID(), afterID, 1000)
-		if err != nil {
-			return false, err
-		}
-		if len(events) == 0 {
-			return false, nil
-		}
-		for _, ev := range events {
-			if pushEventMaterializesIssue(ev, issueUID) {
-				return true, nil
-			}
-		}
-		nextAfterID := events[len(events)-1].ID
-		if nextAfterID <= afterID {
-			return false, nil
-		}
-		afterID = nextAfterID
-	}
-}
-
-func pushEventMaterializesIssue(ev db.Event, issueUID string) bool {
-	if ev.Type != "issue.created" && ev.Type != "issue.snapshot" && ev.Type != "issue.moved" {
-		return false
-	}
-	return ev.IssueUID != nil && *ev.IssueUID == issueUID
-}
-
-func isOfflineClaimRefreshError(err error) bool {
-	var apiErr *api.APIError
-	if !errors.As(err, &apiErr) || apiErr == nil {
-		return false
-	}
-	return apiErr.Status == http.StatusServiceUnavailable &&
-		apiErr.Code == "federation_offline"
-}
-
-func isOfflineClaimHubStatusError(err error) bool {
-	var statusErr *claimHubStatusError
-	if !errors.As(err, &statusErr) || statusErr == nil || statusErr.StatusCode != http.StatusServiceUnavailable {
-		return false
-	}
-	return hubStatusErrorCode(statusErr) == "federation_offline"
-}
-
 func claimGateAPIError(err error) error {
 	switch {
-	case errors.Is(err, errHostFederationAccessUnavailable), errors.Is(err, db.ErrTransactionFinalizationFailed):
-		return api.NewError(http.StatusServiceUnavailable, "access_unavailable", "federation access decision unavailable", "", nil)
+	case errors.Is(err, db.ErrTransactionFinalizationFailed):
+		return api.NewError(http.StatusServiceUnavailable, "access_unavailable", "access decision unavailable", "", nil)
 	case errors.Is(err, ErrHostAccessDenied):
-		return federationCredentialDenied()
+		return api.NewError(http.StatusForbidden, "auth_invalid", "host access denied", "", nil)
 	case errors.Is(err, db.ErrClaimDenied):
 		return api.NewError(http.StatusConflict, "claim_denied",
 			"lease denied for federated issue mutation", "run poomsae federation lease acquire <ref>", nil)

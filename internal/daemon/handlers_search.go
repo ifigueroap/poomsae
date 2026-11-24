@@ -3,10 +3,8 @@ package daemon
 import (
 	"context"
 	"errors"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -27,11 +25,6 @@ func (e *hubSearchError) Error() string {
 	return "hub search failed: " + e.err.Error()
 }
 func (e *hubSearchError) Unwrap() error { return e.err }
-
-func wrapHubSearchError(err error) error {
-	_, transport := errors.AsType[*url.Error](err)
-	return &hubSearchError{err: err, unreachable: transport || errors.Is(err, errClaimHubTransportUnavailable)}
-}
 
 // registerSearchHandlers installs GET /api/v1/projects/{id}/search. Returns the
 // spec §4.10 envelope: query echo, effective mode, optional degraded fields,
@@ -60,12 +53,7 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 			limit = 20
 		}
 		mode := in.Mode
-		binding, bindingErr := cfg.DB.FederationBindingByProject(ctx, in.ProjectID)
-		if bindingErr != nil && !errors.Is(bindingErr, db.ErrNotFound) {
-			return nil, internalAPIError(bindingErr)
-		}
-		direct := bindingErr == nil && binding.IsDirectSpoke()
-		if insecureReadonlyRequest(ctx) && (cfg.Embedder != nil || direct) {
+		if insecureReadonlyRequest(ctx) && cfg.Embedder != nil {
 			switch mode {
 			case "hybrid", "semantic":
 				return nil, api.NewError(401, "auth_required",
@@ -75,7 +63,7 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 			}
 		}
 
-		if !direct && cfg.EmbeddingUnavailableReason != "" && (mode == "semantic" || mode == "hybrid") {
+		if cfg.EmbeddingUnavailableReason != "" && (mode == "semantic" || mode == "hybrid") {
 			return nil, api.NewError(503, "unavailable", cfg.EmbeddingUnavailableReason, "", nil)
 		}
 		stable := in.Sort == "oldest"
@@ -88,8 +76,6 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 		}
 		var res hybridResult
 		hash := ""
-		remoteURLs := map[string]string{}
-		var hubMode, hubDegradedReason string
 		if stable {
 			params := db.SearchFTSParams{ProjectID: in.ProjectID, Query: in.Query, Status: in.Status, IncludeDeleted: in.IncludeDeleted, Labels: in.Labels, ExcludeLabels: in.ExcludeLabels, IssueScope: issueScopeFromContext(ctx), StableOrder: true}
 			normalized := params
@@ -114,26 +100,6 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 				IssueScope:              issueScopeFromContext(ctx),
 				EmbeddingProjectAllowed: cfg.EmbeddingProjectAllowed,
 			}
-			if direct {
-				params.HubMode = &hubMode
-				params.Hub = func(ctx context.Context, p hybridParams, fetch int) ([]api.FederationSearchHit, bool, error) {
-					ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
-					defer cancel()
-					client, cred, err := claimForwardClient(ctx, cfg, binding)
-					if err != nil {
-						return nil, false, wrapHubSearchError(err)
-					}
-					body, err := client.SearchShared(ctx, cred.HubProjectID, p, fetch)
-					if err != nil {
-						return nil, false, wrapHubSearchError(err)
-					}
-					hubMode, hubDegradedReason = body.Mode, body.DegradedReason
-					for _, hit := range body.Hits {
-						remoteURLs[hit.Issue.UID] = hit.WebURL
-					}
-					return body.Hits, body.Bounded, nil
-				}
-			}
 			res, err = hybridSearch(ctx, cfg.DB, cfg.VectorIndex, cfg.Embedder, params)
 		}
 		if err != nil {
@@ -149,12 +115,7 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 			}
 			return nil, internalAPIError(err)
 		}
-		if !direct {
-			markEmbeddingUnavailable(&res, cfg.EmbeddingUnavailableReason, mode)
-		}
-		if hubDegradedReason != "" {
-			res.Degraded, res.DegradedReason = true, "hub search: "+hubDegradedReason
-		}
+		markEmbeddingUnavailable(&res, cfg.EmbeddingUnavailableReason, mode)
 		more := len(res.Hits) > limit
 		page := api.PageMetadata{Complete: !more, Truncated: more}
 		if !stable && (res.Mode != modeLexical || res.Degraded || len(res.Hits) >= 200) {
@@ -168,7 +129,7 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 				page.NextCursor = pagination.Encode(pagination.Position{CreatedAt: last.CreatedAt, ID: last.ID}, hash)
 			}
 		}
-		out := &api.SearchResponse{EmbeddingsConfigured: strconv.FormatBool(cfg.Embedder != nil || direct)}
+		out := &api.SearchResponse{EmbeddingsConfigured: strconv.FormatBool(cfg.Embedder != nil)}
 		out.Body.PageMetadata = page
 		out.Body.Query = in.Query
 		out.Body.Mode = string(res.Mode)
@@ -176,7 +137,7 @@ func registerSearchHandlers(humaAPI huma.API, cfg ServerConfig) {
 		out.Body.DegradedReason = res.DegradedReason
 		out.Body.Results = make([]api.SearchHit, 0, len(res.Hits))
 		for _, c := range res.Hits {
-			webURL := remoteURLs[c.Issue.UID]
+			webURL := ""
 			if c.Issue.ID != 0 {
 				webURL = issueWebURL(cfg, c.Issue.UID)
 			}

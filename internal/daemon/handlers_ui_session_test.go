@@ -51,7 +51,7 @@ func TestBrowserAttachmentRequestsMapRemoteAuthenticationFailure(t *testing.T) {
 	_, err = store.UpsertFederationBinding(t.Context(), db.FederationBinding{ProjectID: project.ID, Role: db.FederationRoleSpoke, HubURL: upstream.URL, HubProjectID: 1, HubProjectUID: project.UID, Enabled: true, PushEnabled: true, Actor: "operator", AllowInsecure: true})
 	require.NoError(t, err)
 	manager := newDeterministicSessionManager(t, "http://127.0.0.1:27123", "instance_a")
-	server := NewServer(ServerConfig{DB: store, WebSessions: manager, FederationCredentials: uiCapabilityCredentials{credential: config.FederationCredential{HubURL: upstream.URL, HubProjectID: 1, Token: "fixture", AllowInsecure: true}}})
+	server := NewServer(ServerConfig{DB: store, WebSessions: manager})
 	t.Cleanup(func() { _ = server.Close() })
 	handler, err := server.HandlerFor(ListenerPolicy{Kind: ListenerBrowser, Origin: "http://127.0.0.1:27123", RequireBrowserSession: true, AllowLocalSession: true})
 	require.NoError(t, err)

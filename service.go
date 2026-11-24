@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/ifigueroap/poomsae/internal/db"
@@ -447,19 +446,7 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 		reconciler = daemon.NewConfiguredEmbeddingReconciler(store, index, embedder, cfg.Embeddings, publisher, nil, federationCredentials, federation.EmbeddingProducerConnected, federation.EmbeddingProducerAuthorized, cfg.EmbeddingProjectAllowed)
 	}
 	federationWake := make(chan struct{}, 1)
-	wakeFederation := func() {
-		select {
-		case federationWake <- struct{}{}:
-		default:
-		}
-	}
 	gitHubSyncWake := make(chan struct{}, 1)
-	wakeGitHubSync := func() {
-		select {
-		case gitHubSyncWake <- struct{}{}:
-		default:
-		}
-	}
 	gitHubSyncFetcher := deps.gitHubSyncFetcher
 	if gitHubSyncFetcher == nil {
 		factory := deps.gitHubSyncFetcherFactory
@@ -474,7 +461,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	gitHubSyncProgress := githubsync.NewProgressTracker()
 	notionSyncWake := make(chan struct{}, 1)
-	wakeNotionSync := func() { signalWake(notionSyncWake) }
 	notionSyncFetcher := deps.notionSyncFetcher
 	if notionSyncFetcher == nil {
 		factory := deps.notionSyncFetcherFactory
@@ -487,7 +473,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	notionSyncProgress := issuesync.NewProgressTracker()
 	planeSyncWake := make(chan struct{}, 1)
-	wakePlaneSync := func() { signalWake(planeSyncWake) }
 	planeSyncFetcher := deps.planeSyncFetcher
 	if planeSyncFetcher == nil {
 		factory := deps.planeSyncFetcherFactory
@@ -500,7 +485,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	planeSyncProgress := issuesync.NewProgressTracker()
 	linearSyncWake := make(chan struct{}, 1)
-	wakeLinearSync := func() { signalWake(linearSyncWake) }
 	linearSyncFetcher := deps.linearSyncFetcher
 	if linearSyncFetcher == nil {
 		factory := deps.linearSyncFetcherFactory
@@ -513,7 +497,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	linearSyncProgress := issuesync.NewProgressTracker()
 	twentySyncWake := make(chan struct{}, 1)
-	wakeTwentySync := func() { signalWake(twentySyncWake) }
 	twentySyncFetcher := deps.twentySyncFetcher
 	if twentySyncFetcher == nil {
 		factory := deps.twentySyncFetcherFactory
@@ -526,7 +509,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	twentySyncProgress := issuesync.NewProgressTracker()
 	todoistSyncWake := make(chan struct{}, 1)
-	wakeTodoistSync := func() { signalWake(todoistSyncWake) }
 	todoistSyncFetcher := deps.todoistSyncFetcher
 	if todoistSyncFetcher == nil {
 		factory := deps.todoistSyncFetcherFactory
@@ -539,7 +521,6 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	}
 	todoistSyncProgress := issuesync.NewProgressTracker()
 	tickTickSyncWake := make(chan struct{}, 1)
-	wakeTickTickSync := func() { signalWake(tickTickSyncWake) }
 	tickTickSyncFetcher := deps.tickTickSyncFetcher
 	if tickTickSyncFetcher == nil {
 		factory := deps.tickTickSyncFetcherFactory
@@ -555,79 +536,24 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	if cfg.Access != nil {
 		hostAccess = hostAccessControllerAdapter{controller: cfg.Access}
 	}
-	var hostFederationAccess daemon.HostFederationAccessController
-	if cfg.FederationAccess != nil {
-		hostFederationAccess = hostFederationAccessControllerAdapter{
-			controller: cfg.FederationAccess,
-		}
-	}
-	federationRetries := federation.NewSyncRetries()
 	serverConfig := daemon.ServerConfig{
-		DB:       store,
-		Embedder: embedder, VectorIndex: index, EmbeddingUnavailableReason: unavailable,
-		Docbank:         docbankClient,
-		DocbankFolder:   docbankConfig.Folder,
-		WebHandler:      cfg.WebHandler,
-		DefaultTimezone: cfg.DefaultTimezone,
-		StartedAt:       startedAt,
-		Broadcaster:     broadcaster,
-		FederationWake:  wakeFederation,
-		FederationSyncOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
-			return federation.SyncFederationOnceWithPulledEvents(ctx, store, binding, credential, clientpkg.Opts{}, publisher.Events, federationCredentials)
-		},
-		FederationPullOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
-			return federation.SyncFederationPullOnlyOnceWithPulledEvents(ctx, store, binding, credential, clientpkg.Opts{}, publisher.Events, federationCredentials)
-		},
-		FederationCredentials:     federationCredentials,
-		FederationPushPending:     federation.DirectSpokePushPending(store),
-		FederationHubClient:       federation.CredentialHTTPClient,
-		FederationSyncRetry:       federationRetries.FederationSyncRetry,
-		DisableFederationRebind:   true,
-		EmbeddingProjectAllowed:   cfg.EmbeddingProjectAllowed,
-		GitHubSyncFetcher:         gitHubSyncFetcher,
-		GitHubSyncProgress:        gitHubSyncProgress,
-		GitHubSyncConfig:          gitHubSyncConfig,
-		GitHubSyncWake:            wakeGitHubSync,
-		NotionSyncFetcher:         notionSyncFetcher,
-		NotionSyncProgress:        notionSyncProgress,
-		NotionSyncConfig:          notionSyncConfig,
-		NotionSyncWake:            wakeNotionSync,
-		TickTickSyncFetcher:       tickTickSyncFetcher,
-		TickTickSyncProgress:      tickTickSyncProgress,
-		TickTickSyncConfig:        tickTickSyncConfig,
-		TickTickSyncWake:          wakeTickTickSync,
-		PlaneSyncFetcher:          planeSyncFetcher,
-		TwentySyncFetcher:         twentySyncFetcher,
-		PlaneSyncProgress:         planeSyncProgress,
-		TwentySyncProgress:        twentySyncProgress,
-		PlaneSyncConfig:           planeSyncConfig,
-		TwentySyncConfig:          twentySyncConfig,
-		PlaneSyncWake:             wakePlaneSync,
-		LinearSyncFetcher:         linearSyncFetcher,
-		LinearSyncProgress:        linearSyncProgress,
-		LinearSyncConfig:          linearSyncConfig,
-		LinearSyncWake:            wakeLinearSync,
-		TwentySyncWake:            wakeTwentySync,
-		TodoistSyncConfig:         todoistSyncConfig,
-		TodoistSyncFetcher:        todoistSyncFetcher,
-		TodoistSyncWake:           wakeTodoistSync,
-		TodoistSyncProgress:       todoistSyncProgress,
-		Hooks:                     hookSink,
-		Auth:                      config.AuthConfig{Token: cfg.Auth.Token},
-		HostAccess:                hostAccess,
-		TrustCallerAuthentication: cfg.Auth.TrustCallerAuthentication,
-		HostFederationAccess:      hostFederationAccess,
-		EmbeddingProfile:          daemon.EmbeddingProfile(cfg.Profile),
-		Logger:                    logger,
-	}
-	if controller, ok := cfg.FederationAccess.(FederationReferenceAccessController); ok {
-		serverConfig.AuthorizeFederationReference = func(ctx context.Context, tx db.Transaction, route, peer daemon.HostFederationAccessRequest) error {
-			err := controller.AuthorizeFederationReference(ctx, tx, publicFederationRequest(route), publicFederationRequest(peer))
-			if errors.Is(err, ErrAccessDenied) {
-				return errors.Join(daemon.ErrHostAccessDenied, err)
-			}
-			return err
-		}
+		DB:                         store,
+		Embedder:                   embedder,
+		VectorIndex:                index,
+		EmbeddingUnavailableReason: unavailable,
+		Docbank:                    docbankClient,
+		DocbankFolder:              docbankConfig.Folder,
+		WebHandler:                 cfg.WebHandler,
+		DefaultTimezone:            cfg.DefaultTimezone,
+		StartedAt:                  startedAt,
+		Broadcaster:                broadcaster,
+		EmbeddingProjectAllowed:    cfg.EmbeddingProjectAllowed,
+		Hooks:                      hookSink,
+		Auth:                       config.AuthConfig{Token: cfg.Auth.Token},
+		HostAccess:                 hostAccess,
+		TrustCallerAuthentication:  cfg.Auth.TrustCallerAuthentication,
+		EmbeddingProfile:           daemon.EmbeddingProfile(cfg.Profile),
+		Logger:                     logger,
 	}
 	if reconciler != nil {
 		serverConfig.ReconcilerHealth = reconciler.Health
@@ -638,6 +564,7 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	if cfg.MCPEvents.Enabled && mcpEventsService == nil {
 		serverConfig.MCPEventsDisabledReason = mcpevents.ReasonStartFailed
 	}
+	federationRetries := federation.NewSyncRetries()
 	server := daemon.NewServer(serverConfig)
 
 	return &Service{
@@ -1002,11 +929,8 @@ func (s *Service) runWorkers(ctx context.Context, selection workerSelection) err
 				if !ok {
 					return
 				}
-				if msg.Kind == daemon.StreamKindEvent {
-					signalWake(s.federationWake)
-					if s.embeddingReconciler != nil {
-						s.embeddingReconciler.Wake()
-					}
+				if msg.Kind == daemon.StreamKindEvent && s.embeddingReconciler != nil {
+					s.embeddingReconciler.Wake()
 				}
 			}
 		}
@@ -1060,103 +984,6 @@ func (s *Service) runWorkers(ctx context.Context, selection workerSelection) err
 }
 
 func (s *Service) serviceWorkers() []namedWorker {
-	runner := &federation.Runner{
-		DB:          s.store,
-		Credentials: s.federationCredentials,
-		Interval:    30 * time.Second,
-		Wake:        s.federationWake,
-		Retries:     s.federationRetries,
-		OnError: func(err error) {
-			s.logger.Error("poomsae federation worker", "err", err)
-		},
-		OnPulledEvents: func(projectID int64, events []db.Event) {
-			s.publishWorkerEvents(projectID, events)
-		},
-	}
-	gitHubSyncRunner := githubsync.NewRunner(githubsync.RunnerConfig{
-		Progress: s.gitHubSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.gitHubSyncFetcher,
-		Logger:   s.logger,
-		Interval: 5 * time.Minute,
-		Wake:     s.gitHubSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	notionSyncRunner := notionsync.NewRunner(notionsync.RunnerConfig{
-		Progress: s.notionSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.notionSyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.notionSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	planeSyncRunner := planesync.NewRunner(planesync.RunnerConfig{
-		Progress: s.planeSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.planeSyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.planeSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	linearSyncRunner := linearsync.NewRunner(linearsync.RunnerConfig{
-		Progress: s.linearSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.linearSyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.linearSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	twentySyncRunner := twentysync.NewRunner(twentysync.RunnerConfig{
-		Progress: s.twentySyncProgress,
-		Store:    s.store,
-		Fetcher:  s.twentySyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.twentySyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	todoistSyncRunner := todoistsync.NewRunner(todoistsync.RunnerConfig{
-		Progress: s.todoistSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.todoistSyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.todoistSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
-	tickTickSyncRunner := tickticksync.NewRunner(tickticksync.RunnerConfig{
-		Progress: s.tickTickSyncProgress,
-		Store:    s.store,
-		Fetcher:  s.tickTickSyncFetcher,
-		Logger:   s.logger,
-		Interval: 30 * time.Second,
-		Wake:     s.tickTickSyncWake,
-		EventSink: func(_ context.Context, projectID int64, events []db.Event) error {
-			s.publishWorkerEvents(projectID, events)
-			return nil
-		},
-	})
 	sweeper := daemon.NewTimedClaimSweeper(s.store, s.publish)
 	sweeper.OnError = func(err error) {
 		s.logger.Error("poomsae timed-claim worker", "err", err)
@@ -1170,14 +997,6 @@ func (s *Service) serviceWorkers() []namedWorker {
 		s.logger.Error("poomsae assignment-expiry worker", "err", err)
 	}
 	workers := []namedWorker{
-		{name: "federation", run: runner.Run},
-		{name: "github-sync", run: gitHubSyncRunner.Run},
-		{name: "notion-sync", run: notionSyncRunner.Run},
-		{name: "plane-sync", run: planeSyncRunner.Run},
-		{name: "linear-sync", run: linearSyncRunner.Run},
-		{name: "twenty-sync", run: twentySyncRunner.Run},
-		{name: "todoist-sync", run: todoistSyncRunner.Run},
-		{name: "ticktick-sync", run: tickTickSyncRunner.Run},
 		{name: "timed-claim", run: sweeper.Run},
 		{name: "due-notification", run: dueNotificationSweeper.Run},
 		{name: "assignment-expiry", run: assignmentSweeper.Run},

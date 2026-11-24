@@ -32,7 +32,6 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/ifigueroap/poomsae/internal/docbank"
 	"github.com/ifigueroap/poomsae/internal/embedding"
-	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/ifigueroap/poomsae/internal/githubsync"
 	"github.com/ifigueroap/poomsae/internal/hooks"
 	"github.com/ifigueroap/poomsae/internal/issuesync"
@@ -741,11 +740,6 @@ func daemonStatusCmd() *cobra.Command {
 					return err
 				}
 			}
-			if selected.RootSigning != nil {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  warning: %s\n", daemon.RootSigningWarning(*selected.RootSigning)); err != nil {
-					return err
-				}
-			}
 			if len(out.Daemons) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No poomsae daemon is running in the current POOMSAE_HOME.")
 				return statusErr
@@ -1400,18 +1394,6 @@ func runDaemonProcess(
 		}
 	}()
 
-	rootSigning, err := daemon.LoadRootSigning(ctx, store, filepath.Join(ns.DataDir, "federation-root.key"))
-	if err != nil {
-		return fmt.Errorf("load root attribution signing key: %w", err)
-	}
-	rootSigningHealth, err := rootSigning.Health(ctx, store)
-	if err != nil {
-		return fmt.Errorf("check root attribution signing key: %w", err)
-	}
-	if rootSigningHealth != nil {
-		_, _ = fmt.Fprintln(diagnostics, "poomsae daemon: "+daemon.RootSigningWarning(*rootSigningHealth))
-	}
-
 	runtimeEndpoint := runtimeEndpointForListener(endpoint, listener)
 	webEndpoint, err := daemon.ResolveWebEndpoint(daemon.WebEndpointOptions{
 		NamespaceID: ns.DBHash,
@@ -1540,6 +1522,7 @@ func runDaemonProcess(
 
 	broadcaster := daemon.NewEventBroadcaster()
 	publisher := daemon.NewEventPublisher(broadcaster, disp)
+	startClaimSweeper(ctx, workers, waitableDrainAdmission, store, publisher, daemonLog)
 	embedder, vectorIndex, reconcilerHealth, embeddingWake, err := startEmbeddingReconciler(
 		ctx, workers, waitableDrainAdmission, dcfg.Search.Embeddings, startup.Embedder, startup.VectorsPath, store, broadcaster, daemonLog, publisher,
 	)
@@ -1623,7 +1606,6 @@ func runDaemonProcess(
 		LocalEmbeddings:         localSetup,
 		MCPHandler:              mcpHandler,
 		DB:                      store,
-		RootSigning:             rootSigning,
 		DefaultTimezone:         dcfg.Timezone,
 		StartedAt:               time.Now().UTC(),
 		Endpoint:                &endpoint,
@@ -1709,16 +1691,6 @@ func runDaemonProcess(
 		})
 	}
 
-	var federationIngressAddress string
-	if dcfg.Federation.Ingress.Enabled {
-		ingress, err := new(net.ListenConfig).Listen(ctx, "tcp", dcfg.Federation.Ingress.Listen)
-		if err != nil {
-			return fmt.Errorf("listen for restricted federation: %w", err)
-		}
-		defer func() { _ = ingress.Close() }()
-		federationIngressAddress = ingress.Addr().String()
-		bindings = append(bindings, daemon.ListenerBinding{Listener: ingress, Policy: daemon.ListenerPolicy{Kind: daemon.ListenerFederation}})
-	}
 	var runtimeFile string
 	defer func() {
 		if runtimeFile != "" {
@@ -1732,9 +1704,6 @@ func runDaemonProcess(
 				return err
 			}
 			runtimeFile = path
-			if federationIngressAddress != "" {
-				_, _ = fmt.Fprintf(diagnostics, "federation ingress listening at %s\n", federationIngressAddress)
-			}
 			if idleController != nil {
 				idleController.Start()
 			}
@@ -1957,47 +1926,14 @@ func captureDaemonTelemetryEvent(ctx context.Context, store db.Storage, reporter
 	_ = reporter.Capture(event, properties)
 }
 
-func startFederationRunner(
+func startClaimSweeper(
 	ctx context.Context,
 	workers *daemonWorkerGroup,
 	drainAdmission activity.WaitableAdmission,
 	store db.Storage,
 	publisher daemon.EventPublisher,
 	daemonLog *log.Logger,
-	retries *federation.SyncRetries,
-	onSpokeResult func(string, int64, error),
-	onSyncComplete ...func(),
-) func() {
-	wake := make(chan struct{}, 1)
-	wakeRunner := func() {
-		select {
-		case wake <- struct{}{}:
-		default:
-		}
-	}
-	workers.Go(func() { daemon.ForwardFederationWakes(ctx, publisher.Broadcaster, store.InstanceUID(), wakeRunner) })
-	runner := &federation.Runner{
-		DB:             store,
-		Interval:       federationRunnerInterval(),
-		Wake:           wake,
-		DrainAdmission: drainAdmission,
-		Retries:        retries,
-		OnError: func(err error) {
-			daemonLog.Printf("federation: %v", err)
-		},
-		OnSpokeResult: func(projectID int64, err error) { onSpokeResult("federation", projectID, err) },
-		OnPulledEventsFrom: func(projectID int64, events []db.Event, fork activity.Admission) {
-			publisher.EventsFrom(projectID, events, fork)
-		},
-	}
-	if len(onSyncComplete) > 0 {
-		runner.OnSyncComplete = onSyncComplete[0]
-	}
-	workers.Go(func() {
-		if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			daemonLog.Printf("federation: %v", err)
-		}
-	})
+) {
 	sweeper := daemon.NewTimedClaimSweeper(store, publisher)
 	sweeper.IdleAdmission = drainAdmission
 	sweeper.OnError = func(err error) {
@@ -2008,7 +1944,6 @@ func startFederationRunner(
 			daemonLog.Printf("claim sweeper: %v", err)
 		}
 	})
-	return wakeRunner
 }
 
 // vectorsPathForDSN places the semantic-search sidecar next to the SQLite
@@ -2105,7 +2040,7 @@ func startEmbeddingReconciler(
 	if len(publishers) > 0 {
 		publisher = publishers[0]
 	}
-	reconciler := daemon.NewConfiguredEmbeddingReconciler(store, idx, embedder, ec, publisher, drainAdmission, config.DefaultFederationCredentialStore(), federation.EmbeddingProducerConnected, federation.EmbeddingProducerAuthorized, nil)
+	reconciler := daemon.NewConfiguredEmbeddingReconciler(store, idx, embedder, ec, publisher, drainAdmission, config.DefaultFederationCredentialStore(), nil, nil, nil)
 	workers.Go(func() {
 		if err := reconciler.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			daemonLog.Printf("reconciler: %v", err)
@@ -2143,18 +2078,6 @@ func startEmbeddingNudge(
 			}
 		}
 	})
-}
-
-func federationRunnerInterval() time.Duration {
-	raw := os.Getenv("POOMSAE_FEDERATION_PULL_INTERVAL_MS")
-	if raw == "" {
-		return 30 * time.Second
-	}
-	ms, err := strconv.Atoi(raw)
-	if err != nil || ms <= 0 {
-		return 30 * time.Second
-	}
-	return time.Duration(ms) * time.Millisecond
 }
 
 func startGitHubSyncRunner(

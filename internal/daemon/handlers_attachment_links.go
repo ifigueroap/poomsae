@@ -31,37 +31,13 @@ func linkAttachment(ctx context.Context, cfg ServerConfig, in *api.LinkAttachmen
 	if err != nil {
 		return nil, err
 	}
-	var claimResult claimRefreshResult
-	if err := requireFederatedIssueClaimWithResult(ctx, cfg, iss, actor, true, &claimResult); err != nil {
+	if err := requireFederatedIssueClaim(ctx, cfg, iss.ProjectID, iss, actor); err != nil {
 		return nil, err
 	}
 	input := in.Body
-	binding, err := docbankUpstream(ctx, cfg, iss.ProjectID)
+	attachment, err := resolveDocbankAttachment(ctx, cfg, input, false)
 	if err != nil {
 		return nil, err
-	}
-	var attachment metadata.Attachment
-	if binding != nil && binding.Role == db.FederationRoleSpoke {
-		project, err := activeProjectByID(ctx, cfg.DB, iss.ProjectID)
-		if err != nil {
-			return nil, err
-		}
-		attachment, err = forwardDocbankDescriptor(ctx, cfg, project, binding, iss, &claimResult, "", "", &input, nil)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		scoped := binding != nil && binding.Role == db.FederationRoleHub
-		attachment, err = resolveDocbankAttachment(ctx, cfg, input, scoped)
-		if err != nil {
-			return nil, err
-		}
-		if scoped {
-			attachment.Origin, err = rootDocbankOrigin(ctx, cfg, iss.ProjectID)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 	if input.ReuseExisting {
 		return saveAttachment(ctx, cfg, in.ProjectID, iss, actor, attachment, &attachment.DocbankVersion)

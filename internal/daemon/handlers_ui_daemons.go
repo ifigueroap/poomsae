@@ -94,16 +94,13 @@ type webDaemonGateway struct {
 func registerWebDaemonHandlers(mux *http.ServeMux, cfg ServerConfig) {
 	gateway := &webDaemonGateway{
 		catalog:  append([]config.CatalogDaemonConfig(nil), cfg.WebDaemons...),
-		syncHubs: make(map[string]bool, len(cfg.WebSyncHubs)),
+		syncHubs: make(map[string]bool),
 		active:   strings.TrimSpace(cfg.ActiveWebDaemon), localMux: mux,
 		sessions: cfg.WebSessions, insecureReadonly: cfg.InsecureReadonly,
 		trustPrivateNetwork: cfg.Auth.TrustPrivateNetwork,
 		health:              make(map[string]webDaemonHealthEntry),
 		inflight:            make(map[string]*webDaemonInflightProbe),
 		proxies:             make(map[string]http.Handler),
-	}
-	for _, name := range cfg.WebSyncHubs {
-		gateway.syncHubs[name] = true
 	}
 	mux.HandleFunc(http.MethodGet+" /api/v1/ui/daemons", gateway.list)
 	mux.Handle(webDaemonProxyPrefix+"/", http.StripPrefix(webDaemonProxyPrefix, gateway))

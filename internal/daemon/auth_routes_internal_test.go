@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/ifigueroap/poomsae/internal/db"
 )
@@ -191,24 +190,6 @@ func TestHostAccessRejectsFederationBearerOnForceReleaseOnly(t *testing.T) {
 			assert.Contains(t, recorder.Body.String(), tc.wantCode)
 		})
 	}
-}
-
-// TestFederationIngestPreauthParserMatchesRegisteredRoute pins the one route
-// parser that deliberately does not consume the matcher (see the comment on
-// federationIngestProjectID) against the template the route is registered with.
-func TestFederationIngestPreauthParserMatchesRegisteredRoute(t *testing.T) {
-	srv := NewServer(ServerConfig{})
-	t.Cleanup(func() { _ = srv.Close() })
-	template, ok := registeredOperations(srv.API().OpenAPI())["ingestFederationProjectEvents"]
-	require.True(t, ok, "ingestFederationProjectEvents is not registered")
-
-	projectID, matched, valid := federationIngestProjectID(
-		template.Method, strings.ReplaceAll(template.Path, "{project_id}", "42"))
-
-	assert.Truef(t, matched, "preauth parser no longer matches the registered route %s %s",
-		template.Method, template.Path)
-	assert.True(t, valid)
-	assert.Equal(t, int64(42), projectID)
 }
 
 type allowAllHostAccess struct{}

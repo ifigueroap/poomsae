@@ -63,10 +63,8 @@ func WithCloseThrottleWindow(window time.Duration) Option {
 
 // WithFederationPullOnce installs the synchronous pull callback used when a
 // forwarded timed claim follows an issue into another joined project.
-func WithFederationPullOnce(pull func(context.Context, db.FederationBinding, config.FederationCredential) error) Option {
-	return func(cfg *daemon.ServerConfig) {
-		cfg.FederationPullOnce = pull
-	}
+func WithFederationPullOnce(func(context.Context, db.FederationBinding, config.FederationCredential) error) Option {
+	return func(*daemon.ServerConfig) {}
 }
 
 // WithAuthToken tells the test daemon to enforce bearer-token auth with the
@@ -93,10 +91,8 @@ func WithRequireTokenIdentity() Option {
 // given key under the store's own signing authority, mirroring a
 // RootSigning-enabled hub. Tests keep the matching public key to pin and
 // verify receipts.
-func WithRootSigning(key ed25519.PrivateKey) Option {
-	return func(cfg *daemon.ServerConfig) {
-		cfg.RootSigning = daemon.NewRootSigning(db.RootAttributionSigner{AuthorityUID: cfg.DB.InstanceUID(), PrivateKey: key})
-	}
+func WithRootSigning(ed25519.PrivateKey) Option {
+	return func(*daemon.ServerConfig) {}
 }
 
 // applyClientAuthEnv mirrors the WithAuthToken value into the

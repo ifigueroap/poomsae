@@ -8,7 +8,6 @@
   import AppShell from './components/AppShell.svelte'
   import PoomsaeDaemonSwitcher from './components/PoomsaeDaemonSwitcher.svelte'
   import LaunchHint from './components/LaunchHint.svelte'
-  import LoginView from './components/LoginView.svelte'
   import RouteError from './components/RouteError.svelte'
   import StatusPage from './components/shared/StatusPage.svelte'
   import VersionMismatch from './components/VersionMismatch.svelte'
@@ -58,7 +57,6 @@
     AuthenticationRequiredError,
     clearSessionCredentials,
     consumeLaunchFragment,
-    exchangeLoginToken,
     isAuthenticationRequiredError,
     loadSessionCredentials,
     openLocalSession,
@@ -462,12 +460,6 @@
   function updatePreferences(next: Preferences): void {
     preferences = next
     savePreferences(next)
-  }
-
-  async function login(token: string, requestedPath: string): Promise<void> {
-    const session = await exchangeLoginToken(token, requestedPath)
-    invalidateDaemonRoster()
-    await navigateAfterAuthentication(session.returnPath)
   }
 
   function invalidateDaemonRoster(): void {
@@ -1040,8 +1032,8 @@
   }
 
   function authenticationView(authentication: AuthenticationMode | undefined): ShellMode {
-    if (authentication === 'login') return 'login'
-    return advertisedAuthentication === 'login' ? 'login' : 'launch'
+    if (authentication === 'login' || advertisedAuthentication === 'login') return 'launch'
+    return 'launch'
   }
 
   function rejectCredentialsAndRequireAuthentication(): boolean {
@@ -1476,10 +1468,8 @@
         })}
     />
   {:else}
-    {#if mode === 'launch'}
+    {#if mode === 'launch' || mode === 'login'}
       <LaunchHint issueRef={undefined} />
-    {:else if mode === 'login'}
-      <LoginView {returnPath} onLogin={login} />
     {/if}
     {#if daemonInfos.length > 0 && (mode === 'launch' || mode === 'login')}
       <PoomsaeDaemonSwitcher

@@ -41,10 +41,7 @@
     type UISnapshot,
   } from '../lib/state/snapshot'
   import { defaultPreferences, type Preferences } from '../lib/state/preferences'
-  import AccessManagement from './AccessManagement.svelte'
   import type { MutationContext, MutationResult } from '../lib/mutations/controller'
-  import CredentialAudit from './CredentialAudit.svelte'
-  import ProjectSyncStatus from './ProjectSyncStatus.svelte'
   import IssueCollection from './IssueCollection.svelte'
   import IssueDetail from './IssueDetail.svelte'
   import IssueFilters from './IssueFilters.svelte'
@@ -284,22 +281,12 @@
     const host = remote ? new URL(remote).hostname : globalThis.location?.hostname
     return host && !loopbackHost(host) ? host : undefined
   })
-  let accessAdministrationAvailable = $derived(
-    snapshot.capabilities.access_admin === true &&
-      !credentialExpired &&
-      !stale &&
-      !reconnecting &&
-      !daemonError &&
-      !daemonSwitching &&
-      (!activeDaemonID || activeConnection?.local === true),
-  )
-  let credentialAuditAvailable = $derived(snapshot.capabilities.token_audit_read === true)
-  // Settings opens on Search by meaning. A section this session can't use
-  // shows Appearance instead, without reading anything it isn't allowed to.
+  // Settings opens on Search by meaning. Credentials and team access are not
+  // part of this install, so those sections show Appearance.
   let settingsSection = $derived.by<SettingsSectionID>(() => {
-    if (route.view === 'credentials') return credentialAuditAvailable ? 'credentials' : 'appearance'
+    if (route.view === 'credentials') return 'appearance'
     const section = route.section ?? 'search'
-    return section === 'access' && !accessAdministrationAvailable ? 'appearance' : section
+    return section === 'access' ? 'appearance' : section
   })
   let inboxProject = $derived(
     projection.projects.find((project) => project.metadata.role === 'inbox'),
@@ -826,7 +813,7 @@
     </div>
 
     <div class="poomsae-main">
-      {#if mutationMessage && !captureOpen && (settingsSection !== 'access' || !daemonRoute || !accessAdministrationAvailable || !onAccessMutation)}
+      {#if mutationMessage && !captureOpen}
         <p class="mutation-message" role="alert">{mutationMessage}</p>
       {/if}
       {#if daemonRoute}
@@ -834,8 +821,6 @@
           active={settingsSection}
           theme={preferences.theme}
           onThemeChange={(theme) => onPreferencesChange({ ...preferences, theme })}
-          credentialsAvailable={credentialAuditAvailable}
-          accessAvailable={accessAdministrationAvailable}
           onSelect={openSettingsSection}
         >
           {#snippet search()}
@@ -847,26 +832,6 @@
                 remoteHost={settingsHost}
               />
             {/key}
-          {/snippet}
-          {#snippet credentials()}
-            <CredentialAudit
-              tokens={credentialTokens}
-              loading={credentialLoading}
-              error={credentialError}
-              onRefresh={onRefreshCredentials}
-            />
-          {/snippet}
-          {#snippet access()}
-            {#if onAccessMutation}
-              {#key `${activeDaemonID ?? 'direct'}:${draftFenceGeneration}`}
-                <AccessManagement
-                  projects={snapshot.catalog}
-                  pending={mutationPending || loading || !accessAdministrationAvailable}
-                  message={captureOpen ? undefined : mutationMessage}
-                  onMutation={onAccessMutation}
-                />
-              {/key}
-            {/if}
           {/snippet}
         </SettingsView>
       {:else}
@@ -908,24 +873,11 @@
   </IconButton>
 {/snippet}
 
-{#snippet projectSync()}
-  {#if selectedProject && !daemonRoute && !stale && !daemonSwitching && !reconnecting && !credentialExpired && !daemonError && !scopedAuthority && (!activeDaemonID || activeConnection?.local === true)}
-    {#key `${activeDaemonID ?? 'direct'}:${draftFenceGeneration}:${selectedProject.uid}`}
-      <ProjectSyncStatus
-        projectID={selectedProject.id}
-        projectUID={selectedProject.uid}
-        refreshGeneration={syncRefreshGeneration}
-      />
-    {/key}
-  {/if}
-{/snippet}
-
 {#snippet listPane()}
   <div class="list-column poomsae-list">
     {#if route.issueUID && route.graph}
       {#if projection.selected_graph && projection.selected_detail}
         {#snippet graphActions()}
-          {@render projectSync()}
           {@render paneDirection()}
         {/snippet}
         <IssueGraph
@@ -955,7 +907,6 @@
         />
       {/snippet}
       {#snippet projectRecurrences()}
-        {@render projectSync()}
         {#if selectedProject && !scopedAuthority}
           {#key selectedProject.uid}
             <ProjectRecurrences
