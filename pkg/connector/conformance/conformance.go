@@ -1,6 +1,6 @@
 // Package conformance provides the provider-neutral behavioral contract for
 // protocol-v1 external root connector handlers. Adapters need advertise only
-// the lossless field kinds they support; Kata rejects unsupported descriptor
+// the lossless field kinds they support; Poomsae rejects unsupported descriptor
 // kinds when operators configure field mappings.
 package conformance
 
@@ -11,8 +11,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/connector/identityaudit"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/connector/identityaudit"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 // Fixture owns one disposable external root and exposes its provider-side

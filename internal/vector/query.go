@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"go.kenn.io/kit/search/sqlquery"
 	kitvec "go.kenn.io/kit/vector"
 	"go.kenn.io/kit/vector/sqlitevec"
@@ -25,7 +25,7 @@ type QueryWindow struct {
 
 // Query runs cosine KNN against a single generation and returns chunk-level
 // hits (callers roll up with kitvec.RollupByDocument). It deliberately does
-// not use kitvec.Search: kata serves exactly one generation (the building one
+// not use kitvec.Search: poomsae serves exactly one generation (the building one
 // must not answer mid-fill) and embeds the query once under a tight timeout.
 func (ix *Index) Query(ctx context.Context, key string, query kitvec.Vector, limit int) ([]kitvec.Hit[string], error) {
 	if limit <= 0 {

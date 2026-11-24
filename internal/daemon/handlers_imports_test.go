@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestImportEndpoint_CreatesAndReimports(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	body := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -120,7 +120,7 @@ func TestImportEndpoint_BroadcastsAndEnqueuesHookEvents(t *testing.T) {
 
 func TestImportEndpoint_SourceNewerUpdatesIssue(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	body := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -214,7 +214,7 @@ func TestImportEndpoint_ExternalRootContentOwnedReturnsNeutralConflict(t *testin
 	resp, raw := envDoRaw(t, env, http.MethodPost, importEndpointPath(project.ID), changed, nil)
 
 	assertAPIError(t, resp.StatusCode, raw, http.StatusConflict, "external_root_content_owned")
-	assert.Contains(t, string(raw), "kata bridge unbind")
+	assert.Contains(t, string(raw), "poomsae bridge unbind")
 	assert.NotContains(t, string(raw), "example-connector")
 	assert.NotContains(t, string(raw), "opaque-root-key")
 	after, readErr := env.DB.IssueByID(t.Context(), issue.ID)
@@ -231,7 +231,7 @@ func TestImportEndpoint_ExternalRootContentOwnedReturnsNeutralConflict(t *testin
 func TestImportEndpoint_FederatedExistingIssueAllowsUnclaimedUpdate(t *testing.T) {
 	ctx := t.Context()
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	initial := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -292,7 +292,7 @@ func TestImportEndpoint_FederatedExistingIssueAllowsUnclaimedUpdate(t *testing.T
 func TestImportEndpoint_FederatedExistingIssueDeniesOtherLeaseHolder(t *testing.T) {
 	ctx := t.Context()
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	initial := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -361,7 +361,7 @@ func TestImportEndpoint_FederatedExistingIssueDeniesOtherLeaseHolder(t *testing.
 func TestImportEndpoint_FederatedCommentOnlyImportBypassesOtherLeaseHolder(t *testing.T) {
 	ctx := t.Context()
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	initial := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -432,7 +432,7 @@ func TestImportEndpoint_FederatedCommentOnlyImportBypassesOtherLeaseHolder(t *te
 
 func TestImportEndpoint_FederatedIdempotentReimportDoesNotRequireLease(t *testing.T) {
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	body := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -468,7 +468,7 @@ func TestImportEndpoint_FederatedIdempotentReimportDoesNotRequireLease(t *testin
 
 func TestImportEndpoint_FederatedNewIssueLinkTargetDoesNotRequireTargetLease(t *testing.T) {
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	parent := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -516,7 +516,7 @@ func TestImportEndpoint_FederatedNewIssueLinkTargetDoesNotRequireTargetLease(t *
 func TestImportEndpoint_FederatedImportLinkAddDeniesOtherPeerLeaseHolder(t *testing.T) {
 	ctx := t.Context()
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	parent := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -578,7 +578,7 @@ func TestImportEndpoint_FederatedImportLinkAddDeniesOtherPeerLeaseHolder(t *test
 func TestImportEndpoint_FederatedImportLinkRemovalDeniesOtherPeerLeaseHolder(t *testing.T) {
 	ctx := t.Context()
 	env := testenv.New(t)
-	project := createImportTestProject(t, env, "github.com/wesm/kata", "kata")
+	project := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae")
 	initial := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -657,7 +657,7 @@ func TestImportEndpoint_FederatedImportLinkRemovalDeniesOtherPeerLeaseHolder(t *
 
 func TestImportEndpoint_PriorityRoundtrips(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	body := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -681,7 +681,7 @@ func TestImportEndpoint_PriorityRoundtrips(t *testing.T) {
 
 func TestImportEndpoint_PriorityOutOfRangeIsValidation(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	body := map[string]any{
 		"actor":  "importer",
 		"source": "beads",
@@ -696,7 +696,7 @@ func TestImportEndpoint_PriorityOutOfRangeIsValidation(t *testing.T) {
 
 func TestImportEndpoint_RejectsBlankActor(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	for _, tc := range []struct {
 		name string
 		body map[string]any
@@ -714,7 +714,7 @@ func TestImportEndpoint_RejectsBlankActor(t *testing.T) {
 
 func TestImportEndpoint_InvalidImportMapsToValidation(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	for _, tc := range []struct {
 		name string
 		item map[string]any
@@ -778,7 +778,7 @@ func createImportTestProject(t *testing.T, env *testenv.Env, _ string, name stri
 // issue bd comments before POSTing, so a 413 wastes minutes of upstream work.
 func TestImportEndpoint_AcceptsLargeBody(t *testing.T) {
 	env := testenv.New(t)
-	pid := createImportTestProject(t, env, "github.com/wesm/kata", "kata").ID
+	pid := createImportTestProject(t, env, "github.com/wesm/poomsae", "poomsae").ID
 	// 1.5 MiB body field puts the serialized request comfortably above
 	// huma's 1 MiB default but well under any reasonable per-endpoint cap.
 	largeBody := strings.Repeat("x", 1500000)

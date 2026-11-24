@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/teammate"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // Event replay fields became durable wire data in schema v12. Later schema
@@ -233,7 +233,7 @@ func collectProjectUIDs(envs []Envelope) (map[int64]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("fill project uid for content-hash map: %w", err)
 			}
-			uid, err := katauid.FromStableSeed([]byte(fmt.Sprintf("project:%d:%s", p.ID, p.Identity)), t)
+			uid, err := poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("project:%d:%s", p.ID, p.Identity)), t)
 			if err != nil {
 				return nil, fmt.Errorf("fill project uid for content-hash map: %w", err)
 			}
@@ -665,7 +665,7 @@ func fillProjectUID(rec *projectImport, exportVersion int) error {
 	if err != nil {
 		return fmt.Errorf("fill project uid: %w", err)
 	}
-	uid, err := katauid.FromStableSeed([]byte(fmt.Sprintf("project:%d:%s", rec.ID, rec.Identity)), t)
+	uid, err := poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("project:%d:%s", rec.ID, rec.Identity)), t)
 	if err != nil {
 		return fmt.Errorf("fill project uid: %w", err)
 	}
@@ -681,7 +681,7 @@ func fillIssueUID(rec *issueImport, exportVersion int) error {
 	if err != nil {
 		return fmt.Errorf("fill issue uid: %w", err)
 	}
-	uid, err := katauid.FromStableSeed([]byte(fmt.Sprintf("issue:%d:%d", rec.ProjectID, rec.Number)), t)
+	uid, err := poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("issue:%d:%d", rec.ProjectID, rec.Number)), t)
 	if err != nil {
 		return fmt.Errorf("fill issue uid: %w", err)
 	}
@@ -691,7 +691,7 @@ func fillIssueUID(rec *issueImport, exportVersion int) error {
 
 func fillCommentUID(rec *db.CommentExport) error {
 	if rec.UID != "" {
-		if !katauid.Valid(rec.UID) {
+		if !poomsaeuid.Valid(rec.UID) {
 			return fmt.Errorf("invalid comment uid %q", rec.UID)
 		}
 		return nil
@@ -700,7 +700,7 @@ func fillCommentUID(rec *db.CommentExport) error {
 	if err != nil {
 		return fmt.Errorf("fill comment uid: %w", err)
 	}
-	uid, err := katauid.FromStableSeed(
+	uid, err := poomsaeuid.FromStableSeed(
 		[]byte(fmt.Sprintf("comment:%d:%d:%s:%s:%s", rec.IssueID, rec.ID, rec.Author, rec.Body, rec.CreatedAt)),
 		t,
 	)
@@ -727,7 +727,7 @@ func fillEventV3Identity(rec *db.EventExport, exportVersion int, localInstanceUI
 		if err != nil {
 			return fmt.Errorf("fill event uid: %w", err)
 		}
-		uid, err := katauid.FromStableSeed([]byte(fmt.Sprintf("event:%d:%d", rec.ProjectID, rec.ID)), t)
+		uid, err := poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("event:%d:%d", rec.ProjectID, rec.ID)), t)
 		if err != nil {
 			return fmt.Errorf("fill event uid: %w", err)
 		}
@@ -853,7 +853,7 @@ func fillPurgeLogV3Identity(rec *db.PurgeLogExport, exportVersion int, localInst
 		if err != nil {
 			return fmt.Errorf("fill purge_log uid: %w", err)
 		}
-		uid, err := katauid.FromStableSeed([]byte(fmt.Sprintf("purge:%d:%d", rec.ProjectID, rec.ID)), t)
+		uid, err := poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("purge:%d:%d", rec.ProjectID, rec.ID)), t)
 		if err != nil {
 			return fmt.Errorf("fill purge_log uid: %w", err)
 		}
@@ -883,7 +883,7 @@ func parseExportTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("parse timestamp %q", s)
 }
 
-// rfc3339MilliLayout is the canonical wire format for kata timestamps: RFC3339
+// rfc3339MilliLayout is the canonical wire format for poomsae timestamps: RFC3339
 // with millisecond precision and a literal "Z" zone.
 const rfc3339MilliLayout = "2006-01-02T15:04:05.000Z"
 

@@ -6,10 +6,10 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
 )
 
 func TestFederationDetailShowsEmbeddingReuseAndProducer(t *testing.T) {

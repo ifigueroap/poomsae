@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	katauid "go.kenn.io/kata/internal/uid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // NewFederationToken returns a cryptographically random enrollment secret.
@@ -44,7 +44,7 @@ func PrepareFederationEnrollmentParams(
 		}
 		input.Token = token
 	}
-	if !katauid.Valid(input.SpokeInstanceUID) {
+	if !poomsaeuid.Valid(input.SpokeInstanceUID) {
 		return PreparedFederationEnrollment{}, fmt.Errorf(
 			"invalid spoke instance uid %q", input.SpokeInstanceUID,
 		)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // UIStore is the narrow coherent-read contract used by the browser API.

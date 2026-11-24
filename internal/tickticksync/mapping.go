@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ValidateProject refuses archived/non-task sources and explicitly read-only writes.
@@ -44,7 +44,7 @@ func validateTaskIdentity(c Config, t Task) error {
 	return nil
 }
 
-// validateTask also bounds the content an import copies into Kata.
+// validateTask also bounds the content an import copies into Poomsae.
 func validateTask(c Config, t Task) error {
 	if err := validateTaskIdentity(c, t); err != nil {
 		return err

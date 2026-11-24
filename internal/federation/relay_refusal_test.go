@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
 )
 
 const relayRefusalBody = `{"error":{"code":"relay_cross_project_links","message":"this daemon's copy of the project has cross-project issue links","hint":"private remedy","data":{"secret":"private diagnostic"}}}`

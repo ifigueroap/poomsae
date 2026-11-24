@@ -1,19 +1,19 @@
 ---
 title: Forgejo connector
-description: "Bind a Forgejo issue to Kata using the built-in Go connector."
+description: "Bind a Forgejo issue to Poomsae using the built-in Go connector."
 last_edited: 2026-11-20
 ---
 
 # Forgejo connector
 
-Use the built-in Forgejo connector to bind an existing Forgejo issue to one Kata
-issue. Forgejo owns the title, body, and human discussion, while Kata owns agent
+Use the built-in Forgejo connector to bind an existing Forgejo issue to one Poomsae
+issue. Forgejo owns the title, body, and human discussion, while Poomsae owns agent
 work, child issues, dependencies, and verified completion.
 
-The connector implements `kata.connector.v1` inside the Kata binary and needs no
+The connector implements `poomsae.connector.v1` inside the Poomsae binary and needs no
 Python installation. It works differently from
 [GitHub bulk sync](github-sync.md): a bridge shares a single selected root issue
-and keeps its Kata children private.
+and keeps its Poomsae children private.
 
 ## Configure the daemon
 
@@ -30,24 +30,24 @@ For an inbound-only setup, `read:issue` allows issue and comment reads, though
 verified completion still requires `write:issue`. Keep the token in the daemon's
 environment rather than in command arguments or connector settings.
 
-Add the connector to `<KATA_HOME>/config.toml`, using the absolute path to your
-installed Kata binary:
+Add the connector to `<POOMSAE_HOME>/config.toml`, using the absolute path to your
+installed Poomsae binary:
 
 ```toml
 [[connector]]
 id = "forgejo"
-command = "/usr/local/bin/kata"
+command = "/usr/local/bin/poomsae"
 args = ["connector", "serve", "forgejo"]
 timeout_seconds = 30
 
 [connector.env]
-FORGEJO_TOKEN = "KATA_FORGEJO_TOKEN"
+FORGEJO_TOKEN = "POOMSAE_FORGEJO_TOKEN"
 
 [connector.settings]
 origin = "https://forge.example"
 ```
 
-Expose `KATA_FORGEJO_TOKEN` in the daemon's environment, then restart the daemon
+Expose `POOMSAE_FORGEJO_TOKEN` in the daemon's environment, then restart the daemon
 to load the connector configuration. Set `origin` to a root URL with no
 path, query, fragment, or embedded credentials. Use HTTPS for ordinary hosts;
 HTTP is allowed only for literal loopback, private (RFC 1918 or ULA),
@@ -57,22 +57,22 @@ provider redirects so the token stays at the configured origin.
 To check the connector and see its supported fields, run:
 
 ```sh
-kata connector status forgejo
-kata connector field list forgejo
+poomsae connector status forgejo
+poomsae connector field list forgejo
 ```
 
-`kata connector serve forgejo` is the connector's one-request RPC entry point.
+`poomsae connector serve forgejo` is the connector's one-request RPC entry point.
 The daemon invokes it with JSON on standard input and reads one response from
-standard output. The command itself does not start or contact a Kata daemon.
+standard output. The command itself does not start or contact a Poomsae daemon.
 
 ## Bind and reconcile an issue
 
-Create or select the Kata issue to hold the work, then bind it:
+Create or select the Poomsae issue to hold the work, then bind it:
 
 ```sh
-kata bridge bind abc4 --connector forgejo --external 'example-owner/example-repo#42'
-kata bridge show abc4
-kata bridge reconcile abc4
+poomsae bridge bind abc4 --connector forgejo --external 'example-owner/example-repo#42'
+poomsae bridge show abc4
+poomsae bridge reconcile abc4
 ```
 
 You can also pass a full issue URL on the configured origin. The connector
@@ -81,16 +81,16 @@ immutable repository and issue IDs. Repository renames stay addressable, and a
 replacement issue cannot silently take over the bound root.
 
 Binding imports the current title and body. Existing comments stay on Forgejo,
-while new comments and later edits flow into Kata with their external
+while new comments and later edits flow into Poomsae with their external
 attribution. Forgejo omits deleted comments from its API and provides no
-deletion tombstone. Kata keeps a previously imported comment after it is deleted
-on Forgejo. While the binding is active, Kata rejects local title and body
+deletion tombstone. Poomsae keeps a previously imported comment after it is deleted
+on Forgejo. While the binding is active, Poomsae rejects local title and body
 edits.
 
 Closing a Forgejo issue creates a verification request and adds `needs-review`
-in Kata, and reopening it creates a review request as well. Neither action
-changes Kata's lifecycle automatically. When you close the Kata issue through
-the normal verified close flow, Kata closes the Forgejo issue and checks the
+in Poomsae, and reopening it creates a review request as well. Neither action
+changes Poomsae's lifecycle automatically. When you close the Poomsae issue through
+the normal verified close flow, Poomsae closes the Forgejo issue and checks the
 provider's readback.
 
 ## Publish comments
@@ -99,7 +99,7 @@ Outbound comments are off by default. To opt in when binding an issue, pass
 `--publish-comments`:
 
 ```sh
-kata bridge bind abc4 --connector forgejo \
+poomsae bridge bind abc4 --connector forgejo \
   --external 'example-owner/example-repo#42' --publish-comments
 ```
 
@@ -112,7 +112,7 @@ and child issue comments do not echo back to Forgejo.
 An ambiguous match stops publication. If you switch the credential to a
 different Forgejo user, the root identity stays stable, but publication recovery
 cannot adopt a comment authored by the previous user. To recover, restore the
-original credential, or inspect the pending publication with `kata bridge show`
+original credential, or inspect the pending publication with `poomsae bridge show`
 and follow the explicit
 [`resolve-comment` workflow](../reference/cli.md#external-root-bridges).
 
@@ -134,16 +134,16 @@ before an error. Read the fields again before attempting recovery.
 
 Automatic bidirectional field mappings are currently unavailable for this
 connector. Because stock Forgejo 11 has no atomic compare-and-set operation for
-these fields, the connector does not advertise `conditional_fields`. Kata
+these fields, the connector does not advertise `conditional_fields`. Poomsae
 requires that capability before enabling mappings and refuses
-`kata connector field map` rather than accepting writes that could overwrite
+`poomsae connector field map` rather than accepting writes that could overwrite
 concurrent provider edits. Connector clients can still run direct protocol field
 reads and unconditional writes, while the connector rejects requests with
 `expected` before making any change.
 
 The portable `string` and `string_set` wire kinds also do not register native
-Kata label, owner, or milestone mappings. Kata's registered mapping codecs
-remain `scheduled_on` and `deadline_on`, and Kata has one owner and no native
+Poomsae label, owner, or milestone mappings. Poomsae's registered mapping codecs
+remain `scheduled_on` and `deadline_on`, and Poomsae has one owner and no native
 milestone field. See the
 [connector author contract](../reference/connector-protocol.md) for field values
 and conditional-write guarantees.

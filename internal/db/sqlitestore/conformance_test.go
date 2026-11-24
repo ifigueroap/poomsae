@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func TestStorageConformance(t *testing.T) {
@@ -24,7 +24,7 @@ func TestStorageConformance(t *testing.T) {
 		SearchIndexesEmoji: true,
 		Open: func(t *testing.T) db.Storage {
 			t.Helper()
-			store, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+			store, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 			require.NoError(t, err)
 			return store
 		},
@@ -42,7 +42,7 @@ func TestStorageConformance(t *testing.T) {
 		},
 		OpenWithRelayCheckpointCapacity: func(t *testing.T, capacity int64) db.Storage {
 			t.Helper()
-			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"), db.WithRelayCheckpointCapacity(capacity))
+			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"), db.WithRelayCheckpointCapacity(capacity))
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = store.Close() })
 			return store

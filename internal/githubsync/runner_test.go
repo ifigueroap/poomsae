@@ -16,12 +16,12 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 func TestRunnerFirstSyncFetchesAllImportsCommentsEmitsEventsAndAdvancesCursor(t *testing.T) {
@@ -1203,8 +1203,8 @@ func withWaitableDrainAdmission(admission activity.WaitableAdmission) runnerOpti
 func newRunnerHarness(t *testing.T, opts ...runnerOption) *runnerHarness {
 	t.Helper()
 	ctx := t.Context()
-	t.Setenv("KATA_HOME", t.TempDir())
-	storePath := filepath.Join(t.TempDir(), "kata.db")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	storePath := filepath.Join(t.TempDir(), "poomsae.db")
 	sqliteStore, err := sqlitestore.Open(ctx, storePath)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqliteStore.Close() })

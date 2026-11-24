@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestRelayRootAcceptanceParent(t *testing.T) {
@@ -67,7 +67,7 @@ func TestRelayAuthorityDepth(t *testing.T) {
 }
 
 func TestRelayEnrollmentBootstrap(t *testing.T) {
-	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 	dbtest.RunRelayEnrollmentBootstrap(t, s)

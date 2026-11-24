@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // dateInputHint names the forms the Dates form reads, for the message that
@@ -23,7 +23,7 @@ var relativeDate = regexp.MustCompile(`^\+(\d{1,4})([dw])$`)
 // now in now's own zone and resolve to YYYY-MM-DD; they exist only in the TUI,
 // so only the resolved day ever reaches the daemon. Every other text must
 // already be a value the daemon stores for scheduled_on and deadline_on, the
-// same set kata schedule and kata deadline accept. The error does not name a
+// same set poomsae schedule and poomsae deadline accept. The error does not name a
 // field; the caller adds the label.
 func resolveDateInput(input string, now time.Time) (string, error) {
 	text := strings.TrimSpace(input)

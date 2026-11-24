@@ -1,18 +1,18 @@
 import type { Page } from '@playwright/test'
-import { expect, test, type BrowserCredentials, type KataFixture } from './fixtures'
+import { expect, test, type BrowserCredentials, type PoomsaeFixture } from './fixtures'
 
 // Exercise owner settings against the production daemon and its native store.
 test('owner settings manage teams and persist project visibility', async ({
   page,
-  kata,
+  poomsae,
 }, testInfo) => {
-  const local = await kata.launch(page)
-  const forbidden = await kata.request(page, local, 'POST', '/api/v1/teams', {
+  const local = await poomsae.launch(page)
+  const forbidden = await poomsae.request(page, local, 'POST', '/api/v1/teams', {
     name: 'Forbidden team',
   })
   expect(forbidden.status()).toBe(403)
 
-  const credentials = await loginOwner(page, kata.origin)
+  const credentials = await loginOwner(page, poomsae.origin)
   await expect(page.getByRole('heading', { name: 'Teams', exact: true })).toBeVisible()
   await createTeam(page, 'Example team')
   await openTeam(page, 'Example team')
@@ -20,20 +20,20 @@ test('owner settings manage teams and persist project visibility', async ({
   await chooseProject(page, 'example-project')
   await chooseVisibility(page, 'Selected teams')
   await page.getByRole('checkbox', { name: 'Example team' }).check()
-  const teams = await kata.request(page, credentials, 'GET', '/api/v1/teams')
+  const teams = await poomsae.request(page, credentials, 'GET', '/api/v1/teams')
   const teamUID = (
     (await teams.json()) as { teams: Array<{ uid: string; name: string }> }
   ).teams.find((team) => team.name === 'Example team')?.uid
   expect(teamUID).toBeTruthy()
   // Visibility saves on change; poll until the daemon holds the pick.
   await expect
-    .poll(() => accessPolicy(page, credentials, kata))
+    .poll(() => accessPolicy(page, credentials, poomsae))
     .toMatchObject({ visibility: 'teams', team_uids: [teamUID] })
 
   await expect(page.getByRole('checkbox', { name: 'Example team' })).toBeEnabled()
   await page.getByRole('checkbox', { name: 'Example team' }).uncheck()
   await expect
-    .poll(() => accessPolicy(page, credentials, kata))
+    .poll(() => accessPolicy(page, credentials, poomsae))
     .toMatchObject({ visibility: 'teams', team_uids: [] })
   await page.reload()
   await chooseProject(page, 'example-project')
@@ -62,10 +62,10 @@ test('owner settings manage teams and persist project visibility', async ({
 
 test('Teams and Project visibility share one content column and fit narrow screens', async ({
   page,
-  kata,
+  poomsae,
 }, testInfo) => {
-  await kata.launch(page)
-  await loginOwner(page, kata.origin)
+  await poomsae.launch(page)
+  await loginOwner(page, poomsae.origin)
   const teams = page
     .locator('.kit-settings-section')
     .filter({ has: page.getByRole('heading', { name: 'Teams', exact: true }) })
@@ -94,14 +94,14 @@ test('Teams and Project visibility share one content column and fit narrow scree
 
 test('identity bootstrap manages access without ordinary write authority', async ({
   page,
-  kata,
+  poomsae,
 }, testInfo) => {
-  await kata.launch(page)
-  await kata.restartIdentity()
+  await poomsae.launch(page)
+  await poomsae.restartIdentity()
   try {
-    const credentials = await loginOwner(page, kata.origin)
+    const credentials = await loginOwner(page, poomsae.origin)
     await expect(page.getByRole('heading', { name: 'Teams', exact: true })).toBeVisible()
-    const snapshot = await kata.snapshot(page, credentials)
+    const snapshot = await poomsae.snapshot(page, credentials)
     expect(snapshot.capabilities).toMatchObject({ writable: false, access_admin: true })
     await createTeam(page, 'Identity team')
     await openTeam(page, 'Identity team')
@@ -110,13 +110,13 @@ test('identity bootstrap manages access without ordinary write authority', async
     await chooseVisibility(page, 'Selected teams')
     await page.getByRole('checkbox', { name: 'Identity team' }).check()
     await expect
-      .poll(() => accessPolicy(page, credentials, kata))
+      .poll(() => accessPolicy(page, credentials, poomsae))
       .toMatchObject({ visibility: 'teams' })
-    const denied = await kata.request(
+    const denied = await poomsae.request(
       page,
       credentials,
       'POST',
-      `/api/v1/projects/${kata.projectID}/issues`,
+      `/api/v1/projects/${poomsae.projectID}/issues`,
       { title: 'Forbidden issue', actor: 'forged' },
     )
     expect(denied.status()).toBe(403)
@@ -137,16 +137,16 @@ test('identity bootstrap manages access without ordinary write authority', async
     await page.getByRole('button', { name: 'Delete Identity team' }).click()
     await expect(teamRow(page, 'Identity team')).toHaveCount(0)
   } finally {
-    await kata.restartIdentity(false)
+    await poomsae.restartIdentity(false)
   }
 })
 
-async function accessPolicy(page: Page, credentials: BrowserCredentials, kata: KataFixture) {
-  const response = await kata.request(
+async function accessPolicy(page: Page, credentials: BrowserCredentials, poomsae: PoomsaeFixture) {
+  const response = await poomsae.request(
     page,
     credentials,
     'GET',
-    `/api/v1/projects/${kata.projectID}/access`,
+    `/api/v1/projects/${poomsae.projectID}/access`,
   )
   return ((await response.json()) as { policy: unknown }).policy
 }
@@ -196,7 +196,7 @@ async function chooseVisibility(page: Page, label: 'Everyone' | 'Selected teams'
 }
 
 async function loginOwner(page: Page, origin: string): Promise<BrowserCredentials> {
-  const returnPath = '/kata?view=settings&section=access'
+  const returnPath = '/poomsae?view=settings&section=access'
   const login = await page.request.post(`${origin}/api/v1/ui/session/login`, {
     headers: { Origin: origin },
     data: { token: 'example-local-token', return_path: returnPath },
@@ -205,7 +205,7 @@ async function loginOwner(page: Page, origin: string): Promise<BrowserCredential
   const credentials = (await login.json()) as BrowserCredentials
   await page.evaluate((value) => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: value.session, csrf: value.csrf }),
     )
   }, credentials)

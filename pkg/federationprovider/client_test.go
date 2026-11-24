@@ -11,16 +11,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/federationprovider"
 )
 
 func providerCommand(t *testing.T, mode string) []string {
 	t.Helper()
 	executable, err := os.Executable()
 	require.NoError(t, err)
-	t.Setenv("KATA_PROVIDER_PROCESS", "1")
-	t.Setenv("KATA_PROVIDER_EXAMPLE", "inherited-value")
+	t.Setenv("POOMSAE_PROVIDER_PROCESS", "1")
+	t.Setenv("POOMSAE_PROVIDER_EXAMPLE", "inherited-value")
 	return []string{executable, "-test.run=^TestProviderProcess$", "--", mode, "literal argument $(not-a-command)"}
 }
 
@@ -86,7 +86,7 @@ func TestExchangeRejectsUnusableResults(t *testing.T) {
 	}
 	for name, result := range invalid {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("KATA_PROVIDER_RESPONSE", result)
+			t.Setenv("POOMSAE_PROVIDER_RESPONSE", result)
 			response, err := federationprovider.Exchange(t.Context(), providerCommand(t, "response"), authorizationRequest())
 			require.ErrorIs(t, err, federationprovider.ErrInvalidResponse)
 			require.Zero(t, response)
@@ -97,7 +97,7 @@ func TestExchangeRejectsUnusableResults(t *testing.T) {
 func TestExchangeAcceptsReadOnlyAndCanonicalTarget(t *testing.T) {
 	request := authorizationRequest()
 	request.Intent = "read_only"
-	t.Setenv("KATA_PROVIDER_RESPONSE", strings.ReplaceAll(strings.ReplaceAll(readyJSON, "claim,pull,push", "pull"), "https://hub.example/tools/tasks", "https://HUB.example:443/tools/tasks/"))
+	t.Setenv("POOMSAE_PROVIDER_RESPONSE", strings.ReplaceAll(strings.ReplaceAll(readyJSON, "claim,pull,push", "pull"), "https://hub.example/tools/tasks", "https://HUB.example:443/tools/tasks/"))
 	response, err := federationprovider.Exchange(t.Context(), providerCommand(t, "response"), request)
 	require.NoError(t, err)
 	require.Equal(t, "pull", response.Capabilities)
@@ -123,7 +123,7 @@ func TestExchangeNonzeroExitDiscardsEvenCompleteResult(t *testing.T) {
 
 func TestExchangeRejectsBeforeStartingProvider(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "invoked")
-	t.Setenv("KATA_PROVIDER_MARKER", marker)
+	t.Setenv("POOMSAE_PROVIDER_MARKER", marker)
 	request := authorizationRequest()
 	request.Intent = "admin"
 	_, err := federationprovider.Exchange(t.Context(), providerCommand(t, "marker"), request)
@@ -156,7 +156,7 @@ func TestExchangeStopsProviderAtOutputLimit(t *testing.T) {
 // TestProviderProcess is a real executable peer. It checks request literals
 // without using the production codec, so a shared codec bug cannot pass both ends.
 func TestProviderProcess(_ *testing.T) {
-	if os.Getenv("KATA_PROVIDER_PROCESS") != "1" {
+	if os.Getenv("POOMSAE_PROVIDER_PROCESS") != "1" {
 		return
 	}
 	separator := -1
@@ -166,7 +166,7 @@ func TestProviderProcess(_ *testing.T) {
 			break
 		}
 	}
-	if separator < 0 || len(os.Args) != separator+3 || os.Args[separator+2] != "literal argument $(not-a-command)" || os.Getenv("KATA_PROVIDER_EXAMPLE") != "inherited-value" {
+	if separator < 0 || len(os.Args) != separator+3 || os.Args[separator+2] != "literal argument $(not-a-command)" || os.Getenv("POOMSAE_PROVIDER_EXAMPLE") != "inherited-value" {
 		os.Exit(10)
 	}
 	mode := os.Args[separator+1]
@@ -191,7 +191,7 @@ func TestProviderProcess(_ *testing.T) {
 	case "ready", "exit-one", "exit-two":
 		result = readyJSON
 	case "response":
-		result = os.Getenv("KATA_PROVIDER_RESPONSE")
+		result = os.Getenv("POOMSAE_PROVIDER_RESPONSE")
 	case "overflow-wait":
 		if _, err := io.WriteString(os.Stdout, strings.Repeat(" ", 32*1024)); err != nil {
 			os.Exit(19)
@@ -203,7 +203,7 @@ func TestProviderProcess(_ *testing.T) {
 		os.Exit(15)
 	case "marker":
 		// #nosec G703 -- parent test supplies a marker inside its own t.TempDir.
-		if err := os.WriteFile(os.Getenv("KATA_PROVIDER_MARKER"), []byte("invoked"), 0600); err != nil {
+		if err := os.WriteFile(os.Getenv("POOMSAE_PROVIDER_MARKER"), []byte("invoked"), 0600); err != nil {
 			os.Exit(16)
 		}
 	default:

@@ -8,12 +8,12 @@ import (
 	"time"
 	"uuid"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
 // ErrFederationProviderStorage distinguishes local database failure from a

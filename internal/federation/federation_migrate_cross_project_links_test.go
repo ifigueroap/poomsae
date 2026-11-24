@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // Two linked projects move from a source hub to a target hub one at a time:
-// each is merged from its own export into a Kata home and then adopted into
+// each is merged from its own export into a Poomsae home and then adopted into
 // the target hub. Once both have arrived, the target hub must hold the links
 // between them.
 func TestMigrateProjectsOneAtATimeKeepsCrossProjectLinks(t *testing.T) {

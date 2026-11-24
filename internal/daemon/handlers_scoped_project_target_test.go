@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 // TestIssueScopedTokenCannotAttachAliasThroughProjectResolution pins the
@@ -50,8 +50,8 @@ func TestIssueScopedTokenCannotAttachAliasThroughProjectResolution(t *testing.T)
 
 	aliasIdentity := "https://daemon.example/example-workspace.git"
 	resp := postWithHeader(t, ts, "/api/v1/projects/name:other-project/issues", map[string]string{
-		"X-Kata-Project-Alias":      aliasIdentity,
-		"X-Kata-Project-Alias-Kind": "git",
+		"X-Poomsae-Project-Alias":      aliasIdentity,
+		"X-Poomsae-Project-Alias-Kind": "git",
 	}, map[string]string{"actor": "worker-a", "title": "never created"})
 	require.Equal(t, http.StatusForbidden, resp.status, string(resp.body))
 

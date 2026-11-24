@@ -1,16 +1,16 @@
-// @vitest-environment-options { "url": "http://127.0.0.2/kata" }
+// @vitest-environment-options { "url": "http://127.0.0.2/poomsae" }
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte'
 import { tick } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('./lib/kata/projection', async (importOriginal) => {
-  const original = await importOriginal<typeof import('./lib/kata/projection')>()
+vi.mock('./lib/poomsae/projection', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./lib/poomsae/projection')>()
   return { ...original, normalizeKataUISnapshot: vi.fn(original.normalizeKataUISnapshot) }
 })
 
 import App from './App.svelte'
-import { normalizeKataUISnapshot } from './lib/kata/projection'
+import { normalizeKataUISnapshot } from './lib/poomsae/projection'
 import { preferencesStorageKey } from './lib/state/preferences'
 
 describe('App', () => {
@@ -18,7 +18,7 @@ describe('App', () => {
     sessionStorage.clear()
     localStorage.clear()
     document.documentElement.classList.remove('dark')
-    history.replaceState(null, '', '/kata')
+    history.replaceState(null, '', '/poomsae')
   })
 
   afterEach(() => {
@@ -30,7 +30,7 @@ describe('App', () => {
   })
 
   it('opens a qualified short link with one selected snapshot', async () => {
-    history.replaceState(null, '', '/kata?issue=example-project%23abc4')
+    history.replaceState(null, '', '/poomsae?issue=example-project%23abc4')
     let resolution: URL | undefined
     const data = snapshot()
     data.catalog.push({
@@ -74,7 +74,7 @@ describe('App', () => {
       ref: 'abc4',
       expected: () => [
         screen.getByText('Upgrade the selected daemon to open short issue links.'),
-        screen.getByRole('button', { name: 'Switch Kata daemon: example-remote' }),
+        screen.getByRole('button', { name: 'Switch Poomsae daemon: example-remote' }),
       ],
       search: '?issue=example-project%23abc4',
     },
@@ -89,7 +89,7 @@ describe('App', () => {
       ref: 'abc4',
       expected: () => [
         screen.getByText('Could not connect to example-remote'),
-        screen.getByRole('button', { name: 'Switch Kata daemon: example-local' }),
+        screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
       ],
       search: '',
     },
@@ -97,10 +97,10 @@ describe('App', () => {
     'handles saved short link failure $status when switching daemons',
     async ({ status, ref, expected, search }) => {
       localStorage.setItem(
-        'kata.web.workspace-state.v1',
+        'poomsae.web.workspace-state.v1',
         JSON.stringify({
           version: 1,
-          daemons: { 'example-remote': `/kata?issue=example-project%23${ref}` },
+          daemons: { 'example-remote': `/poomsae?issue=example-project%23${ref}` },
         }),
       )
       const roster = daemonRoster()
@@ -117,7 +117,7 @@ describe('App', () => {
       }, roster)
       render(App)
       await fireEvent.click(
-        await screen.findByRole('button', { name: 'Switch Kata daemon: example-local' }),
+        await screen.findByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
       )
       await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
       await waitFor(() => {
@@ -128,7 +128,7 @@ describe('App', () => {
   )
 
   it('retries resolving a short link after a server failure', async () => {
-    history.replaceState(null, '', '/kata?scope=example-project&issue=abc4')
+    history.replaceState(null, '', '/poomsae?scope=example-project&issue=abc4')
     const resolutions: URL[] = []
     const data = snapshot()
     data.catalog.push({
@@ -175,7 +175,7 @@ describe('App', () => {
   })
 
   it('discards a short link result after navigation', async () => {
-    history.replaceState(null, '', '/kata?issue=example-project%23abc4')
+    history.replaceState(null, '', '/poomsae?issue=example-project%23abc4')
     let finishResolution: (response: Response) => void = () => {}
     let resolving = false
     stubShortLink(() => {
@@ -186,7 +186,7 @@ describe('App', () => {
     })
     render(App)
     await waitFor(() => expect(resolving).toBe(true))
-    history.pushState(null, '', '/kata?view=all-open')
+    history.pushState(null, '', '/poomsae?view=all-open')
     await fireEvent(window, new PopStateEvent('popstate'))
     finishResolution(shortLinkResolved())
     await screen.findByRole('button', { name: /Example issue/ })
@@ -196,9 +196,9 @@ describe('App', () => {
 
   it('shows a clicked project from the loaded list and keeps it current', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const otherProjectUID = '01J00000000000000000000003'
@@ -283,9 +283,9 @@ describe('App', () => {
 
   it('keeps New task available while a clicked task loads its snapshot', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let snapshotReads = 0
@@ -329,9 +329,9 @@ describe('App', () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     const projectUID = '01J00000000000000000000002'
     const issueUID = '01J00000000000000000000001'
-    history.replaceState(null, '', `/kata?view=all-open&issue=${issueUID}`)
+    history.replaceState(null, '', `/poomsae?view=all-open&issue=${issueUID}`)
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const scoped = {
@@ -404,7 +404,7 @@ describe('App', () => {
   it('keeps the normalized collection when focus revalidation returns unchanged', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const requests: Request[] = []
@@ -445,9 +445,9 @@ describe('App', () => {
 
   it('keeps the normalized project list when the revalidation after a project click returns unchanged', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let releaseRevalidation: (() => void) | undefined
@@ -504,7 +504,7 @@ describe('App', () => {
     'counts each submitted empty query after its visible results settle, %s',
     async ({ pending, future, changed }) => {
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const events: unknown[] = []
@@ -571,7 +571,7 @@ describe('App', () => {
     'honors query memory and disabled outcome receipts, disabled=%s',
     async (disabled) => {
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const telemetry: { event: string }[] = []
@@ -666,7 +666,7 @@ describe('App', () => {
     await fireEvent.keyDown(input, { key: 'Enter' })
     await tick()
     expect(telemetry).toEqual([])
-    expect(screen.queryByRole('heading', { name: 'Open Kata from a terminal' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Open Poomsae from a terminal' })).toBeNull()
     await fireEvent.input(input, { target: { value: 'Example' } })
     await screen.findByRole('button', { name: /Example issue/ })
     expect(searches).toContain('Example')
@@ -675,9 +675,9 @@ describe('App', () => {
   it.each(['saved', 'too-large'])(
     'refreshes authority and re-enables edit after a %s attachment upload',
     async (outcome) => {
-      history.replaceState(null, '', '/kata?issue=01J00000000000000000000001#direct=1')
+      history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001#direct=1')
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const base = snapshot()
@@ -727,7 +727,7 @@ describe('App', () => {
       })
       await waitFor(() => expect(uploadURL).toBeDefined())
       const readsBeforeCompletion = snapshotReads
-      expect(uploadURL!.searchParams.get('actor')).toBe('kata-web')
+      expect(uploadURL!.searchParams.get('actor')).toBe('poomsae-web')
       expect(uploadURL!.pathname).toBe(
         '/api/v1/projects/7/issues/01J00000000000000000000001/attachments',
       )
@@ -757,14 +757,14 @@ describe('App', () => {
     },
   )
 
-  it('renders the Kata application shell while loading', () => {
+  it('renders the Poomsae application shell while loading', () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     render(App)
 
-    expect(screen.getByRole('main', { name: 'Kata' })).not.toBeNull()
+    expect(screen.getByRole('main', { name: 'Poomsae' })).not.toBeNull()
     expect(screen.getByRole('heading', { name: 'Loading…', level: 1 })).not.toBeNull()
     expect(screen.getByRole('status').textContent).toBe('Loading…')
   })
@@ -785,7 +785,7 @@ describe('App', () => {
             JSON.stringify({
               session: 'local-session',
               csrf: 'local-csrf',
-              return_path: '/kata',
+              return_path: '/poomsae',
               writable: true,
               updates: 'poll',
               actor_policy: 'request',
@@ -796,8 +796,8 @@ describe('App', () => {
         if (target.pathname === '/api/v1/ui/daemons') return Response.json(daemonRoster())
         expect(
           input instanceof Request
-            ? input.headers.get('X-Kata-Web-Session')
-            : new Headers(init?.headers).get('X-Kata-Web-Session'),
+            ? input.headers.get('X-Poomsae-Web-Session')
+            : new Headers(init?.headers).get('X-Poomsae-Web-Session'),
         ).toBe('local-session')
         return new Response(JSON.stringify(snapshot()), {
           status: 200,
@@ -808,20 +808,20 @@ describe('App', () => {
 
     render(App)
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     expect(paths.slice(0, 3)).toEqual([
       '/api/v1/ui/session/local',
       '/api/v1/ui/daemons',
       '/api/v1/ui/proxy/api/v1/ui/snapshot',
     ])
-    expect(sessionStorage.getItem('kata.web.session.v1')).toContain('local-session')
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('local-session')
   })
 
   it.each([false, true])(
     'refreshes the daemon menu without changing the workspace, failure: %s',
     async (failure) => {
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       let snapshotReads = 0
@@ -877,7 +877,7 @@ describe('App', () => {
         }),
       )
       render(App)
-      expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       const reads = snapshotReads
       const route = window.location.href
       await fireEvent.click(screen.getByTestId('daemon-chip'))
@@ -890,7 +890,7 @@ describe('App', () => {
       }
       expect(screen.getByTestId('daemon-row-local')).not.toBeNull()
       expect(screen.getByTestId('daemon-chip').textContent).toContain('local')
-      expect(screen.getByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(screen.getByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       expect(snapshotReads).toBe(reads)
       expect(window.location.href).toBe(route)
     },
@@ -898,7 +898,7 @@ describe('App', () => {
 
   it('offers the local fallback when the automatic daemon goes down', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const rosterHeaders: Array<string | null> = []
@@ -908,7 +908,7 @@ describe('App', () => {
         const request = requestOf(input, init)
         const path = new URL(request.url).pathname
         if (path === '/api/v1/ui/daemons') {
-          rosterHeaders.push(request.headers.get('X-Kata-Web-Daemon'))
+          rosterHeaders.push(request.headers.get('X-Poomsae-Web-Daemon'))
           const daemons =
             rosterHeaders.length === 1 || rosterHeaders.at(-1) === 'hub'
               ? [
@@ -939,12 +939,12 @@ describe('App', () => {
       }),
     )
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await fireEvent.click(screen.getByTestId('daemon-chip'))
     expect(await screen.findByTestId('daemon-row-local')).not.toBeNull()
     expect(rosterHeaders).toEqual([null, null])
     expect(screen.getByTestId('daemon-chip').textContent).toContain('hub')
-    expect(screen.getByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(screen.getByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await fireEvent.click(screen.getByTestId('daemon-row-local'))
     await waitFor(() => expect(screen.getByTestId('daemon-chip').textContent).toContain('local'))
     await fireEvent.click(screen.getByTestId('daemon-chip'))
@@ -956,9 +956,9 @@ describe('App', () => {
     async (down) => {
       vi.useFakeTimers()
       const id = down ? 'hub-a' : 'example-remote'
-      history.replaceState(null, '', `/kata#daemon=${id}`)
+      history.replaceState(null, '', `/poomsae#daemon=${id}`)
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const selected: Array<string | null> = []
@@ -969,7 +969,7 @@ describe('App', () => {
           const request = requestOf(input, init)
           const path = new URL(request.url).pathname
           if (path === '/api/v1/ui/daemons') {
-            rosterSelection = request.headers.get('X-Kata-Web-Daemon')
+            rosterSelection = request.headers.get('X-Poomsae-Web-Daemon')
             return Response.json({
               daemons: [
                 ...daemonRoster().daemons,
@@ -992,7 +992,7 @@ describe('App', () => {
           }
           if (path === '/api/v1/ui/telemetry') return telemetryAccepted()
           if (path.endsWith('/api/v1/ui/snapshot')) {
-            selected.push(request.headers.get('X-Kata-Web-Daemon'))
+            selected.push(request.headers.get('X-Poomsae-Web-Daemon'))
             if (down) return new Response('', { status: 502 })
           }
           return Response.json(snapshot(), { headers: { ETag: '"snapshot-1"' } })
@@ -1007,7 +1007,7 @@ describe('App', () => {
         expect(screen.getByRole('alert')).not.toBeNull()
         expect(screen.getByTestId('daemon-chip').textContent).toContain('hub-a')
       } else {
-        expect(screen.getByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+        expect(screen.getByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       }
       expect(rosterSelection).toBe(id)
       expect(selected.length).toBeGreaterThan(0)
@@ -1016,9 +1016,9 @@ describe('App', () => {
   )
 
   it('keeps an explicitly direct daemon pinned across reload', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let rosterReads = 0
@@ -1059,21 +1059,21 @@ describe('App', () => {
     )
 
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     cleanup()
 
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     expect(rosterReads).toBe(0)
     expect(snapshotRequests).toHaveLength(2)
     expect(
-      snapshotRequests.every((request) => request.headers.get('X-Kata-Web-Daemon') === null),
+      snapshotRequests.every((request) => request.headers.get('X-Poomsae-Web-Daemon') === null),
     ).toBe(true)
   })
 
   it('does not activate an incompatible configured default', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const selected: Array<string | null> = []
@@ -1109,20 +1109,20 @@ describe('App', () => {
           return Response.json({ issues: [], labels: [], owners: [], projects: [] })
         }
         if (path === '/api/v1/ui/telemetry') return telemetryAccepted()
-        selected.push(request.headers.get('X-Kata-Web-Daemon'))
+        selected.push(request.headers.get('X-Poomsae-Web-Daemon'))
         return Response.json(snapshot(), { headers: { ETag: '"snapshot-1"' } })
       }),
     )
 
     render(App)
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     expect(selected[0]).toBe('example-local')
   })
 
   it('does not fall through to local authority when every configured daemon is incompatible', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let snapshotReads = 0
@@ -1158,10 +1158,10 @@ describe('App', () => {
     render(App)
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'No compatible Kata daemon is available',
+      'No compatible Poomsae daemon is available',
     )
     expect(snapshotReads).toBe(0)
-    expect(screen.queryByRole('region', { name: 'Kata workspace' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Poomsae workspace' })).toBeNull()
   })
 
   it.each([false, true])(
@@ -1169,7 +1169,7 @@ describe('App', () => {
     async (exhausted) => {
       vi.useFakeTimers()
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       let reads = 0
@@ -1206,7 +1206,7 @@ describe('App', () => {
   it('cancels pending daemon roster retries on unmount', async () => {
     vi.useFakeTimers()
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let reads = 0
@@ -1227,7 +1227,7 @@ describe('App', () => {
 
   it('does not fall through to local authority when the initial roster is empty', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let snapshotReads = 0
@@ -1247,11 +1247,11 @@ describe('App', () => {
     render(App)
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Check that Kata is running, then try again.',
+      'Check that Poomsae is running, then try again.',
     )
     expect(screen.getByRole('button', { name: 'Try again' })).not.toBeNull()
     expect(snapshotReads).toBe(0)
-    expect(screen.queryByRole('region', { name: 'Kata workspace' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Poomsae workspace' })).toBeNull()
   })
 
   it('shows token login when a fresh tab roster requires authentication', async () => {
@@ -1268,7 +1268,7 @@ describe('App', () => {
     const authenticationChallenge = new Proxy(
       new Response('', {
         status: 401,
-        headers: { 'X-Kata-Web-Authentication': 'login' },
+        headers: { 'X-Poomsae-Web-Authentication': 'login' },
       }),
       {
         get(target, property) {
@@ -1327,7 +1327,7 @@ describe('App', () => {
     const authenticationChallenge = new Proxy(
       new Response('', {
         status: 401,
-        headers: { 'X-Kata-Web-Authentication': 'login' },
+        headers: { 'X-Poomsae-Web-Authentication': 'login' },
       }),
       {
         get(target, property) {
@@ -1360,7 +1360,7 @@ describe('App', () => {
     render(App)
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Check that Kata is running, then try again.',
+      'Check that Poomsae is running, then try again.',
     )
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await rosterRequested
@@ -1369,12 +1369,12 @@ describe('App', () => {
     await tick()
     expect(screen.getByRole('form', { name: 'Log in' })).not.toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.queryByText('Check that Kata is running, then try again.')).toBeNull()
+    expect(screen.queryByText('Check that Poomsae is running, then try again.')).toBeNull()
   })
 
   it('keeps roster recovery when a delayed 401 belongs to superseded credentials', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let releaseRoster!: (response: Response) => void
@@ -1400,25 +1400,25 @@ describe('App', () => {
     render(App)
     await rosterRequested
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'renewed-session', csrf: 'renewed-csrf' }),
     )
     releaseRoster(
       new Response('', {
         status: 401,
-        headers: { 'X-Kata-Web-Authentication': 'login' },
+        headers: { 'X-Poomsae-Web-Authentication': 'login' },
       }),
     )
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Check that Kata is running, then try again.',
+      'Check that Poomsae is running, then try again.',
     )
     expect(screen.getByRole('button', { name: 'Try again' })).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session')
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session')
   })
 
   it('opens a trusted-proxy tab without presenting token login', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     const paths: string[] = []
     let authorized = false
     vi.stubGlobal(
@@ -1434,7 +1434,7 @@ describe('App', () => {
           return Response.json({
             session: 'proxy-session',
             csrf: 'proxy-csrf',
-            return_path: '/kata',
+            return_path: '/poomsae',
             writable: true,
             updates: 'poll',
             actor_policy: 'identity',
@@ -1443,7 +1443,7 @@ describe('App', () => {
         if (!authorized) {
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'proxy' },
+            headers: { 'X-Poomsae-Web-Authentication': 'proxy' },
           })
         }
         return Response.json(snapshot(), { headers: { ETag: '"snapshot-1"' } })
@@ -1452,9 +1452,9 @@ describe('App', () => {
 
     render(App)
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     expect(paths).toContain('/api/v1/ui/session/proxy')
-    expect(screen.queryByRole('heading', { name: 'Connect to Kata' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Connect to Poomsae' })).toBeNull()
   })
 
   it('tells a local tab to use the CLI when transparent authorization is unavailable', async () => {
@@ -1471,19 +1471,19 @@ describe('App', () => {
         }
         return new Response('', {
           status: 401,
-          headers: { 'X-Kata-Web-Authentication': 'loopback' },
+          headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
         })
       }),
     )
 
     render(App)
 
-    expect(await screen.findByText(/kata ui/)).not.toBeNull()
+    expect(await screen.findByText(/poomsae ui/)).not.toBeNull()
   })
 
   it('leaves loading and clears stale tab credentials when snapshot authority expires', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     vi.stubGlobal(
@@ -1492,21 +1492,21 @@ describe('App', () => {
         async () =>
           new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'loopback' },
+            headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
           }),
       ),
     )
 
     render(App)
 
-    expect(await screen.findByRole('heading', { name: 'Open Kata from a terminal' })).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' })).not.toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
     expect(screen.queryByText('Loading…')).toBeNull()
   })
 
   it('renews an expired session on a server-advertised custom loopback origin', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let snapshotReads = 0
@@ -1520,7 +1520,7 @@ describe('App', () => {
             JSON.stringify({
               session: 'renewed-session',
               csrf: 'renewed-csrf',
-              return_path: '/kata',
+              return_path: '/poomsae',
               writable: true,
               updates: 'poll',
               actor_policy: 'request',
@@ -1535,7 +1535,7 @@ describe('App', () => {
         if (snapshotReads === 1)
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'loopback' },
+            headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
           })
         return new Response(JSON.stringify(snapshot()), {
           status: 200,
@@ -1546,15 +1546,15 @@ describe('App', () => {
 
     render(App)
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await waitFor(() =>
-      expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session'),
+      expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session'),
     )
   })
 
   it('ignores a delayed expired-session 401 while renewed authority is loading', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let referenceReads = 0
@@ -1580,7 +1580,7 @@ describe('App', () => {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata?view=today',
+            return_path: '/poomsae?view=today',
             writable: true,
             updates: 'poll',
             actor_policy: 'identity',
@@ -1596,7 +1596,7 @@ describe('App', () => {
           if (snapshotReads === 2) {
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           if (snapshotReads === 3) return renewedSnapshot
@@ -1607,30 +1607,30 @@ describe('App', () => {
     )
 
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await waitFor(() => expect(referenceReads).toBe(1))
     await fireEvent.click(screen.getByRole('button', { name: 'Today' }))
     await waitFor(() =>
-      expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session'),
+      expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session'),
     )
     await waitFor(() => expect(snapshotReads).toBe(3))
 
     releaseExpiredReference(
       new Response('', {
         status: 401,
-        headers: { 'X-Kata-Web-Authentication': 'loopback' },
+        headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
       }),
     )
     await new Promise((resolve) => setTimeout(resolve, 0))
     releaseRenewedSnapshot(Response.json(snapshot(), { headers: { ETag: '"renewed-snapshot"' } }))
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session')
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session')
   })
 
   it('reloads the configured daemon roster after transparent reauthentication', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let rosterReads = 0
@@ -1670,7 +1670,7 @@ describe('App', () => {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata',
+            return_path: '/poomsae',
             writable: true,
             updates: 'poll',
             actor_policy: 'request',
@@ -1685,7 +1685,7 @@ describe('App', () => {
           if (snapshotReads === 2) {
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           return Response.json(snapshot(), { headers: { ETag: '"snapshot-1"' } })
@@ -1696,20 +1696,20 @@ describe('App', () => {
 
     render(App)
 
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await waitFor(() =>
-      expect(snapshotRequests.at(-1)?.headers.get('X-Kata-Web-Daemon')).toBe('example-old'),
+      expect(snapshotRequests.at(-1)?.headers.get('X-Poomsae-Web-Daemon')).toBe('example-old'),
     )
     await fireEvent.click(screen.getByRole('button', { name: 'Today' }))
     await waitFor(() => expect(rosterReads).toBe(2))
     await waitFor(() =>
-      expect(snapshotRequests.at(-1)?.headers.get('X-Kata-Web-Daemon')).toBe('example-remote'),
+      expect(snapshotRequests.at(-1)?.headers.get('X-Poomsae-Web-Daemon')).toBe('example-remote'),
     )
   })
 
   it('keeps roster recovery when a roster 401 is suppressed during session renewal', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let rosterReads = 0
@@ -1740,14 +1740,14 @@ describe('App', () => {
           }
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'loopback' },
+            headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
           })
         }
         if (target.pathname === '/api/v1/ui/session/local') {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata?view=today',
+            return_path: '/poomsae?view=today',
             writable: true,
             updates: 'poll',
             actor_policy: 'request',
@@ -1758,11 +1758,11 @@ describe('App', () => {
         }
         if (target.pathname.endsWith('/api/v1/ui/snapshot')) {
           snapshotReads += 1
-          snapshotDaemons.push(request.headers.get('X-Kata-Web-Daemon'))
+          snapshotDaemons.push(request.headers.get('X-Poomsae-Web-Daemon'))
           if (snapshotReads === 2) {
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           const body = snapshot()
@@ -1778,22 +1778,22 @@ describe('App', () => {
     )
 
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: 'Today' }))
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Check that Kata is running, then try again.',
+      'Check that Poomsae is running, then try again.',
     )
     expect(screen.getByRole('button', { name: 'Try again' })).not.toBeNull()
     expect(snapshotDaemons).toEqual(['example-remote', 'example-remote'])
     expect(screen.queryByText('Wrong workspace issue')).toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
   })
 
   it('clears stale authority before activating a roster replacement', async () => {
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let rosterReads = 0
@@ -1817,7 +1817,7 @@ describe('App', () => {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata?view=today',
+            return_path: '/poomsae?view=today',
             writable: true,
             updates: 'poll',
             actor_policy: 'request',
@@ -1832,7 +1832,7 @@ describe('App', () => {
           if (snapshotReads === 2) {
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           return Response.json({ error: { code: 'daemon_unavailable' } }, { status: 503 })
@@ -1851,7 +1851,7 @@ describe('App', () => {
 
   it('does not resume snapshot authority after the application unmounts', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let releaseRoster!: (response: Response) => void
@@ -1883,9 +1883,9 @@ describe('App', () => {
     'recovers an initial snapshot failure, exhausted: %s',
     async (exhausted) => {
       vi.useFakeTimers()
-      history.replaceState(null, '', '/kata?view=all-open#direct=1')
+      history.replaceState(null, '', '/poomsae?view=all-open#direct=1')
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       let snapshotReads = 0
@@ -1917,9 +1917,9 @@ describe('App', () => {
   )
 
   it('fences browser authority when project creation rejects the session', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'revoked-session', csrf: 'revoked-csrf' }),
     )
     let revoked = false
@@ -1933,7 +1933,7 @@ describe('App', () => {
         revoked = true
         return new Response('', {
           status: 401,
-          headers: { 'X-Kata-Web-Authentication': 'loopback' },
+          headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
         })
       }
       if (method === 'POST' && target.pathname === '/api/v1/ui/session/local') {
@@ -1942,7 +1942,7 @@ describe('App', () => {
       if (revoked && target.pathname === '/api/v1/ui/snapshot') {
         return new Response('', {
           status: 401,
-          headers: { 'X-Kata-Web-Authentication': 'loopback' },
+          headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
         })
       }
       return new Response(JSON.stringify(snapshot()), {
@@ -1958,8 +1958,8 @@ describe('App', () => {
     await fireEvent.input(input, { target: { value: 'example-workspace' } })
     await fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect(await screen.findByRole('heading', { name: 'Open Kata from a terminal' })).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' })).not.toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
     expect(
       fetcher.mock.calls.some(
         ([value, options]) =>
@@ -1969,9 +1969,9 @@ describe('App', () => {
   })
 
   it('ignores a delayed mutation 401 from superseded credentials', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     let releaseMutation!: (response: Response) => void
@@ -2008,25 +2008,25 @@ describe('App', () => {
     await fireEvent.keyDown(input, { key: 'Enter' })
     await mutationRequested
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'renewed-session', csrf: 'renewed-csrf' }),
     )
     releaseMutation(
       new Response('', {
         status: 401,
-        headers: { 'X-Kata-Web-Authentication': 'loopback' },
+        headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
       }),
     )
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session')
-    expect(screen.getByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session')
+    expect(screen.getByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
   })
 
   it('fences browser authority when a reference request rejects the session', async () => {
-    history.replaceState(null, '', '/kata?view=today')
+    history.replaceState(null, '', '/poomsae?view=today')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'revoked-session', csrf: 'revoked-csrf' }),
     )
     vi.stubGlobal(
@@ -2039,11 +2039,11 @@ describe('App', () => {
         if (target.pathname === '/api/v1/ui/daemons') return Response.json(daemonRoster())
         if (
           target.pathname.endsWith('/api/v1/ui/references') &&
-          sessionStorage.getItem('kata.web.session.v1')?.includes('revoked-session')
+          sessionStorage.getItem('poomsae.web.session.v1')?.includes('revoked-session')
         ) {
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'login' },
+            headers: { 'X-Poomsae-Web-Authentication': 'login' },
           })
         }
         return new Response(JSON.stringify(snapshot()), {
@@ -2057,10 +2057,10 @@ describe('App', () => {
 
     expect(await screen.findByRole('form', { name: 'Log in' })).not.toBeNull()
     expect(
-      screen.queryByRole('button', { name: 'Switch Kata daemon: example-local' }),
+      screen.queryByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
     ).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Kata workspace' })).toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Poomsae workspace' })).toBeNull()
   })
 
   it('returns to the requested route after configured-origin login', async () => {
@@ -2072,12 +2072,12 @@ describe('App', () => {
       if (target.pathname === '/api/v1/ui/session/login') {
         expect(JSON.parse(String(init?.body))).toEqual({
           token: 'example-token',
-          return_path: '/kata?view=today',
+          return_path: '/poomsae?view=today',
         })
         return Response.json({
           session: 'new-session',
           csrf: 'new-csrf',
-          return_path: '/kata?view=today',
+          return_path: '/poomsae?view=today',
           writable: true,
           updates: 'poll',
           actor_policy: 'identity',
@@ -2087,7 +2087,7 @@ describe('App', () => {
       return Response.json(snapshot(), { headers: { ETag: '"snapshot-1"' } })
     })
     vi.stubGlobal('fetch', fetcher)
-    history.replaceState(null, '', '/kata#login=1&return_path=%2Fkata%3Fview%3Dtoday')
+    history.replaceState(null, '', '/poomsae#login=1&return_path=%2Fpoomsae%3Fview%3Dtoday')
     render(App)
 
     expect(screen.getByRole('form', { name: 'Log in' })).not.toBeNull()
@@ -2095,31 +2095,31 @@ describe('App', () => {
     expect(window.location.hash).toBe('')
     await fireEvent.input(screen.getByLabelText('Token'), { target: { value: 'example-token' } })
     await fireEvent.click(screen.getByRole('button', { name: 'Log in' }))
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     expect(window.location.search).toBe('?view=today')
   })
 
   it('recovers a short issue route through complete issue authority', async () => {
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
-    history.replaceState(null, '', '/kata?issue=abc4')
+    history.replaceState(null, '', '/poomsae?issue=abc4')
     render(App)
 
     const search = screen.getAllByRole('button', { name: 'Search for abc4' })
     expect(search).toHaveLength(1)
-    expect(window.location.pathname + window.location.search).toBe('/kata?issue=abc4')
+    expect(window.location.pathname + window.location.search).toBe('/poomsae?issue=abc4')
     await fireEvent.click(search[0]!)
-    expect(window.location.pathname).toBe('/kata')
+    expect(window.location.pathname).toBe('/poomsae')
     expect(new URLSearchParams(window.location.search).getAll('status')).toEqual(['all'])
     expect(new URLSearchParams(window.location.search).get('text')).toBe('abc4')
   })
 
   it('renders the ported collection and navigates through canonical routes after authority loads', async () => {
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let snapshotReads = 0
@@ -2150,9 +2150,9 @@ describe('App', () => {
   })
 
   it('loads credential audit metadata from Settings without sending the credential route to snapshots', async () => {
-    history.replaceState(null, '', '/kata?issue=01J00000000000000000000001&graph=1#direct=1')
+    history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001&graph=1#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     const snapshotViews: Array<string | null> = []
@@ -2197,7 +2197,7 @@ describe('App', () => {
     )
 
     render(App)
-    expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     await fireEvent.click(await screen.findByRole('button', { name: 'Credentials' }))
 
@@ -2215,9 +2215,9 @@ describe('App', () => {
   it.each(['false', 'absent'])(
     'replaces a Credentials address when audit access is %s',
     async (access) => {
-      history.replaceState(null, '', '/kata?view=credentials#direct=1')
+      history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       vi.stubGlobal(
@@ -2245,9 +2245,9 @@ describe('App', () => {
   )
 
   it('aborts and fences a delayed credential response after leaving the route', async () => {
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     let credentialRequest: Request | undefined
@@ -2306,9 +2306,9 @@ describe('App', () => {
   })
 
   it('clears credential data on forbidden refresh without retrying under different authority', async () => {
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     let tokenReads = 0
@@ -2358,14 +2358,14 @@ describe('App', () => {
     expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load credentials.")
     expect(screen.queryByText('Build worker')).toBeNull()
     expect(tokenReads).toBe(2)
-    expect(sessionStorage.getItem('kata.web.session.v1')).toContain('admin-session')
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('admin-session')
   })
 
   it.each(['accepted', 'rejected-session'] as const)(
     'turns on search directly for a selected local daemon and handles %s',
     async (outcome) => {
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const off = {
@@ -2405,7 +2405,7 @@ describe('App', () => {
           }
           if (target.pathname.endsWith('/snapshot')) {
             return Response.json(snapshot(), {
-              headers: { ETag: '"snapshot"', 'X-Kata-Web-Authentication': 'login' },
+              headers: { ETag: '"snapshot"', 'X-Poomsae-Web-Authentication': 'login' },
             })
           }
           throw new Error(`Unexpected request: ${request.method} ${target.pathname}`)
@@ -2418,23 +2418,23 @@ describe('App', () => {
 
       if (outcome === 'accepted') {
         await waitFor(() => expect(posts).toHaveLength(1))
-        expect(sessionStorage.getItem('kata.web.session.v1')).toContain('tab-session')
+        expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('tab-session')
       } else {
         await screen.findByRole('form', { name: 'Log in' })
-        expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+        expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
       }
       expect(statusPath).toBe('/api/v1/ui/proxy/api/v1/embeddings/local')
       expect(posts).toHaveLength(1)
-      expect(posts[0]!.headers.get('X-Kata-Web-Daemon')).toBeNull()
-      expect(posts[0]!.headers.get('X-Kata-Web-Session')).toBe('tab-session')
-      expect(posts[0]!.headers.get('X-Kata-CSRF')).toBe('tab-csrf')
+      expect(posts[0]!.headers.get('X-Poomsae-Web-Daemon')).toBeNull()
+      expect(posts[0]!.headers.get('X-Poomsae-Web-Session')).toBe('tab-session')
+      expect(posts[0]!.headers.get('X-Poomsae-CSRF')).toBe('tab-csrf')
     },
   )
 
   it('routes a credential-list 401 through the existing authentication-loss transition', async () => {
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     vi.stubGlobal(
@@ -2456,7 +2456,7 @@ describe('App', () => {
         if (target.pathname === '/api/v1/tokens') {
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'login' },
+            headers: { 'X-Poomsae-Web-Authentication': 'login' },
           })
         }
         throw new Error(`Unexpected request: ${request.method} ${target.pathname}`)
@@ -2466,14 +2466,14 @@ describe('App', () => {
     render(App)
 
     expect(await screen.findByRole('form', { name: 'Log in' })).not.toBeNull()
-    expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+    expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
   })
 
   it('refreshes selected project sync on the visible app cycle', async () => {
     vi.useFakeTimers()
-    history.replaceState(null, '', '/kata?scope=01J00000000000000000000002#direct=1')
+    history.replaceState(null, '', '/poomsae?scope=01J00000000000000000000002#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     let pending = 2
@@ -2525,9 +2525,9 @@ describe('App', () => {
 
   it('refreshes credential metadata periodically only while the page is visible', async () => {
     vi.useFakeTimers()
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     let tokenReads = 0
@@ -2573,9 +2573,9 @@ describe('App', () => {
 
   it('does not let the periodic refresh abort a slow credential read', async () => {
     vi.useFakeTimers()
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     const credentialRequests: Request[] = []
@@ -2625,9 +2625,9 @@ describe('App', () => {
     vi.spyOn(performance, 'now').mockImplementation(() => now)
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     const telemetry: Request[] = []
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const local = snapshot()
@@ -2670,7 +2670,7 @@ describe('App', () => {
         }
         if (path.endsWith('/api/v1/ui/references')) {
           referenceRequests.push(request)
-          const daemon = request.headers.get('X-Kata-Web-Daemon')
+          const daemon = request.headers.get('X-Poomsae-Web-Daemon')
           if (daemon === 'example-local') {
             await new Promise<void>((resolve) => {
               request.signal.addEventListener('abort', () => resolve(), { once: true })
@@ -2681,7 +2681,7 @@ describe('App', () => {
         }
         if (path.endsWith('/api/v1/ui/snapshot')) {
           snapshotRequests.push(request)
-          const daemon = request.headers.get('X-Kata-Web-Daemon')
+          const daemon = request.headers.get('X-Poomsae-Web-Daemon')
           if (daemon === 'example-remote') await remoteReleased
           return Response.json(daemon === 'example-remote' ? remote : local, {
             headers: { ETag: `"${daemon ?? 'default'}-${snapshotRequests.length}"` },
@@ -2695,26 +2695,26 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: /Example issue/ })).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: 'Today' }))
     await waitFor(() => expect(window.location.search).toBe('?view=today'))
-    await waitFor(() => expect(document.title).toBe('Today · Kata'))
+    await waitFor(() => expect(document.title).toBe('Today · Poomsae'))
     let localReference!: Request
     await waitFor(() => {
       localReference = referenceRequests.findLast(
-        (request) => request.headers.get('X-Kata-Web-Daemon') === 'example-local',
+        (request) => request.headers.get('X-Poomsae-Web-Daemon') === 'example-local',
       )!
       expect(localReference?.signal.aborted).toBe(false)
     })
     now = 120_000
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Kata daemon: example-local' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     expect(await screen.findByText('Loading…')).not.toBeNull()
-    await waitFor(() => expect(document.title).toBe('Kata'))
+    await waitFor(() => expect(document.title).toBe('Poomsae'))
     expect(localReference.signal.aborted).toBe(true)
     releaseRemote()
     expect(await screen.findByRole('button', { name: /Remote issue/ })).not.toBeNull()
     await waitFor(() => {
       expect(
         referenceRequests.some(
-          (request) => request.headers.get('X-Kata-Web-Daemon') === 'example-remote',
+          (request) => request.headers.get('X-Poomsae-Web-Daemon') === 'example-remote',
         ),
       ).toBe(true)
     })
@@ -2723,39 +2723,39 @@ describe('App', () => {
     now += 10_000
     window.dispatchEvent(new Event('pagehide'))
     await waitFor(() => expect(telemetry).toHaveLength(2))
-    expect(telemetry[1]!.headers.get('X-Kata-Web-Daemon')).toBeNull()
+    expect(telemetry[1]!.headers.get('X-Poomsae-Web-Daemon')).toBeNull()
     await expect(telemetry[1]!.json()).resolves.toMatchObject({
       properties: { duration_bucket: '1_to_5m' },
     })
     await fireEvent.click(
-      screen.getByRole('button', { name: 'Switch Kata daemon: example-remote' }),
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-remote' }),
     )
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-local/ }))
     await waitFor(() => expect(window.location.search).toBe('?view=today'))
-    await waitFor(() => expect(document.title).toBe('Today · Kata'))
-    expect(snapshotRequests.map((request) => request.headers.get('X-Kata-Web-Daemon'))).toEqual(
+    await waitFor(() => expect(document.title).toBe('Today · Poomsae'))
+    expect(snapshotRequests.map((request) => request.headers.get('X-Poomsae-Web-Daemon'))).toEqual(
       expect.arrayContaining(['example-local', 'example-remote']),
     )
 
-    history.replaceState(null, '', '/kata?issue=abc4')
+    history.replaceState(null, '', '/poomsae?issue=abc4')
     await fireEvent(window, new PopStateEvent('popstate'))
     expect(screen.getByRole('heading', { name: 'Page not found', level: 1 })).not.toBeNull()
-    await waitFor(() => expect(document.title).toBe('Kata'))
+    await waitFor(() => expect(document.title).toBe('Poomsae'))
 
-    history.replaceState(null, '', '/kata?view=today')
+    history.replaceState(null, '', '/poomsae?view=today')
     await fireEvent(window, new PopStateEvent('popstate'))
-    await waitFor(() => expect(document.title).toBe('Today · Kata'))
-    window.dispatchEvent(new Event('kata:versionMismatch'))
+    await waitFor(() => expect(document.title).toBe('Today · Poomsae'))
+    window.dispatchEvent(new Event('poomsae:versionMismatch'))
     expect(
-      await screen.findByRole('heading', { name: 'Kata was updated', level: 1 }),
+      await screen.findByRole('heading', { name: 'Poomsae was updated', level: 1 }),
     ).not.toBeNull()
-    await waitFor(() => expect(document.title).toBe('Kata'))
+    await waitFor(() => expect(document.title).toBe('Poomsae'))
   })
 
   it('keeps the requested daemon selected across transparent authentication recovery', async () => {
-    history.replaceState(null, '', '/kata?view=all-open')
+    history.replaceState(null, '', '/poomsae?view=all-open')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     const local = snapshot()
@@ -2789,7 +2789,7 @@ describe('App', () => {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata?view=all-open',
+            return_path: '/poomsae?view=all-open',
             writable: true,
             updates: 'poll',
             actor_policy: 'identity',
@@ -2799,13 +2799,13 @@ describe('App', () => {
           return Response.json({ issues: [], labels: [], owners: [], projects: [] })
         }
         if (path.endsWith('/api/v1/ui/snapshot')) {
-          const daemon = request.headers.get('X-Kata-Web-Daemon')
+          const daemon = request.headers.get('X-Poomsae-Web-Daemon')
           snapshotDaemons.push(daemon)
           if (daemon === 'example-remote' && !remoteRejected) {
             remoteRejected = true
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           return Response.json(daemon === 'example-remote' ? remote : local, {
@@ -2818,12 +2818,12 @@ describe('App', () => {
 
     render(App)
     expect(await screen.findByRole('button', { name: /Example issue/ })).not.toBeNull()
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Kata daemon: example-local' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
 
     expect(await screen.findByRole('button', { name: /Remote issue/ })).not.toBeNull()
     expect(
-      screen.getByRole('button', { name: 'Switch Kata daemon: example-remote' }),
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-remote' }),
     ).not.toBeNull()
     expect(snapshotDaemons.at(-1)).toBe('example-remote')
   })
@@ -2831,7 +2831,7 @@ describe('App', () => {
   it('offers daemon switching when the default snapshot is unavailable', async () => {
     vi.useFakeTimers()
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     vi.stubGlobal(
@@ -2866,7 +2866,7 @@ describe('App', () => {
           return Response.json({ issues: [], labels: [], owners: [], projects: [] })
         }
         if (path.endsWith('/api/v1/ui/snapshot')) {
-          if (request.headers.get('X-Kata-Web-Daemon') === 'example-remote') {
+          if (request.headers.get('X-Poomsae-Web-Daemon') === 'example-remote') {
             return Response.json(snapshot(), { headers: { ETag: '"remote-snapshot"' } })
           }
           return new Response('{"error":{"code":"daemon_unreachable"}}', { status: 502 })
@@ -2880,19 +2880,19 @@ describe('App', () => {
     await vi.advanceTimersByTimeAsync(7000)
     await tick()
     expect(screen.getByRole('alert').textContent).toContain("Couldn't load workspace")
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Kata daemon: example-local' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     await vi.advanceTimersByTimeAsync(0)
     await tick()
-    expect(screen.getByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+    expect(screen.getByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
   })
 
   it.each(['success', 'creation refusal', 'designation retry', 'conflict', 'event overlap'])(
     'creates the first project as Inbox before opening task capture: %s',
     async (outcome) => {
-      history.replaceState(null, '', '/kata#direct=1')
+      history.replaceState(null, '', '/poomsae#direct=1')
       sessionStorage.setItem(
-        'kata.web.session.v1',
+        'poomsae.web.session.v1',
         JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
       )
       const created = snapshot()
@@ -3016,7 +3016,7 @@ describe('App', () => {
           request.method === 'POST' &&
           new URL(request.url).pathname === '/api/v1/projects/7/metadata',
       )!
-      expect(await designation.json()).toEqual({ actor: 'kata-web', patch: { role: 'inbox' } })
+      expect(await designation.json()).toEqual({ actor: 'poomsae-web', patch: { role: 'inbox' } })
       expect(designation.headers.get('If-Match')).toBe('"rev-1"')
       if (outcome === 'conflict') return
       expect(screen.getByRole('dialog', { name: 'New task' }).textContent).toContain(
@@ -3038,14 +3038,14 @@ describe('App', () => {
     vi.useFakeTimers()
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     localStorage.setItem(
-      'kata.web.workspace-state.v1',
+      'poomsae.web.workspace-state.v1',
       JSON.stringify({
         version: 1,
-        daemons: { 'example-remote': `/kata?scope=${snapshot().catalog[0]!.project.uid}` },
+        daemons: { 'example-remote': `/poomsae?scope=${snapshot().catalog[0]!.project.uid}` },
       }),
     )
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const initial = snapshot()
@@ -3061,7 +3061,7 @@ describe('App', () => {
         const path = new URL(request.url).pathname
         if (path.endsWith('/recurrences')) {
           reads++
-          recurrenceDaemons.push(request.headers.get('X-Kata-Web-Daemon'))
+          recurrenceDaemons.push(request.headers.get('X-Poomsae-Web-Daemon'))
           return Response.json({
             recurrences: changed
               ? [
@@ -3105,7 +3105,7 @@ describe('App', () => {
         if (
           path.endsWith('/api/v1/ui/snapshot') &&
           changed &&
-          request.headers.get('X-Kata-Web-Daemon') === 'example-remote'
+          request.headers.get('X-Poomsae-Web-Daemon') === 'example-remote'
         )
           updatedSnapshotReads++
         return Response.json(changed ? updated : initial, {
@@ -3115,7 +3115,7 @@ describe('App', () => {
     )
     render(App)
     await vi.advanceTimersByTimeAsync(0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Kata daemon: example-local' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     await vi.advanceTimersByTimeAsync(0)
     expect(reads).toBeGreaterThan(0)
@@ -3132,9 +3132,9 @@ describe('App', () => {
   })
 
   it('refreshes project rules for recurrence events while a snapshot is pending', async () => {
-    history.replaceState(null, '', '/kata?scope=01J00000000000000000000002#direct=1')
+    history.replaceState(null, '', '/poomsae?scope=01J00000000000000000000002#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const live = snapshot()
@@ -3189,9 +3189,9 @@ describe('App', () => {
   })
 
   it('keeps the Inbox unchanged and creates in the chosen project', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const accepted = snapshot()
@@ -3239,7 +3239,7 @@ describe('App', () => {
   })
 
   it('loads, applies, and persists presentation preferences', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     localStorage.setItem(
       preferencesStorageKey,
       JSON.stringify({
@@ -3251,7 +3251,7 @@ describe('App', () => {
       }),
     )
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     vi.stubGlobal(
@@ -3280,10 +3280,10 @@ describe('App', () => {
     history.replaceState(
       null,
       '',
-      '/kata?scope=01J00000000000000000000002&issue=01J00000000000000000000001#direct=1',
+      '/poomsae?scope=01J00000000000000000000002&issue=01J00000000000000000000001#direct=1',
     )
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const base = snapshot()
@@ -3328,10 +3328,10 @@ describe('App', () => {
     history.replaceState(
       null,
       '',
-      '/kata?scope=01J00000000000000000000002&issue=01J00000000000000000000001#direct=1',
+      '/poomsae?scope=01J00000000000000000000002&issue=01J00000000000000000000001#direct=1',
     )
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const base = snapshot()
@@ -3414,9 +3414,9 @@ describe('App', () => {
   )
 
   it('omits a client actor from temporary claims in identity mode', async () => {
-    history.replaceState(null, '', '/kata?issue=01J00000000000000000000001#direct=1')
+    history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const base = snapshot()
@@ -3457,9 +3457,9 @@ describe('App', () => {
   })
 
   it('reuses the comment idempotency key after an uncertain response', async () => {
-    history.replaceState(null, '', '/kata?issue=01J00000000000000000000001#direct=1')
+    history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const base = snapshot()
@@ -3522,9 +3522,9 @@ describe('App', () => {
   })
 
   it('retries a typed reply with the same key and changes the key for force', async () => {
-    history.replaceState(null, '', '/kata?issue=01J00000000000000000000001#direct=1')
+    history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const base = snapshot()
@@ -3618,9 +3618,9 @@ describe('App', () => {
   })
 
   it('preserves a comment draft during transparent session renewal', async () => {
-    history.replaceState(null, '', '/kata?issue=01J00000000000000000000001')
+    history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'expired-session', csrf: 'expired-csrf' }),
     )
     const base = snapshot()
@@ -3650,14 +3650,14 @@ describe('App', () => {
           commentRejected = true
           return new Response('', {
             status: 401,
-            headers: { 'X-Kata-Web-Authentication': 'loopback' },
+            headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
           })
         }
         if (target.pathname === '/api/v1/ui/session/local') {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata?issue=01J00000000000000000000001',
+            return_path: '/poomsae?issue=01J00000000000000000000001',
             writable: true,
             updates: 'poll',
             actor_policy: 'identity',
@@ -3667,7 +3667,7 @@ describe('App', () => {
         if (target.pathname.endsWith('/api/v1/ui/references')) {
           return Response.json({ issues: [], labels: [], owners: [], projects: [] })
         }
-        if (request.headers.get('X-Kata-Web-Session') === 'renewed-session') {
+        if (request.headers.get('X-Poomsae-Web-Session') === 'renewed-session') {
           renewedSnapshotAccepted = true
         }
         return Response.json(accepted, { headers: { ETag: '"snapshot-1"' } })
@@ -3687,7 +3687,7 @@ describe('App', () => {
       ),
     )
     await waitFor(() =>
-      expect(sessionStorage.getItem('kata.web.session.v1')).toContain('renewed-session'),
+      expect(sessionStorage.getItem('poomsae.web.session.v1')).toContain('renewed-session'),
     )
     await waitFor(() => expect(renewedSnapshotAccepted).toBe(true))
     expect(screen.getByText("Can't make changes. Refresh or check access.")).toBeTruthy()
@@ -3704,9 +3704,9 @@ describe('App', () => {
   })
 
   it('refreshes and fences authority when live updates disconnect', async () => {
-    history.replaceState(null, '', '/kata?view=all-open#direct=1')
+    history.replaceState(null, '', '/poomsae?view=all-open#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const initial = snapshot()
@@ -3806,9 +3806,9 @@ describe('App', () => {
   }, 15_000)
 
   it('restores owner settings after a quiet SSE reconnect', async () => {
-    history.replaceState(null, '', '/kata?view=credentials#direct=1')
+    history.replaceState(null, '', '/poomsae?view=credentials#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'admin-session', csrf: 'admin-csrf' }),
     )
     const current = snapshot()
@@ -3858,9 +3858,9 @@ describe('App', () => {
   })
 
   it('refreshes authority when the initial SSE connection opens', async () => {
-    history.replaceState(null, '', '/kata?view=all-open#direct=1')
+    history.replaceState(null, '', '/poomsae?view=all-open#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const initial = snapshot()
@@ -3964,9 +3964,9 @@ describe('App', () => {
   })
 
   it('revalidates without normalizing again when SSE opens after load and row selection', async () => {
-    history.replaceState(null, '', '/kata?view=inbox#direct=1')
+    history.replaceState(null, '', '/poomsae?view=inbox#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const current = snapshot()
@@ -4044,9 +4044,9 @@ describe('App', () => {
   })
 
   it('refreshes membership after an SSE reconnect opens', async () => {
-    history.replaceState(null, '', '/kata?view=all-open#direct=1')
+    history.replaceState(null, '', '/poomsae?view=all-open#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const initial = snapshot()
@@ -4166,9 +4166,9 @@ describe('App', () => {
   }, 15_000)
 
   it('keeps a reset refresh unconditional across 401 and transparent reauthentication', async () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     sessionStorage.setItem(
-      'kata.web.session.v1',
+      'poomsae.web.session.v1',
       JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
     )
     const initial = snapshot()
@@ -4206,7 +4206,7 @@ describe('App', () => {
           return Response.json({
             session: 'renewed-session',
             csrf: 'renewed-csrf',
-            return_path: '/kata',
+            return_path: '/poomsae',
             writable: true,
             updates: 'sse',
             actor_policy: 'request',
@@ -4223,7 +4223,7 @@ describe('App', () => {
           if (snapshotRequests.length === 2) {
             return new Response('', {
               status: 401,
-              headers: { 'X-Kata-Web-Authentication': 'loopback' },
+              headers: { 'X-Poomsae-Web-Authentication': 'loopback' },
             })
           }
           if (request.headers.has('If-None-Match')) {
@@ -4249,7 +4249,7 @@ describe('App', () => {
   describe('app_opened telemetry', () => {
     const telemetryPath = '/api/v1/ui/telemetry'
     const storeSession = (session = 'tab-session', csrf = 'tab-csrf') =>
-      sessionStorage.setItem('kata.web.session.v1', JSON.stringify({ session, csrf }))
+      sessionStorage.setItem('poomsae.web.session.v1', JSON.stringify({ session, csrf }))
     const references = () => Response.json({ issues: [], labels: [], owners: [], projects: [] })
 
     function expectServingDaemonPost(
@@ -4260,9 +4260,9 @@ describe('App', () => {
       expect(request).toBeDefined()
       expect(request!.method).toBe('POST')
       expect(new URL(request!.url).pathname).toBe(telemetryPath)
-      expect(request!.headers.get('X-Kata-Web-Daemon')).toBeNull()
-      expect(request!.headers.get('X-Kata-Web-Session')).toBe(session)
-      expect(request!.headers.get('X-Kata-CSRF')).toBe(csrf)
+      expect(request!.headers.get('X-Poomsae-Web-Daemon')).toBeNull()
+      expect(request!.headers.get('X-Poomsae-Web-Session')).toBe(session)
+      expect(request!.headers.get('X-Poomsae-CSRF')).toBe(csrf)
     }
 
     it('reports accepted screens through the serving daemon', async () => {
@@ -4298,10 +4298,10 @@ describe('App', () => {
         event: 'screen_viewed',
         properties: { screen: 'inbox', surface: 'web' },
       })
-      history.pushState(null, '', '/kata?view=today')
+      history.pushState(null, '', '/poomsae?view=today')
       window.dispatchEvent(new PopStateEvent('popstate'))
       await waitFor(() => expect(telemetry).toHaveLength(2))
-      history.pushState(null, '', '/kata?view=delegated')
+      history.pushState(null, '', '/poomsae?view=delegated')
       window.dispatchEvent(new PopStateEvent('popstate'))
       await waitFor(() => expect(rejectedSnapshots).toBeGreaterThan(0))
       await tick()
@@ -4331,19 +4331,19 @@ describe('App', () => {
         }),
       )
       render(App)
-      await screen.findByRole('region', { name: 'Kata workspace' })
+      await screen.findByRole('region', { name: 'Poomsae workspace' })
       await waitFor(() => expect(telemetry).toHaveLength(1))
       await waitFor(() =>
         expect(addVisitListener).toHaveBeenCalledWith('pagehide', expect.any(Function)),
       )
       removeVisitListener.mockClear()
-      history.pushState(null, '', '/kata?view=today')
+      history.pushState(null, '', '/poomsae?view=today')
       window.dispatchEvent(new PopStateEvent('popstate'))
       await waitFor(() =>
         expect(removeVisitListener).toHaveBeenCalledWith('pagehide', expect.any(Function)),
       )
       const reports = telemetry.length
-      history.pushState(null, '', '/kata?view=issues')
+      history.pushState(null, '', '/poomsae?view=issues')
       window.dispatchEvent(new PopStateEvent('popstate'))
       window.dispatchEvent(new Event('pagehide'))
       window.dispatchEvent(new Event('focus'))
@@ -4375,7 +4375,7 @@ describe('App', () => {
 
       render(App)
 
-      expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       expect(telemetry).toHaveLength(1)
       expectServingDaemonPost(telemetry[0])
       await expect(telemetry[0]!.json()).resolves.toEqual({
@@ -4416,10 +4416,10 @@ describe('App', () => {
 
       render(App)
 
-      expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       window.dispatchEvent(new Event('focus'))
       await tick()
-      expect(sessionStorage.getItem('kata.web.session.v1')).toBeNull()
+      expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
       window.dispatchEvent(new Event('pagehide'))
       expect(telemetry).toHaveLength(0)
     })
@@ -4443,16 +4443,16 @@ describe('App', () => {
             return Response.json({
               session: 'local-session',
               csrf: 'local-csrf',
-              return_path: '/kata',
+              return_path: '/poomsae',
               writable: true,
               updates: 'poll',
               actor_policy: 'request',
             })
           }
-          if (request.headers.get('X-Kata-Web-Session') === 'stale-session') {
+          if (request.headers.get('X-Poomsae-Web-Session') === 'stale-session') {
             return Response.json(
               { status: 401, error: { code: 'unauthorized', message: 'session expired' } },
-              { status: 401, headers: { 'X-Kata-Web-Authentication': 'loopback' } },
+              { status: 401, headers: { 'X-Poomsae-Web-Authentication': 'loopback' } },
             )
           }
           if (path === telemetryPath) return telemetryAccepted()
@@ -4464,7 +4464,7 @@ describe('App', () => {
 
       render(App)
 
-      expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       await waitFor(() => expect(telemetry).toHaveLength(2))
       expectServingDaemonPost(telemetry[1], 'local-session', 'local-csrf')
       now = 120_000
@@ -4499,11 +4499,11 @@ describe('App', () => {
             if (event.event === 'session_ended') visits.push(request)
             if (
               event.properties?.screen === 'today' &&
-              request.headers.get('X-Kata-Web-Session') === 'tab-session'
+              request.headers.get('X-Poomsae-Web-Session') === 'tab-session'
             ) {
               return Response.json(
                 { error: { code: 'unauthorized', message: 'session expired' } },
-                { status: 401, headers: { 'X-Kata-Web-Authentication': 'loopback' } },
+                { status: 401, headers: { 'X-Poomsae-Web-Authentication': 'loopback' } },
               )
             }
             return telemetryAccepted()
@@ -4514,7 +4514,7 @@ describe('App', () => {
         }),
       )
       render(App)
-      await screen.findByRole('region', { name: 'Kata workspace' })
+      await screen.findByRole('region', { name: 'Poomsae workspace' })
       await waitFor(() =>
         expect(addVisitListener).toHaveBeenCalledWith('pagehide', expect.any(Function)),
       )
@@ -4527,7 +4527,7 @@ describe('App', () => {
         Response.json({
           session: 'renewed-session',
           csrf: 'renewed-csrf',
-          return_path: '/kata',
+          return_path: '/poomsae',
           writable: true,
           updates: 'poll',
           actor_policy: 'request',
@@ -4544,7 +4544,7 @@ describe('App', () => {
     it('a background refresh after UTC midnight is not an opening', async () => {
       vi.useFakeTimers({ toFake: ['Date'] })
       vi.setSystemTime(new Date('2026-10-02T12:00:00Z'))
-      history.replaceState(null, '', '/kata#direct=1')
+      history.replaceState(null, '', '/poomsae#direct=1')
       storeSession()
       const live = snapshot()
       live.capabilities.updates = 'sse'
@@ -4579,7 +4579,7 @@ describe('App', () => {
 
       render(App)
 
-      expect(await screen.findByRole('region', { name: 'Kata workspace' })).not.toBeNull()
+      expect(await screen.findByRole('region', { name: 'Poomsae workspace' })).not.toBeNull()
       await waitFor(() => expect(stream).toBeDefined())
       expect(telemetry).toHaveLength(1)
       const readsBeforeMidnight = snapshotReads
@@ -4600,9 +4600,9 @@ describe('App', () => {
     for (const action of ['create', 'close'] as const) {
       it.each(['accepted', 'refused'])(`${action} reports outcome %s`, async (result) => {
         const refused = result !== 'accepted'
-        history.replaceState(null, '', '/kata?issue=01J00000000000000000000001#direct=1')
+        history.replaceState(null, '', '/poomsae?issue=01J00000000000000000000001#direct=1')
         sessionStorage.setItem(
-          'kata.web.session.v1',
+          'poomsae.web.session.v1',
           JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
         )
         const base = snapshot()
@@ -4700,7 +4700,7 @@ describe('App', () => {
         } else {
           await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
           expect(shownErrors).toEqual([])
-          expect(actionRequests[0]!.headers.get('X-Kata-Surface')).toBe('web')
+          expect(actionRequests[0]!.headers.get('X-Poomsae-Surface')).toBe('web')
         }
         expect(actionRequests).toHaveLength(1)
       })
@@ -4709,10 +4709,10 @@ describe('App', () => {
 
   it('replaces the shell with a visible version mismatch after guarded recovery fails', async () => {
     render(App)
-    window.dispatchEvent(new Event('kata:versionMismatch'))
+    window.dispatchEvent(new Event('poomsae:versionMismatch'))
 
     expect(await screen.findByRole('alert')).not.toBeNull()
-    expect(screen.getByRole('heading', { name: 'Kata was updated' })).not.toBeNull()
+    expect(screen.getByRole('heading', { name: 'Poomsae was updated' })).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Reload' })).not.toBeNull()
   })
 })
@@ -4799,7 +4799,7 @@ function stubShortLink(
   data = snapshot(),
 ): URL[] {
   sessionStorage.setItem(
-    'kata.web.session.v1',
+    'poomsae.web.session.v1',
     JSON.stringify({ session: 'tab-session', csrf: 'tab-csrf' }),
   )
   const snapshots: URL[] = []

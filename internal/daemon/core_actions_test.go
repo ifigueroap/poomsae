@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
 )
 
 // Core actions count committed mutations once, and callers without a surface count nothing.
@@ -80,7 +80,7 @@ func coreActionPost(t *testing.T, s telemetryTestServer, path, body, surface, ke
 	request.Header.Set("Origin", telemetryTestOrigin)
 	request.Header.Set("Content-Type", "application/json")
 	if surface != "" {
-		request.Header.Set("X-Kata-Surface", surface)
+		request.Header.Set("X-Poomsae-Surface", surface)
 	}
 	request.Header.Set("Idempotency-Key", key)
 	request.AddCookie(s.manager.Cookie(s.session.Cookie))
@@ -123,7 +123,7 @@ func TestCoreActionTelemetryScopedMutations(t *testing.T) {
 		request.RemoteAddr = "127.0.0.1:40123"
 		request.Header.Set("Authorization", "Bearer scoped-authorization-test-token")
 		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("X-Kata-Surface", "cli")
+		request.Header.Set("X-Poomsae-Surface", "cli")
 		response := httptest.NewRecorder()
 		server.Handler().ServeHTTP(response, request)
 		require.Equal(t, 200, response.Code, response.Body.String())

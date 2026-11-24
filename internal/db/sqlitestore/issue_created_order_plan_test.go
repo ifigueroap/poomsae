@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/pagination"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/pagination"
 )
 
 func TestCreationOrderPagesUseCreatedIndex(t *testing.T) {
 	ctx := t.Context()
-	store, err := Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "spoke-project")

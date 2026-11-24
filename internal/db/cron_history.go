@@ -3,7 +3,7 @@ package db
 import (
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // CronRun is independently attributed evidence. Its UID identifies one

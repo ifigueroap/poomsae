@@ -7,7 +7,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // ConnectorsInput optionally selects one configured connector instance.
@@ -31,17 +31,17 @@ type ConnectorFieldsOutput struct {
 	Fields   []generated.FieldDescriptor `json:"fields"`
 }
 
-// ConnectorFieldMapInput maps one Kata planning field to an external field.
+// ConnectorFieldMapInput maps one Poomsae planning field to an external field.
 type ConnectorFieldMapInput struct {
 	Instance      string `json:"instance"`
-	KataField     string `json:"kata_field"`
+	PoomsaeField  string `json:"kata_field"`
 	ExternalField string `json:"external_field"`
 }
 
 // ConnectorFieldUnmapInput disables one connector planning-field mapping.
 type ConnectorFieldUnmapInput struct {
-	Instance  string `json:"instance"`
-	KataField string `json:"kata_field"`
+	Instance     string `json:"instance"`
+	PoomsaeField string `json:"kata_field"`
 }
 
 // ConnectorFieldMappingOutput reports the connector-wide mapping state.
@@ -71,9 +71,9 @@ type BridgePauseInput struct {
 
 // BridgeResolveFieldInput selects the winner for one planning-field conflict.
 type BridgeResolveFieldInput struct {
-	Ref       string `json:"ref"`
-	KataField string `json:"kata_field"`
-	Use       string `json:"use"`
+	Ref          string `json:"ref"`
+	PoomsaeField string `json:"kata_field"`
+	Use          string `json:"use"`
 }
 
 // BridgeResolveCommentInput resolves uncertain outbound comment delivery.
@@ -100,18 +100,18 @@ func registerExternalRootTools(server *sdkmcp.Server, handlers toolHandlers) {
 	openWorldRead := toolHints(true, false, true)
 	mutating := toolHints(false, true, false)
 	openWorld := toolHints(false, true, true)
-	addTool(server, "kata.connectors", "Connectors", "List configured external connectors or read one secret-free status; requires daemon-wide scope.", openWorldRead, handlers.connectors)
-	addTool(server, "kata.connector_fields", "Connector fields", "Read canonical external field descriptors for one configured connector; requires daemon-wide scope.", openWorldRead, handlers.connectorFields)
-	addTool(server, "kata.connector_field_map", "Map connector field", "Map one Kata planning field to a canonical external field; requires daemon-wide scope.", openWorld, handlers.connectorFieldMap)
-	addTool(server, "kata.connector_field_unmap", "Unmap connector field", "Disable one connector planning-field mapping; requires daemon-wide scope.", openWorld, handlers.connectorFieldUnmap)
-	addTool(server, "kata.bridge_show", "Show bridge", "Read external-root bridge status for one issue.", read, handlers.bridgeShow)
-	addTool(server, "kata.bridge_bind", "Bind bridge", "Bind one issue to an existing external root; requires daemon-wide scope.", openWorld, handlers.bridgeBind)
-	addTool(server, "kata.bridge_reconcile", "Reconcile bridge", "Run one external-root reconciliation pass.", nonIdempotent(toolHints(false, true, true)), handlers.bridgeReconcile)
-	addTool(server, "kata.bridge_pause", "Pause bridge", "Pause external-root reconciliation for one issue.", mutating, handlers.bridgePause)
-	addTool(server, "kata.bridge_resume", "Resume bridge", "Validate and resume external-root reconciliation for one issue.", openWorld, handlers.bridgeResume)
-	addTool(server, "kata.bridge_resolve_field", "Resolve bridge field", "Choose the Kata or external candidate for one planning-field conflict.", openWorld, handlers.bridgeResolveField)
-	addTool(server, "kata.bridge_resolve_comment", "Resolve bridge comment", "Adopt, retry, or skip uncertain outbound comment delivery.", openWorld, handlers.bridgeResolveComment)
-	addTool(server, "kata.bridge_unbind", "Unbind bridge", "Deactivate one issue bridge while preserving its history.", mutating, handlers.bridgeUnbind)
+	addTool(server, "poomsae.connectors", "Connectors", "List configured external connectors or read one secret-free status; requires daemon-wide scope.", openWorldRead, handlers.connectors)
+	addTool(server, "poomsae.connector_fields", "Connector fields", "Read canonical external field descriptors for one configured connector; requires daemon-wide scope.", openWorldRead, handlers.connectorFields)
+	addTool(server, "poomsae.connector_field_map", "Map connector field", "Map one Poomsae planning field to a canonical external field; requires daemon-wide scope.", openWorld, handlers.connectorFieldMap)
+	addTool(server, "poomsae.connector_field_unmap", "Unmap connector field", "Disable one connector planning-field mapping; requires daemon-wide scope.", openWorld, handlers.connectorFieldUnmap)
+	addTool(server, "poomsae.bridge_show", "Show bridge", "Read external-root bridge status for one issue.", read, handlers.bridgeShow)
+	addTool(server, "poomsae.bridge_bind", "Bind bridge", "Bind one issue to an existing external root; requires daemon-wide scope.", openWorld, handlers.bridgeBind)
+	addTool(server, "poomsae.bridge_reconcile", "Reconcile bridge", "Run one external-root reconciliation pass.", nonIdempotent(toolHints(false, true, true)), handlers.bridgeReconcile)
+	addTool(server, "poomsae.bridge_pause", "Pause bridge", "Pause external-root reconciliation for one issue.", mutating, handlers.bridgePause)
+	addTool(server, "poomsae.bridge_resume", "Resume bridge", "Validate and resume external-root reconciliation for one issue.", openWorld, handlers.bridgeResume)
+	addTool(server, "poomsae.bridge_resolve_field", "Resolve bridge field", "Choose the Poomsae or external candidate for one planning-field conflict.", openWorld, handlers.bridgeResolveField)
+	addTool(server, "poomsae.bridge_resolve_comment", "Resolve bridge comment", "Adopt, retry, or skip uncertain outbound comment delivery.", openWorld, handlers.bridgeResolveComment)
+	addTool(server, "poomsae.bridge_unbind", "Unbind bridge", "Deactivate one issue bridge while preserving its history.", mutating, handlers.bridgeUnbind)
 }
 
 func (h toolHandlers) connectors(ctx context.Context, _ *sdkmcp.CallToolRequest, input ConnectorsInput) (*sdkmcp.CallToolResult, ConnectorsOutput, error) {
@@ -158,7 +158,7 @@ func (h toolHandlers) connectorFieldMap(ctx context.Context, _ *sdkmcp.CallToolR
 	if err := h.requireAllProjectsScope("connector field mapping"); err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
 	}
-	instance, kataField, err := connectorMappingTarget(input.Instance, input.KataField)
+	instance, poomsaeField, err := connectorMappingTarget(input.Instance, input.PoomsaeField)
 	if err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
 	}
@@ -168,7 +168,7 @@ func (h toolHandlers) connectorFieldMap(ctx context.Context, _ *sdkmcp.CallToolR
 	}
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.MapConnectorField(ctx, &generated.MapConnectorFieldRequestOptions{
-		PathParams: &generated.MapConnectorFieldPath{Instance: instance, KataField: kataField},
+		PathParams: &generated.MapConnectorFieldPath{Instance: instance, KataField: poomsaeField},
 		Body:       &generated.MapConnectorFieldBody{ExternalField: externalField},
 	})
 	if err != nil {
@@ -181,13 +181,13 @@ func (h toolHandlers) connectorFieldUnmap(ctx context.Context, _ *sdkmcp.CallToo
 	if err := h.requireAllProjectsScope("connector field unmapping"); err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
 	}
-	instance, kataField, err := connectorMappingTarget(input.Instance, input.KataField)
+	instance, poomsaeField, err := connectorMappingTarget(input.Instance, input.PoomsaeField)
 	if err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
 	}
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.UnmapConnectorField(ctx, &generated.UnmapConnectorFieldRequestOptions{
-		PathParams: &generated.UnmapConnectorFieldPath{Instance: instance, KataField: kataField},
+		PathParams: &generated.UnmapConnectorFieldPath{Instance: instance, KataField: poomsaeField},
 	})
 	if err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
@@ -197,14 +197,14 @@ func (h toolHandlers) connectorFieldUnmap(ctx context.Context, _ *sdkmcp.CallToo
 
 func connectorMappingTarget(rawInstance, rawKataField string) (string, string, error) {
 	instance := strings.TrimSpace(rawInstance)
-	kataField := strings.TrimSpace(rawKataField)
+	poomsaeField := strings.TrimSpace(rawKataField)
 	if instance == "" {
 		return "", "", errors.New("connector instance must not be empty")
 	}
-	if kataField != "scheduled_on" && kataField != "deadline_on" {
-		return "", "", errors.New("kata field must be scheduled_on or deadline_on")
+	if poomsaeField != "scheduled_on" && poomsaeField != "deadline_on" {
+		return "", "", errors.New("poomsae field must be scheduled_on or deadline_on")
 	}
-	return instance, kataField, nil
+	return instance, poomsaeField, nil
 }
 
 func (h toolHandlers) bridgeShow(ctx context.Context, _ *sdkmcp.CallToolRequest, input BridgeInput) (*sdkmcp.CallToolResult, BridgeOutput, error) {
@@ -299,18 +299,18 @@ func (h toolHandlers) bridgeResolveField(ctx context.Context, _ *sdkmcp.CallTool
 	if err != nil {
 		return nil, BridgeOutput{}, err
 	}
-	kataField := strings.TrimSpace(input.KataField)
+	poomsaeField := strings.TrimSpace(input.PoomsaeField)
 	use := strings.TrimSpace(input.Use)
-	if kataField != "scheduled_on" && kataField != "deadline_on" {
-		return nil, BridgeOutput{}, errors.New("kata field must be scheduled_on or deadline_on")
+	if poomsaeField != "scheduled_on" && poomsaeField != "deadline_on" {
+		return nil, BridgeOutput{}, errors.New("poomsae field must be scheduled_on or deadline_on")
 	}
-	if use != "kata" && use != "external" {
-		return nil, BridgeOutput{}, errors.New("use must be kata or external")
+	if use != "poomsae" && use != "external" {
+		return nil, BridgeOutput{}, errors.New("use must be poomsae or external")
 	}
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.ResolveExternalField(ctx, &generated.ResolveExternalFieldRequestOptions{
 		PathParams: &generated.ResolveExternalFieldPath{ProjectID: project.ID, Ref: ref},
-		Body:       &generated.ResolveExternalFieldBody{Actor: &h.options.Actor, KataField: kataField, Use: use},
+		Body:       &generated.ResolveExternalFieldBody{Actor: &h.options.Actor, KataField: poomsaeField, Use: use},
 	})
 	if err != nil {
 		return nil, BridgeOutput{}, err

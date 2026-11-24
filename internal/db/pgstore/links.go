@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const linkSelect = `SELECT id, from_issue_id, from_issue_uid, to_issue_id, to_issue_uid, type, author, created_at FROM links`

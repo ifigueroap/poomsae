@@ -1389,7 +1389,7 @@ func TestMatchesFilter_SearchAcrossIDs(t *testing.T) {
 	iss := Issue{
 		UID:         "01TEST-aaa1",
 		ShortID:     "abc4",
-		QualifiedID: "kata#abc4",
+		QualifiedID: "poomsae#abc4",
 		Title:       "fix login race",
 	}
 	cases := []struct {
@@ -1402,8 +1402,8 @@ func TestMatchesFilter_SearchAcrossIDs(t *testing.T) {
 		{"bare short_id", "abc4", true},
 		{"bare short_id case-insensitive", "ABC4", true},
 		{"short_id prefix", "abc", true},
-		{"qualified ref", "kata#abc4", true},
-		{"project prefix", "kata#", true},
+		{"qualified ref", "poomsae#abc4", true},
+		{"project prefix", "poomsae#", true},
 		{"no match", "ZZZZ", false},
 	}
 	for _, c := range cases {

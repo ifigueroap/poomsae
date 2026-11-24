@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
 )
 
 // Sparse issue history must seek by the header issue UID through the index

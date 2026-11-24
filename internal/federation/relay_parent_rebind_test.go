@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R3 requires same-account credential rotation to preserve relay identity and cursors.

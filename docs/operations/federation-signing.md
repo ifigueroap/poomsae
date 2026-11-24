@@ -10,7 +10,7 @@ Native signing pairs each scoped federation enrollment with an independent HMAC
 secret. The spoke signs its requests, and the hub verifies every signature
 before decoding the federation payload. The enrollment bearer, project scope,
 actor, and capabilities still control access. Both the hub and its spokes must
-run Kata 0.19.0 or later.
+run Poomsae 0.19.0 or later.
 
 Existing private deployments stay unsigned unless you enable required signing on
 the hub. In optional mode, the hub rejects any request that supplies an invalid
@@ -41,7 +41,7 @@ when signing stays optional on the ordinary daemon listeners.
 3. On the hub host, initialize the replay state once:
 
    ```sh
-   kata federation signing init-replay
+   poomsae federation signing init-replay
    ```
 
 4. Update the hub's private config, replacing `enrollment_id` with the native
@@ -52,13 +52,13 @@ when signing stays optional on the ordinary daemon listeners.
    [federation.signing]
    required = true
    external_url = "https://daemon.example/federation"
-   # Defaults to <KATA_HOME>/federation-signing-replay.state.
+   # Defaults to <POOMSAE_HOME>/federation-signing-replay.state.
    # replay_state_file = "/absolute/private/path/replay.state"
 
    [[federation.signing.key]]
    key_id = "spoke-key-1"
    enrollment_id = 1
-   key_env = "KATA_SPOKE_SIGNING_KEY"
+   key_env = "POOMSAE_SPOKE_SIGNING_KEY"
    # Use key_file instead of key_env for an owner-only file.
 
    [federation.ingress]
@@ -82,7 +82,7 @@ when signing stays optional on the ordinary daemon listeners.
    example, an ID of `spoke'$KEY` becomes `'spoke'"'"'$KEY'`, and the path
    `/path/to/spoke's key` becomes `'/path/to/spoke'"'"'s key'`. If you prefer an
    environment variable, replace `--signing-key-file` with
-   `--signing-key-env KATA_SPOKE_SIGNING_KEY`. Make the same source available
+   `--signing-key-env POOMSAE_SPOKE_SIGNING_KEY`. Make the same source available
    in both the spoke CLI and daemon environments, because the CLI fetches
    metadata before saving the enrollment.
 
@@ -91,11 +91,11 @@ entry for each unsigned spoke enrollment and restart the hub. Wait for the
 replay warm-up in step 5 to finish, then configure each spoke with the matching
 secret without replacing its bearer. Until a spoke signs its requests, the hub
 refuses it. The following command targets the selected daemon, including
-`KATA_SERVER` or a daemon catalog entry, and requires daemon-owner authority:
+`POOMSAE_SERVER` or a daemon catalog entry, and requires daemon-owner authority:
 
 ```sh
-kata federation signing configure --project-uid <local-project-uid> \
-  --key-id spoke-key-1 --key-env KATA_SPOKE_SIGNING_KEY
+poomsae federation signing configure --project-uid <local-project-uid> \
+  --key-id spoke-key-1 --key-env POOMSAE_SPOKE_SIGNING_KEY
 ```
 
 If a spoke is bound to an HTTP URL, configure the signing source for the new
@@ -104,10 +104,10 @@ fails HTTPS validation. Point a remote daemon catalog entry at the same HTTPS
 base, restart the spoke daemon to load it, and then run:
 
 ```sh
-kata federation signing configure --project-uid <local-project-uid> \
-  --key-id spoke-key-1 --key-env KATA_SPOKE_SIGNING_KEY \
+poomsae federation signing configure --project-uid <local-project-uid> \
+  --key-id spoke-key-1 --key-env POOMSAE_SPOKE_SIGNING_KEY \
   --hub-url <new-https-base>
-kata federation rebind <spoke-project> --hub <catalog-name>
+poomsae federation rebind <spoke-project> --hub <catalog-name>
 ```
 
 The selected daemon reads and validates the signing source in its own
@@ -128,14 +128,14 @@ public selectors, not credentials.
 
 Every unexpired signing key must use its own secret. If two keys share a key
 file, hold equal contents in separate files, or resolve to equal environment
-values, daemon startup fails with an error naming both key IDs. `kata doctor`
+values, daemon startup fails with an error naming both key IDs. `poomsae doctor`
 checks the sources available in its own environment and reports the same
 conflict. To fix it, rotate the shared secret and give each key a distinct
 source value.
 
 ## Bridges
 
-A bridge created with `kata federation bridge connect` signs its relay requests
+A bridge created with `poomsae federation bridge connect` signs its relay requests
 when its credential selects a signing source. When a hub sets `required = true`,
 it advertises `federation_signing_required`, and `bridge connect` refuses the
 connection with `409 hub_signing_required` until you give the bridge a source.
@@ -148,13 +148,13 @@ higher-priority state applies.
    earlier and connect with `--signing-key-id <key-id>` plus
    `--signing-key-env <var>` or `--signing-key-file <absolute-path>`. If a
    bridge credential already exists, select the source instead with
-   `kata federation signing configure --project-uid <hub-project-uid> --key-id <key-id> --key-env <var>`.
+   `poomsae federation signing configure --project-uid <hub-project-uid> --key-id <key-id> --key-env <var>`.
 2. On the hub, look up the bridge's enrollment ID with
-   `kata federation enrollments list`, add a `[[federation.signing.key]]` entry
+   `poomsae federation enrollments list`, add a `[[federation.signing.key]]` entry
    for that ID, and restart the hub.
 
 Until the hub registers the key, relay sync fails and
-`kata federation bridge status` reports `signing_rejected`. The grant stays
+`poomsae federation bridge status` reports `signing_rejected`. The grant stays
 live, so the bridge resumes without reconnecting once both sides agree. When
 you disconnect the bridge, `bridge disconnect` signs its revocation with the
 same source.
@@ -175,15 +175,15 @@ ordinary owner-authorized daemon API, while join metadata, rebind, and normal
 federation traffic use native signed clients. Because `leave` also lists and
 revokes hub enrollments with hub-admin authority, which the restricted listener
 does not expose, you need a two-step leave when the spoke's hub URL routes only
-to this listener. Run `kata federation leave <project> --local-only` on the
+to this listener. Run `poomsae federation leave <project> --local-only` on the
 spoke, then revoke the recorded enrollment on the hub with
-`kata federation revoke <id>`. The local leave does not revoke the hub token,
+`poomsae federation revoke <id>`. The local leave does not revoke the hub token,
 which stays valid until the hub-side revoke succeeds.
 
 The restricted listener is off by default and requires signing configuration
 when you enable it. Because its default bind is `127.0.0.1:0`, pick a fixed
 private port when configuring a proxy. Non-loopback literal private binds
-require `[auth].trust_private_network = true`, and Kata rejects hostnames,
+require `[auth].trust_private_network = true`, and Poomsae rejects hostnames,
 wildcard binds, and public IPs. Starting the listener does not change the main
 listener, firewall, network ACLs, or routing services. Protect the
 proxy-to-listener hop with loopback or an explicitly trusted private network.
@@ -236,7 +236,7 @@ If you lose replay state, stop ingress and rotate every affected signing secret
 before initializing a fresh state file. Never reset state while keeping secrets
 that were already accepted. Each simultaneously active replica must accept
 disjoint secrets, including retiring keys. Independent replay files with shared
-keys are unsupported. Route each enrollment to its configured replica. Kata does
+keys are unsupported. Route each enrollment to its configured replica. Poomsae does
 not provide a shared replay service.
 
 ## Limits and wire profile
@@ -247,7 +247,7 @@ not provide a shared replay service.
 | Covered components, in order | `@method`, `@target-uri`, `content-digest`, `content-type`, `authorization` |
 | Required parameters | `created`, `expires`, `nonce`, `keyid`, `alg="hmac-sha256"` |
 | Body digest | [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530.html) `sha-256`, including empty bodies |
-| Content type emitted by Kata | `application/json` |
+| Content type emitted by Poomsae | `application/json` |
 | Maximum lifetime / future clock skew | 90 seconds / 5 seconds |
 | Nonce | 24 random bytes, unpadded base64url |
 | Replay capacity | 8,192 live nonces; full cache rejects new admissions |
@@ -257,7 +257,7 @@ not provide a shared replay service.
 
 The parser accepts only the fixed, canonical structured-field profile and
 rejects extra signatures, extra parameters, duplicate covered headers, trailers,
-and content encodings. Kata relies on established `httpsign` and `httpsfv`
+and content encodings. Poomsae relies on established `httpsign` and `httpsfv`
 implementations for RFC canonicalization and restricts their general features to
 this profile. MAC and digest checks use constant-time comparisons, and native
 retries generate fresh signatures instead of replaying a saved one.

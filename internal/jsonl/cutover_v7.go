@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/shortid"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // applyCutoverV7toV8 transforms a decoded v7-or-earlier envelope stream into a
@@ -440,7 +440,7 @@ func issueUIDFromRaw(raw map[string]jsontext.Value) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse issue created_at: %w", err)
 	}
-	return katauid.FromStableSeed([]byte(fmt.Sprintf("issue:%d:%d", projectID, number)), t)
+	return poomsaeuid.FromStableSeed([]byte(fmt.Sprintf("issue:%d:%d", projectID, number)), t)
 }
 
 // deriveAutoExtendShortID returns the shortest length-L suffix of uid (lowercased)

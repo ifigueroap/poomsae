@@ -3,20 +3,20 @@ package rootbridge
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestDecideFieldMerge(t *testing.T) {
 	cases := []struct {
-		name                     string
-		baseline, kata, external connector.FieldValue
-		want                     MergeAction
+		name                        string
+		baseline, poomsae, external connector.FieldValue
+		want                        MergeAction
 	}{
 		{"unchanged", date("2026-08-20"), date("2026-08-20"), date("2026-08-20"), MergeAccept},
-		{"kata only", date("2026-08-20"), date("2026-08-21"), date("2026-08-20"), MergeWriteExternal},
+		{"poomsae only", date("2026-08-20"), date("2026-08-21"), date("2026-08-20"), MergeWriteExternal},
 		{"external only", date("2026-08-20"), date("2026-08-20"), date("2026-08-22"), MergeWriteKata},
 		{"same change", date("2026-08-20"), date("2026-08-22"), date("2026-08-22"), MergeAccept},
 		{"divergent", date("2026-08-20"), date("2026-08-21"), date("2026-08-22"), MergeConflict},
@@ -24,40 +24,40 @@ func TestDecideFieldMerge(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, DecideFieldMerge(tc.baseline, tc.kata, tc.external).Action)
+			assert.Equal(t, tc.want, DecideFieldMerge(tc.baseline, tc.poomsae, tc.external).Action)
 		})
 	}
 }
 
 func TestDecideInitialFieldMerge(t *testing.T) {
 	cases := []struct {
-		name           string
-		kata, external connector.FieldValue
-		want           MergeAction
+		name              string
+		poomsae, external connector.FieldValue
+		want              MergeAction
 	}{
 		{"both empty", connector.FieldValue{}, nullValue(), MergeAccept},
 		{"same date", date("2026-08-20"), date("2026-08-20"), MergeAccept},
-		{"kata only", date("2026-08-20"), nullValue(), MergeWriteExternal},
+		{"poomsae only", date("2026-08-20"), nullValue(), MergeWriteExternal},
 		{"external only", nullValue(), date("2026-08-20"), MergeWriteKata},
 		{"different non-empty", date("2026-08-20"), date("2026-08-21"), MergeConflict},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, DecideInitialFieldMerge(tc.kata, tc.external).Action)
+			assert.Equal(t, tc.want, DecideInitialFieldMerge(tc.poomsae, tc.external).Action)
 		})
 	}
 }
 
 func TestDecideFieldMergeKeepsBaselineAndCandidatesOnConflict(t *testing.T) {
 	baseline := date("2026-08-20")
-	kata := date("2026-08-21")
+	poomsae := date("2026-08-21")
 	external := date("2026-08-22")
 
-	got := DecideFieldMerge(baseline, kata, external)
+	got := DecideFieldMerge(baseline, poomsae, external)
 
 	assert.Equal(t, MergeConflict, got.Action)
 	assert.Equal(t, baseline, got.Baseline)
-	assert.Equal(t, kata, got.Kata)
+	assert.Equal(t, poomsae, got.Poomsae)
 	assert.Equal(t, external, got.External)
 }
 

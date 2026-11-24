@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func mustParseTime(t *testing.T, s string) time.Time {
@@ -67,7 +67,7 @@ const validExportVersion = `{"kind":"meta","data":{"key":"export_version","value
 
 // validV1ProjectRow is a canonical v1 project envelope with next_issue_number=1
 // used by import tests that just need a referenceable parent project.
-const validV1ProjectRow = `{"kind":"project","data":{"id":1,"identity":"github.com/wesm/kata","name":"kata","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":1}}`
+const validV1ProjectRow = `{"kind":"project","data":{"id":1,"identity":"github.com/wesm/poomsae","name":"poomsae","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":1}}`
 
 // buildJSONL joins envelope lines into valid JSONL: newline-separated with a
 // trailing newline. Callers should not include trailing newlines in inputs.
@@ -87,9 +87,9 @@ func importJSONL(ctx context.Context, d *sqlitestore.Store, lines ...string) err
 // file with no open handles.
 func setupClosedTestDB(t *testing.T) (context.Context, string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -145,7 +145,7 @@ func writeLegacyV3DB(t *testing.T, path string) {
 // is closed via t.Cleanup.
 func openCutoverDB(ctx context.Context, t *testing.T, seedFn func(*testing.T, string)) *sqlitestore.Store {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	seedFn(t, path)
 	require.NoError(t, jsonl.AutoCutover(ctx, path))
 	d, err := sqlitestore.Open(ctx, path)
@@ -218,12 +218,12 @@ func buildRichJSONLFixture(t *testing.T) richJSONLFixture {
 	ctx := t.Context()
 	d := openExportTestDB(t)
 
-	p1, err := d.CreateProject(ctx, "kata")
+	p1, err := d.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	p2, err := d.CreateProject(ctx, "other")
 	require.NoError(t, err)
-	attachAlias(ctx, t, d, p1.ID, "github.com/wesm/kata", "git", "/tmp/kata")
-	attachAlias(ctx, t, d, p1.ID, "kata-local", "local", "/work/kata")
+	attachAlias(ctx, t, d, p1.ID, "github.com/wesm/poomsae", "git", "/tmp/poomsae")
+	attachAlias(ctx, t, d, p1.ID, "poomsae-local", "local", "/work/poomsae")
 	attachAlias(ctx, t, d, p2.ID, "github.com/wesm/other", "git", "/tmp/other")
 
 	login, _, err := d.CreateIssue(ctx, db.CreateIssueParams{
@@ -619,7 +619,7 @@ func seedV8DBWithOrphans(t *testing.T, path string, spec orphanSpec) {
 
 	// First bootstrap the DB so meta is populated correctly, then close to
 	// release the handle before the raw connection takes over.
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -643,7 +643,7 @@ func seedV8DBWithOrphans(t *testing.T, path string, spec orphanSpec) {
 	}
 	issueShortIDs := []string{"za01", "za02", "za03"}
 
-	_, err = raw.ExecContext(t.Context(), `INSERT INTO projects(id, uid, name) VALUES (1, ?, 'kata')`, projectUID)
+	_, err = raw.ExecContext(t.Context(), `INSERT INTO projects(id, uid, name) VALUES (1, ?, 'poomsae')`, projectUID)
 	require.NoError(t, err)
 	for i, uid := range issueUIDs {
 		_, err = raw.ExecContext(t.Context(),
@@ -665,7 +665,7 @@ func seedV8DBWithOrphans(t *testing.T, path string, spec orphanSpec) {
 	require.NoError(t, err)
 	_, err = raw.ExecContext(t.Context(),
 		`INSERT INTO events(uid, origin_instance_uid, project_id, project_name, issue_id, type, actor, payload)
-		 VALUES ('01HZZZZZZZZZZZZZZZZZEVAL01', '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'kata', 1, 'issue.created', 'tester', '{}')`)
+		 VALUES ('01HZZZZZZZZZZZZZZZZZEVAL01', '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'poomsae', 1, 'issue.created', 'tester', '{}')`)
 	require.NoError(t, err)
 
 	// One valid import_mappings row per object_type. These are the
@@ -716,14 +716,14 @@ func seedV8DBWithOrphans(t *testing.T, path string, spec orphanSpec) {
 	for i := 0; i < spec.OrphanEventIssueID; i++ {
 		_, err = raw.ExecContext(t.Context(),
 			`INSERT INTO events(uid, origin_instance_uid, project_id, project_name, issue_id, type, actor, payload)
-			 VALUES (?, '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'kata', 999, 'issue.created', 'tester', '{}')`,
+			 VALUES (?, '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'poomsae', 999, 'issue.created', 'tester', '{}')`,
 			fmt.Sprintf("01HZZZZZZZZZZZZZZZZZEV0A%02d", i))
 		require.NoError(t, err)
 	}
 	for i := 0; i < spec.OrphanEventRelated; i++ {
 		_, err = raw.ExecContext(t.Context(),
 			`INSERT INTO events(uid, origin_instance_uid, project_id, project_name, issue_id, related_issue_id, type, actor, payload)
-			 VALUES (?, '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'kata', 1, 999, 'issue.linked', 'tester', '{}')`,
+			 VALUES (?, '01HZZZZZZZZZZZZZZZZZZZZZ00', 1, 'poomsae', 1, 999, 'issue.linked', 'tester', '{}')`,
 			fmt.Sprintf("01HZZZZZZZZZZZZZZZZZEVRA%02d", i))
 		require.NoError(t, err)
 	}

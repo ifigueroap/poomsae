@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 type claimPrincipal struct {
@@ -105,7 +105,7 @@ func hostClaimPrincipal(cfg ServerConfig, body api.ClaimActionBody, subject stri
 }
 
 func hostClaimHolder(subject string) string {
-	digest := sha256.Sum256([]byte("kata:host-claim-holder:v1\x00" + subject))
+	digest := sha256.Sum256([]byte("poomsae:host-claim-holder:v1\x00" + subject))
 	return "host:" + base64.RawURLEncoding.EncodeToString(digest[:])
 }
 

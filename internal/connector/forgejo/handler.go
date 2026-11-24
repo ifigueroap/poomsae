@@ -4,7 +4,7 @@ package forgejo
 import (
 	"context"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 type handler struct{ token string }

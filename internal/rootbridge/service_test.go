@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 var testObservedAt = time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
@@ -287,7 +287,7 @@ func TestBindCommitsReservedClaimBeforeImmediateReconcile(t *testing.T) {
 		Locator: "root-1", Actor: "tester",
 	})
 	require.NoError(t, err)
-	assert.True(t, katauid.Valid(receivedToken))
+	assert.True(t, poomsaeuid.Valid(receivedToken))
 	assert.Equal(t, receivedToken, binding.ClaimToken)
 	require.NotNil(t, binding.ClaimStartedAt)
 }
@@ -656,7 +656,7 @@ func TestMappingUsesStableFieldIDAndRefreshesDescriptor(t *testing.T) {
 		{ID: "field-2", DisplayName: "field-1", AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "1"},
 	}
 	first, err := h.service.MapField(t.Context(), MapFieldParams{
-		ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "field-1",
+		ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "field-1",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "field-1", first.ExternalFieldID)
@@ -665,7 +665,7 @@ func TestMappingUsesStableFieldIDAndRefreshesDescriptor(t *testing.T) {
 	h.client.fields[0].DisplayName = "Start date"
 	h.client.fields[0].SchemaRevision = "2"
 	second, err := h.service.MapField(t.Context(), MapFieldParams{
-		ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "field-1",
+		ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "field-1",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "field-1", second.ExternalFieldID)
@@ -685,13 +685,13 @@ func TestMappingRequiresUniqueDisplayNameAndValidCodecDescriptor(t *testing.T) {
 		{ID: "field-1", DisplayName: "Start", AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "1"},
 		{ID: "field-2", DisplayName: "Start", AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true, SchemaRevision: "1"},
 	}
-	_, err := h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "Start"})
+	_, err := h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "Start"})
 	assert.ErrorIs(t, err, ErrExternalFieldAmbiguous)
 
 	h.client.fields = []connector.FieldDescriptor{{
 		ID: "field-1", DisplayName: "Start", AcceptedKinds: []string{"text"}, Nullable: true, Writable: true, SchemaRevision: "1",
 	}}
-	_, err = h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "field-1"})
+	_, err = h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "field-1"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "unsupported external field kind")
 }
@@ -731,7 +731,7 @@ func TestMappingRejectsNonCanonicalFieldDescriptorIdentity(t *testing.T) {
 			h.client.fields = []connector.FieldDescriptor{test.descriptor}
 
 			_, err := h.service.MapField(t.Context(), MapFieldParams{
-				ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "Start",
+				ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "Start",
 			})
 			if test.protocol {
 				require.ErrorIs(t, err, connectorclient.ErrProtocolFailure)
@@ -762,7 +762,7 @@ func TestMappingRequiresFieldCapabilitiesBeforeDiscovery(t *testing.T) {
 			}}
 
 			_, err := h.service.MapField(t.Context(), MapFieldParams{
-				ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "field-1",
+				ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "field-1",
 			})
 
 			assert.ErrorIs(t, err, ErrFieldSynchronizationUnavailable)
@@ -776,7 +776,7 @@ func TestUnmapFieldDeactivatesMappingAndRetainsHistory(t *testing.T) {
 	h.client.fields = []connector.FieldDescriptor{{
 		ID: "field-1", DisplayName: "Start", AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "1",
 	}}
-	mapped, err := h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", KataField: "scheduled_on", ExternalField: "field-1"})
+	mapped, err := h.service.MapField(t.Context(), MapFieldParams{ConnectorInstance: "notes", PoomsaeField: "scheduled_on", ExternalField: "field-1"})
 	require.NoError(t, err)
 	unmapped, err := h.service.UnmapField(t.Context(), "notes", "scheduled_on")
 	require.NoError(t, err)
@@ -789,7 +789,7 @@ func TestUnmapFieldDeactivatesMappingAndRetainsHistory(t *testing.T) {
 }
 
 func TestResolveFieldConflictWritesOnlyTheSelectedSideAndClearsCandidates(t *testing.T) {
-	for _, use := range []string{"kata", "external"} {
+	for _, use := range []string{"poomsae", "external"} {
 		t.Run(use, func(t *testing.T) {
 			h, service := prepareFieldConflict(t)
 			beforeWrites := len(h.client.writeFieldCalls)
@@ -806,7 +806,7 @@ func TestResolveFieldConflictWritesOnlyTheSelectedSideAndClearsCandidates(t *tes
 				want = date("2026-08-22")
 			}
 			assert.Equal(t, want, decodeStoredFieldValue(t, state.Baseline))
-			if use == "kata" {
+			if use == "poomsae" {
 				assert.Equal(t, beforeWrites+1, len(h.client.writeFieldCalls))
 			} else {
 				assert.Equal(t, beforeWrites, len(h.client.writeFieldCalls))
@@ -814,9 +814,9 @@ func TestResolveFieldConflictWritesOnlyTheSelectedSideAndClearsCandidates(t *tes
 			assert.Equal(t, want, h.client.fieldValues["start-date"])
 			issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 			require.NoError(t, readErr)
-			kataValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
 			require.NoError(t, readErr)
-			assert.Equal(t, want, kataValue)
+			assert.Equal(t, want, poomsaeValue)
 			resolved := requireEventType(t, events, "issue.external_field_resolved")
 			assert.Equal(t, "operator", resolved.Actor)
 			assert.NotContains(t, resolved.Payload, "2026-08-21")
@@ -847,7 +847,7 @@ func (s *failFieldConflictResolutionOnceStorage) ResolveExternalFieldConflict(
 }
 
 func TestResolveFieldConflictResumesAfterSelectedSideWasAlreadyApplied(t *testing.T) {
-	for _, use := range []string{"kata", "external"} {
+	for _, use := range []string{"poomsae", "external"} {
 		t.Run(use, func(t *testing.T) {
 			h, service := prepareFieldConflict(t)
 			postWriteErr := errors.New("synthetic conflict finalization failure")
@@ -884,7 +884,7 @@ func TestResolveFieldConflictRequiresCurrentFieldsCapability(t *testing.T) {
 	writeCalls := len(h.client.writeFieldCalls)
 
 	_, _, err := service.ResolveFieldConflict(
-		t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+		t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 	)
 
 	assert.ErrorIs(t, err, ErrFieldSynchronizationUnavailable)
@@ -918,7 +918,7 @@ func TestResolveFieldConflictBypassesFutureNextAttempt(t *testing.T) {
 	require.True(t, before.Conflicted)
 
 	state, events, err := service.ResolveFieldConflict(
-		t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+		t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 	)
 
 	require.NoError(t, err)
@@ -950,7 +950,7 @@ func TestResolveFieldConflictRenewsClaimDuringLongConnectorWrite(t *testing.T) {
 	done := make(chan outcome, 1)
 	go func() {
 		state, events, err := service.ResolveFieldConflict(
-			t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+			t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 		)
 		done <- outcome{state: state, events: events, err: err}
 	}()
@@ -981,7 +981,7 @@ func TestResolveFieldConflictRejectsProviderDriftDuringWrite(t *testing.T) {
 	}
 
 	_, events, err := service.ResolveFieldConflict(
-		t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+		t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 	)
 
 	var connectorErr *connector.Error
@@ -1003,7 +1003,7 @@ func TestResolveFieldConflictRejectsDriftWithoutMutation(t *testing.T) {
 		name   string
 		mutate func(*testing.T, *reconcileHarness)
 	}{
-		{name: "Kata candidate changed", mutate: func(t *testing.T, h *reconcileHarness) {
+		{name: "Poomsae candidate changed", mutate: func(t *testing.T, h *reconcileHarness) {
 			h.setKataField(t, "scheduled_on", date("2026-08-23"))
 		}},
 		{name: "external candidate changed", mutate: func(_ *testing.T, h *reconcileHarness) {
@@ -1024,7 +1024,7 @@ func TestResolveFieldConflictRejectsDriftWithoutMutation(t *testing.T) {
 			beforeWrites := len(h.client.writeFieldCalls)
 
 			_, events, err := service.ResolveFieldConflict(
-				t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+				t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 			)
 			assert.ErrorIs(t, err, ErrFieldConflictChanged)
 			assert.Empty(t, events)
@@ -1052,14 +1052,14 @@ func TestResolveFieldConflictRechecksStoredCandidatesAfterClaim(t *testing.T) {
 	require.NoError(t, err)
 	service.store = &refreshConflictAfterClaimStorage{
 		Storage: h.store, mappingID: state.MappingID, baseline: state.Baseline,
-		kata: refreshedKata, external: refreshedExternal,
+		poomsae: refreshedKata, external: refreshedExternal,
 	}
 	beforeIssue, err := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, err)
 	beforeWrites := len(h.client.writeFieldCalls)
 
 	_, events, err := service.ResolveFieldConflict(
-		t.Context(), h.issue.ID, "scheduled_on", "kata", "operator",
+		t.Context(), h.issue.ID, "scheduled_on", "poomsae", "operator",
 	)
 
 	assert.ErrorIs(t, err, ErrFieldConflictChanged)
@@ -1086,7 +1086,7 @@ func TestResolveFieldConflictRequiresExplicitCandidateAndConflict(t *testing.T) 
 
 	h.mapField(t, "deadline_on", "due-date")
 	_, _, err = service.ResolveFieldConflict(
-		t.Context(), h.issue.ID, "deadline_on", "kata", "operator",
+		t.Context(), h.issue.ID, "deadline_on", "poomsae", "operator",
 	)
 	assert.ErrorIs(t, err, db.ErrExternalFieldNotConflicted)
 }
@@ -1098,7 +1098,7 @@ func TestResolveFieldConflictFinalizesClaimAfterCancellationFollowingCommit(t *t
 	service.store = store
 
 	state, events, err := service.ResolveFieldConflict(
-		ctx, h.issue.ID, "scheduled_on", "kata", "operator",
+		ctx, h.issue.ID, "scheduled_on", "poomsae", "operator",
 	)
 
 	require.NoError(t, err)
@@ -1189,7 +1189,7 @@ type refreshConflictAfterClaimStorage struct {
 	db.Storage
 	mappingID int64
 	baseline  jsontext.Value
-	kata      jsontext.Value
+	poomsae   jsontext.Value
 	external  jsontext.Value
 }
 
@@ -1206,7 +1206,7 @@ func (s *refreshConflictAfterClaimStorage) ClaimExternalRootBindingForManualReco
 	}
 	_, _, err = s.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: s.mappingID, ClaimToken: token,
-		Baseline: s.baseline, ConflictKata: s.kata, ConflictExternal: s.external,
+		Baseline: s.baseline, ConflictKata: s.poomsae, ConflictExternal: s.external,
 		Conflicted: true, At: now, Actor: "connector:notes",
 	})
 	return binding, acquired, err
@@ -1711,8 +1711,8 @@ type serviceHarness struct {
 
 func newServiceHarness(t *testing.T) *serviceHarness {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")

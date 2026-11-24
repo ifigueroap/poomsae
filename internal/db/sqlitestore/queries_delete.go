@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // SoftDeleteIssue sets deleted_at on the issue and emits issue.soft_deleted.
@@ -337,7 +337,7 @@ func purgeCascade(
 	// issue_id / related_issue_id. Aggregated events from the PATCH path
 	// (issue.links_changed) and root issue.created events on OTHER issues
 	// that incidentally reference this issue in their payload are NOT
-	// deleted: per Jesse's design call on kata#1, purging this issue must
+	// deleted: per Jesse's design call on poomsae#1, purging this issue must
 	// not erase the historical context that another issue was once linked
 	// to it. Mutation events that ARE about this issue (issue_id matches)
 	// are still removed.
@@ -462,7 +462,7 @@ func purgeCascade(
 		return 0, fmt.Errorf("invalidate former federation streams: %w", err)
 	}
 
-	purgeUID, err := katauid.New()
+	purgeUID, err := poomsaeuid.New()
 	if err != nil {
 		return 0, fmt.Errorf("generate purge uid: %w", err)
 	}
@@ -614,10 +614,10 @@ func lookupIssueIncludingDeleted(ctx context.Context, r sqlReader, issueID int64
 // Aggregated issue.links_changed events are also excluded from the
 // related_issue_id delete path even though iteration-16 sets
 // related_issue_id for single-peer edits. Without that exclusion a
-// `kata edit subject --blocks target` would lose subject's link history
+// `poomsae edit subject --blocks target` would lose subject's link history
 // when target is purged, while the same edit batched with a second peer
 // (multi-peer → NULL related_issue_id) would survive — a batch-size-
-// dependent inconsistency. Per Jesse's design call on kata#1, purging
+// dependent inconsistency. Per Jesse's design call on poomsae#1, purging
 // an issue must not erase the historical context that another issue
 // was once linked to it; payload-only references and single-peer
 // envelope references are equally protected.

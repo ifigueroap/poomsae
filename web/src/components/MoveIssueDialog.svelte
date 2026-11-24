@@ -3,11 +3,11 @@
   import { Button, SearchInput } from '@kenn-io/kit-ui'
   import Modal from './Modal.svelte'
   import { tick } from 'svelte'
-  import type { KataProjectSummary, KataTaskDetail } from '../lib/kata/types'
+  import type { PoomsaeProjectSummary, PoomsaeTaskDetail } from '../lib/poomsae/types'
 
   interface Props {
-    issue: KataTaskDetail
-    projects: KataProjectSummary[]
+    issue: PoomsaeTaskDetail
+    projects: PoomsaeProjectSummary[]
     movePending?: boolean | undefined
     allowMove?: boolean | undefined
     error?: string | undefined
@@ -29,7 +29,7 @@
   let moveQuery = $state('')
   let refused = $state(false)
   let pendingMoves = $state.raw(
-    new Map<string, { operation: number; project: KataProjectSummary }>(),
+    new Map<string, { operation: number; project: PoomsaeProjectSummary }>(),
   )
   let interactionGeneration = 0
   let moveOperationGeneration = 0
@@ -52,7 +52,7 @@
       )
   })
   const duplicateContexts = $derived.by(() => {
-    const groups = new Map<string, KataProjectSummary[]>()
+    const groups = new Map<string, PoomsaeProjectSummary[]>()
     for (const project of eligibleProjects) {
       const key = project.name.trim().toLocaleLowerCase()
       groups.set(key, [...(groups.get(key) ?? []), project])
@@ -96,11 +96,11 @@
     moveQuery = ''
   })
 
-  function projectArea(project: KataProjectSummary): string {
+  function projectArea(project: PoomsaeProjectSummary): string {
     return typeof project.metadata.area === 'string' ? project.metadata.area.trim() : ''
   }
 
-  function destinationContext(project: KataProjectSummary): string | null {
+  function destinationContext(project: PoomsaeProjectSummary): string | null {
     return duplicateContexts.get(project.uid) ?? null
   }
 
@@ -126,7 +126,7 @@
     moveSearchInput?.focus()
   }
 
-  async function moveIssue(project: KataProjectSummary): Promise<void> {
+  async function moveIssue(project: PoomsaeProjectSummary): Promise<void> {
     const sourceIssueUID = issue.issue.uid
     if (pendingMoves.has(sourceIssueUID)) return
     const sourceInteraction = interactionGeneration

@@ -1,6 +1,6 @@
 package db
 
-import "go.kenn.io/kata/internal/embedding"
+import "github.com/ifigueroap/poomsae/internal/embedding"
 
 // CreateRelayEnrollmentParams narrows a live ordinary user credential to one
 // project and peer. Actor, when supplied, must match the credential's account.

@@ -4,18 +4,18 @@ import (
 	"context"
 	"errors"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // deleteAPI soft-deletes and restores issues through the
-// same daemon calls as `kata delete` and `kata restore`.
+// same daemon calls as `poomsae delete` and `poomsae restore`.
 type deleteAPI interface {
 	DeleteIssue(ctx context.Context, projectID int64, ref, qualifiedID, actor string) (*MutationResp, error)
 	RestoreIssue(ctx context.Context, projectID int64, ref, actor string) (*MutationResp, error)
 }
 
 // DeleteIssue soft-deletes the issue. The daemon only accepts the delete when
-// X-Kata-Confirm reads "DELETE <project>#<short_id>"; qualifiedID is that
+// X-Poomsae-Confirm reads "DELETE <project>#<short_id>"; qualifiedID is that
 // "<project>#<short_id>".
 func (c *Client) DeleteIssue(ctx context.Context, projectID int64, ref, qualifiedID, actor string) (*MutationResp, error) {
 	apiClient, err := c.generatedClient()
@@ -26,7 +26,7 @@ func (c *Client) DeleteIssue(ctx context.Context, projectID int64, ref, qualifie
 	wire, callErr := apiClient.DeleteIssueWithResponse(ctx, &generated.DeleteIssueRequestOptions{
 		PathParams: &generated.DeleteIssuePath{ProjectID: projectID, Ref: ref},
 		Body:       &generated.DeleteIssueBody{Actor: actor},
-		Header:     &generated.DeleteIssueHeaders{XKataConfirm: &confirm},
+		Header:     &generated.DeleteIssueHeaders{XPoomsaeConfirm: &confirm},
 	})
 	if wire == nil {
 		return nil, callErr
@@ -60,7 +60,7 @@ func (c *Client) RestoreIssue(ctx context.Context, projectID int64, ref, actor s
 }
 
 func (c *undoClient) DeleteIssue(ctx context.Context, projectID int64, ref, qualifiedID, actor string) (*MutationResp, error) {
-	writer, ok := c.KataAPI.(deleteAPI)
+	writer, ok := c.PoomsaeAPI.(deleteAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot delete issues")
 	}
@@ -74,7 +74,7 @@ func (c *undoClient) DeleteIssue(ctx context.Context, projectID int64, ref, qual
 }
 
 func (c *undoClient) RestoreIssue(ctx context.Context, projectID int64, ref, actor string) (*MutationResp, error) {
-	restorer, ok := c.KataAPI.(deleteAPI)
+	restorer, ok := c.PoomsaeAPI.(deleteAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot restore issues")
 	}

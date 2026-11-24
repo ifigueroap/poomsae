@@ -4,16 +4,16 @@ test.use({ trace: 'off' })
 
 test('views, projects, filters, columns, hierarchy, and keyboard stay first-class', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const parent = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const parent = await poomsae.seedIssue(page, credentials, {
     title: 'Example parent task',
     owner: 'user-a',
     labels: ['planning'],
     priority: 1,
   })
-  const child = await kata.seedIssue(page, credentials, {
+  const child = await poomsae.seedIssue(page, credentials, {
     title: 'Example child task',
     owner: 'user-b',
     labels: ['delivery'],
@@ -78,7 +78,7 @@ test('views, projects, filters, columns, hierarchy, and keyboard stay first-clas
     await expect(page).toHaveURL(/view=scheduled/)
     await expect(page.getByRole('button', { name: 'Upcoming' })).toHaveCount(0)
     await page.getByRole('button', { name: /^example-project \d+$/ }).click()
-    await expect(page).toHaveURL(`${kata.origin}/kata?scope=${kata.projectUID}`)
+    await expect(page).toHaveURL(`${poomsae.origin}/poomsae?scope=${poomsae.projectUID}`)
   } finally {
     // Failed assertions must also release the response before fixture cleanup waits for it.
     releaseSnapshot()
@@ -87,14 +87,14 @@ test('views, projects, filters, columns, hierarchy, and keyboard stay first-clas
 
 test('keeps a resized width and copies a short task ID from the hovered row', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const overdue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const overdue = await poomsae.seedIssue(page, credentials, {
     title: 'Overdue example task',
     metadata: { deadline_on: '2025-01-10' },
   })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
 
   const handle = page.getByRole('separator', { name: 'Resize Due column' })
   await handle.focus()
@@ -103,7 +103,7 @@ test('keeps a resized width and copies a short task ID from the hovered row', as
   await page.keyboard.press('ArrowRight')
 
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], {
-    origin: kata.origin,
+    origin: poomsae.origin,
   })
   const row = page.getByRole('button', { name: /Overdue example task/ })
   await row.hover()
@@ -121,26 +121,26 @@ test('keeps a resized width and copies a short task ID from the hovered row', as
 
 test('sorts Scheduled date groups by deadline and keeps the order on reload', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const late = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const late = await poomsae.seedIssue(page, credentials, {
     title: 'A later deadline',
     metadata: { scheduled_on: '2090-01-01', deadline_on: '2090-02-20' },
   })
-  const early = await kata.seedIssue(page, credentials, {
+  const early = await poomsae.seedIssue(page, credentials, {
     title: 'Z earlier deadline',
     metadata: { scheduled_on: '2090-01-01', deadline_on: '2090-02-10' },
   })
-  const lateNext = await kata.seedIssue(page, credentials, {
+  const lateNext = await poomsae.seedIssue(page, credentials, {
     title: 'A later next deadline',
     metadata: { scheduled_on: '2090-01-02', deadline_on: '2090-02-21' },
   })
-  const earlyNext = await kata.seedIssue(page, credentials, {
+  const earlyNext = await poomsae.seedIssue(page, credentials, {
     title: 'Z earlier next deadline',
     metadata: { scheduled_on: '2090-01-02', deadline_on: '2090-02-11' },
   })
-  await page.goto(`${kata.origin}/kata?view=scheduled`)
+  await page.goto(`${poomsae.origin}/poomsae?view=scheduled`)
   const rows = page.locator('.issue-row').filter({
     hasText: /A later deadline|Z earlier deadline|A later next deadline|Z earlier next deadline/,
   })
@@ -163,9 +163,9 @@ test('sorts Scheduled date groups by deadline and keeps the order on reload', as
 
 test('project creation and quick capture use the designated inbox project', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  await kata.launch(page)
+  await poomsae.launch(page)
 
   await page.getByRole('button', { name: 'New project' }).click()
   await page.getByRole('textbox', { name: 'New project name' }).fill('example-workspace')

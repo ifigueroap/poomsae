@@ -10,12 +10,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	"go.kenn.io/kit/safefileio"
 )
 
@@ -30,7 +30,7 @@ func TestScopedTokenToolWritesProtectedFileWithoutReturningPlaintext(t *testing.
 }
 
 func checkScopedTokenToolProtectedFile(t *testing.T, historical bool) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -53,7 +53,7 @@ func checkScopedTokenToolProtectedFile(t *testing.T, historical bool) {
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithBearer(t.Context(), httpServer.URL, "bootstrap-token")
+	client, err := poomsaeclient.NewWithBearer(t.Context(), httpServer.URL, "bootstrap-token")
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, Scope: NewAllScope(), EnableTokenAdmin: true,
@@ -63,7 +63,7 @@ func checkScopedTokenToolProtectedFile(t *testing.T, historical bool) {
 	require.NoError(t, safefileio.EnsurePrivateDir(dir))
 	tokenPath := filepath.Join(dir, "worker.token")
 
-	output := callAdministrationTool(t, session, "kata.token_create", map[string]any{
+	output := callAdministrationTool(t, session, "poomsae.token_create", map[string]any{
 		"token_actor":        "worker-a",
 		"name":               "remote-worktree",
 		"issue":              issueRef,

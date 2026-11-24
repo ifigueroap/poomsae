@@ -6,8 +6,8 @@ import (
 	"encoding/json/v2"
 	"sort"
 
-	"go.kenn.io/kata/internal/notification"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 type attentionRequest struct {

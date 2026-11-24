@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -16,35 +16,35 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/db"
 )
 
 type recordingFederationAccessController struct {
 	mu       sync.Mutex
-	requests []kata.FederationAccessRequest
-	decide   func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error)
+	requests []poomsae.FederationAccessRequest
+	decide   func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error)
 }
 
 func (c *recordingFederationAccessController) AuthorizeFederation(
 	_ context.Context,
-	request kata.FederationAccessRequest,
-) (kata.FederationAccessDecision, error) {
+	request poomsae.FederationAccessRequest,
+) (poomsae.FederationAccessDecision, error) {
 	c.mu.Lock()
 	c.requests = append(c.requests, request)
 	c.mu.Unlock()
 	if c.decide != nil {
 		return c.decide(request)
 	}
-	return kata.FederationAccessDecision{}, nil
+	return poomsae.FederationAccessDecision{}, nil
 }
 
-func (c *recordingFederationAccessController) snapshot() []kata.FederationAccessRequest {
+func (c *recordingFederationAccessController) snapshot() []poomsae.FederationAccessRequest {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]kata.FederationAccessRequest(nil), c.requests...)
+	return append([]poomsae.FederationAccessRequest(nil), c.requests...)
 }
 
 func TestServiceFederationAccessReceivesAuthenticatedEnrollment(t *testing.T) {
@@ -59,11 +59,11 @@ func TestServiceFederationAccessReceivesAuthenticatedEnrollment(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.FederationAccessRequest{
+	assert.Equal(t, poomsae.FederationAccessRequest{
 		Enrollment: enrollment.Enrollment,
 		Project:    project,
-		Capability: kata.FederationCapabilityPull,
-		Operation: kata.FederationOperation{
+		Capability: poomsae.FederationCapabilityPull,
+		Operation: poomsae.FederationOperation{
 			ID: "getFederationProjectMetadata", Mutation: true,
 		},
 	}, controller.snapshot()[0])
@@ -71,8 +71,8 @@ func TestServiceFederationAccessReceivesAuthenticatedEnrollment(t *testing.T) {
 
 func TestServiceFederationAccessDenialDoesNotUseValidCredential(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			return kata.FederationAccessDecision{}, kata.ErrAccessDenied
+		decide: func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			return poomsae.FederationAccessDecision{}, poomsae.ErrAccessDenied
 		},
 	}
 	service, project, enrollment := newFederationAccessService(t, controller)
@@ -105,8 +105,8 @@ func TestServiceFederationAccessRejectsInvalidCredentialBeforeHostDecision(t *te
 
 func TestServiceFederationAccessAdmissionLimitStopsIngestBeforeBodyRead(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			return kata.FederationAccessDecision{}, kata.ErrFederationAdmissionLimited
+		decide: func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			return poomsae.FederationAccessDecision{}, poomsae.ErrFederationAdmissionLimited
 		},
 	}
 	service, project, enrollment := newFederationAccessService(t, controller)
@@ -123,7 +123,7 @@ func TestServiceFederationAccessAdmissionLimitStopsIngestBeforeBodyRead(t *testi
 	assert.Equal(t, "5", response.Header().Get("Retry-After"))
 	assert.Zero(t, body.reads)
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.FederationOperation{
+	assert.Equal(t, poomsae.FederationOperation{
 		ID: "ingestFederationProjectEvents", Mutation: true,
 	}, controller.snapshot()[0].Operation)
 }
@@ -131,10 +131,10 @@ func TestServiceFederationAccessAdmissionLimitStopsIngestBeforeBodyRead(t *testi
 func TestServiceFederationIngestUsesAdmissionDecisionOnce(t *testing.T) {
 	var calls int
 	controller := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
 			calls++
 			if calls > 1 {
-				return kata.FederationAccessDecision{}, kata.ErrFederationAdmissionLimited
+				return poomsae.FederationAccessDecision{}, poomsae.ErrFederationAdmissionLimited
 			}
 			return allowFederationMutation(request)
 		},
@@ -168,8 +168,8 @@ func (b *readTrackingBody) Read(p []byte) (int, error) {
 
 func TestServiceFederationAccessChecksBearerOnLeaseStatus(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			return kata.FederationAccessDecision{}, kata.ErrAccessDenied
+		decide: func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			return poomsae.FederationAccessDecision{}, poomsae.ErrAccessDenied
 		},
 	}
 	service, project, enrollment := newFederationAccessService(t, controller)
@@ -183,7 +183,7 @@ func TestServiceFederationAccessChecksBearerOnLeaseStatus(t *testing.T) {
 
 	assert.Equal(t, http.StatusForbidden, response.Code, response.Body.String())
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.FederationOperation{
+	assert.Equal(t, poomsae.FederationOperation{
 		ID: "getIssueLeaseStatus", Mutation: true,
 	}, controller.snapshot()[0].Operation)
 }
@@ -205,8 +205,8 @@ func TestServiceFederationAccessRejectsInvalidLeaseStatusCredentialBeforeHostDec
 
 func TestServiceFederationAccessKeepsTokenlessTrustedLeaseStatus(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			return kata.FederationAccessDecision{}, kata.ErrAccessDenied
+		decide: func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			return poomsae.FederationAccessDecision{}, poomsae.ErrAccessDenied
 		},
 	}
 	service, project, _ := newFederationAccessService(t, controller)
@@ -233,7 +233,7 @@ func TestServiceFederationAccessMetadataRequiresTransactionFence(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, response.Code, response.Body.String())
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.FederationOperation{
+	assert.Equal(t, poomsae.FederationOperation{
 		ID: "getFederationProjectMetadata", Mutation: true,
 	}, controller.snapshot()[0].Operation)
 }
@@ -250,19 +250,19 @@ func TestServiceFederationAccessMutationRequiresTransactionFence(t *testing.T) {
 		`{"status":503,"error":{"code":"access_unavailable","message":"federation transaction access decision unavailable"}}`,
 		response.Body.String())
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.FederationCapabilityClaim, controller.snapshot()[0].Capability)
-	assert.Equal(t, kata.FederationOperation{
+	assert.Equal(t, poomsae.FederationCapabilityClaim, controller.snapshot()[0].Capability)
+	assert.Equal(t, poomsae.FederationOperation{
 		ID: "acquireIssueLease", Mutation: true,
 	}, controller.snapshot()[0].Operation)
 }
 
 func TestServiceFederationAccessFenceRollsBackClaimMutation(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			decision := kata.FederationAccessDecision{}
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			decision := poomsae.FederationAccessDecision{}
 			if request.Operation.Mutation {
-				decision.TransactionFence = func(context.Context, kata.Transaction) error {
-					return kata.ErrAccessDenied
+				decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
+					return poomsae.ErrAccessDenied
 				}
 			}
 			return decision, nil
@@ -289,20 +289,20 @@ func TestServiceFederationAccessFenceRollsBackClaimMutation(t *testing.T) {
 	assert.False(t, status.Held)
 }
 
-func allowFederationMutation(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-	decision := kata.FederationAccessDecision{}
+func allowFederationMutation(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+	decision := poomsae.FederationAccessDecision{}
 	if request.Operation.Mutation {
-		decision.TransactionFence = func(context.Context, kata.Transaction) error { return nil }
+		decision.TransactionFence = func(context.Context, poomsae.Transaction) error { return nil }
 	}
 	return decision, nil
 }
 
 func TestServiceFederationAccessSanitizesFenceFailure(t *testing.T) {
 	controller := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			decision := kata.FederationAccessDecision{}
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			decision := poomsae.FederationAccessDecision{}
 			if request.Operation.Mutation {
-				decision.TransactionFence = func(context.Context, kata.Transaction) error {
+				decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
 					return errors.New("private controller detail")
 				}
 			}
@@ -334,8 +334,8 @@ func TestServiceFederationAccessPreservesOrdinaryMutationFence(t *testing.T) {
 		},
 		{
 			name: "denying ordinary fence",
-			access: &recordingAccessController{transactionFence: func(context.Context, kata.Transaction) error {
-				return kata.ErrAccessDenied
+			access: &recordingAccessController{transactionFence: func(context.Context, poomsae.Transaction) error {
+				return poomsae.ErrAccessDenied
 			}},
 			wantStatus: http.StatusNotFound,
 		},
@@ -344,10 +344,10 @@ func TestServiceFederationAccessPreservesOrdinaryMutationFence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var federationFenceCalls int
 			federation := &recordingFederationAccessController{
-				decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-					decision := kata.FederationAccessDecision{}
+				decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+					decision := poomsae.FederationAccessDecision{}
 					if request.Operation.Mutation {
-						decision.TransactionFence = func(context.Context, kata.Transaction) error {
+						decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
 							federationFenceCalls++
 							return nil
 						}
@@ -368,15 +368,15 @@ func TestServiceFederationAccessPreservesOrdinaryMutationFence(t *testing.T) {
 
 func TestServiceFederationAccessRunsBothMutationFencesInOrder(t *testing.T) {
 	var calls []string
-	access := &recordingAccessController{transactionFence: func(context.Context, kata.Transaction) error {
+	access := &recordingAccessController{transactionFence: func(context.Context, poomsae.Transaction) error {
 		calls = append(calls, "ordinary")
 		return nil
 	}}
 	federation := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			decision := kata.FederationAccessDecision{}
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			decision := poomsae.FederationAccessDecision{}
 			if request.Operation.Mutation {
-				decision.TransactionFence = func(context.Context, kata.Transaction) error {
+				decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
 					calls = append(calls, "federation")
 					return nil
 				}
@@ -395,15 +395,15 @@ func TestServiceFederationAccessRunsBothMutationFencesInOrder(t *testing.T) {
 
 func TestServiceFederationIngestRunsBothMutationFencesInOrder(t *testing.T) {
 	var calls []string
-	access := &recordingAccessController{transactionFence: func(context.Context, kata.Transaction) error {
+	access := &recordingAccessController{transactionFence: func(context.Context, poomsae.Transaction) error {
 		calls = append(calls, "ordinary")
 		return nil
 	}}
 	federation := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			decision := kata.FederationAccessDecision{}
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			decision := poomsae.FederationAccessDecision{}
 			if request.Operation.Mutation {
-				decision.TransactionFence = func(context.Context, kata.Transaction) error {
+				decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
 					calls = append(calls, "federation")
 					return nil
 				}
@@ -422,17 +422,17 @@ func TestServiceFederationIngestRunsBothMutationFencesInOrder(t *testing.T) {
 
 func TestServiceFederationIngestDenialRollsBackMutation(t *testing.T) {
 	var calls []string
-	access := &recordingAccessController{transactionFence: func(context.Context, kata.Transaction) error {
+	access := &recordingAccessController{transactionFence: func(context.Context, poomsae.Transaction) error {
 		calls = append(calls, "ordinary")
 		return nil
 	}}
 	federation := &recordingFederationAccessController{
-		decide: func(request kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			decision := kata.FederationAccessDecision{}
+		decide: func(request poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			decision := poomsae.FederationAccessDecision{}
 			if request.Operation.Mutation {
-				decision.TransactionFence = func(context.Context, kata.Transaction) error {
+				decision.TransactionFence = func(context.Context, poomsae.Transaction) error {
 					calls = append(calls, "federation")
-					return kata.ErrAccessDenied
+					return poomsae.ErrAccessDenied
 				}
 			}
 			return decision, nil
@@ -472,7 +472,7 @@ func TestServiceFederationIngestOrdersNativeRevocationWithMutation(t *testing.T)
 }
 
 func TestServiceFederationIngestHostDenialPrecedesFederationAuthorization(t *testing.T) {
-	access := &recordingAccessController{err: kata.ErrAccessDenied}
+	access := &recordingAccessController{err: poomsae.ErrAccessDenied}
 	federation := &recordingFederationAccessController{decide: allowFederationMutation}
 	service, project, enrollment, databasePath := newComposedFederationAccessService(t, access, federation)
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/projects/"+
@@ -480,7 +480,7 @@ func TestServiceFederationIngestHostDenialPrecedesFederationAuthorization(t *tes
 		bytes.NewReader(federationIssueIngestBody(t, project)))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+enrollment.Token)
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "denied-user", Actor: "Denied User",
 	}))
 	response := httptest.NewRecorder()
@@ -506,8 +506,8 @@ func (b *revokeEnrollmentOnRead) Read(p []byte) (int, error) {
 
 func ingestFederationIssueAsPrincipal(
 	t *testing.T,
-	service *kata.Service,
-	project kata.Project,
+	service *poomsae.Service,
+	project poomsae.Project,
 	token string,
 ) *httptest.ResponseRecorder {
 	t.Helper()
@@ -516,7 +516,7 @@ func ingestFederationIssueAsPrincipal(
 		strconv.FormatInt(project.ID, 10)+"/federation/events:ingest", bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+token)
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123", Actor: "Example User",
 	}))
 	response := httptest.NewRecorder()
@@ -524,7 +524,7 @@ func ingestFederationIssueAsPrincipal(
 	return response
 }
 
-func federationIssueIngestBody(t *testing.T, project kata.Project) []byte {
+func federationIssueIngestBody(t *testing.T, project poomsae.Project) []byte {
 	t.Helper()
 	createdAt := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
 	issueUID := "01HZNQ7VFPK1XGD8R5MABCD4EC"
@@ -571,22 +571,22 @@ func storedFederationIssueCount(t *testing.T, databasePath string) int {
 
 func newComposedFederationAccessService(
 	t *testing.T,
-	access kata.AccessController,
-	federation kata.FederationAccessController,
-) (*kata.Service, kata.Project, kata.CreatedFederationEnrollment, string) {
+	access poomsae.AccessController,
+	federation poomsae.FederationAccessController,
+) (*poomsae.Service, poomsae.Project, poomsae.CreatedFederationEnrollment, string) {
 	t.Helper()
 	databasePath := filepath.Join(t.TempDir(), "service.db")
-	config := kata.Config{DSN: databasePath, Access: access, FederationAccess: federation}
+	config := poomsae.Config{DSN: databasePath, Access: access, FederationAccess: federation}
 	if access == nil {
-		config.Auth = kata.AuthConfig{TrustCallerAuthentication: true}
+		config.Auth = poomsae.AuthConfig{TrustCallerAuthentication: true}
 	}
-	service, err := kata.New(t.Context(), config)
+	service, err := poomsae.New(t.Context(), config)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 	project := ensureEnrollmentTestProject(
 		t, service, "01HZNQ7VFPK1XGD8R5MABCD4EX", "example-project",
 	)
-	enrollment, err := service.CreateFederationEnrollment(t.Context(), kata.FederationEnrollmentSpec{
+	enrollment, err := service.CreateFederationEnrollment(t.Context(), poomsae.FederationEnrollmentSpec{
 		ProjectUID:       project.UID,
 		SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 		Capabilities:     "pull,push",
@@ -596,7 +596,7 @@ func newComposedFederationAccessService(
 	return service, project, enrollment, databasePath
 }
 
-func forceFederationBaselineRefresh(t *testing.T, databasePath string, project kata.Project) {
+func forceFederationBaselineRefresh(t *testing.T, databasePath string, project poomsae.Project) {
 	t.Helper()
 	inspection, err := sql.Open("sqlite", databasePath)
 	require.NoError(t, err)
@@ -616,7 +616,7 @@ func forceFederationBaselineRefresh(t *testing.T, databasePath string, project k
 
 func getFederationMetadataAsPrincipal(
 	t *testing.T,
-	service *kata.Service,
+	service *poomsae.Service,
 	projectID int64,
 	token string,
 ) *httptest.ResponseRecorder {
@@ -624,7 +624,7 @@ func getFederationMetadataAsPrincipal(
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/projects/"+
 		strconv.FormatInt(projectID, 10)+"/federation/metadata", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123", Actor: "Example User",
 	}))
 	response := httptest.NewRecorder()
@@ -634,7 +634,7 @@ func getFederationMetadataAsPrincipal(
 
 func acquireFederationAccessClaim(
 	t *testing.T,
-	service *kata.Service,
+	service *poomsae.Service,
 	projectID int64,
 	issue string,
 	token string,
@@ -652,12 +652,12 @@ func acquireFederationAccessClaim(
 
 func newFederationAccessService(
 	t *testing.T,
-	controller kata.FederationAccessController,
-) (*kata.Service, kata.Project, kata.CreatedFederationEnrollment) {
+	controller poomsae.FederationAccessController,
+) (*poomsae.Service, poomsae.Project, poomsae.CreatedFederationEnrollment) {
 	t.Helper()
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:              filepath.Join(t.TempDir(), "service.db"),
-		Auth:             kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth:             poomsae.AuthConfig{TrustCallerAuthentication: true},
 		FederationAccess: controller,
 	})
 	require.NoError(t, err)
@@ -665,7 +665,7 @@ func newFederationAccessService(
 	project := ensureEnrollmentTestProject(
 		t, service, "01HZNQ7VFPK1XGD8R5MABCD4EX", "example-project",
 	)
-	enrollment, err := service.CreateFederationEnrollment(t.Context(), kata.FederationEnrollmentSpec{
+	enrollment, err := service.CreateFederationEnrollment(t.Context(), poomsae.FederationEnrollmentSpec{
 		ProjectUID:       project.UID,
 		SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 		Capabilities:     "claim,pull,push",
@@ -675,7 +675,7 @@ func newFederationAccessService(
 	return service, project, enrollment
 }
 
-func createFederationAccessIssue(t *testing.T, service *kata.Service, projectID int64) string {
+func createFederationAccessIssue(t *testing.T, service *poomsae.Service, projectID int64) string {
 	t.Helper()
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/projects/"+
 		strconv.FormatInt(projectID, 10)+"/issues",

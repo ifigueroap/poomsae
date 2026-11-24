@@ -7,7 +7,7 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /src
 COPY package.json bun.lock ./
 COPY web/package.json web/
-COPY packages/kata-ui/package.json packages/kata-ui/
+COPY packages/poomsae-ui/package.json packages/poomsae-ui/
 # @kenn-io/kit-ui is a commit-pinned public git dependency; git ships in the
 # node:bookworm image.
 RUN bun install --frozen-lockfile
@@ -35,21 +35,21 @@ ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -buildvcs=false \
-      -ldflags "-s -w -X go.kenn.io/kata/internal/version.Version=${VERSION} -X go.kenn.io/kata/internal/version.Commit=${COMMIT} -X go.kenn.io/kata/internal/version.BuildDate=${BUILD_DATE}" \
-      -o /out/kata ./cmd/kata
+      -ldflags "-s -w -X github.com/ifigueroap/poomsae/internal/version.Version=${VERSION} -X github.com/ifigueroap/poomsae/internal/version.Commit=${COMMIT} -X github.com/ifigueroap/poomsae/internal/version.BuildDate=${BUILD_DATE}" \
+      -o /out/poomsae ./cmd/poomsae
 
 FROM alpine:3.24.2
 
 RUN apk add --no-cache ca-certificates \
-    && addgroup -g 1000 kata \
-    && adduser -D -u 1000 -G kata kata \
+    && addgroup -g 1000 poomsae \
+    && adduser -D -u 1000 -G poomsae poomsae \
     && mkdir /data \
     && chown 1000:1000 /data
 
-COPY --from=build /out/kata /usr/local/bin/kata
+COPY --from=build /out/poomsae /usr/local/bin/poomsae
 
-ENV KATA_HOME=/data
+ENV POOMSAE_HOME=/data
 WORKDIR /data
 USER 1000:1000
-ENTRYPOINT ["/usr/local/bin/kata"]
+ENTRYPOINT ["/usr/local/bin/poomsae"]
 CMD ["daemon", "start", "--foreground"]

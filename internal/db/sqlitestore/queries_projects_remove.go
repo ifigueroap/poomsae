@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // RemoveProject archives a project: sets projects.deleted_at, hard-deletes

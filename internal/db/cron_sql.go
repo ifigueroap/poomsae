@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // CronSQL shares the portable definition transaction across backends.

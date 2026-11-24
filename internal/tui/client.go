@@ -17,15 +17,14 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/telemetry"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/client/generated"
-	"go.kenn.io/kit/telemetry/posthog"
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"golang.org/x/mod/semver"
 )
 
@@ -54,7 +53,7 @@ func issueActionSurface(ctx context.Context) *string {
 }
 
 // NewClient wraps a pre-built *http.Client with a typed daemon adapter.
-// base is the daemon URL — "http://kata.invalid" for unix-socket transport.
+// base is the daemon URL — "http://poomsae.invalid" for unix-socket transport.
 func NewClient(base string, hc *http.Client) *Client {
 	return &Client{
 		base:                   base,
@@ -136,7 +135,7 @@ func (c *Client) GetInstance(ctx context.Context) (InstanceInfo, error) {
 		return resp, err
 	}
 	if scope := resp.Auth.Scope; scope != nil {
-		if scope.Kind != "issue_subtree" || !katauid.Valid(scope.ProjectUID) || !katauid.Valid(scope.RootIssueUID) ||
+		if scope.Kind != "issue_subtree" || !poomsaeuid.Valid(scope.ProjectUID) || !poomsaeuid.Valid(scope.RootIssueUID) ||
 			resp.Auth.ExpiresAt == nil || !time.Now().UTC().Before(*resp.Auth.ExpiresAt) ||
 			!resp.Auth.CloseRequiresEvidence || !slices.Contains(resp.Auth.AllowedActions, "issue.read") {
 			return InstanceInfo{}, fmt.Errorf("incomplete issue-scoped capabilities from daemon")
@@ -154,7 +153,7 @@ func (c *Client) ReportAppOpened(ctx context.Context) error {
 // ReportSessionEnded queues the terminal lifetime with a one-second request deadline
 // and waits at most ExitWait for delivery.
 func (c *Client) ReportSessionEnded(elapsed time.Duration) {
-	var sends posthog.SendGroup
+	var sends telemetry.SendGroup
 	sends.Go(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -318,7 +317,7 @@ func (c *Client) CreateIssue(ctx context.Context, projectID int64, body CreateIs
 		}
 		payload.Links = append(payload.Links, item)
 	}
-	options := &generated.CreateIssueRequestOptions{PathParams: &generated.CreateIssuePath{ProjectID: fmt.Sprint(projectID)}, Body: payload, Header: &generated.CreateIssueHeaders{XKataSurface: issueActionSurface(ctx)}}
+	options := &generated.CreateIssueRequestOptions{PathParams: &generated.CreateIssuePath{ProjectID: fmt.Sprint(projectID)}, Body: payload, Header: &generated.CreateIssueHeaders{XPoomsaeSurface: issueActionSurface(ctx)}}
 	if body.IdempotencyKey != "" {
 		options.Header.IdempotencyKey = &body.IdempotencyKey
 	}
@@ -348,7 +347,7 @@ func (c *Client) Close(ctx context.Context, projectID int64, ref, actor string) 
 	if err != nil {
 		return nil, err
 	}
-	wire, callErr := apiClient.CloseIssueWithResponse(ctx, &generated.CloseIssueRequestOptions{PathParams: &generated.CloseIssuePath{ProjectID: projectID, Ref: ref}, Header: &generated.CloseIssueHeaders{XKataSurface: issueActionSurface(ctx)}, Body: &generated.CloseIssueBody{Actor: &actor, Source: new(generated.CloseActionRequestBodySource("tui")), Reason: new(generated.CloseActionRequestBodyReason("done"))}})
+	wire, callErr := apiClient.CloseIssueWithResponse(ctx, &generated.CloseIssueRequestOptions{PathParams: &generated.CloseIssuePath{ProjectID: projectID, Ref: ref}, Header: &generated.CloseIssueHeaders{XPoomsaeSurface: issueActionSurface(ctx)}, Body: &generated.CloseIssueBody{Actor: &actor, Source: new(generated.CloseActionRequestBodySource("tui")), Reason: new(generated.CloseActionRequestBodyReason("done"))}})
 	if wire == nil {
 		return nil, callErr
 	}
@@ -382,7 +381,7 @@ func (c *Client) CloseWithEvidence(
 	}
 	wire, callErr := apiClient.CloseIssueWithResponse(ctx, &generated.CloseIssueRequestOptions{
 		PathParams: &generated.CloseIssuePath{ProjectID: projectID, Ref: ref}, Body: &payload,
-		Header: &generated.CloseIssueHeaders{XKataSurface: issueActionSurface(ctx)},
+		Header: &generated.CloseIssueHeaders{XPoomsaeSurface: issueActionSurface(ctx)},
 	})
 	if wire == nil {
 		return nil, callErr
@@ -622,7 +621,7 @@ func (c *Client) MoveIssue(ctx context.Context, projectID int64, ref string, in 
 
 // AddLink creates a typed link from this issue to body.ToRef. The
 // daemon's CreateLinkRequest.Body is {actor, type, to_ref}; ToRef
-// accepts a short_id, qualified short_id ("kata#abc4"), or a 26-char
+// accepts a short_id, qualified short_id ("poomsae#abc4"), or a 26-char
 // ULID.
 func (c *Client) AddLink(ctx context.Context, projectID int64, ref string, body LinkBody, actor string) (*MutationResp, error) {
 
@@ -703,10 +702,10 @@ func (c *Client) EditBody(ctx context.Context, projectID int64, ref, body, actor
 // ResolveProject runs the §4.2 resolution flow against startPath.
 //
 // Wire shape is chosen client-side so the daemon never has to stat the
-// client's filesystem (issue #35): {name, alias?} when .kata.toml is
-// readable, {alias} for a git workspace without .kata.toml, and
+// client's filesystem (issue #35): {name, alias?} when .poomsae.toml is
+// readable, {alias} for a git workspace without .poomsae.toml, and
 // {start_path} as a legacy local-only fallback. When the daemon
-// returns a canonical name that differs from the local .kata.toml, the
+// returns a canonical name that differs from the local .poomsae.toml, the
 // client rewrites the file in place.
 func (c *Client) ResolveProject(ctx context.Context, startPath string) (*ResolveResp, error) {
 	return c.resolveProject(ctx, startPath, true)
@@ -790,7 +789,7 @@ func makeResolveRequestPathFree(req map[string]any) error {
 }
 
 // buildResolveRequest selects the resolve wire shape and returns an
-// optional callback that rewrites .kata.toml when the daemon's
+// optional callback that rewrites .poomsae.toml when the daemon's
 // canonical name differs from the local binding.
 func buildResolveRequest(ctx context.Context, startPath string) (map[string]any, func(string) error, error) {
 	disc, err := config.DiscoverPaths(startPath)
@@ -812,12 +811,12 @@ func buildResolveRequest(ctx context.Context, startPath string) (map[string]any,
 		case err == nil:
 			tomlCfg = cfg
 		case errors.Is(err, config.ErrProjectConfigMissing):
-			// no .kata.toml
+			// no .poomsae.toml
 		default:
 			// Surface the parse error directly so the user sees the
 			// fix-it message instead of a confusing daemon-side stat
 			// failure under remote-client mode.
-			return nil, nil, fmt.Errorf("read .kata.toml: %w", err)
+			return nil, nil, fmt.Errorf("read .poomsae.toml: %w", err)
 		}
 	}
 
@@ -845,7 +844,7 @@ func buildResolveRequest(ctx context.Context, startPath string) (map[string]any,
 				return nil
 			}
 			if err := config.WriteProjectConfig(workspaceRoot, canonical); err != nil {
-				return fmt.Errorf("rewrite .kata.toml: %w", err)
+				return fmt.Errorf("rewrite .poomsae.toml: %w", err)
 			}
 			return nil
 		}
@@ -1161,7 +1160,7 @@ func (c *Client) ListEvents(ctx context.Context, projectID int64, ref string) ([
 		if err != nil {
 			return nil, err
 		}
-		if !katauid.Valid(resp.IssueUID) || (subjectUID != "" && resp.IssueUID != subjectUID) {
+		if !poomsaeuid.Valid(resp.IssueUID) || (subjectUID != "" && resp.IssueUID != subjectUID) {
 			return nil, fmt.Errorf("issue-filtered event history was not acknowledged for this issue; upgrade the daemon and retry")
 		}
 		subjectUID = resp.IssueUID
@@ -1205,7 +1204,7 @@ func (c *Client) listEventsPage(ctx context.Context, projectID, afterID int64, r
 	if err := decodeGeneratedResponse(wire.HTTPResponse, wire.Body, callErr, &resp); err != nil {
 		return resp, err
 	}
-	resp.IssueUID = wire.HTTPResponse.Header.Get("X-Kata-Events-Issue-UID")
+	resp.IssueUID = wire.HTTPResponse.Header.Get("X-Poomsae-Events-Issue-UID")
 	return resp, nil
 }
 
@@ -1333,7 +1332,7 @@ func canRetryLocalTransport(method string, headers map[string]string) bool {
 
 func transportError(method, path, base string, err error) error {
 	if base == clientpkg.UnixBase {
-		return fmt.Errorf("%s %s: local kata daemon connection failed: %s",
+		return fmt.Errorf("%s %s: local poomsae daemon connection failed: %s",
 			method, path, sanitizeLocalDaemonError(err))
 	}
 	return fmt.Errorf("%s %s: %w", method, path, err)

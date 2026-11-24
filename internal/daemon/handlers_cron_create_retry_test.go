@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type cronLostResponseTransport struct{ next http.RoundTripper }

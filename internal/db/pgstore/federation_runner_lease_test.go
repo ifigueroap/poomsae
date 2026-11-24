@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestFederationRunnerLeaseRetryClassification(t *testing.T) {

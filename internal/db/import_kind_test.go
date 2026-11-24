@@ -3,8 +3,8 @@ package db_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
-	"go.kenn.io/kata/internal/db"
 )
 
 // TestImportKindMatchesWireConstant pins the type -> NDJSON kind mapping for

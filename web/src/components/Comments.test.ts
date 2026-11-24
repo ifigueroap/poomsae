@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { UIIssueReference } from '../lib/api/generated'
-import type { KataTaskDetail } from '../lib/kata/types'
+import type { PoomsaeTaskDetail } from '../lib/poomsae/types'
 import Comments from './Comments.svelte'
 
 type Reference = UIIssueReference
@@ -220,7 +220,7 @@ function renderComments(overrides: Record<string, unknown> = {}) {
   })
 }
 
-function issue(): KataTaskDetail {
+function issue(): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,

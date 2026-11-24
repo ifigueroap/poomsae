@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestReconcileInboundRootUsesNativeEventAndPreservesAttention(t *testing.T) {
@@ -153,7 +153,7 @@ func TestCompleteExternalClosedKataUsesNativeStateWithoutPublishingComment(t *te
 			h := newReconcileHarness(t)
 			_, _, _, err := h.store.CloseIssue(t.Context(), h.issue.ID, reason, "verifier", "", nil)
 			require.NoError(t, err)
-			h.client.completeReadback = completedRoot(h.client.read, "completed-by-kata")
+			h.client.completeReadback = completedRoot(h.client.read, "completed-by-poomsae")
 
 			result, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
 
@@ -164,7 +164,7 @@ func TestCompleteExternalClosedKataUsesNativeStateWithoutPublishingComment(t *te
 			comments, readErr := h.store.CommentsByIssue(t.Context(), h.issue.ID)
 			require.NoError(t, readErr)
 			assert.Empty(t, comments)
-			h.requireSuccessfulClaim(t, "complete", "completed-by-kata")
+			h.requireSuccessfulClaim(t, "complete", "completed-by-poomsae")
 		})
 	}
 }
@@ -419,7 +419,7 @@ func TestCompleteExternalReopenRequestPrecedesRecompletion(t *testing.T) {
 	h.client.read.Revision = "reopened-externally"
 	h.client.read.UpdatedAt = h.boundAt.Add(3 * time.Minute)
 	h.client.read.ObservedAt = h.client.read.UpdatedAt
-	h.client.completeReadback = completedRoot(h.client.read, "recompleted-by-kata")
+	h.client.completeReadback = completedRoot(h.client.read, "recompleted-by-poomsae")
 
 	result, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
 
@@ -430,7 +430,7 @@ func TestCompleteExternalReopenRequestPrecedesRecompletion(t *testing.T) {
 	require.NoError(t, readErr)
 	require.Len(t, comments, 2)
 	assert.Contains(t, comments[1].Body, "review reopening")
-	h.requireSuccessfulClaim(t, "complete", "recompleted-by-kata")
+	h.requireSuccessfulClaim(t, "complete", "recompleted-by-poomsae")
 }
 
 func TestCompleteExternalFieldConflictContinuesButFieldTransportFailureBlocks(t *testing.T) {
@@ -712,31 +712,31 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 	cases := []struct {
 		name          string
 		baseline      *connector.FieldValue
-		kata          connector.FieldValue
+		poomsae       connector.FieldValue
 		external      connector.FieldValue
 		want          connector.FieldValue
 		wantConflict  bool
 		wantKataWrite bool
 		wantExtWrite  bool
 	}{
-		{name: "initial same", kata: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
-		{name: "initial Kata only", kata: date("2026-08-20"), external: nullValue(), want: date("2026-08-20"), wantExtWrite: true},
-		{name: "initial external only", kata: nullValue(), external: date("2026-08-20"), want: date("2026-08-20"), wantKataWrite: true},
-		{name: "initial divergent", kata: date("2026-08-20"), external: date("2026-08-21"), wantConflict: true},
-		{name: "steady unchanged", baseline: new(date("2026-08-20")), kata: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
-		{name: "steady Kata only", baseline: new(date("2026-08-20")), kata: date("2026-08-21"), external: date("2026-08-20"), want: date("2026-08-21"), wantExtWrite: true},
-		{name: "steady external only", baseline: new(date("2026-08-20")), kata: date("2026-08-20"), external: date("2026-08-21"), want: date("2026-08-21"), wantKataWrite: true},
-		{name: "steady same change", baseline: new(date("2026-08-20")), kata: date("2026-08-21"), external: date("2026-08-21"), want: date("2026-08-21")},
-		{name: "steady divergent", baseline: new(date("2026-08-20")), kata: date("2026-08-21"), external: date("2026-08-22"), wantConflict: true},
-		{name: "Kata clear", baseline: new(date("2026-08-20")), kata: nullValue(), external: date("2026-08-20"), want: nullValue(), wantExtWrite: true},
-		{name: "external clear", baseline: new(date("2026-08-20")), kata: date("2026-08-20"), external: nullValue(), want: nullValue(), wantKataWrite: true},
-		{name: "clear versus change", baseline: new(date("2026-08-20")), kata: nullValue(), external: date("2026-08-22"), wantConflict: true},
+		{name: "initial same", poomsae: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
+		{name: "initial Poomsae only", poomsae: date("2026-08-20"), external: nullValue(), want: date("2026-08-20"), wantExtWrite: true},
+		{name: "initial external only", poomsae: nullValue(), external: date("2026-08-20"), want: date("2026-08-20"), wantKataWrite: true},
+		{name: "initial divergent", poomsae: date("2026-08-20"), external: date("2026-08-21"), wantConflict: true},
+		{name: "steady unchanged", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
+		{name: "steady Poomsae only", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-20"), want: date("2026-08-21"), wantExtWrite: true},
+		{name: "steady external only", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: date("2026-08-21"), want: date("2026-08-21"), wantKataWrite: true},
+		{name: "steady same change", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-21"), want: date("2026-08-21")},
+		{name: "steady divergent", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-22"), wantConflict: true},
+		{name: "Poomsae clear", baseline: new(date("2026-08-20")), poomsae: nullValue(), external: date("2026-08-20"), want: nullValue(), wantExtWrite: true},
+		{name: "external clear", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: nullValue(), want: nullValue(), wantKataWrite: true},
+		{name: "clear versus change", baseline: new(date("2026-08-20")), poomsae: nullValue(), external: date("2026-08-22"), wantConflict: true},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			h := newReconcileHarness(t)
 			h.mapField(t, "scheduled_on", "start-date")
-			h.setKataField(t, "scheduled_on", test.kata)
+			h.setKataField(t, "scheduled_on", test.poomsae)
 			h.client.fieldValues["start-date"] = test.external
 			if test.baseline != nil {
 				h.seedBaseline(t, "scheduled_on", *test.baseline)
@@ -748,7 +748,7 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 				assert.Equal(t, 1, result.FieldConflicts)
 				state := h.fieldState(t, "scheduled_on")
 				assert.True(t, state.Conflicted)
-				assert.Equal(t, test.kata, decodeStoredFieldValue(t, state.ConflictKata))
+				assert.Equal(t, test.poomsae, decodeStoredFieldValue(t, state.ConflictKata))
 				assert.Equal(t, test.external, decodeStoredFieldValue(t, state.ConflictExternal))
 				return
 			}
@@ -759,9 +759,9 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 			assert.Equal(t, test.want, decodeStoredFieldValue(t, state.Baseline))
 			issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 			require.NoError(t, readErr)
-			kataValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
 			require.NoError(t, readErr)
-			assert.Equal(t, test.want, kataValue)
+			assert.Equal(t, test.want, poomsaeValue)
 			assert.Equal(t, test.want, h.client.fieldValues["start-date"])
 			assert.Equal(t, test.wantExtWrite, len(h.client.writeFieldCalls) == 1)
 			if test.wantExtWrite {
@@ -1394,7 +1394,7 @@ func TestReconcileLocalCompletionRetryPreservesVerifiedRootAfterSuccessWriteFail
 	h := newReconcileHarness(t)
 	_, _, _, err := h.store.CloseIssue(t.Context(), h.issue.ID, "done", "verifier", "", nil)
 	require.NoError(t, err)
-	h.client.completeReadback = completedRoot(h.client.read, "completed-by-kata")
+	h.client.completeReadback = completedRoot(h.client.read, "completed-by-poomsae")
 	terminalErr := errors.New("record terminal success")
 	h.reconciler.store = &failExternalRootSuccessOnceStorage{Storage: h.store, err: terminalErr}
 
@@ -1406,7 +1406,7 @@ func TestReconcileLocalCompletionRetryPreservesVerifiedRootAfterSuccessWriteFail
 	failed, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
 	require.NoError(t, readErr)
 	assert.Equal(t, "complete", failed.LastExternalState)
-	assert.Equal(t, "completed-by-kata", failed.LastExternalRevision)
+	assert.Equal(t, "completed-by-poomsae", failed.LastExternalRevision)
 	assert.Equal(t, 1, failed.ConsecutiveFailures)
 	assert.Nil(t, failed.LastSuccessAt)
 
@@ -1534,8 +1534,8 @@ func newPublishingReconcileHarness(t *testing.T) *reconcileHarness {
 
 func newReconcileHarnessWithOptions(t *testing.T, initialClaim string, publishComments bool) *reconcileHarness {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -1597,9 +1597,9 @@ func (h *reconcileHarness) setAttention(t *testing.T) db.JSONBlob {
 	return out.Issue.Metadata
 }
 
-func (h *reconcileHarness) mapField(t *testing.T, kataField, externalFieldID string) db.ExternalFieldMapping {
+func (h *reconcileHarness) mapField(t *testing.T, poomsaeField, externalFieldID string) db.ExternalFieldMapping {
 	t.Helper()
-	return h.mapFieldDescriptor(t, kataField, connector.FieldDescriptor{
+	return h.mapFieldDescriptor(t, poomsaeField, connector.FieldDescriptor{
 		ID: externalFieldID, DisplayName: externalFieldID,
 		AcceptedKinds: []string{fieldKindDate, fieldKindLocalDateTime, fieldKindInstant},
 		Nullable:      true, Writable: true, SchemaRevision: "schema-1",
@@ -1608,7 +1608,7 @@ func (h *reconcileHarness) mapField(t *testing.T, kataField, externalFieldID str
 
 func (h *reconcileHarness) mapFieldDescriptor(
 	t *testing.T,
-	kataField string,
+	poomsaeField string,
 	descriptor connector.FieldDescriptor,
 ) db.ExternalFieldMapping {
 	t.Helper()
@@ -1632,22 +1632,22 @@ func (h *reconcileHarness) mapFieldDescriptor(
 	service := NewService(h.store, h.registry, nil)
 	mapping, err := service.MapField(t.Context(), MapFieldParams{
 		ConnectorInstance: h.binding.ConnectorInstance,
-		KataField:         kataField,
+		PoomsaeField:      poomsaeField,
 		ExternalField:     descriptor.ID,
 	})
 	require.NoError(t, err)
-	h.fields[kataField] = mapping
+	h.fields[poomsaeField] = mapping
 	if h.client.fieldValues == nil {
 		h.client.fieldValues = make(map[string]connector.FieldValue)
 	}
 	return mapping
 }
 
-func (h *reconcileHarness) setKataField(t *testing.T, kataField string, value connector.FieldValue) {
+func (h *reconcileHarness) setKataField(t *testing.T, poomsaeField string, value connector.FieldValue) {
 	t.Helper()
 	issue, err := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, err)
-	patch, err := fieldCodecs[kataField].KataPatch(issue, value)
+	patch, err := fieldCodecs[poomsaeField].PoomsaePatch(issue, value)
 	require.NoError(t, err)
 	out, err := h.store.PatchIssueMetadata(t.Context(), db.PatchIssueMetadataIn{
 		IssueID: h.issue.ID, Actor: "tester", Patch: patch,
@@ -1658,13 +1658,13 @@ func (h *reconcileHarness) setKataField(t *testing.T, kataField string, value co
 
 func (h *reconcileHarness) seedBaseline(
 	t *testing.T,
-	kataField string,
+	poomsaeField string,
 	value connector.FieldValue,
 ) db.ExternalFieldState {
 	t.Helper()
-	mapping, ok := h.fields[kataField]
+	mapping, ok := h.fields[poomsaeField]
 	require.True(t, ok)
-	claimToken := "seed-" + kataField
+	claimToken := "seed-" + poomsaeField
 	_, claimed, err := h.store.ClaimExternalRootBinding(
 		t.Context(), h.binding.ID, claimToken, h.now, h.now.Add(-time.Minute),
 	)
@@ -1683,9 +1683,9 @@ func (h *reconcileHarness) seedBaseline(
 	return state
 }
 
-func (h *reconcileHarness) fieldState(t *testing.T, kataField string) db.ExternalFieldState {
+func (h *reconcileHarness) fieldState(t *testing.T, poomsaeField string) db.ExternalFieldState {
 	t.Helper()
-	mapping, ok := h.fields[kataField]
+	mapping, ok := h.fields[poomsaeField]
 	require.True(t, ok)
 	states, err := h.store.ExternalFieldStates(t.Context(), h.binding.ID)
 	require.NoError(t, err)
@@ -1694,7 +1694,7 @@ func (h *reconcileHarness) fieldState(t *testing.T, kataField string) db.Externa
 			return state
 		}
 	}
-	require.FailNow(t, "field state missing", "field state for %s was not stored", kataField)
+	require.FailNow(t, "field state missing", "field state for %s was not stored", poomsaeField)
 	return db.ExternalFieldState{}
 }
 

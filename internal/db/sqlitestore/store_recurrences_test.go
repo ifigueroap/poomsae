@@ -5,9 +5,9 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestCreateRecurrence_HappyPath(t *testing.T) {

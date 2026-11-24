@@ -5,14 +5,14 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
 )
 
 func TestProviderCredentialSurvivesDaemonReservationAndBinding(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := openReplicaServiceStore(t)
 	credentials := config.DefaultFederationCredentialStore()

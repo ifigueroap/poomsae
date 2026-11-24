@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bufio"
@@ -17,32 +17,32 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
 )
 
 type recordingAccessController struct {
 	mu                   sync.Mutex
-	requests             []kata.AccessRequest
+	requests             []poomsae.AccessRequest
 	err                  error
-	lease                kata.AccessLease
-	transactionFence     kata.TransactionFence
+	lease                poomsae.AccessLease
+	transactionFence     poomsae.TransactionFence
 	omitTransactionFence bool
-	authorize            func(kata.AccessRequest) error
+	authorize            func(poomsae.AccessRequest) error
 }
 
 func (c *recordingAccessController) Authorize(
 	_ context.Context,
-	request kata.AccessRequest,
-) (kata.AccessDecision, error) {
+	request poomsae.AccessRequest,
+) (poomsae.AccessDecision, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.requests = append(c.requests, request)
-	decision := kata.AccessDecision{}
+	decision := poomsae.AccessDecision{}
 	decision.TransactionFence = c.transactionFence
 	if decision.TransactionFence == nil && !c.omitTransactionFence {
-		decision.TransactionFence = func(context.Context, kata.Transaction) error { return nil }
+		decision.TransactionFence = func(context.Context, poomsae.Transaction) error { return nil }
 	}
 	if request.Operation.ID == "streamEvents" {
 		decision.Lease = c.lease
@@ -55,12 +55,12 @@ func (c *recordingAccessController) Authorize(
 
 func TestServiceMutationFailsClosedWithoutTransactionFence(t *testing.T) {
 	controller := &recordingAccessController{omitTransactionFence: true}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	project, err := service.EnsureProject(t.Context(), kata.ProjectSpec{
+	project, err := service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 	})
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestServiceMutationFailsClosedWithoutTransactionFence(t *testing.T) {
 		strconv.FormatInt(project.Project.ID, 10)+"/issues",
 		bytes.NewBufferString(`{"actor":"ignored","title":"must not be stored"}`))
 	request.Header.Set("Content-Type", "application/json")
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123", Actor: "Example User",
 	}))
 	response := httptest.NewRecorder()
@@ -82,7 +82,7 @@ func TestServiceMutationFailsClosedWithoutTransactionFence(t *testing.T) {
 
 	listRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/projects/"+
 		strconv.FormatInt(project.Project.ID, 10)+"/issues", nil)
-	listRequest = listRequest.WithContext(kata.WithPrincipal(listRequest.Context(), kata.Principal{
+	listRequest = listRequest.WithContext(poomsae.WithPrincipal(listRequest.Context(), poomsae.Principal{
 		Subject: "user-123", Actor: "Example User",
 	}))
 	listed := httptest.NewRecorder()
@@ -97,7 +97,7 @@ func TestServiceTransactionFenceSharesMutationCommitAndRollback(t *testing.T) {
 	release := make(chan struct{})
 	var attempts atomic.Int64
 	controller := &recordingAccessController{}
-	controller.transactionFence = func(ctx context.Context, tx kata.Transaction) error {
+	controller.transactionFence = func(ctx context.Context, tx poomsae.Transaction) error {
 		attempt := attempts.Add(1)
 		_, err := tx.ExecContext(ctx, `INSERT INTO fence_markers(attempt) VALUES(?)`, attempt)
 		if err != nil {
@@ -112,12 +112,12 @@ func TestServiceTransactionFenceSharesMutationCommitAndRollback(t *testing.T) {
 				return ctx.Err()
 			}
 		}
-		return kata.ErrAccessDenied
+		return poomsae.ErrAccessDenied
 	}
-	service, err := kata.New(t.Context(), kata.Config{DSN: databasePath, Access: controller})
+	service, err := poomsae.New(t.Context(), poomsae.Config{DSN: databasePath, Access: controller})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	project, err := service.EnsureProject(t.Context(), kata.ProjectSpec{
+	project, err := service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 	})
 	require.NoError(t, err)
@@ -128,9 +128,9 @@ func TestServiceTransactionFenceSharesMutationCommitAndRollback(t *testing.T) {
 	_, err = inspection.ExecContext(t.Context(), `CREATE TABLE fence_markers (attempt INTEGER NOT NULL)`)
 	require.NoError(t, err)
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -190,20 +190,20 @@ type revocableAccessLease struct {
 
 func (l *revocableAccessLease) Revalidate(context.Context) error {
 	if l.revoked.Load() {
-		return kata.ErrAccessDenied
+		return poomsae.ErrAccessDenied
 	}
 	return nil
 }
 
-func (c *recordingAccessController) snapshot() []kata.AccessRequest {
+func (c *recordingAccessController) snapshot() []poomsae.AccessRequest {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]kata.AccessRequest(nil), c.requests...)
+	return append([]poomsae.AccessRequest(nil), c.requests...)
 }
 
 func TestServiceAccessControllerRequiresAnInProcessPrincipal(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
@@ -221,8 +221,8 @@ func TestServiceAccessControllerRequiresAnInProcessPrincipal(t *testing.T) {
 }
 
 func TestServiceAccessControllerDeniesWithoutDisclosingProjectData(t *testing.T) {
-	controller := &recordingAccessController{err: kata.ErrAccessDenied}
-	service, err := kata.New(t.Context(), kata.Config{
+	controller := &recordingAccessController{err: poomsae.ErrAccessDenied}
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
@@ -230,7 +230,7 @@ func TestServiceAccessControllerDeniesWithoutDisclosingProjectData(t *testing.T)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/projects/42", nil)
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123",
 		Actor:   "Example User",
 	}))
@@ -241,13 +241,13 @@ func TestServiceAccessControllerDeniesWithoutDisclosingProjectData(t *testing.T)
 	assert.JSONEq(t, `{"status":404,"error":{"code":"not_found","message":"resource not found"}}`,
 		response.Body.String())
 	require.Len(t, controller.snapshot(), 1)
-	assert.Equal(t, kata.Operation{
+	assert.Equal(t, poomsae.Operation{
 		ID:         "showProject",
 		Method:     http.MethodGet,
 		Path:       "/api/v1/projects/{project_id}",
 		PathParams: map[string]string{"project_id": "42"},
-		Policy: kata.OperationPolicy{
-			Kind: kata.OperationProjectRead, Capability: kata.CapabilityRead,
+		Policy: poomsae.OperationPolicy{
+			Kind: poomsae.OperationProjectRead, Capability: poomsae.CapabilityRead,
 		},
 		ProjectIDs: []int64{42},
 	}, controller.snapshot()[0].Operation)
@@ -255,25 +255,25 @@ func TestServiceAccessControllerDeniesWithoutDisclosingProjectData(t *testing.T)
 
 func TestServiceAccessControllerReceivesOperationPolicy(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	project, err := service.EnsureProject(t.Context(), kata.ProjectSpec{
+	project, err := service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 	})
 	require.NoError(t, err)
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	serve := func(method, target string, body []byte) *httptest.ResponseRecorder {
 		request := httptest.NewRequestWithContext(t.Context(), method, target, bytes.NewReader(body))
 		if len(body) > 0 {
 			request.Header.Set("Content-Type", "application/json")
 		}
-		request = request.WithContext(kata.WithPrincipal(request.Context(), principal))
+		request = request.WithContext(poomsae.WithPrincipal(request.Context(), principal))
 		response := httptest.NewRecorder()
 		service.Handler().ServeHTTP(response, request)
 		return response
@@ -291,34 +291,34 @@ func TestServiceAccessControllerReceivesOperationPolicy(t *testing.T) {
 
 	requests := controller.snapshot()
 	require.Len(t, requests, 3)
-	assert.Equal(t, kata.OperationPolicy{
-		Kind: kata.OperationTaskRead, Capability: kata.CapabilityRead,
+	assert.Equal(t, poomsae.OperationPolicy{
+		Kind: poomsae.OperationTaskRead, Capability: poomsae.CapabilityRead,
 	}, requests[0].Operation.Policy)
-	assert.Equal(t, kata.OperationPolicy{
-		Kind: kata.OperationTaskMutation, Capability: kata.CapabilityWrite, Mutation: true,
+	assert.Equal(t, poomsae.OperationPolicy{
+		Kind: poomsae.OperationTaskMutation, Capability: poomsae.CapabilityWrite, Mutation: true,
 	}, requests[1].Operation.Policy)
-	assert.Equal(t, kata.OperationPolicy{
-		Kind: kata.OperationTokenAdministration, Capability: kata.CapabilityManage,
+	assert.Equal(t, poomsae.OperationPolicy{
+		Kind: poomsae.OperationTokenAdministration, Capability: poomsae.CapabilityManage,
 	}, requests[2].Operation.Policy)
 }
 
 func TestRestrictedEmbeddingProfileDeniesNativeAdministration(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
-		Profile: kata.EmbeddingProfileRestricted,
+		Profile: poomsae.EmbeddingProfileRestricted,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	project, err := service.EnsureProject(t.Context(), kata.ProjectSpec{
+	project, err := service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 	})
 	require.NoError(t, err)
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	serve := func(method, target string) *httptest.ResponseRecorder {
 		request := httptest.NewRequestWithContext(t.Context(), method, target, nil)
-		request = request.WithContext(kata.WithPrincipal(request.Context(), principal))
+		request = request.WithContext(poomsae.WithPrincipal(request.Context(), principal))
 		response := httptest.NewRecorder()
 		service.Handler().ServeHTTP(response, request)
 		return response
@@ -349,26 +349,26 @@ func TestRestrictedEmbeddingProfileDeniesNativeAdministration(t *testing.T) {
 }
 
 func TestNewRejectsUnknownEmbeddingProfile(t *testing.T) {
-	_, err := kata.New(t.Context(), kata.Config{
+	_, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:     filepath.Join(t.TempDir(), "service.db"),
-		Auth:    kata.AuthConfig{TrustCallerAuthentication: true},
-		Profile: kata.EmbeddingProfile("unknown"),
+		Auth:    poomsae.AuthConfig{TrustCallerAuthentication: true},
+		Profile: poomsae.EmbeddingProfile("unknown"),
 	})
-	require.EqualError(t, err, `kata: unknown embedding profile "unknown"`)
+	require.EqualError(t, err, `poomsae: unknown embedding profile "unknown"`)
 }
 
 func TestServiceAccessControllerSuppliesTheMutationActor(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -407,7 +407,7 @@ func TestServiceAccessControllerSuppliesTheMutationActor(t *testing.T) {
 
 func TestServiceAccessControllerKeepsUnexpectedFailuresDistinctFromDenials(t *testing.T) {
 	controller := &recordingAccessController{err: errors.New("policy store unavailable")}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
@@ -415,7 +415,7 @@ func TestServiceAccessControllerKeepsUnexpectedFailuresDistinctFromDenials(t *te
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/projects", nil)
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123",
 		Actor:   "Example User",
 	}))
@@ -430,16 +430,16 @@ func TestServiceAccessControllerKeepsUnexpectedFailuresDistinctFromDenials(t *te
 func TestServiceAccessLeaseStopsAStreamBeforeTheNextEvent(t *testing.T) {
 	lease := &revocableAccessLease{}
 	controller := &recordingAccessController{lease: lease}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -497,7 +497,7 @@ func TestServiceAccessLeaseStopsAStreamBeforeTheNextEvent(t *testing.T) {
 
 func TestServiceAccessControllerRequiresALeaseForEventStreams(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
@@ -506,7 +506,7 @@ func TestServiceAccessControllerRequiresALeaseForEventStreams(t *testing.T) {
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/events/stream?after_id=0", nil)
 	request.Header.Set("Accept", "text/event-stream")
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123",
 		Actor:   "Example User",
 	}))
@@ -520,29 +520,29 @@ func TestServiceAccessControllerRequiresALeaseForEventStreams(t *testing.T) {
 
 func TestNewRejectsHostAccessCombinedWithAnotherAuthenticationPolicy(t *testing.T) {
 	controller := &recordingAccessController{}
-	for _, auth := range []kata.AuthConfig{
+	for _, auth := range []poomsae.AuthConfig{
 		{Token: "service-token"},
 		{TrustCallerAuthentication: true},
 	} {
-		service, err := kata.New(t.Context(), kata.Config{
+		service, err := poomsae.New(t.Context(), poomsae.Config{
 			DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller, Auth: auth,
 		})
 		assert.Nil(t, service)
 		assert.EqualError(t, err,
-			"kata: auth token, trusted caller authentication, and host access are mutually exclusive")
+			"poomsae: auth token, trusted caller authentication, and host access are mutually exclusive")
 	}
 }
 
 func TestWithPrincipalDoesNotChangeTrustedCallerMode(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := kata.WithPrincipal(r.Context(), kata.Principal{
+		ctx := poomsae.WithPrincipal(r.Context(), poomsae.Principal{
 			Subject: "must-be-ignored", Actor: "must-be-ignored",
 		})
 		service.Handler().ServeHTTP(w, r.WithContext(ctx))
@@ -572,7 +572,7 @@ func TestWithPrincipalDoesNotChangeTrustedCallerMode(t *testing.T) {
 
 func TestServiceAccessControllerProtectsTheOpenAPIDocument(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:    filepath.Join(t.TempDir(), "service.db"),
 		Access: controller,
 	})
@@ -585,8 +585,8 @@ func TestServiceAccessControllerProtectsTheOpenAPIDocument(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, missing.Code)
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/openapi.yaml", nil)
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
-	request = request.WithContext(kata.WithPrincipal(request.Context(), principal))
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), principal))
 	allowed := httptest.NewRecorder()
 	service.Handler().ServeHTTP(allowed, request)
 	require.Equal(t, http.StatusOK, allowed.Code)
@@ -594,36 +594,36 @@ func TestServiceAccessControllerProtectsTheOpenAPIDocument(t *testing.T) {
 	requests := controller.snapshot()
 	require.Len(t, requests, 1)
 	assert.Equal(t, principal, requests[0].Principal)
-	assert.Equal(t, kata.Operation{
+	assert.Equal(t, poomsae.Operation{
 		ID: "openAPI", Method: http.MethodGet, Path: "/openapi.yaml",
 		PathParams: map[string]string{},
-		Policy: kata.OperationPolicy{
-			Kind: kata.OperationServiceRead, Capability: kata.CapabilityRead,
+		Policy: poomsae.OperationPolicy{
+			Kind: poomsae.OperationServiceRead, Capability: poomsae.CapabilityRead,
 		},
 	}, requests[0].Operation)
 }
 
 func TestServiceAccessControllerAuthorizesBothProjectsBeforeMerge(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
 	target := createProject(t, server.URL, "target-project")
 	source := createProject(t, server.URL, "source-project")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "mergeProject" &&
 			containsInt64(request.Operation.ProjectIDs, source.Project.ID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -647,15 +647,15 @@ func TestServiceAccessControllerAuthorizesBothProjectsBeforeMerge(t *testing.T) 
 
 func TestServiceAccessControllerAuthorizesMoveDestination(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -679,10 +679,10 @@ func TestServiceAccessControllerAuthorizesMoveDestination(t *testing.T) {
 	}
 	require.NoError(t, json.NewDecoder(issueResponse.Body).Decode(&created))
 
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "moveIssue" &&
 			containsString(request.Operation.ProjectUIDs, target.Project.UID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -706,21 +706,21 @@ func TestServiceAccessControllerAuthorizesMoveDestination(t *testing.T) {
 
 func TestServiceAccessControllerRequiresCompleteEventStreamScope(t *testing.T) {
 	controller := &recordingAccessController{lease: &revocableAccessLease{}}
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "streamEvents" {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -751,16 +751,16 @@ func TestServiceAccessControllerRequiresCompleteEventStreamScope(t *testing.T) {
 
 func TestServiceAccessControllerPreservesScopedFederationAuthentication(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") == "" {
-			r = r.WithContext(kata.WithPrincipal(r.Context(), principal))
+			r = r.WithContext(poomsae.WithPrincipal(r.Context(), principal))
 		}
 		service.Handler().ServeHTTP(w, r)
 	})
@@ -856,15 +856,15 @@ func TestServiceAccessControllerPreservesScopedFederationAuthentication(t *testi
 
 func TestServiceAccessControllerSuppliesForceReleaseActor(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -926,12 +926,12 @@ func containsString(values []string, want string) bool {
 }
 
 func TestServiceTelemetryCaptureIsUnavailableToEmbeddedHosts(t *testing.T) {
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
-	serve := func(service *kata.Service) *httptest.ResponseRecorder {
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
+	serve := func(service *poomsae.Service) *httptest.ResponseRecorder {
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/ui/telemetry",
 			bytes.NewBufferString(`{"event":"app_opened"}`))
 		request.Header.Set("Content-Type", "application/json")
-		request = request.WithContext(kata.WithPrincipal(request.Context(), principal))
+		request = request.WithContext(poomsae.WithPrincipal(request.Context(), principal))
 		response := httptest.NewRecorder()
 		service.Handler().ServeHTTP(response, request)
 		return response
@@ -939,7 +939,7 @@ func TestServiceTelemetryCaptureIsUnavailableToEmbeddedHosts(t *testing.T) {
 
 	t.Run("full profile", func(t *testing.T) {
 		controller := &recordingAccessController{}
-		service, err := kata.New(t.Context(), kata.Config{
+		service, err := poomsae.New(t.Context(), poomsae.Config{
 			DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 		})
 		require.NoError(t, err)
@@ -952,11 +952,11 @@ func TestServiceTelemetryCaptureIsUnavailableToEmbeddedHosts(t *testing.T) {
 			response.Body.String())
 		requests := controller.snapshot()
 		require.Len(t, requests, 1)
-		assert.Equal(t, kata.Operation{
+		assert.Equal(t, poomsae.Operation{
 			ID: "captureTelemetryEvent", Method: http.MethodPost, Path: "/api/v1/ui/telemetry",
 			PathParams: map[string]string{},
-			Policy: kata.OperationPolicy{
-				Kind: kata.OperationServiceMutation, Capability: kata.CapabilityWrite, Mutation: true,
+			Policy: poomsae.OperationPolicy{
+				Kind: poomsae.OperationServiceMutation, Capability: poomsae.CapabilityWrite, Mutation: true,
 			},
 		}, requests[0].Operation)
 		assert.Empty(t, requests[0].Operation.ProjectIDs)
@@ -965,9 +965,9 @@ func TestServiceTelemetryCaptureIsUnavailableToEmbeddedHosts(t *testing.T) {
 
 	t.Run("restricted profile", func(t *testing.T) {
 		controller := &recordingAccessController{}
-		service, err := kata.New(t.Context(), kata.Config{
+		service, err := poomsae.New(t.Context(), poomsae.Config{
 			DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
-			Profile: kata.EmbeddingProfileRestricted,
+			Profile: poomsae.EmbeddingProfileRestricted,
 		})
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, service.Close()) })

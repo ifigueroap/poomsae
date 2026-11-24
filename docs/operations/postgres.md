@@ -1,12 +1,12 @@
 ---
 title: PostgreSQL operations
-description: Operate Kata on PostgreSQL with split migration and runtime roles, backups, upgrades, and health checks.
+description: Operate Poomsae on PostgreSQL with split migration and runtime roles, backups, upgrades, and health checks.
 last_edited: 2026-11-20
 ---
 
 # PostgreSQL operations
 
-PostgreSQL is Kata's shared-daemon storage backend. In production, separate the
+PostgreSQL is Poomsae's shared-daemon storage backend. In production, separate the
 credential that owns and advances the schema from the credential the
 long-running daemon uses. The daemon then validates the installed schema at
 startup and never needs DDL privileges.
@@ -16,21 +16,21 @@ mode and use one role. For production, use the split-role setup below.
 
 ## Requirements
 
-To run Kata on PostgreSQL, you need:
+To run Poomsae on PostgreSQL, you need:
 
 - PostgreSQL 17 or later.
 - A database reserved for the service, or a database where you can isolate a
-  dedicated Kata schema.
+  dedicated Poomsae schema.
 - The `unaccent` extension installed in the `public` schema.
 - Optionally, pgvector 0.7 or later in `public` if you want PostgreSQL semantic
   search.
 - Server-identity-verified TLS for every remote database endpoint.
-- One schema-owner credential for `kata storage postgres migrate` and offline
-  `kata import` restores.
+- One schema-owner credential for `poomsae storage postgres migrate` and offline
+  `poomsae import` restores.
 - One runtime credential for the daemon.
 
-Kata tables never use the ambient `public` schema. The default schema name is
-`kata`, though you can choose another restricted lowercase identifier.
+Poomsae tables never use the ambient `public` schema. The default schema name is
+`poomsae`, though you can choose another restricted lowercase identifier.
 
 ## Create the roles
 
@@ -41,16 +41,16 @@ database and role names to match your setup:
 CREATE ROLE kata_schema_owner LOGIN PASSWORD 'replace-me';
 CREATE ROLE kata_runtime LOGIN PASSWORD 'replace-me';
 
-GRANT CONNECT ON DATABASE kata TO kata_schema_owner, kata_runtime;
-GRANT CREATE ON DATABASE kata TO kata_schema_owner;
+GRANT CONNECT ON DATABASE poomsae TO kata_schema_owner, kata_runtime;
+GRANT CREATE ON DATABASE poomsae TO kata_schema_owner;
 ```
 
 The schema owner needs `CREATE` on the database because initial setup creates
 the dedicated schema and installs `unaccent`. The serving role does not need
 database-level `CREATE`.
 
-Kata never installs pgvector automatically. If you want semantic search, have a
-database administrator install pgvector before you prepare Kata:
+Poomsae never installs pgvector automatically. If you want semantic search, have a
+database administrator install pgvector before you prepare Poomsae:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
@@ -59,7 +59,7 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 ```
 
 If either installed extension lives in another schema, move it to `public` as
-its owner before preparing Kata. A server that offers pgvector without having
+its owner before preparing Poomsae. A server that offers pgvector without having
 installed it behaves the same as a server without pgvector: core task,
 federation, and lexical-search features all remain available.
 
@@ -73,12 +73,12 @@ To keep credentials out of shell history and process listings, supply the DSN
 through the environment or a PostgreSQL password file:
 
 ```sh
-export KATA_DSN='postgres://kata_schema_owner@db.example/kata?sslmode=verify-full&sslrootcert=system'
-export KATA_POSTGRES_SCHEMA='kata'
-kata storage postgres migrate
+export POOMSAE_DSN='postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_POSTGRES_SCHEMA='poomsae'
+poomsae storage postgres migrate
 ```
 
-`kata storage postgres migrate` takes a transaction-scoped advisory lock,
+`poomsae storage postgres migrate` takes a transaction-scoped advisory lock,
 installs a fresh schema or applies every registered forward migration, records
 the version in the same transaction, and writes the required installation
 metadata. You can safely retry it after an interruption, and it never prints
@@ -210,29 +210,29 @@ Once the schema is prepared, grant the runtime role DML access and set default
 privileges for objects that future migrations create:
 
 ```sql
-REVOKE ALL ON SCHEMA kata FROM PUBLIC;
-GRANT USAGE ON SCHEMA kata TO kata_runtime;
+REVOKE ALL ON SCHEMA poomsae FROM PUBLIC;
+GRANT USAGE ON SCHEMA poomsae TO kata_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE
-  ON ALL TABLES IN SCHEMA kata TO kata_runtime;
+  ON ALL TABLES IN SCHEMA poomsae TO kata_runtime;
 GRANT USAGE, SELECT, UPDATE
-  ON ALL SEQUENCES IN SCHEMA kata TO kata_runtime;
+  ON ALL SEQUENCES IN SCHEMA poomsae TO kata_runtime;
 GRANT EXECUTE
-  ON FUNCTION kata.rewrite_project_uid_for_adoption(BIGINT, TEXT)
+  ON FUNCTION poomsae.rewrite_project_uid_for_adoption(BIGINT, TEXT)
   TO kata_runtime;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA kata
+ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA poomsae
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO kata_runtime;
-ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA kata
+ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA poomsae
   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO kata_runtime;
 ```
 
-If you configured a schema name other than `kata`, substitute its exact name
+If you configured a schema name other than `poomsae`, substitute its exact name
 throughout. When auditing an existing deployment after an upgrade, re-run the
 two `GRANT ... ON ALL ...` statements and the exact function grant. That
 function grant is deliberately narrow: adopting an existing project into
 federation needs to replace one otherwise immutable project UID, but the runtime
-role never receives table DDL authority. Do not grant `CREATE` on the Kata schema
+role never receives table DDL authority. Do not grant `CREATE` on the Poomsae schema
 to the runtime role or any other non-owner role. Validation-only startup
 rejects those grants because schema objects participate in PostgreSQL name
 resolution. The default privileges cover newly created tables and sequences
@@ -245,10 +245,10 @@ startup explicitly:
 
 ```toml
 [storage]
-dsn = "postgres://kata_runtime@db.example/kata?sslmode=verify-full&sslrootcert=system"
+dsn = "postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
 
 [storage.postgres]
-schema = "kata"
+schema = "poomsae"
 mode = "validate"
 schema_owner = "kata_schema_owner"
 ```
@@ -256,10 +256,10 @@ schema_owner = "kata_schema_owner"
 You can pass the same settings as environment variables:
 
 ```sh
-export KATA_DSN='postgres://kata_runtime@db.example/kata?sslmode=verify-full&sslrootcert=system'
-export KATA_POSTGRES_SCHEMA='kata'
-export KATA_POSTGRES_SCHEMA_MODE='validate'
-export KATA_POSTGRES_SCHEMA_OWNER='kata_schema_owner'
+export POOMSAE_DSN='postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_POSTGRES_SCHEMA='poomsae'
+export POOMSAE_POSTGRES_SCHEMA_MODE='validate'
+export POOMSAE_POSTGRES_SCHEMA_OWNER='kata_schema_owner'
 ```
 
 In `validate` mode, you must set `schema_owner`. Every direct storage open,
@@ -277,10 +277,10 @@ version, and validation runs no DDL. Missing, older, newer, unversioned,
 differently owned, incomplete, or row-security-enabled schemas all fail closed.
 
 Offline JSONL restore also requires the schema-owner role. Pass the
-schema-owner DSN directly to `kata import --target`; import deliberately uses
+schema-owner DSN directly to `poomsae import --target`; import deliberately uses
 bootstrap policy for that target even when your ambient daemon configuration
 sets `mode = "validate"`. Because a forced restore truncates and replaces
-Kata-owned tables, the runtime role's DML grants are intentionally
+Poomsae-owned tables, the runtime role's DML grants are intentionally
 insufficient. Switch back to the runtime DSN and validation mode before you
 restart the daemon. For the full ordering, see
 [Backup and restore](backup-restore.md).
@@ -294,8 +294,8 @@ reserving every query connection while their mutations wait for the same pool.
 Multiply this budget by the maximum number of daemon replicas that can reach
 one database.
 
-When pgvector is installed and `[search.embeddings]` is configured, Kata stores
-vectors in `halfvec` tables inside the selected Kata schema. Configuring
+When pgvector is installed and `[search.embeddings]` is configured, Poomsae stores
+vectors in `halfvec` tables inside the selected Poomsae schema. Configuring
 embeddings without pgvector fails with a feature-unavailable error, while core
 storage and lexical search stay available. The runtime still needs only the
 table and sequence grants above. The first implementation runs a bounded exact
@@ -306,11 +306,11 @@ dimensions.
 Before starting the service, check the runtime credential:
 
 ```sh
-kata storage postgres status
-kata daemon start --foreground
+poomsae storage postgres status
+poomsae daemon start --foreground
 ```
 
-`kata storage postgres status` opens the database read-only and checks the
+`poomsae storage postgres status` opens the database read-only and checks the
 exact schema version, reserved system project, canonical catalog fingerprints,
 and the runtime role's required schema, table, sequence, and adoption-function
 privileges. It exits nonzero if the deployment is not ready. For
@@ -322,7 +322,7 @@ Remote PostgreSQL connections fail before dialing unless every primary and
 fallback candidate uses TLS with server identity verification. Use
 `sslmode=verify-full` and either `sslrootcert=system` or a trusted CA file.
 The weaker libpq modes `allow`, `prefer`, `require`, and `verify-ca` either
-allow plaintext fallback or skip hostname verification, and Kata rejects them
+allow plaintext fallback or skip hostname verification, and Poomsae rejects them
 for remote hosts. Plaintext remains allowed for Unix sockets and
 exact loopback hosts.
 
@@ -333,7 +333,7 @@ In an isolated lab, you can opt out explicitly:
 allow_insecure = true
 ```
 
-You can also set `KATA_POSTGRES_ALLOW_INSECURE=1` in the environment. This
+You can also set `POOMSAE_POSTGRES_ALLOW_INSECURE=1` in the environment. This
 disables the check for every connection candidate and can expose credentials,
 issue content, token hashes, and federation state to an attacker on the
 network. Do not use it as a production private-network setup.
@@ -352,28 +352,28 @@ upgrade offline:
    binary.
 2. Take a database-native snapshot and a JSONL export. Keep the native snapshot
    for exact rollback and the JSONL export for portable recovery.
-3. Run `kata storage postgres migrate` from the new binary with the
+3. Run `poomsae storage postgres migrate` from the new binary with the
    schema-owner credential.
 4. Reapply or audit runtime grants.
-5. Run `kata storage postgres status` from the new binary with the runtime
-   credential and `KATA_POSTGRES_SCHEMA_MODE=validate`.
+5. Run `poomsae storage postgres status` from the new binary with the runtime
+   credential and `POOMSAE_POSTGRES_SCHEMA_MODE=validate`.
 6. Start the new daemon version.
 
 For example:
 
 ```sh
-kata daemon stop
-kata export --output "backup-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
-pg_dump --format=custom --schema=kata --file=kata-before-upgrade.dump "$KATA_DSN"
+poomsae daemon stop
+poomsae export --output "backup-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+pg_dump --format=custom --schema=poomsae --file=poomsae-before-upgrade.dump "$POOMSAE_DSN"
 
-export KATA_DSN='postgres://kata_schema_owner@db.example/kata?sslmode=verify-full&sslrootcert=system'
-kata storage postgres migrate
+export POOMSAE_DSN='postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+poomsae storage postgres migrate
 
-export KATA_DSN='postgres://kata_runtime@db.example/kata?sslmode=verify-full&sslrootcert=system'
-export KATA_POSTGRES_SCHEMA_MODE=validate
-export KATA_POSTGRES_SCHEMA_OWNER=kata_schema_owner
-kata storage postgres status
-kata daemon start --foreground
+export POOMSAE_DSN='postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_POSTGRES_SCHEMA_MODE=validate
+export POOMSAE_POSTGRES_SCHEMA_OWNER=kata_schema_owner
+poomsae storage postgres status
+poomsae daemon start --foreground
 ```
 
 If the runtime role lacks access to an object, use a schema-owner DSN for
@@ -386,7 +386,7 @@ transaction. If `migrate` fails, fix the reported database condition and retry.
 Do not edit `meta.schema_version` by hand. If the schema is newer than your
 binary, switch to a newer binary instead of lowering the version stamp.
 
-Kata does not run down-migrations. If an application problem appears after a
+Poomsae does not run down-migrations. If an application problem appears after a
 successful schema upgrade, roll back with these steps:
 
 1. Stop all writers.
@@ -395,7 +395,7 @@ successful schema upgrade, roll back with these steps:
 4. Run `status` with the old runtime binary and credential.
 5. Restart the old binary only after that check succeeds.
 
-A `pg_dump --schema=kata` archive does not include database roles or the
+A `pg_dump --schema=poomsae` archive does not include database roles or the
 `public.unaccent` and `public.vector` extensions. Before running `pg_restore`,
 install both extensions and recreate the roles, then reapply the grants above.
 For the portable JSONL workflow, see [Backup and restore](backup-restore.md).
@@ -412,6 +412,6 @@ For the portable JSONL workflow, see [Backup and restore](backup-restore.md).
 | `permission denied` during `migrate` | The schema-owner role lacks database, schema, extension, or object ownership. | Repair ownership/privileges as an administrator, then retry. |
 | `permission denied` during daemon startup or use | Runtime grants are incomplete. | Reapply the schema, table, sequence, and default grants. |
 
-Keep credential-bearing DSNs out of tickets, logs, and command output. Kata
+Keep credential-bearing DSNs out of tickets, logs, and command output. Poomsae
 redacts PostgreSQL passwords from its own connection errors, but you must
 configure database and service-manager logs independently.

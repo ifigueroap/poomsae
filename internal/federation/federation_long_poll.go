@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 	// federationLongPollReprobe is how long a spoke waits before asking a hub
 	// that did not advertise long polls again, in case it was upgraded.
 	federationLongPollReprobe   = time.Hour
-	federationPollWaitMaxHeader = "X-Kata-Federation-Poll-Wait-Max"
+	federationPollWaitMaxHeader = "X-Poomsae-Federation-Poll-Wait-Max"
 )
 
 // heldPollTarget names the hub address, bearer and hub project a held poll

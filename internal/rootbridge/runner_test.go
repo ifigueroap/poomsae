@@ -9,10 +9,10 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
 )
 
 type observedDueScanStore struct {

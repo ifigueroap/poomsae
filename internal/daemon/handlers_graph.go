@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strconv"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 type reachableGraphOptions struct {
@@ -348,7 +348,7 @@ func appendUnresolvedRef(
 
 // markTransitiveBlockLayout expects edges deduplicated by kind and endpoints,
 // as edgesAndUnresolved provides. Keep in sync with markTransitiveBlockLayout
-// in web/src/lib/kata/projection.ts.
+// in web/src/lib/poomsae/projection.ts.
 func markTransitiveBlockLayout(edges []api.ReachableGraphEdge) {
 	if len(edges) == 0 {
 		return

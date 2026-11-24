@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A relay pushing to a hub that restarted without its root key gets the
@@ -40,7 +40,7 @@ func TestRelayAcceptanceReportsUnavailableRootKey(t *testing.T) {
 	code, raw := postRelayCredentialRequest(t, root.http, fmt.Sprintf("/api/v1/projects/%d/federation/relay:accept", root.project.ID), personal.credential.Token, db.RelayBatch{Stream: db.RelayStreamEvent, Envelopes: pending})
 	require.Equal(t, http.StatusConflict, code, string(raw))
 	require.Contains(t, string(raw), "root_signing_key_unavailable")
-	require.Contains(t, string(raw), "kata federation root-key repin --project shared-project")
+	require.Contains(t, string(raw), "poomsae federation root-key repin --project shared-project")
 	after, err := root.store.MaxEventID(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, before, after, "the refused write never commits on the hub")

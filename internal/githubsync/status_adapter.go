@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 func (a *adapter) OpenStatus(ctx context.Context, b db.IssueSyncBinding, _ time.Time) (issuesync.StatusRun, error) {

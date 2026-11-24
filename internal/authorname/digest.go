@@ -3,7 +3,7 @@ package authorname
 import (
 	"sort"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // DigestFilters collects the stored actors behind each displayed name.

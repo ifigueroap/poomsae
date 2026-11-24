@@ -4,8 +4,8 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R3/A5: the ordinary enrolled connection forwards an unchanged signed key

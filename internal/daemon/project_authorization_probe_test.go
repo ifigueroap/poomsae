@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"testing"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 func TestOwnerClaimAuthorizationSkipsActorProjectFence(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestProjectAuthorizationStillScopesOrdinaryAnonymousAPIRoutes(t *testing.T)
 }
 
 func TestProjectAuthorizationDefersSelfAuthenticatedFederationRoutes(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestProjectAuthorizationDefersSelfAuthenticatedFederationRoutes(t *testing.
 }
 
 func TestProjectAuthorizationOwnerSelectsTeamsRestrictedProjectForTransportRoute(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

@@ -1,6 +1,6 @@
 # PostgreSQL migrations
 
-Kata installs a new PostgreSQL database from the current canonical schema. The
+Poomsae installs a new PostgreSQL database from the current canonical schema. The
 first release with PostgreSQL support is the migration floor, so the initial
 release contains no historical migration SQL. A forward migration is required
 only after a released schema must be upgraded in place.
@@ -36,7 +36,7 @@ After the persisted-state change is approved:
 5. Update the operator documentation with compatibility, downtime, role, and
    rollback requirements.
 
-Kata does not run down migrations. Rollback uses a pre-upgrade backup and the
+Poomsae does not run down migrations. Rollback uses a pre-upgrade backup and the
 matching older binary. Do not add no-op version markers, conditional repair
 DDL for impossible schema/version combinations, or a second transaction that
 can separate physical schema changes from the recorded version.
@@ -55,13 +55,13 @@ already on main, down migrations, and filenames outside the
 `NNNNNN_description.up.sql` convention. Fetch `origin/main` before committing;
 the check fails closed when the comparison ref is unavailable.
 
-Use `KATA_MIGRATION_BASE_REF` only when the canonical base has another local
-ref name, such as in an isolated test repository. `KATA_MIGRATION_DIR` exists
+Use `POOMSAE_MIGRATION_BASE_REF` only when the canonical base has another local
+ref name, such as in an isolated test repository. `POOMSAE_MIGRATION_DIR` exists
 for checker tests and should not relocate production assets.
 
 ## Runtime guarantees
 
-`kata storage postgres migrate` runs as the schema-owner role. It holds a
+`poomsae storage postgres migrate` runs as the schema-owner role. It holds a
 transaction-scoped PostgreSQL advisory lock and commits the migration SQL and
 schema-version stamp together. Runtime credentials use validation-only startup
 and cannot migrate. Preserve those properties in every future migration.
@@ -77,7 +77,7 @@ The 29→30 migration adds four nullable TEXT columns to `import_mappings`:
 all four, so upgrading creates no outbound status intent. The migration adds no
 table, index, trigger, function, or extension.
 
-Stop the daemon and use schema-owner credentials for `kata storage postgres
+Stop the daemon and use schema-owner credentials for `poomsae storage postgres
 migrate`, then start the matching binary. Adding the columns takes a brief
 exclusive lock on `import_mappings`; schedule the operation while imports are
 stopped. Existing table grants cover the new columns. Validation-only runtime
@@ -120,7 +120,7 @@ backup and swap protections.
 
 The 31→32 migration adds nullable `reply_to_uid`, `reply_kind`, and `edited_at`
 columns to `comments`. Existing comments keep their identities and receive
-NULL in all three columns. The migration adds no constraints or indexes. Kata
+NULL in all three columns. The migration adds no constraints or indexes. Poomsae
 validates reply fields before it writes them: the fields are paired, the target
 is a 26-character comment UID, and the kind is `reply`, `confirm`, `refute`, or
 `supersede`. `reply` is a general response; `confirm` asserts verification or
@@ -131,7 +131,7 @@ Upgrade federated hubs before spokes. A schema-31 hub refuses a push that
 contains a reply as schema skew; the spoke keeps it pending, without
 quarantine, and pushes it again after the hub upgrades.
 A spoke that still runs a schema-31 binary stores pulled replies but shows
-them as plain comments. Stop the daemon and run `kata storage postgres migrate`
+them as plain comments. Stop the daemon and run `poomsae storage postgres migrate`
 with schema-owner credentials before starting the matching binary. Adding the
 columns takes a brief exclusive lock on `comments`. Existing table grants cover
 the new columns. Validation-only runtime credentials cannot migrate. Schema-31
@@ -173,7 +173,7 @@ attribution, project relay transport, and portable embedding artifacts:
   upgrading does not request embeddings or convert a lossy index into original
   vectors.
 
-Stop the daemon and run `kata storage postgres migrate` as the schema owner.
+Stop the daemon and run `poomsae storage postgres migrate` as the schema owner.
 The migration and the version stamp commit under the existing schema advisory
 lock. Refresh runtime grants for the eleven new tables using the procedure in
 [PostgreSQL operations](../operations/postgres.md), then start the matching
@@ -192,7 +192,7 @@ unchanged; the migration adds no columns or constraints. Fresh PostgreSQL and
 SQLite databases include the same index.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Creating the
+`poomsae storage postgres migrate` with schema-owner credentials. Creating the
 index scans `comments` and blocks writes while it runs; allow an offline window
 that fits the comment table's size. Existing table grants remain sufficient.
 Validation-only runtime credentials cannot migrate. Versions 25–32 follow the
@@ -207,14 +207,14 @@ there is no down migration.
 
 The 34→35 migration adds the partial `idx_events_moved_from` index on `events`
 for `issue.moved` rows, keyed by the payload's `from_project_uid` and
-`from_short_id`. Kata uses it to resolve an issue's former project-qualified
+`from_short_id`. Poomsae uses it to resolve an issue's former project-qualified
 short ID and to keep that ID reserved when it assigns new short IDs, without
 scanning issues or events. Existing events and issues are unchanged; the
 migration adds no columns or constraints. Fresh PostgreSQL and SQLite databases
 include the same index.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Creating the
+`poomsae storage postgres migrate` with schema-owner credentials. Creating the
 index reads every `events` row and blocks event writes while it runs; allow an
 offline window that fits the event table's size. Existing table grants remain
 sufficient. Validation-only runtime credentials cannot migrate. Versions 25–34
@@ -229,13 +229,13 @@ there is no down migration.
 
 The 35→38 migration adds the partial `idx_events_reply_to` index on `events`,
 keyed by the payload's `reply_to_uid` for `issue.commented` rows with a reply
-target. Kata uses it to distinguish purged targets from comments that have yet
+target. Poomsae uses it to distinguish purged targets from comments that have yet
 to sync, without scanning event history for each missing target. Existing events
 are unchanged; the migration adds no columns or constraints. Fresh PostgreSQL
 and SQLite databases include the same index.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Creating the
+`poomsae storage postgres migrate` with schema-owner credentials. Creating the
 index reads every `events` row and blocks event writes while it runs; allow an
 offline window that fits the event table's size. Existing table grants remain
 sufficient. Validation-only runtime credentials cannot migrate. Versions 25–35
@@ -255,7 +255,7 @@ Fresh PostgreSQL and SQLite databases include the same index. Existing handles,
 comments, columns, and constraints stay unchanged.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Creating the
+`poomsae storage postgres migrate` with schema-owner credentials. Creating the
 index scans `comments` and blocks comment writes while it runs; allow an offline
 window that fits the comment table's size. Existing table grants remain
 sufficient. Validation-only runtime credentials cannot migrate. Versions 25–38
@@ -275,7 +275,7 @@ and bodies alone. It then analyzes comments and issue search rows. Fresh install
 use the same schema.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Allow an offline
+`poomsae storage postgres migrate` with schema-owner credentials. Allow an offline
 window for reading and indexing all comment bodies and rebuilding the issue
 vectors. Existing runtime table grants remain sufficient.
 Validation-only runtime credentials cannot migrate. SQLite upgrades through its
@@ -298,7 +298,7 @@ It then runs `ANALYZE issues`. Fresh PostgreSQL and SQLite databases include
 these indexes; SQLite indexes normalized creation instants.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 indexes reads `issues` and blocks issue writes; allow an offline window that
 fits the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. Versions 25–41 follow the existing
@@ -318,7 +318,7 @@ payload `issue_uid` or `uid` for `issue.*` events. Fresh PostgreSQL and SQLite
 databases include the same index. Event contents and table columns stay intact.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; allow an offline window that fits
 the event log's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. Versions 25–42 follow the existing immutable
@@ -336,7 +336,7 @@ for `sync.reset_required` rows, keyed by the payload's `from_project_uid` and
 Fresh PostgreSQL and SQLite databases include the index.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; allow an offline window that fits
 the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. SQLite stores at schema 41 or later upgrade [in place](../operations/backup-restore.md#slow-or-interrupted-upgrade-startup).
@@ -359,7 +359,7 @@ case-sensitive and candidates use byte order in every database locale. This
 can change the order of mixed-case candidates on locale-based databases.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `issues` and blocks issue writes; allow an offline window that
 fits the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. SQLite stores at schema 41 or later upgrade [in place](../operations/backup-restore.md#slow-or-interrupted-upgrade-startup).
@@ -370,7 +370,7 @@ there is no down migration.
 
 ## Schema 46: ready priority indexes
 
-`kata next` and MCP `kata.next` can walk ready issues in priority order within
+`poomsae next` and MCP `poomsae.next` can walk ready issues in priority order within
 one project or across all projects. The 45→46 migration adds
 `idx_issues_project_ready_priority` on
 `issues(project_id, COALESCE(priority, 5), updated_at DESC, id DESC)` and
@@ -380,7 +380,7 @@ Unset priorities sort after P4. Fresh PostgreSQL and SQLite databases include
 these indexes; SQLite stores at schema 41 or later upgrade [in place](../operations/backup-restore.md#slow-or-interrupted-upgrade-startup).
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 indexes reads `issues` and blocks issue writes; allow an offline window that
 fits the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. Versions 25–44 follow the existing
@@ -396,11 +396,11 @@ Limited cross-project ready lists can read issues in update order without
 sorting every open issue. The 46→47 migration adds `idx_issues_ready_updated`
 on `issues(updated_at DESC, id DESC)` for open issues where
 `deleted_at IS NULL`, then runs `ANALYZE issues`. It supports
-`kata ready --all --limit N`, MCP `kata.ready`, and `GET /api/v1/ready`.
+`poomsae ready --all --limit N`, MCP `poomsae.ready`, and `GET /api/v1/ready`.
 Fresh PostgreSQL and SQLite databases include the index.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `issues` and blocks issue writes; allow an offline window that
 fits the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. Earlier versions follow the existing
@@ -419,7 +419,7 @@ for `issue.moved` rows. PostgreSQL's event query stays unchanged. Fresh database
 include the index. SQLite stores at schema 41 or later upgrade [in place](../operations/backup-restore.md#slow-or-interrupted-upgrade-startup).
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; allow an offline window that fits
 the table's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate.
@@ -436,7 +436,7 @@ type, and the payload's run UID for `cron.%` events. Fresh databases include
 the index. SQLite adds it in place, with an atomic schema-version update.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; reserve an offline window sized
 for the table. Existing runtime grants remain sufficient. Validation-only
 runtime credentials cannot migrate.
@@ -458,7 +458,7 @@ database starts with the table empty. The delivery worker's scan position is a
 `meta` row, `mcp_events_scan_position`, written when Events first starts.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. The migration
+`poomsae storage postgres migrate` with schema-owner credentials. The migration
 creates a new table and indexes without scanning existing data. Reapply the
 runtime role grants in [PostgreSQL operations](../operations/postgres.md) so
 the runtime role can read and write the new table. Validation-only credentials
@@ -482,7 +482,7 @@ databases include the same index. Event contents and table columns stay intact,
 and `idx_events_issue_uid` is unchanged.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; allow an offline window that fits
 the event log's size. Existing table grants remain sufficient. Validation-only
 runtime credentials cannot migrate. Versions 25–50 follow the existing
@@ -504,7 +504,7 @@ of the chunk data, plus index and WAL space. Ordinary `VACUUM` makes dead-row
 space reusable but usually does not shrink files.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Allow a stopped
+`poomsae storage postgres migrate` with schema-owner credentials. Allow a stopped
 window for converting the vector rows and rebuilding their index. Existing
 runtime table and sequence grants remain sufficient, and runtime credentials
 cannot migrate. Start the matching schema 52 binary after migration. Older
@@ -523,7 +523,7 @@ PostgreSQL and SQLite databases include the same index, and event contents and
 table columns stay intact.
 
 Stop serving daemons and imports, back up the database, and run
-`kata storage postgres migrate` with schema-owner credentials. Building the
+`poomsae storage postgres migrate` with schema-owner credentials. Building the
 index reads `events` and blocks event writes; allow an offline window that fits
 the event log's size. Existing table grants remain sufficient, and runtime
 credentials cannot migrate. SQLite stores at schema 41 or later upgrade

@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServicePgvectorRecoveryWithSchemaBootstrap(t *testing.T) {
@@ -24,19 +24,19 @@ func TestServicePgvectorRecoveryWithSchemaBootstrap(t *testing.T) {
 	var owner string
 	require.NoError(t, admin.QueryRowContext(ctx, `SELECT current_user`).Scan(&owner))
 	endpoint := testenv.NewEmbeddingServer(t, nil)
-	cfg := kata.Config{
-		DSN: dsn, Postgres: kata.PostgresConfig{Schema: "kata", SchemaMode: kata.PostgresSchemaBootstrap, SchemaOwner: owner},
-		Auth:       kata.AuthConfig{TrustCallerAuthentication: true},
-		Embeddings: kata.EmbeddingsConfig{BaseURL: endpoint.URL, Model: "test", Dims: 2, TrustPrivateNetwork: true},
+	cfg := poomsae.Config{
+		DSN: dsn, Postgres: poomsae.PostgresConfig{Schema: "poomsae", SchemaMode: poomsae.PostgresSchemaBootstrap, SchemaOwner: owner},
+		Auth:       poomsae.AuthConfig{TrustCallerAuthentication: true},
+		Embeddings: poomsae.EmbeddingsConfig{BaseURL: endpoint.URL, Model: "test", Dims: 2, TrustPrivateNetwork: true},
 	}
-	open := func(mode kata.PostgresSchemaMode) *kata.Service {
+	open := func(mode poomsae.PostgresSchemaMode) *poomsae.Service {
 		cfg.Postgres.SchemaMode = mode
-		service, err := kata.New(ctx, cfg)
+		service, err := poomsae.New(ctx, cfg)
 		require.NoError(t, err)
 		return service
 	}
-	require.NoError(t, open(kata.PostgresSchemaBootstrap).Close())
-	service := open(kata.PostgresSchemaValidate)
+	require.NoError(t, open(poomsae.PostgresSchemaBootstrap).Close())
+	service := open(poomsae.PostgresSchemaValidate)
 	missingCtx, cancelMissing := context.WithCancel(ctx)
 	missingDone := make(chan error, 1)
 	go func() { missingDone <- service.RunSemanticIndex(missingCtx) }()
@@ -74,11 +74,11 @@ func TestServicePgvectorRecoveryWithSchemaBootstrap(t *testing.T) {
 	require.NoError(t, service.Close())
 	_, err = admin.ExecContext(ctx, `CREATE EXTENSION vector WITH SCHEMA public`)
 	require.NoError(t, err)
-	service, err = kata.New(ctx, cfg)
+	service, err = poomsae.New(ctx, cfg)
 	require.Nil(t, service)
 	require.ErrorContains(t, err, "semantic-search tables are not installed")
-	require.NoError(t, open(kata.PostgresSchemaBootstrap).Close())
-	service = open(kata.PostgresSchemaValidate)
+	require.NoError(t, open(poomsae.PostgresSchemaBootstrap).Close())
+	service = open(poomsae.PostgresSchemaValidate)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 	server = httptest.NewServer(service.Handler())
 	t.Cleanup(server.Close)

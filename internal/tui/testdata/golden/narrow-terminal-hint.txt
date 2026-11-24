@@ -7,7 +7,7 @@
 
           ┌──────────────────────────────────────┐
           │                                      │
-          │  kata tui needs more space           │
+          │  poomsae tui needs more space        │
           │                                      │
           │  >=80 columns wide                   │
           │  resize your terminal and try again  │

@@ -5,11 +5,11 @@ import (
 	"flag"
 	"os"
 	"strings"
-	// Embed zones as the kata binary does: a trimmed build cannot fall back to
+	// Embed zones as the poomsae binary does: a trimmed build cannot fall back to
 	// the Go installation's copy, and Windows has no system zone database.
 	_ "time/tzdata"
 
-	"go.kenn.io/kata/internal/connector/fakeconnector"
+	"github.com/ifigueroap/poomsae/internal/connector/fakeconnector"
 )
 
 func main() {

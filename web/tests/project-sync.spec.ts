@@ -1,41 +1,41 @@
 import { spawnSync } from 'node:child_process'
 import type { Page } from '@playwright/test'
 
-import { expect, test, type BrowserCredentials, type KataFixture } from './fixtures'
+import { expect, test, type BrowserCredentials, type PoomsaeFixture } from './fixtures'
 
-async function enableSync(page: Page, kata: KataFixture, actor: string): Promise<void> {
-  const login = await page.request.post(`${kata.origin}/api/v1/ui/session/login`, {
-    headers: { Origin: kata.origin },
-    data: { token: 'example-local-token', return_path: '/kata' },
+async function enableSync(page: Page, poomsae: PoomsaeFixture, actor: string): Promise<void> {
+  const login = await page.request.post(`${poomsae.origin}/api/v1/ui/session/login`, {
+    headers: { Origin: poomsae.origin },
+    data: { token: 'example-local-token', return_path: '/poomsae' },
   })
   expect(login.ok()).toBe(true)
   const owner = (await login.json()) as BrowserCredentials
-  const enabled = await kata.request(
+  const enabled = await poomsae.request(
     page,
     owner,
     'POST',
-    `/api/v1/projects/${kata.projectID}/federation/enable`,
+    `/api/v1/projects/${poomsae.projectID}/federation/enable`,
     { actor },
   )
   expect(enabled.ok()).toBe(true)
-  kata.recordSyncDiagnosticError()
+  poomsae.recordSyncDiagnosticError()
 }
 
 test('keeps the sync panel aligned when the task count grows', async ({
   page,
-  diagnosticKata: kata,
+  diagnosticKata: poomsae,
 }) => {
-  await kata.prepareSyncDiagnostic()
-  const credentials = await kata.launch(page, `/kata?scope=${kata.projectUID}`)
-  await enableSync(page, kata, 'example-owner')
-  for (let i = 0; i < 9; i++) await kata.seedIssue(page, credentials, { title: `Task ${i}` })
+  await poomsae.prepareSyncDiagnostic()
+  const credentials = await poomsae.launch(page, `/poomsae?scope=${poomsae.projectUID}`)
+  await enableSync(page, poomsae, 'example-owner')
+  for (let i = 0; i < 9; i++) await poomsae.seedIssue(page, credentials, { title: `Task ${i}` })
   await page.reload()
   const chip = page.getByRole('button', { name: 'Sync failed' })
   const panel = page.getByRole('dialog', { name: 'Project sync' })
   await expect(page.getByText('9 tasks', { exact: true })).toBeVisible()
   await chip.click()
   const before = await chip.boundingBox()
-  await kata.seedIssue(page, credentials, { title: 'Task 9' })
+  await poomsae.seedIssue(page, credentials, { title: 'Task 9' })
   await expect(page.getByText('10 tasks', { exact: true })).toBeVisible()
   await expect
     .poll(async () => {
@@ -49,20 +49,20 @@ test('keeps the sync panel aligned when the task count grows', async ({
 
 test('project readers see sync diagnostics with bounded embedding summaries at narrow widths', async ({
   page,
-  diagnosticKata: kata,
+  diagnosticKata: poomsae,
 }, testInfo) => {
-  await kata.prepareSyncDiagnostic()
-  const statusPath = `/api/v1/projects/${kata.projectID}/federation/status`
+  await poomsae.prepareSyncDiagnostic()
+  const statusPath = `/api/v1/projects/${poomsae.projectID}/federation/status`
   const initialStatus = page.waitForResponse(
     (response) => new URL(response.url()).pathname === statusPath,
   )
-  const local = await kata.launch(page, `/kata?scope=${kata.projectUID}`)
+  const local = await poomsae.launch(page, `/poomsae?scope=${poomsae.projectUID}`)
   const chip = page.getByRole('button', { name: 'Sync failed' })
   const region = page.getByRole('dialog', { name: 'Project sync' })
   const localStatus = await initialStatus
   expect(localStatus.ok()).toBe(true)
   expect(((await localStatus.json()) as { statuses: unknown[] }).statuses).toEqual([])
-  expect((await kata.request(page, local, 'GET', statusPath)).ok()).toBe(true)
+  expect((await poomsae.request(page, local, 'GET', statusPath)).ok()).toBe(true)
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
@@ -72,19 +72,19 @@ test('project readers see sync diagnostics with bounded embedding summaries at n
       name: /^(No changes to send|Sync failed|Sync disabled|Sync status unavailable|\d+ to sync)$/,
     }),
   ).toHaveCount(0)
-  expect((await kata.request(page, local, 'GET', '/api/v1/federation/status')).status()).toBe(403)
+  expect((await poomsae.request(page, local, 'GET', '/api/v1/federation/status')).status()).toBe(403)
   expect(
     (
-      await kata.request(
+      await poomsae.request(
         page,
         local,
         'POST',
-        `/api/v1/projects/${kata.projectID}/federation/enable`,
+        `/api/v1/projects/${poomsae.projectID}/federation/enable`,
         { actor: 'example-member' },
       )
     ).status(),
   ).toBe(403)
-  await enableSync(page, kata, 'example-owner')
+  await enableSync(page, poomsae, 'example-owner')
   const statusRead = page.waitForResponse(
     (response) => new URL(response.url()).pathname === statusPath,
   )
@@ -117,7 +117,7 @@ test('project readers see sync diagnostics with bounded embedding summaries at n
   await expect(region.getByText('1 generated · 1 reused · 1 without index')).toBeVisible()
   await page
     .context()
-    .grantPermissions(['clipboard-read', 'clipboard-write'], { origin: kata.origin })
+    .grantPermissions(['clipboard-read', 'clipboard-write'], { origin: poomsae.origin })
   for (const [shell, label] of [
     ['bash', 'Bash/Zsh'],
     ['pwsh', 'PowerShell'],
@@ -131,11 +131,11 @@ test('project readers see sync diagnostics with bounded embedding summaries at n
       }
       await region.getByRole('button', { name: `Copy ${label} command` }).click()
       const command = await page.evaluate(() => navigator.clipboard.readText())
-      const diagnostic = kata.runSyncDiagnostic(shell, command)
+      const diagnostic = poomsae.runSyncDiagnostic(shell, command)
       expect(diagnostic).toContain('example sync failure')
       expect(diagnostic).toContain('example held-back batch failure')
       if (shell === 'pwsh') {
-        expect(kata.runSyncDiagnostic(shell, command, true)).toContain('example sync failure')
+        expect(poomsae.runSyncDiagnostic(shell, command, true)).toContain('example sync failure')
       }
     })
   }
@@ -152,7 +152,7 @@ test('project readers see sync diagnostics with bounded embedding summaries at n
   }
   // The embedding fixture ends here, so the last read comes from the daemon.
   await page.unrouteAll({ behavior: 'wait' })
-  kata.clearSyncDiagnosticError()
+  poomsae.clearSyncDiagnosticError()
   const clearedRead = page.waitForResponse(
     (response) => new URL(response.url()).pathname === statusPath,
   )

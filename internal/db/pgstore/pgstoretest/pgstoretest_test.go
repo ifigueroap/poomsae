@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // Clones share the installed schema but not the instance identity, which

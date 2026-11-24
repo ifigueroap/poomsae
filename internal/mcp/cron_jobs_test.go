@@ -10,22 +10,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/uid"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/uid"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 type cronFixture struct {
 	session *sdkmcp.ClientSession
 	store   *sqlitestore.Store
 	project db.Project
-	client  *kataclient.Client
+	client  *poomsaeclient.Client
 	handler http.Handler
 }
 
@@ -40,7 +40,7 @@ func newCronFixture(t *testing.T) cronFixture {
 	t.Cleanup(func() { require.NoError(t, server.Close()) })
 	httpServer := httptest.NewServer(server.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, ProjectID: project.ID, ProjectName: project.Name, Actor: "example-agent", Version: "test", Teammate: "default-worker"})
 	return cronFixture{session, store, project, client, server.Handler()}
@@ -48,7 +48,7 @@ func newCronFixture(t *testing.T) cronFixture {
 
 func cronCall(t *testing.T, s *sdkmcp.ClientSession, name string, args any) *sdkmcp.CallToolResult {
 	t.Helper()
-	result, err := s.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata." + name, Arguments: args})
+	result, err := s.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae." + name, Arguments: args})
 	require.NoError(t, err)
 	return result
 }
@@ -76,8 +76,8 @@ func TestCronProgressiveDiscovery(t *testing.T) {
 	require.Equal(t, true, loaded["loaded"])
 	after, err := s.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Contains(t, toolNames(after.Tools), "kata.cron_job_create")
-	require.NotContains(t, toolNames(after.Tools), "kata.create")
+	require.Contains(t, toolNames(after.Tools), "poomsae.cron_job_create")
+	require.NotContains(t, toolNames(after.Tools), "poomsae.create")
 	require.Equal(t, loaded, cronOK(t, s, "load_cron", map[string]any{}))
 }
 func TestCronUIDHelperHasNoDaemonMutation(t *testing.T) {
@@ -143,9 +143,9 @@ func TestCronJobMutationsUseLongRunningClient(t *testing.T) {
 	}))
 	t.Cleanup(slowServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(slowServer.URL, &http.Client{Timeout: ordinaryTimeout}) //nolint:kennlint // deadlinetest: the ordinary client must expire before the delayed response; mutations must not use it
+	client, err := poomsaeclient.NewWithHTTPClient(slowServer.URL, &http.Client{Timeout: ordinaryTimeout}) //nolint:kennlint // deadlinetest: the ordinary client must expire before the delayed response; mutations must not use it
 	require.NoError(t, err)
-	longRunningClient, err := kataclient.NewWithHTTPClient(slowServer.URL, &http.Client{})
+	longRunningClient, err := poomsaeclient.NewWithHTTPClient(slowServer.URL, &http.Client{})
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, LongRunningClient: longRunningClient,
@@ -186,7 +186,7 @@ func TestCronCreateLostResponseReadback(t *testing.T) {
 		f.handler.ServeHTTP(w, r)
 	}))
 	t.Cleanup(server.Close)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	s := connectTestServerWithOptions(t, Options{Client: client, ProjectID: f.project.ID, ProjectName: f.project.Name, Actor: "example-agent", Version: "test"})
 	require.True(t, cronCall(t, s, "cron_job_create", map[string]any{"uid": id, "name": "Recoverable", "definition": cronDefinition()}).IsError)
@@ -272,7 +272,7 @@ func TestCronAuthorityAndCapabilities(t *testing.T) {
 				writeJSON(w, map[string]any{"status": tc.status, "error": map[string]any{"code": tc.code, "message": tc.message}})
 			}))
 			t.Cleanup(server.Close)
-			client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+			client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 			require.NoError(t, err)
 			s := connectTestServerWithClient(t, client)
 			for _, call := range []struct {
@@ -313,7 +313,7 @@ func TestCronReadonlyAndIssueScopedCredentials(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, readonly.Close()) })
 	httpServer := httptest.NewServer(readonly.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	s := connectTestServerWithOptions(t, Options{Client: client, ProjectID: f.project.ID, ProjectName: f.project.Name, Actor: "example-agent", Version: "test"})
 	cronOK(t, s, "cron_capabilities", map[string]any{})
@@ -328,7 +328,7 @@ func TestCronReadonlyAndIssueScopedCredentials(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, authenticated.Close()) })
 	tokenServer := httptest.NewServer(authenticated.Handler())
 	t.Cleanup(tokenServer.Close)
-	scopedClient, err := kataclient.NewWithHTTPClient(tokenServer.URL, tokenServer.Client(), kataclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
+	scopedClient, err := poomsaeclient.NewWithHTTPClient(tokenServer.URL, tokenServer.Client(), poomsaeclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
 		r.Header.Set("Authorization", "Bearer "+scopedToken)
 		return nil
 	}))

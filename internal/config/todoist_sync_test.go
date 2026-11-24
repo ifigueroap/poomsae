@@ -5,15 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestTodoistSyncConfig(t *testing.T) {
 	got, err := config.NormalizeTodoistSyncConfig(config.TodoistSyncConfig{})
 	require.NoError(t, err)
 	require.Equal(t, "https://api.todoist.com", got.APIOrigin)
-	require.Equal(t, "KATA_TODOIST_TOKEN", got.TokenEnv)
+	require.Equal(t, "POOMSAE_TODOIST_TOKEN", got.TokenEnv)
 	for _, origin := range []string{"https://foreign.example", "http://192.168.1.1", "https://person:secret@api.todoist.com"} {
 		_, err := config.NormalizeTodoistSyncConfig(config.TodoistSyncConfig{APIOrigin: origin})
 		require.Error(t, err)

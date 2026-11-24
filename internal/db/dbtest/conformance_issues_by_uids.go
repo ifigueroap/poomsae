@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // checkIssuesByUIDs pins the batch lookup to IssueByUID's per-UID contract:

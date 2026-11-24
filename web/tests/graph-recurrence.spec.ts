@@ -2,14 +2,14 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('graph refits and preserves its size as the viewport changes', async ({ page, kata }) => {
-  const credentials = await kata.launch(page)
-  const source = await kata.seedIssue(page, credentials, { title: 'Graph source example' })
-  await kata.seedIssue(page, credentials, {
+test('graph refits and preserves its size as the viewport changes', async ({ page, poomsae }) => {
+  const credentials = await poomsae.launch(page)
+  const source = await poomsae.seedIssue(page, credentials, { title: 'Graph source example' })
+  await poomsae.seedIssue(page, credentials, {
     title: 'Graph child example',
     links: [{ type: 'parent', to_ref: source.uid }],
   })
-  await page.goto(`${kata.origin}/kata?issue=${source.uid}&graph=1`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${source.uid}&graph=1`)
   const graph = page.getByRole('region', { name: 'Reachable task graph' })
   await expect(graph).toBeVisible()
   await expect(graph.getByRole('button', { name: /Graph source example/ })).toBeVisible()
@@ -19,10 +19,10 @@ test('graph refits and preserves its size as the viewport changes', async ({ pag
   for (let i = 0; i < 3; i++) await graph.getByRole('button', { name: 'Zoom In' }).click()
   await expect(graph.locator('.svelte-flow__minimap')).toBeVisible()
   const zoomed = await viewport.getAttribute('style')
-  await page.getByRole('separator', { name: 'Resize Kata panes' }).focus()
+  await page.getByRole('separator', { name: 'Resize Poomsae panes' }).focus()
   await page.keyboard.press('ArrowLeft')
   await expect.poll(() => viewport.getAttribute('style')).not.toBe(zoomed)
-  const primary = page.locator('.kata-sash .pane-primary')
+  const primary = page.locator('.poomsae-sash .pane-primary')
   const draggedSize = (await primary.boundingBox())!.width
   const size = page.viewportSize()!
   await page.setViewportSize({ width: 750, height: size.height })
@@ -31,32 +31,32 @@ test('graph refits and preserves its size as the viewport changes', async ({ pag
   await expect.poll(async () => (await primary.boundingBox())!.width).toBe(draggedSize)
 })
 
-test('keeps zoom when opening a node without changing the graph layout', async ({ page, kata }) => {
-  const credentials = await kata.launch(page)
-  const source = await kata.seedIssue(page, credentials, { title: 'Graph source example' })
-  const child = await kata.seedIssue(page, credentials, {
+test('keeps zoom when opening a node without changing the graph layout', async ({ page, poomsae }) => {
+  const credentials = await poomsae.launch(page)
+  const source = await poomsae.seedIssue(page, credentials, { title: 'Graph source example' })
+  const child = await poomsae.seedIssue(page, credentials, {
     title: 'Graph child example',
     links: [{ type: 'parent', to_ref: source.uid }],
   })
-  await page.goto(`${kata.origin}/kata?issue=${source.uid}&graph=1`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${source.uid}&graph=1`)
   const graph = page.getByRole('region', { name: 'Reachable task graph' })
   await expect(graph.getByRole('button', { name: /Graph child example/ })).toBeVisible()
   await graph.getByRole('button', { name: 'Zoom In' }).click({ clickCount: 2 })
   const viewport = graph.locator('.svelte-flow__viewport')
   const zoomed = await viewport.getAttribute('style')
   await graph.getByRole('button', { name: /Graph child example/ }).click()
-  await expect(page).toHaveURL(`${kata.origin}/kata?issue=${child.uid}&graph=1`)
+  await expect(page).toHaveURL(`${poomsae.origin}/poomsae?issue=${child.uid}&graph=1`)
   await expect(graph.getByRole('button', { name: /selected.*Graph child example/ })).toBeVisible()
   await expect(viewport).toHaveAttribute('style', zoomed!)
 })
 
 test('creates, edits, and stops a repeating task from the project header', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Recurring example task' })
-  await page.goto(`${kata.origin}/kata?view=all-open&scope=${kata.projectUID}&issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Recurring example task' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open&scope=${poomsae.projectUID}&issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Repeats…' }).click()
   const create = page.getByRole('dialog', { name: 'Repeat' })
   await create.getByLabel('Title', { exact: true }).fill('Weekly example review')
@@ -79,18 +79,18 @@ test('creates, edits, and stops a repeating task from the project header', async
   await expect(chip).toHaveCount(0)
 })
 
-test('fits tasks around the key and controls in a short stacked pane', async ({ page, kata }) => {
-  const credentials = await kata.launch(page)
-  const source = await kata.seedIssue(page, credentials, { title: 'Graph root' })
-  await kata.seedIssue(page, credentials, {
+test('fits tasks around the key and controls in a short stacked pane', async ({ page, poomsae }) => {
+  const credentials = await poomsae.launch(page)
+  const source = await poomsae.seedIssue(page, credentials, { title: 'Graph root' })
+  await poomsae.seedIssue(page, credentials, {
     title: 'Graph child',
     links: [{ type: 'parent', to_ref: source.uid }],
   })
-  await page.goto(`${kata.origin}/kata?issue=${source.uid}&graph=1`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${source.uid}&graph=1`)
   const graph = page.getByRole('region', { name: 'Reachable task graph' })
   await expect(graph.getByRole('button', { name: /Graph child/ })).toBeVisible()
   await graph.getByRole('button', { name: 'Switch to stacked layout' }).click()
-  const handle = page.getByRole('separator', { name: 'Resize Kata panes' })
+  const handle = page.getByRole('separator', { name: 'Resize Poomsae panes' })
   await handle.focus()
   for (let i = 0; i < 20; i++) await page.keyboard.press('Shift+ArrowUp')
   await expect(handle).toHaveAttribute('aria-valuenow', '220')

@@ -1,0 +1,146 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestDigest_AllIncludesMultipleProjects(t *testing.T) {
+	env := testenv.New(t)
+	spokeDir, _ := initLocalBoundWorkspace(t, env, "spoke-project")
+	hubDir, _ := initLocalBoundWorkspace(t, env, "hub-project")
+	spokeRef := createIssueViaHTTP(t, env, spokeDir, "spoke issue")
+	hubRef := createIssueViaHTTP(t, env, hubDir, "hub issue")
+
+	// Global reads work without a workspace binding.
+	t.Chdir(t.TempDir())
+	out, err := runCmdOutput(t, env, "digest", "--all", "--since", "1h", "--json")
+	require.NoError(t, err)
+	var got struct {
+		Actors []struct {
+			Issues []struct {
+				Project string `json:"project_name"`
+				Ref     string `json:"issue_short_id"`
+			} `json:"issues"`
+		} `json:"actors"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &got))
+	var refs []string
+	for _, actor := range got.Actors {
+		for _, issue := range actor.Issues {
+			refs = append(refs, issue.Project+"#"+issue.Ref)
+		}
+	}
+	assert.ElementsMatch(t, []string{"spoke-project#" + spokeRef, "hub-project#" + hubRef}, refs)
+
+	for _, args := range [][]string{
+		{"digest", "--all", "--project-id", "1", "--since", "1h"},
+		{"--project", "spoke-project", "digest", "--all", "--since", "1h"},
+	} {
+		_, err := runCmdOutput(t, env, args...)
+		cli := requireCLIError(t, err, ExitUsage)
+		assert.Contains(t, cli.Message, "--all")
+	}
+}
+
+func TestDigest_HumanRender(t *testing.T) {
+	f := newCLIFixture(t)
+	first := createIssueViaHTTP(t, f.env, f.dir, "first")
+	second := createIssueViaHTTP(t, f.env, f.dir, "second")
+
+	require.NoError(t, f.execute("digest", "--since", "1h"))
+	out := f.buf.String()
+	assert.Contains(t, out, "digest ")
+	assert.Contains(t, out, "created=2")
+	// Each issue should appear by its short_id (not a numeric ref).
+	assert.Contains(t, out, first)
+	assert.Contains(t, out, second)
+	assert.Contains(t, out, "created")
+}
+
+func TestDigest_AgentOutputShape(t *testing.T) {
+	env, dir := setupCLIEnv(t)
+	short := createIssueViaHTTP(t, env, dir, "first")
+
+	out := runCLI(t, env, dir, "--agent", "digest", "--since", "1h")
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "agent digest should include header and rows: %q", out)
+	assert.Regexp(t, `^OK digest count=\d+`, lines[0])
+	assert.Contains(t, lines[1], "actor=tester")
+	assert.Contains(t, lines[1], "issue="+short)
+	assert.Contains(t, lines[1], "actions=created")
+	assert.NotContains(t, out, "\x1b", "agent output must not contain ANSI escape bytes")
+}
+
+// TestDigest_OutputShape pins the JSON wire shape: per-issue rows carry
+// issue_short_id and issue_uid; the legacy issue_number field is gone.
+func TestDigest_OutputShape(t *testing.T) {
+	f := newCLIFixture(t)
+	createIssueViaHTTP(t, f.env, f.dir, "alpha")
+
+	require.NoError(t, f.execute("--json", "digest", "--since", "1h"))
+	var got struct {
+		Actors []struct {
+			Issues []map[string]any `json:"issues"`
+		} `json:"actors"`
+	}
+	require.NoError(t, json.Unmarshal(f.buf.Bytes(), &got))
+	require.NotEmpty(t, got.Actors)
+	require.NotEmpty(t, got.Actors[0].Issues)
+	row := got.Actors[0].Issues[0]
+	_, hasShort := row["issue_short_id"]
+	_, hasUID := row["issue_uid"]
+	_, hasNumber := row["issue_number"]
+	assert.True(t, hasShort, "issue_short_id missing from digest row: %v", row)
+	assert.True(t, hasUID, "issue_uid missing from digest row: %v", row)
+	assert.False(t, hasNumber, "issue_number still present in digest row: %v", row)
+}
+
+func TestDigest_RejectsBadSince(t *testing.T) {
+	f := newCLIFixture(t)
+
+	err := f.execute("digest", "--since", "blarg")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid time spec")
+}
+
+func TestDigest_ParseSinceUntil(t *testing.T) {
+	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+
+	got, err := parseSinceUntil("24h", now)
+	require.NoError(t, err)
+	assert.Equal(t, now.Add(-24*time.Hour), got)
+
+	got, err = parseSinceUntil("7d", now)
+	require.NoError(t, err)
+	assert.Equal(t, now.Add(-7*24*time.Hour), got)
+
+	got, err = parseSinceUntil("2026-05-01T00:00:00Z", now)
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), got)
+
+	_, err = parseSinceUntil("garbage", now)
+	require.Error(t, err)
+}
+
+func TestDigestFederatedAuthors(t *testing.T) {
+	const actor = "Ana [member:11111111-1111-4111-8111-111111111111; enrollment:11111111-1111-4111-8111-111111111111]"
+	body := []byte(`{"since":"2026-08-11T00:00:00Z","until":"2026-08-12T00:00:00Z","actors":[{"actor":"` + actor + `","totals":{"created":1},"issues":[{"issue_uid":"issue-one","issue_short_id":"one","actions":["created"]}]},{"actor":"Ana","totals":{"created":2},"issues":[{"issue_uid":"issue-two","issue_short_id":"two","actions":["created"]}]}]}`)
+	var out bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&out)
+	require.NoError(t, printDigestHuman(cmd, body))
+	assert.NotContains(t, out.String(), "member:")
+	out.Reset()
+	require.NoError(t, printDigestAgent(cmd, body))
+	assert.Contains(t, out.String(), `actor_filters="[\"`+actor+`\",\"Ana\"]"`)
+}

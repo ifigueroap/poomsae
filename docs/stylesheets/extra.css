@@ -56,17 +56,17 @@
   max-width: 1320px;
 }
 
-.md-typeset .kata-hero {
+.md-typeset .poomsae-hero {
   text-align: center;
 }
 
-.md-typeset .kata-hero p.kata-hero-summary {
+.md-typeset .poomsae-hero p.poomsae-hero-summary {
   max-width: 38rem;
   margin-inline: auto;
   text-align: center;
 }
 
-.md-typeset .kata-hero p.kata-hero-tagline {
+.md-typeset .poomsae-hero p.poomsae-hero-tagline {
   max-width: 36rem;
   margin: 0.2rem auto 1.2rem;
   text-align: center;
@@ -75,7 +75,7 @@
   line-height: 1.3;
 }
 
-.md-typeset .kata-install {
+.md-typeset .poomsae-install {
   max-width: 52rem;
   margin: 1.25rem auto 0;
   padding: 0;
@@ -85,7 +85,7 @@
   text-align: left;
 }
 
-.md-typeset .kata-install-header {
+.md-typeset .poomsae-install-header {
   display: flex;
   min-height: 2.5rem;
   align-items: stretch;
@@ -93,7 +93,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--md-default-fg-color) 16%, transparent);
 }
 
-.md-typeset .kata-install-label {
+.md-typeset .poomsae-install-label {
   display: flex;
   align-items: center;
   padding: 0 0.9rem;
@@ -105,12 +105,12 @@
   text-transform: uppercase;
 }
 
-.md-typeset .kata-install-platforms {
+.md-typeset .poomsae-install-platforms {
   display: flex;
   align-items: stretch;
 }
 
-.md-typeset .kata-install-platforms button {
+.md-typeset .poomsae-install-platforms button {
   position: relative;
   min-width: 4.2rem;
   padding: 0 0.7rem;
@@ -123,28 +123,28 @@
   font-size: 0.62rem;
 }
 
-.md-typeset .kata-install-platforms button[aria-pressed="true"] {
+.md-typeset .poomsae-install-platforms button[aria-pressed="true"] {
   border-bottom-color: var(--md-primary-fg-color);
   color: var(--md-primary-fg-color);
 }
 
-.md-typeset .kata-install-platforms button[aria-pressed="false"]:hover {
+.md-typeset .poomsae-install-platforms button[aria-pressed="false"]:hover {
   color: var(--md-default-fg-color);
 }
 
-.md-typeset .kata-install-platforms button:focus-visible {
+.md-typeset .poomsae-install-platforms button:focus-visible {
   outline: 2px solid var(--md-accent-fg-color);
   outline-offset: -3px;
 }
 
-.md-typeset .kata-install-command[hidden],
-.md-typeset .kata-install-command--fallback-hidden {
+.md-typeset .poomsae-install-command[hidden],
+.md-typeset .poomsae-install-command--fallback-hidden {
   display: none;
 }
 
 .md-typeset
-  .kata-install-command.highlight:not([hidden]):not(
-    .kata-install-command--fallback-hidden
+  .poomsae-install-command.highlight:not([hidden]):not(
+    .poomsae-install-command--fallback-hidden
   ) {
   min-height: 3.25rem;
   margin: 0;
@@ -152,11 +152,11 @@
   background: var(--md-code-bg-color);
 }
 
-.md-typeset .kata-install-command code {
+.md-typeset .poomsae-install-command code {
   display: inline;
 }
 
-.md-typeset .kata-install-command code::before {
+.md-typeset .poomsae-install-command code::before {
   color: var(--md-primary-fg-color);
   content: "$ ";
   display: inline;
@@ -164,7 +164,7 @@
   vertical-align: baseline;
 }
 
-.md-typeset .kata-install-command pre {
+.md-typeset .poomsae-install-command pre {
   display: flex;
   min-height: 3.25rem;
   align-items: center;
@@ -173,7 +173,7 @@
   overflow-x: auto;
 }
 
-.md-typeset .kata-hero-actions {
+.md-typeset .poomsae-hero-actions {
   display: flex;
   justify-content: center;
   gap: 1.3rem;
@@ -184,32 +184,32 @@
   text-transform: uppercase;
 }
 
-.md-typeset .kata-hero-actions a {
+.md-typeset .poomsae-hero-actions a {
   color: var(--md-default-fg-color--light);
 }
 
-.md-typeset .kata-hero-actions a:hover,
-.md-typeset .kata-hero-actions a:focus-visible {
+.md-typeset .poomsae-hero-actions a:hover,
+.md-typeset .poomsae-hero-actions a:focus-visible {
   color: var(--md-primary-fg-color);
 }
 
 @media screen and (max-width: 30em) {
-  .md-typeset .kata-install-header {
+  .md-typeset .poomsae-install-header {
     flex-direction: column;
   }
 
-  .md-typeset .kata-install-label {
+  .md-typeset .poomsae-install-label {
     min-height: 2.2rem;
     border-bottom: 1px solid color-mix(in srgb, var(--md-default-fg-color) 16%, transparent);
   }
 
-  .md-typeset .kata-install-platforms button {
+  .md-typeset .poomsae-install-platforms button {
     min-height: 2.35rem;
     flex: 1;
     padding-inline: 0.35rem;
   }
 
-  .md-typeset .kata-hero-actions {
+  .md-typeset .poomsae-hero-actions {
     flex-wrap: wrap;
     gap: 0.45rem 1rem;
   }

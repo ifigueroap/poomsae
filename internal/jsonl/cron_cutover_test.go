@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func TestNativeCronCutoverPreservesVersion30DueRequest(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source := openCutoverTargetDB(t, ctx, path)
 	freshShape := sqliteCronPhysicalShape(t, source)
 	project, err := source.CreateProject(ctx, "example-project")

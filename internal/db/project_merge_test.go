@@ -434,7 +434,7 @@ func TestPrepareProjectMergeRecordsPreservesExternalRootRecords(t *testing.T) {
 		&ProjectExport{ID: 2, UID: projectUID, Name: "spoke-project"},
 		&IssueExport{ID: 5, UID: issueUID, ProjectID: 2},
 		&ExternalFieldMappingExport{
-			ConnectorInstance: "connector-one", KataField: "scheduled_on",
+			ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-one", Active: true,

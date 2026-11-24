@@ -1,6 +1,6 @@
 ---
 title: Agent output format
-description: Reference Kata's compact, stable agent output format and its command-specific response contracts.
+description: Reference Poomsae's compact, stable agent output format and its command-specific response contracts.
 last_edited: 2026-11-20
 ---
 
@@ -18,21 +18,21 @@ This page defines the agent format contract that your tooling can rely on.
 ## Selecting the mode
 
 ```sh
-kata list --agent                 # agent text
-kata list --json                  # full JSON envelope
-kata list --format agent          # equivalent to --agent
-kata list --format human          # default terminal output
+poomsae list --agent                 # agent text
+poomsae list --json                  # full JSON envelope
+poomsae list --format agent          # equivalent to --agent
+poomsae list --format human          # default terminal output
 ```
 
 - `--json` and `--agent` are aliases for `--format json` and `--format agent`.
 - You can pass more than one output-mode flag if they resolve to the **same**
-  mode (`--format agent --agent`). If they resolve to **different** modes, Kata
+  mode (`--format agent --agent`). If they resolve to **different** modes, Poomsae
   exits with a usage error before running the command.
 - `--quiet` controls suppression rather than output mode. In agent mode, it can
   suppress the `OK ...` success header on commands that already support quiet
   behavior, though it never suppresses an `ERR ...` line.
 - `--format` is reserved globally for output mode. To pick a source format in
-  `kata import`, use `--source-format <kata|beads>`.
+  `poomsae import`, use `--source-format <poomsae|beads>`.
 
 ## Stability contract
 
@@ -42,12 +42,12 @@ structure:
 - In non-quiet agent mode, the first token is always `OK` on success or `ERR`
   on failure. Success output goes to stdout, and failures go to stderr with a
   nonzero exit code.
-- `kata daemon status` is the one exception. It always writes its `OK daemon`
+- `poomsae daemon status` is the one exception. It always writes its `OK daemon`
   report to stdout, and if the selected daemon is not ready, it also writes an
   `ERR status` line to stderr and exits nonzero. Check its exit code rather
   than its first token to tell whether the daemon is ready.
 - The second token names the command or record kind, such as `create`,
-  `comment`, `list`, `show`, or `event`. You see the literal `kata` only on a
+  `comment`, `list`, `show`, or `event`. You see the literal `poomsae` only on a
   top-level parse error before a subcommand runs.
 - The remaining first-line fields use stable positional slots where this page
   specifies them, and `key=value` pairs everywhere else. **Field order is part
@@ -68,19 +68,19 @@ The current agent format version is `1`, and a breaking change bumps this
 integer. To check the version without parsing JSON, run:
 
 ```text
-$ kata version --agent
+$ poomsae version --agent
 OK version version=0.0.0 agent_format=1
 ```
 
-`kata version --json` reports the same value in `agent_format`. For the
+`poomsae version --json` reports the same value in `agent_format`. For the
 complete JSON schema, see the [CLI reference](cli.md#daemon-and-diagnostics).
 Ordinary command output leaves out the version to keep transcripts small.
 
 ## Errors
 
 ```text
-ERR list not_found: no .kata.toml ancestor and no git ancestor
-Hint: run "kata init --project <name>" in the workspace root, or pass --project <name>
+ERR list not_found: no .poomsae.toml ancestor and no git ancestor
+Hint: run "poomsae init --project <name>" in the workspace root, or pass --project <name>
 ```
 
 - The first line has the form `ERR <command> <kind>: <message>`.
@@ -88,15 +88,15 @@ Hint: run "kata init --project <name>" in the workspace root, or pass --project 
   qualified refs, for example
   `ERR create conflict: 1 existing issue matches this title (example-project#abc4)`.
   Human-mode look-alike refusals include the same refs after the message,
-  for example `kata: 1 existing issue matches this title (example-project#abc4)`.
+  for example `poomsae: 1 existing issue matches this title (example-project#abc4)`.
 - `<kind>` uses the CLI error taxonomy: `usage`, `validation`, `not_found`,
   `conflict`, `confirm`, `daemon_unavailable`, `checks_failed`, or `internal`.
-  A `checks_failed` kind means `kata doctor` finished and found failed checks;
+  A `checks_failed` kind means `poomsae doctor` finished and found failed checks;
   read its findings for the setup problems and suggested fixes.
 - When present, an optional second line, `Hint: <next step>`, suggests a
   command or flag that can resolve the error. It is always a single line.
 - If a top-level parse error happens before any subcommand runs, the command
-  token is `kata`, as in `ERR kata usage: unknown command "cretae"`.
+  token is `poomsae`, as in `ERR poomsae usage: unknown command "cretae"`.
 - In `--format json`, errors include daemon-provided details in `error.data`
   and next-step guidance in `error.hint` when present, omitting an absent or
   empty hint. Human errors print that guidance on a second `hint:` line, while
@@ -128,10 +128,10 @@ OK delete abc4
 Issue: abc4 "Fix login race"
 Status: deleted
 Deleted: true
-Undo: kata restore abc4 --agent
+Undo: poomsae restore abc4 --agent
 ```
 
-Kata emits an `Undo:` line only when the follow-up command is factual and
+Poomsae emits an `Undo:` line only when the follow-up command is factual and
 mechanically correct. Generic `Next:` guidance is intentionally left out of the
 format.
 
@@ -154,35 +154,35 @@ as opaque and pass the same filters on the next request. See the
 [CLI reference](cli.md) for the CLI flags and
 [HTTP listing](http-api.md#listing-issues) for the scan contract.
 
-When a read matches nothing, Kata emits the header with `count=0` and no rows:
+When a read matches nothing, Poomsae emits the header with `count=0` and no rows:
 
 ```text
 OK search count=0 query="login race"
 ```
 
-`kata update --check --agent` appends package ownership fields after the
+`poomsae update --check --agent` appends package ownership fields after the
 existing result fields in this order:
 
 ```text
-OK update update_available=true current=v0.14.1 latest=v0.14.2 distribution=homebrew upgrade_hint="brew upgrade kata" package_release_may_lag=true
+OK update update_available=true current=v0.14.1 latest=v0.14.2 distribution=homebrew upgrade_hint="brew upgrade poomsae" package_release_may_lag=true
 ```
 
 The fields appear in this order: `update_available`, `current`, `latest`,
 `distribution`, optional `upgrade_hint`, and `package_release_may_lag`.
 Ordinary archives emit `distribution="" package_release_may_lag=false` and omit
 `upgrade_hint`. If you run an install-capable command on a package-managed
-build, Kata returns the usual usage error shape with exit code 2:
+build, Poomsae returns the usual usage error shape with exit code 2:
 
 ```text
-ERR update usage: Homebrew manages this installation; run 'brew upgrade kata' instead
+ERR update usage: Homebrew manages this installation; run 'brew upgrade poomsae' instead
 ```
 
-Because the check reads Kata's GitHub release feed, a reported release can
+Because the check reads Poomsae's GitHub release feed, a reported release can
 appear before the owning package manager publishes it.
 
 #### Federation quarantine discovery
 
-`kata federation quarantine list --agent` prints one row per active quarantine:
+`poomsae federation quarantine list --agent` prints one row per active quarantine:
 
 ```text
 OK federation-quarantine-list count=1
@@ -193,7 +193,7 @@ Each row lists `project`, `project_id`, `quarantine_id`, `direction`,
 `first_event`, `last_event`, `event_count`, `created_at`, and `error` in that
 order. An empty list prints only `OK federation-quarantine-list count=0`.
 
-`kata federation quarantine show <id> --agent` prints the owning project and
+`poomsae federation quarantine show <id> --agent` prints the owning project and
 batch summary, then one row per quarantined event UID:
 
 ```text
@@ -207,11 +207,11 @@ The event UID rows keep the exact order recorded for the quarantined batch. You
 can inspect these read-only commands before running the separately confirmed
 `quarantine retry` or `quarantine skip` mutation.
 
-`kata search` adds a `mode=` field to its header (`lexical`, `hybrid`, or
+`poomsae search` adds a `mode=` field to its header (`lexical`, `hybrid`, or
 `semantic`) to show which strategy actually ran. If an embedding endpoint is
 configured but could not serve a query, the search falls back to lexical and
 adds `degraded=<reason>` after `mode=`. When the query runs without
-fallback, Kata omits `degraded=`. Result rows carry `matched=` listing the
+fallback, Poomsae omits `degraded=`. Result rows carry `matched=` listing the
 contributing FTS column names, and add `semantic` to that list when the vector
 leg matched the row:
 
@@ -223,7 +223,7 @@ OK search count=1 query="auth redirect duplicates" mode=hybrid
 Search rows append owner, priority, revision, and a body excerpt when present.
 Each excerpt is at most 160 characters and centers the first query match when
 possible, folding case and diacritics the same way lexical search does.
-`kata show <ref> --agent` remains the complete record and prints `Revision:`
+`poomsae show <ref> --agent` remains the complete record and prints `Revision:`
 after `Priority:`, while list rows append revision after title. Existing fields
 keep their names, positions, and meanings, so `agent_format` stays `1`. A
 daemon without `[search.embeddings]` reports `mode=lexical`, omits
@@ -254,12 +254,12 @@ key file path:
 OK federation-bridge-connect project=spoke-project status=ready direction=bidirectional hub=example-hub upstream_account=member local_account=local-member
 OK federation-bridge-status project=spoke-project state=connected direction=bidirectional credential_status=active hub=example-hub upstream_account=member local_account=local-member
 OK federation-bridge-disconnect project=spoke-project status=disconnected warning="the hub grant was not revoked"
-OK federation-root-key-repin project=hub-project status=ready method=unsigned_repin key_id=01HZ... previous_key_id=01HY... creates_key_file=true active_relay_enrollments=2 key_file=/srv/kata/federation-root.key
+OK federation-root-key-repin project=hub-project status=ready method=unsigned_repin key_id=01HZ... previous_key_id=01HY... creates_key_file=true active_relay_enrollments=2 key_file=/srv/poomsae/federation-root.key
 ```
 
 #### Single-result `next`
 
-`kata next --agent` is an intentional exception to the usual read shape of a
+`poomsae next --agent` is an intentional exception to the usual read shape of a
 `count=<n>` header followed by *n* rows. When a ready issue is selected, it
 prints a single compact record:
 
@@ -279,7 +279,7 @@ OK next found=false
 ```
 
 When you pass `--full`, the success header identifies the selected ref and is
-followed by the same detail fields and sections as `kata show --agent`:
+followed by the same detail fields and sections as `poomsae show --agent`:
 
 ````text
 OK next abc4
@@ -301,7 +301,7 @@ following their existing ordering and omission rules.
 
 #### Compact issue status
 
-`kata status <ref> --agent` puts the authenticated identity, assignment, and
+`poomsae status <ref> --agent` puts the authenticated identity, assignment, and
 lease state on one line while keeping them separate:
 
 ```text
@@ -315,13 +315,13 @@ optional `holder`, `holder_instance`, `lease_kind`, and `expires_at`, and
 pending leases append `pending_leases`. Hold state is one of `active`,
 `expired`, `pending`, `assigned`, `unassigned`, or `closed`. An `assigned` hold
 identifies an open issue with a live owner assignment and no live or pending
-lease. After a successful temporary `kata claim`, you see `hold=assigned` and
+lease. After a successful temporary `poomsae claim`, you see `hold=assigned` and
 `assignment_expires_on`; once the assignment expires, it switches to
 `hold=expired` until cleanup records the expiry, then becomes `hold=unassigned`
 until another hold applies. `actor_source` is `daemon` when the daemon
 authenticated the actor, and otherwise matches the client-side source from
-`kata whoami`. If you need the body, comments, metadata, links, or lease
-violations, run `kata show <ref> --agent`.
+`poomsae whoami`. If you need the body, comments, metadata, links, or lease
+violations, run `poomsae show <ref> --agent`.
 
 ### Events
 
@@ -338,8 +338,8 @@ OK events count=2 next_after_id=44
 OK event id=42 type=issue.created issue=abc4 actor=agent-a
 ```
 
-`kata events --tail --json` emits newline-delimited JSON.
-`kata events --tail --agent` emits one agent line per event and never prints
+`poomsae events --tail --json` emits newline-delimited JSON.
+`poomsae events --tail --agent` emits one agent line per event and never prints
 multi-line blocks.
 
 ## Multiline text
@@ -357,12 +357,12 @@ Safari can double-submit the callback.
 ```
 ````
 
-- Silent truncation is not allowed. If Kata ever introduces truncation, the
+- Silent truncation is not allowed. If Poomsae ever introduces truncation, the
   metadata fields immediately precede the field they describe and always appear
   as a pair, `<Field>-Truncated: true` and `<Field>-Bytes: <full-byte-count>`,
   never one without the other.
 - Each fenced block uses at least three backticks and the `text` info string.
-  If the content itself contains a triple-backtick sequence, Kata picks a
+  If the content itself contains a triple-backtick sequence, Poomsae picks a
   longer fence so the block stays valid Markdown.
 
 ## Guarantees
@@ -371,5 +371,5 @@ Safari can double-submit the callback.
 - Agent mode does not change daemon API responses. It is only a CLI rendering
   of the same data.
 - Agent mode is not the default.
-- Interactive commands (`kata tui`) and daemon startup (`kata daemon start`)
+- Interactive commands (`poomsae tui`) and daemon startup (`poomsae daemon start`)
   reject agent mode with a usage error instead of launching.

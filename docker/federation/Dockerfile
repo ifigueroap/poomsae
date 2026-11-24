@@ -9,7 +9,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/kata ./cmd/kata
+RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/poomsae ./cmd/poomsae
 
 FROM debian:bookworm-slim
 
@@ -19,7 +19,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends bash ca-certificates curl jq \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /out/kata /usr/local/bin/kata
+COPY --from=build /out/poomsae /usr/local/bin/poomsae
 COPY docker/federation/runner.sh /usr/local/bin/federation-smoke
 
-ENTRYPOINT ["/usr/local/bin/kata"]
+ENTRYPOINT ["/usr/local/bin/poomsae"]

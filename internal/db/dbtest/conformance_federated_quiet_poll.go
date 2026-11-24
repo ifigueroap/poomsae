@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // checkFederatedQuietPollFeed follows one spoke's cursor through polls of a

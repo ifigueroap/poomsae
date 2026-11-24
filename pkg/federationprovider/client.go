@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"go.kenn.io/kata/internal/processtree"
+	"github.com/ifigueroap/poomsae/internal/processtree"
 	"go.kenn.io/kit/consolewindow"
 )
 

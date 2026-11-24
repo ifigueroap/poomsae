@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"go.kenn.io/kata/internal/api"
-	hubfederation "go.kenn.io/kata/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/api"
+	hubfederation "github.com/ifigueroap/poomsae/internal/federation"
 )
 
 const (
@@ -53,7 +53,7 @@ func renderFederation(m Model) string {
 	}
 	visible := clipFederationRows(rows, cursor, rowBudget)
 	body := []string{
-		titleStyle.Render("kata / federation"),
+		titleStyle.Render("poomsae / federation"),
 		subtleStyle.Render(fmt.Sprintf("%d spoke federations", len(rows))),
 		"",
 		subtleStyle.Render(federationHeaderLine(m)),
@@ -288,7 +288,7 @@ func renderFederationLeavePreview(m Model) string {
 
 func federationLeaveDispositionLabel(disposition string) string {
 	if disposition == "archive" {
-		return "archive — remove the replica (reversible via kata projects restore)"
+		return "archive — remove the replica (reversible via poomsae projects restore)"
 	}
 	return "keep (detach) — standalone with all issues"
 }
@@ -400,7 +400,7 @@ func renderFederationRecovery(m Model) string {
 
 func federationModeHeader(m Model, title string) []string {
 	return []string{
-		titleStyle.Render("kata / federation"),
+		titleStyle.Render("poomsae / federation"),
 		subtleStyle.Render(federationHeaderLine(m)),
 		subtleStyle.Render(federationSelectedProjectLine(m)),
 		"",
@@ -473,16 +473,16 @@ func federationHubProjectBehavior(draft federationDraft) string {
 func federationRecoveryCommandString(cmd federationRecoveryCommand) string {
 	parts := []string{}
 	if cmd.SpokeEndpoint != "" && cmd.SpokeEndpoint != "local" {
-		parts = append(parts, "KATA_SERVER="+shellWord(cmd.SpokeEndpoint))
+		parts = append(parts, "POOMSAE_SERVER="+shellWord(cmd.SpokeEndpoint))
 		if cmd.SpokeAllowInsecure {
-			parts = append(parts, "KATA_ALLOW_INSECURE=1")
+			parts = append(parts, "POOMSAE_ALLOW_INSECURE=1")
 		}
 		if cmd.SpokeToken != "" {
-			parts = append(parts, "KATA_AUTH_TOKEN="+shellWord(cmd.SpokeToken))
+			parts = append(parts, "POOMSAE_AUTH_TOKEN="+shellWord(cmd.SpokeToken))
 		}
 	}
 	parts = append(parts,
-		"kata",
+		"poomsae",
 		"federation", "join",
 		"--hub-url", shellWord(cmd.HubURL),
 		"--hub-project-id", fmt.Sprintf("%d", cmd.HubProjectID),
@@ -724,7 +724,7 @@ func federationFooter(row FederationProjectStatus, width int) string {
 
 func renderFederationDetail(m Model, rows []FederationProjectStatus, cursor int) string {
 	body := []string{
-		titleStyle.Render("kata / federation"),
+		titleStyle.Render("poomsae / federation"),
 		subtleStyle.Render(federationHeaderLine(m)),
 		subtleStyle.Render(federationSelectedProjectLine(m)),
 		"",

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A relay spoke holding deliveries its hub never acknowledged cannot be left
@@ -16,7 +16,7 @@ import (
 // disconnect that discards that work, instead of a generic lifecycle error
 // the operator cannot act on when the hub is gone.
 func TestLeaveFederationReplicaRelayPendingPushNamesBridgeDisconnect(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	store := openReplicaServiceStore(t)
 	local := newBridgeLocalDaemon(t, store, hub.catalog(hub.root.server.URL))
@@ -37,7 +37,7 @@ func TestLeaveFederationReplicaRelayPendingPushNamesBridgeDisconnect(t *testing.
 	}
 	require.NoError(t, json.Unmarshal(raw, &failure))
 	require.Equal(t, "federation_lifecycle_blocked", failure.Error.Code)
-	require.Contains(t, failure.Error.Hint, "kata federation bridge disconnect --project shared-replica --local-only")
+	require.Contains(t, failure.Error.Hint, "poomsae federation bridge disconnect --project shared-replica --local-only")
 	_, err = store.FederationBindingByProject(t.Context(), project.ID)
 	require.NoError(t, err, "a refused leave keeps the binding")
 	_, found, err := config.DefaultFederationCredentialStore().FederationCredential(t.Context(), hub.root.private.UID)

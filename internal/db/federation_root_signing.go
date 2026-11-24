@@ -16,7 +16,7 @@ type RootSigningKeyError struct {
 func (e *RootSigningKeyError) Error() string {
 	return fmt.Sprintf("project %s needs this daemon's root signing key (federation-root.key), "+
 		"which is missing or does not match the project's pin; restore the key file from backup "+
-		"and restart the daemon, or run `kata federation root-key repin --project %s`",
+		"and restart the daemon, or run `poomsae federation root-key repin --project %s`",
 		e.Project, e.Project)
 }
 

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/notification"
 )
 
 type dueNotificationSource struct {

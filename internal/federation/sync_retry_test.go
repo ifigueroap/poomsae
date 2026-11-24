@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
 )
 
 const authInvalidBody = `{"error":{"code":"auth_invalid","message":"federation token is not valid for this project"}}`

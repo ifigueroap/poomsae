@@ -16,8 +16,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func wireItem() map[string]any {
@@ -69,7 +69,7 @@ func TestClientReadOnlyAndCapturedOriginCredential(t *testing.T) {
 	defer server.Close()
 	c := testConfig()
 	c.APIOrigin = server.URL
-	client := NewClient(ClientConfig{Daemon: config.PlaneSyncConfig{APIOrigin: server.URL}, LookupEnv: func(name string) (string, bool) { require.Equal(t, "KATA_PLANE_TOKEN", name); return token, true }, Wait: func(context.Context, time.Duration) error { return nil }})
+	client := NewClient(ClientConfig{Daemon: config.PlaneSyncConfig{APIOrigin: server.URL}, LookupEnv: func(name string) (string, bool) { require.Equal(t, "POOMSAE_PLANE_TOKEN", name); return token, true }, Wait: func(context.Context, time.Duration) error { return nil }})
 	session, err := client.ForRun(t.Context(), c)
 	require.NoError(t, err)
 	token = "rotated-key"

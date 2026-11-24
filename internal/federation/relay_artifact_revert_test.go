@@ -4,9 +4,9 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
 )
 
 // A replica prunes an issue's artifact once it retains the artifact for newer

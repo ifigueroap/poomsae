@@ -18,7 +18,7 @@ import (
 	"golang.org/x/time/rate"
 	"pgregory.net/rapid"
 
-	"go.kenn.io/kata/internal/storageadmin"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
 )
 
 type discoveredInput struct {
@@ -49,7 +49,7 @@ func searchToolSession(t *testing.T, session *sdkmcp.ClientSession, query string
 	if limit != 0 {
 		arguments["limit"] = limit
 	}
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search_tools", Arguments: arguments})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search_tools", Arguments: arguments})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	var output discoveryResponse
@@ -79,7 +79,7 @@ func TestToolSearchRetriesFailedCatalogBuild(t *testing.T) {
 	session := connectServerSession(t, server, nil, nil)
 
 	failed, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "kata.search_tools", Arguments: map[string]any{"query": "add a comment to an issue"},
+		Name: "poomsae.search_tools", Arguments: map[string]any{"query": "add a comment to an issue"},
 	})
 	require.NoError(t, err)
 	require.True(t, failed.IsError)
@@ -91,7 +91,7 @@ func TestToolSearchRetriesFailedCatalogBuild(t *testing.T) {
 	for range 2 {
 		output := searchToolSession(t, session, "add a comment to an issue", 1)
 		require.Len(t, output.Results, 1)
-		require.Equal(t, "kata.comment", output.Results[0].Name)
+		require.Equal(t, "poomsae.comment", output.Results[0].Name)
 	}
 	require.Equal(t, 2, attempts)
 }
@@ -146,7 +146,7 @@ func TestToolSearchCancelledWaitReleasesAdmissionSlot(t *testing.T) {
 	}})
 	session := connectServerSession(t, server, nil, nil)
 	t.Cleanup(releaseBuild)
-	params := &sdkmcp.CallToolParams{Name: "kata.search_tools", Arguments: map[string]any{"query": "add a comment to an issue", "limit": 1}}
+	params := &sdkmcp.CallToolParams{Name: "poomsae.search_tools", Arguments: map[string]any{"query": "add a comment to an issue", "limit": 1}}
 	receive := func(signal <-chan struct{}, failure string) {
 		t.Helper()
 		select {
@@ -206,13 +206,13 @@ func TestToolSearchColdStartAndLoadRoutes(t *testing.T) {
 	})
 	before, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.NotContains(t, toolNames(before.Tools), "kata.comment")
+	require.NotContains(t, toolNames(before.Tools), "poomsae.comment")
 	output := searchToolSession(t, session, "add a comment to an issue", 1)
 	require.Len(t, output.Results, 1)
 	comment := output.Results[0]
-	require.Equal(t, "kata.comment", comment.Name)
+	require.Equal(t, "poomsae.comment", comment.Name)
 	require.Equal(t, "issue_mutation", comment.Section)
-	require.Equal(t, "kata.load_issue_mutation", comment.Loader)
+	require.Equal(t, "poomsae.load_issue_mutation", comment.Loader)
 	require.Contains(t, comment.Guides, "issues")
 	require.Contains(t, comment.Inputs, discoveredInput{Name: "idempotency_key", Types: []string{"string"}, Required: true})
 	require.Contains(t, comment.Inputs, discoveredInput{Name: "ref", Types: []string{"string"}, Required: true})
@@ -242,16 +242,16 @@ func TestToolSearchColdStartAndLoadRoutes(t *testing.T) {
 func TestToolSearchTaskRanking(t *testing.T) {
 	session := connectRawTestServerWithOptions(t, discoveryOptions(t))
 	for _, test := range []struct{ query, want string }{
-		{"add a comment to an issue", "kata.comment"},
-		{"claim an issue", "kata.claim"},
-		{"close completed work with evidence", "kata.close"},
-		{"find unblocked issues", "kata.ready"},
-		{"find issues about a bug", "kata.search"},
-		{"set an issue deadline", "kata.set_deadline"},
-		{"patch issue metadata", "kata.set_metadata"},
-		{"read recorded cron run", "kata.cron_run"},
-		{"read the agent workflow guide", "kata.skills"},
-		{"kata.comment", "kata.comment"},
+		{"add a comment to an issue", "poomsae.comment"},
+		{"claim an issue", "poomsae.claim"},
+		{"close completed work with evidence", "poomsae.close"},
+		{"find unblocked issues", "poomsae.ready"},
+		{"find issues about a bug", "poomsae.search"},
+		{"set an issue deadline", "poomsae.set_deadline"},
+		{"patch issue metadata", "poomsae.set_metadata"},
+		{"read recorded cron run", "poomsae.cron_run"},
+		{"read the agent workflow guide", "poomsae.skills"},
+		{"poomsae.comment", "poomsae.comment"},
 	} {
 		t.Run(test.query, func(t *testing.T) {
 			output := searchToolSession(t, session, test.query, 3)
@@ -271,7 +271,7 @@ func TestToolSearchInputAndEmptyResults(t *testing.T) {
 		{"query": "comment", "limit": nil},
 		{"query": true}, {"query": "comment", "limit": "1"},
 	} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search_tools", Arguments: args})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search_tools", Arguments: args})
 		require.NoError(t, err)
 		require.True(t, result.IsError, "%s", mustJSON(t, args))
 		require.Nil(t, result.StructuredContent)
@@ -284,8 +284,8 @@ func TestToolSearchInputAndEmptyResults(t *testing.T) {
 	output := searchToolSession(t, session, "issue", 0)
 	require.Len(t, output.Results, 5)
 	for _, result := range output.Results {
-		require.True(t, strings.HasPrefix(result.Name, "kata."))
-		require.False(t, strings.HasPrefix(result.Name, "kata.load_"))
+		require.True(t, strings.HasPrefix(result.Name, "poomsae."))
+		require.False(t, strings.HasPrefix(result.Name, "poomsae.load_"))
 		require.True(t, slices.IsSortedFunc(result.Inputs, func(a, b discoveredInput) int { return strings.Compare(a.Name, b.Name) }))
 	}
 }
@@ -296,7 +296,7 @@ func TestToolSearchLoadedAndStartupEquivalence(t *testing.T) {
 	query := "close work with evidence"
 	want := searchToolSession(t, cold, query, 0)
 	for _, section := range []string{"issue_discovery", "issue_mutation", "issue_lifecycle", "coordination"} {
-		result, err := cold.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.load_" + section})
+		result, err := cold.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.load_" + section})
 		require.NoError(t, err)
 		require.False(t, result.IsError)
 		options.StartupSections = append(options.StartupSections, section)
@@ -323,15 +323,15 @@ func TestToolSearchFiltersAdminAndScope(t *testing.T) {
 					options.StorageAdmin = admin
 				}
 				session := connectRawTestServerWithOptions(t, options)
-				for _, name := range []string{"kata.token_create", "kata.team_create", "kata.storage_export"} {
+				for _, name := range []string{"poomsae.token_create", "poomsae.team_create", "poomsae.storage_export"} {
 					output := searchToolSession(t, session, name, 10)
 					found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == name })
 					require.Equal(t, enabled && scope.Mode() == ScopeAll, found, name)
 				}
-				output := searchToolSession(t, session, "kata.storage_import", 1)
-				found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == "kata.storage_import" })
+				output := searchToolSession(t, session, "poomsae.storage_import", 1)
+				found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == "poomsae.storage_import" })
 				require.Equal(t, enabled, found, "storage import supports every project scope when configured")
-				for _, name := range []string{"kata.project_create", "kata.project_merge", "kata.connector_field_map", "kata.federation_rebind", "kata.federation_bridge_status"} {
+				for _, name := range []string{"poomsae.project_create", "poomsae.project_merge", "poomsae.connector_field_map", "poomsae.federation_rebind", "poomsae.federation_bridge_status"} {
 					output := searchToolSession(t, session, name, 10)
 					found := slices.ContainsFunc(output.Results, func(result discoveredTool) bool { return result.Name == name })
 					require.Equal(t, scope.Mode() == ScopeAll, found, name)
@@ -367,8 +367,8 @@ func TestToolSearchProperties(t *testing.T) {
 			require.Contains(rt, catalog.tools, result.Name)
 			require.False(rt, seen[result.Name])
 			seen[result.Name] = true
-			require.NotContains(rt, result.Name, "kata.token_")
-			require.NotContains(rt, result.Name, "kata.storage_")
+			require.NotContains(rt, result.Name, "poomsae.token_")
+			require.NotContains(rt, result.Name, "poomsae.storage_")
 		}
 		if _, exact := catalog.tools[query]; exact {
 			require.NotEmpty(rt, got.Results)
@@ -381,31 +381,31 @@ func TestToolSearchExactNameHonorsLimit(t *testing.T) {
 	// Named regression from Rapid seed 5173484949553690092: the exact-name
 	// candidate already fills a one-result response before fuzzy ranking.
 	session := connectRawTestServerWithOptions(t, discoveryOptions(t))
-	output := searchToolSession(t, session, "kata.assign", 1)
+	output := searchToolSession(t, session, "poomsae.assign", 1)
 	require.Len(t, output.Results, 1)
-	require.Equal(t, "kata.assign", output.Results[0].Name)
+	require.Equal(t, "poomsae.assign", output.Results[0].Name)
 }
 
 func TestToolSearchOutputBudget(t *testing.T) {
 	catalog := &toolSearchCatalog{tools: map[string]ToolSearchResult{
-		"kata.comment": {Name: "kata.comment", Summary: strings.Repeat("comment ", 5000)},
+		"poomsae.comment": {Name: "poomsae.comment", Summary: strings.Repeat("comment ", 5000)},
 	}, titles: map[string]string{}}
-	output := catalog.search(ToolSearchInput{Query: "kata.comment"})
+	output := catalog.search(ToolSearchInput{Query: "poomsae.comment"})
 	require.LessOrEqual(t, len(mustJSON(t, output)), 32*1024)
 	require.True(t, output.Truncated)
 	require.Empty(t, output.Results)
 	// The SDK emits JSON-v1-compatible escaping. Bound the actual encoded
 	// response even when a description contains HTML-sensitive characters.
 	for _, summary := range []string{strings.Repeat("<", 7000), strings.Repeat("\u2028", 6000)} {
-		catalog.tools["kata.comment"] = ToolSearchResult{Name: "kata.comment", Summary: summary}
-		output = catalog.search(ToolSearchInput{Query: "kata.comment"})
+		catalog.tools["poomsae.comment"] = ToolSearchResult{Name: "poomsae.comment", Summary: summary}
+		output = catalog.search(ToolSearchInput{Query: "poomsae.comment"})
 		require.LessOrEqual(t, len(mustJSON(t, output)), 32*1024)
 		require.True(t, output.Truncated)
 		require.Empty(t, output.Results)
 	}
 	catalog.tools = map[string]ToolSearchResult{
-		"kata.comment": {Name: "kata.comment", Summary: "issue " + strings.Repeat("x", 20_000)},
-		"kata.claim":   {Name: "kata.claim", Summary: "issue " + strings.Repeat("x", 20_000)},
+		"poomsae.comment": {Name: "poomsae.comment", Summary: "issue " + strings.Repeat("x", 20_000)},
+		"poomsae.claim":   {Name: "poomsae.claim", Summary: "issue " + strings.Repeat("x", 20_000)},
 	}
 	output = catalog.search(ToolSearchInput{Query: "issue"})
 	require.LessOrEqual(t, len(mustJSON(t, output)), 32*1024)
@@ -426,7 +426,7 @@ func TestToolSearchRejectsMalformedUnicodeOnWire(t *testing.T) {
 	session := connectRawTestServerWithOptions(t, discoveryOptions(t))
 	for _, query := range []string{`comment\ud800`, `comment\udfff`, "comment\xff"} {
 		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-			Name: "kata.search_tools", Arguments: json.RawMessage(`{"query":"` + query + `"}`),
+			Name: "poomsae.search_tools", Arguments: json.RawMessage(`{"query":"` + query + `"}`),
 		})
 		require.NoError(t, err)
 		require.True(t, result.IsError, "%q was silently repaired", query)
@@ -434,7 +434,7 @@ func TestToolSearchRejectsMalformedUnicodeOnWire(t *testing.T) {
 	}
 	for _, query := range []string{"comment�", `comment\ufffd`, `comment\ud83d\ude00`} {
 		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-			Name: "kata.search_tools", Arguments: json.RawMessage(`{"query":"` + query + `"}`),
+			Name: "poomsae.search_tools", Arguments: json.RawMessage(`{"query":"` + query + `"}`),
 		})
 		require.NoError(t, err)
 		require.False(t, result.IsError, "%s", mustJSON(t, result))
@@ -463,7 +463,7 @@ func TestToolSearchConcurrentSectionLoading(t *testing.T) {
 	for _, section := range sections {
 		group.Go(func() {
 			<-start
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.load_" + section})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.load_" + section})
 			require.NoError(t, err)
 			require.False(t, result.IsError)
 		})

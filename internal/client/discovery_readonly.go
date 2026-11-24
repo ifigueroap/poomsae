@@ -31,7 +31,7 @@ func (e *PrivateDirError) Unwrap() error { return e.Err }
 // readRuntimeRecords preserves RuntimeStore.List's ordering, filename/PID and
 // ownership checks without its implicit directory creation or permission repair.
 // Kit has no read-only listing API. Replace this reader when one is available;
-// Kata requires JSON v2, so malformed JSON handling can still differ from Kit.
+// Poomsae requires JSON v2, so malformed JSON handling can still differ from Kit.
 func readRuntimeRecords(dir string) ([]kitdaemon.RuntimeRecord, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, fmt.Errorf("runtime dir %q must be absolute", dir)
@@ -67,7 +67,7 @@ func readRuntimeRecords(dir string) ([]kitdaemon.RuntimeRecord, error) {
 		data, readErr := io.ReadAll(file)
 		_ = file.Close()
 		var record kitdaemon.RuntimeRecord
-		// Match Kit's case-insensitive field names while using Kata's JSON decoder.
+		// Match Kit's case-insensitive field names while using Poomsae's JSON decoder.
 		if readErr != nil || json.Unmarshal(data, &record, json.MatchCaseInsensitiveNames(true)) != nil || record.PID != pid || record.Address == "" {
 			continue
 		}

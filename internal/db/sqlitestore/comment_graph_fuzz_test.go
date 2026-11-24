@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // Scope filtering must precede graph expansion and endpoint disclosure.
@@ -70,7 +70,7 @@ func FuzzCommentGraphPurgeEvidenceOrder(f *testing.F) {
 	f.Add(uint8(3))
 	f.Fuzz(func(t *testing.T, input uint8) {
 		ctx := t.Context()
-		store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+		store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = store.Close() })
 

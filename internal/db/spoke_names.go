@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	katauid "go.kenn.io/kata/internal/uid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // FederationSpokeNamePrefix stores hub-local display labels in existing metadata.
@@ -25,7 +25,7 @@ var spokeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 
 // ValidateFederationSpokeName is shared by live writes and backup replay.
 func ValidateFederationSpokeName(uid, name string) error {
-	if !katauid.Valid(uid) {
+	if !poomsaeuid.Valid(uid) {
 		return fmt.Errorf("%w: invalid instance UID %q", ErrFederationSpokeNameValidation, uid)
 	}
 	if !spokeNamePattern.MatchString(name) {
@@ -64,7 +64,7 @@ func WriteFederationSpokeName(ctx context.Context, tx *sql.Tx, uid, name string)
 		if err := ValidateFederationSpokeName(uid, name); err != nil {
 			return err
 		}
-	} else if !katauid.Valid(uid) {
+	} else if !poomsaeuid.Valid(uid) {
 		return fmt.Errorf("%w: invalid instance UID %q", ErrFederationSpokeNameValidation, uid)
 	}
 	var exists bool

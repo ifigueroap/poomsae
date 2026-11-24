@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/tickticksync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/tickticksync"
 )
 
 type lifecycleTickTick struct {

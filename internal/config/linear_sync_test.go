@@ -10,7 +10,7 @@ import (
 func TestNormalizeLinearSyncConfig(t *testing.T) {
 	c, err := NormalizeLinearSyncConfig(LinearSyncConfig{})
 	require.NoError(t, err)
-	require.Equal(t, "KATA_LINEAR_TOKEN", c.TokenEnv)
+	require.Equal(t, "POOMSAE_LINEAR_TOKEN", c.TokenEnv)
 	require.Equal(t, "api-key", c.AuthType)
 	c, err = NormalizeLinearSyncConfig(LinearSyncConfig{TokenEnv: " EXAMPLE_LINEAR_TOKEN ", AuthType: "oauth"})
 	require.NoError(t, err)

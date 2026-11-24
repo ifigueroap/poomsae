@@ -7,7 +7,7 @@ hub_token=federation-hub-token
 spoke_a=http://spoke-a:7374
 spoke_b=http://spoke-b:7375
 project=federation-smoke
-curl_timeout=${KATA_FEDERATION_DOCKER_CURL_TIMEOUT:-15}
+curl_timeout=${POOMSAE_FEDERATION_DOCKER_CURL_TIMEOUT:-15}
 
 log() {
   printf 'federation-smoke: %s\n' "$*" >&2
@@ -81,7 +81,7 @@ kata_for() {
   local home=$1
   local server=$2
   shift 2
-  KATA_HOME="$home" KATA_SERVER="$server" kata --project "$project" "$@"
+  POOMSAE_HOME="$home" POOMSAE_SERVER="$server" poomsae --project "$project" "$@"
 }
 
 expect_cli_failure() {
@@ -111,19 +111,19 @@ expect_cli_failure() {
 log "verifying CLI enrollment creates a missing hub project"
 cli_project=federation-cli-enroll-missing
 cli_token=federation-cli-enroll-token
-cli_enroll_home=/data/kata/runner-cli-enroll
+cli_enroll_home=/data/poomsae/runner-cli-enroll
 spoke_a_uid=$(get "$spoke_a/api/v1/instance" | jq -r '.instance_uid')
 mkdir -p "$cli_enroll_home"
 cat >"$cli_enroll_home/config.toml" <<EOF
 [[daemon]]
 name = "spoke-a"
 url = "$spoke_a"
-token_env = "KATA_SPOKE_TOKEN"
+token_env = "POOMSAE_SPOKE_TOKEN"
 allow_insecure = true
 EOF
 cli_enroll_out=$(
-  KATA_HOME="$cli_enroll_home" KATA_SPOKE_TOKEN="$hub_token" HUB_ADMIN_TOKEN="$hub_token" \
-    kata --daemon spoke-a --project "$cli_project" federation enroll \
+  POOMSAE_HOME="$cli_enroll_home" POOMSAE_SPOKE_TOKEN="$hub_token" HUB_ADMIN_TOKEN="$hub_token" \
+    poomsae --daemon spoke-a --project "$cli_project" federation enroll \
       --spoke-instance "$spoke_a_uid" \
       --hub-url "$hub_hostname" \
       --hub-token-env HUB_ADMIN_TOKEN \
@@ -167,7 +167,7 @@ fi
 get "$hub/api/v1/projects/$cli_project_id/federation" >/dev/null
 
 log "verifying CLI enrollment join command syncs over plaintext hostname"
-KATA_HOME="$cli_enroll_home" KATA_SERVER="$spoke_a" bash -c "$cli_join_cmd" >/dev/null
+POOMSAE_HOME="$cli_enroll_home" POOMSAE_SERVER="$spoke_a" bash -c "$cli_join_cmd" >/dev/null
 cli_spoke_project_id=$(get "$spoke_a/api/v1/projects" | jq -r --arg name "$cli_project" '.projects[]? | select(.name == $name) | .id')
 if [[ -z "$cli_spoke_project_id" ]]; then
   log "CLI join did not create spoke project $cli_project"
@@ -240,22 +240,22 @@ log "verifying baseline pull"
 wait_for_all_titles "baseline from hub"
 
 log "acquiring lease on spoke-a and checking arbitration"
-kata_for /data/kata/runner-a "$spoke_a" --as agent-a federation lease acquire "$issue_short" >/dev/null
-expect_cli_failure "spoke-b competing lease" /data/kata/runner-b "$spoke_b" 'lease denied|claim_denied' \
+kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease acquire "$issue_short" >/dev/null
+expect_cli_failure "spoke-b competing lease" /data/poomsae/runner-b "$spoke_b" 'lease denied|claim_denied' \
   --as agent-b federation lease acquire "$issue_short"
-expect_cli_failure "spoke-b lease-gated edit" /data/kata/runner-b "$spoke_b" 'lease denied|claim_denied' \
+expect_cli_failure "spoke-b lease-gated edit" /data/poomsae/runner-b "$spoke_b" 'lease denied|claim_denied' \
   --as agent-b edit "$issue_short" --title "blocked edit from spoke B"
 
 log "editing under spoke-a lease"
-kata_for /data/kata/runner-a "$spoke_a" --as agent-a edit "$issue_short" --title "leased edit from spoke A" >/dev/null
+kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a edit "$issue_short" --title "leased edit from spoke A" >/dev/null
 wait_for_all_titles "leased edit from spoke A"
 
 log "releasing from spoke-a and acquiring on spoke-b"
-kata_for /data/kata/runner-a "$spoke_a" --as agent-a federation lease release "$issue_short" >/dev/null
-kata_for /data/kata/runner-b "$spoke_b" --as agent-b federation lease acquire "$issue_short" >/dev/null
+kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease release "$issue_short" >/dev/null
+kata_for /data/poomsae/runner-b "$spoke_b" --as agent-b federation lease acquire "$issue_short" >/dev/null
 
 log "editing under spoke-b lease"
-kata_for /data/kata/runner-b "$spoke_b" --as agent-b edit "$issue_short" --title "leased edit from spoke B" >/dev/null
+kata_for /data/poomsae/runner-b "$spoke_b" --as agent-b edit "$issue_short" --title "leased edit from spoke B" >/dev/null
 wait_for_all_titles "leased edit from spoke B"
 
 log "passed"

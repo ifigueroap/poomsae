@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/recurrence"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/recurrence"
 )
 
 // ValidateRecurrenceCore validates a rule, start date, and timezone together

@@ -1,7 +1,7 @@
-// Package federationprovider lets Kata ask a local helper for access to a hub
+// Package federationprovider lets Poomsae ask a local helper for access to a hub
 // project without sharing hub administration credentials.
 //
-// Kata saves a token before calling Exchange. The helper reads it with
+// Poomsae saves a token before calling Exchange. The helper reads it with
 // DecodeRequest, checks project access, and replies with WriteResponse.
 // Approval confirms that saved token; it never replaces it. Pending approval
 // and denial are normal responses, while malformed input and helper failures

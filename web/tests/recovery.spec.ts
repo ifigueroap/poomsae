@@ -2,19 +2,19 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('SSE disruption surfaces reconnecting state and resumes authority', async ({ page, kata }) => {
+test('SSE disruption surfaces reconnecting state and resumes authority', async ({ page, poomsae }) => {
   await page.route('**/api/v1/events/stream*', (route) => route.abort('connectionrefused'))
-  const credentials = await kata.launch(page)
-  await expect(page.getByRole('status', { name: 'Kata daemon status' })).toBeVisible()
+  const credentials = await poomsae.launch(page)
+  await expect(page.getByRole('status', { name: 'Poomsae daemon status' })).toBeVisible()
   const reconnectingHeader = await page.locator('.sidebar-header').boundingBox()
-  const reconnectingLayout = await page.locator('.kata-layout').boundingBox()
+  const reconnectingLayout = await page.locator('.poomsae-layout').boundingBox()
   await page.unroute('**/api/v1/events/stream*')
-  await kata.seedIssue(page, credentials, { title: 'Recovered stream example' })
+  await poomsae.seedIssue(page, credentials, { title: 'Recovered stream example' })
   await page.reload()
   await expect(page.getByRole('button', { name: /Recovered stream example/ })).toBeVisible()
-  await expect(page.getByRole('status', { name: 'Kata daemon status' })).toHaveCount(0)
+  await expect(page.getByRole('status', { name: 'Poomsae daemon status' })).toHaveCount(0)
   const connectedHeader = await page.locator('.sidebar-header').boundingBox()
-  const connectedLayout = await page.locator('.kata-layout').boundingBox()
+  const connectedLayout = await page.locator('.poomsae-layout').boundingBox()
   expect(connectedHeader?.height).toBe(reconnectingHeader?.height)
   expect(connectedHeader?.y).toBe(0)
   expect(connectedLayout!.y).toBeLessThan(reconnectingLayout!.y)
@@ -22,20 +22,20 @@ test('SSE disruption surfaces reconnecting state and resumes authority', async (
 
 test('a 412 refresh preserves the current checklist draft for explicit retry', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   await page.route('**/api/v1/events/stream*', (route) => route.abort('connectionrefused'))
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Conflict example task' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Conflict example task' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Add item' }).click()
   await page.getByRole('textbox', { name: 'New checklist item' }).fill('Local conflict draft')
 
-  const external = await kata.request(
+  const external = await poomsae.request(
     page,
     credentials,
     'POST',
-    `/api/v1/projects/${kata.projectID}/issues/${issue.short_id}/metadata`,
+    `/api/v1/projects/${poomsae.projectID}/issues/${issue.short_id}/metadata`,
     { actor: 'user-a', patch: { external_marker: 'server conflict' } },
     { 'If-Match': `"rev-${issue.revision}"` },
   )
@@ -47,14 +47,14 @@ test('a 412 refresh preserves the current checklist draft for explicit retry', a
   )
 })
 
-test('daemon restart keeps an old draft visible but unsubmittable', async ({ page, kata }) => {
-  await kata.launch(page)
+test('daemon restart keeps an old draft visible but unsubmittable', async ({ page, poomsae }) => {
+  await poomsae.launch(page)
   const credentials = await storedCredentials(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Restart draft example' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Restart draft example' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Add comment' }).click()
   await page.getByRole('textbox', { name: 'Comment' }).fill('Draft survives process restart')
-  await kata.restart()
+  await poomsae.restart()
   // Wait for the renewed session to restore writable authority, so the comment
   // box is editable again and only the draft fence can keep the old draft back.
   await expect(page.getByRole('button', { name: 'New task' })).toBeEnabled()
@@ -65,7 +65,7 @@ test('daemon restart keeps an old draft visible but unsubmittable', async ({ pag
   await expect(page.getByRole('button', { name: 'Add comment' })).toBeDisabled()
 })
 
-test('read-only polling authority fences mutations without opening SSE', async ({ page, kata }) => {
+test('read-only polling authority fences mutations without opening SSE', async ({ page, poomsae }) => {
   let streamRequests = 0
   page.on('request', (request) => {
     if (request.url().includes('/api/v1/events/stream')) streamRequests += 1
@@ -79,9 +79,9 @@ test('read-only polling authority fences mutations without opening SSE', async (
     await route.fulfill({ response, json: snapshot })
   })
 
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Read-only example task' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Read-only example task' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await expect(page.getByRole('status', { name: 'Active connection' })).toContainText(
     'Credential: Read-only',
   )
@@ -95,11 +95,11 @@ test('read-only polling authority fences mutations without opening SSE', async (
 
 test('read-only loopback listeners open directly without login ceremony', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  await kata.restartReadonly()
+  await poomsae.restartReadonly()
   try {
-    await page.goto(`${kata.origin}/kata?view=all-open`)
+    await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
 
     await expect(page.getByRole('status', { name: 'Active connection' })).toContainText(
       'Credential: Read-only',
@@ -108,17 +108,17 @@ test('read-only loopback listeners open directly without login ceremony', async 
     await expect(newTask).toBeDisabled()
     await expect(newTask).toHaveAccessibleDescription('This credential is read-only.')
   } finally {
-    await kata.restart()
+    await poomsae.restart()
   }
 })
 
 test('structured 409 refusals preserve the draft and expose code and detail', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Domain refusal example' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Domain refusal example' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Add item' }).click()
   await page.getByRole('textbox', { name: 'New checklist item' }).fill('Preserved refusal draft')
   await page.route('**/api/v1/projects/*/issues/*/metadata', async (route) => {
@@ -141,11 +141,11 @@ test('structured 409 refusals preserve the draft and expose code and detail', as
 
 test('uncertain writes refresh authority before preserving an editable draft', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Uncertain example task' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Uncertain example task' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await page.route('**/api/v1/projects/*/issues/*', async (route) => {
     if (route.request().method() === 'PATCH') await route.abort('connectionreset')
     else await route.continue()
@@ -161,7 +161,7 @@ test('uncertain writes refresh authority before preserving an editable draft', a
 
 async function storedCredentials(page: import('@playwright/test').Page) {
   return page.evaluate(() =>
-    JSON.parse(sessionStorage.getItem('kata.web.session.v1')!),
+    JSON.parse(sessionStorage.getItem('poomsae.web.session.v1')!),
   ) as Promise<{
     session: string
     csrf: string

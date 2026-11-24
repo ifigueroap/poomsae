@@ -1,0 +1,541 @@
+package main
+
+import (
+	"bytes"
+	"io/fs"
+	"math"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const projectMergeHLCSafeBoundary = int64(math.MaxInt64 / 2)
+
+func setupImportTest(t *testing.T) (home, input, target string) {
+	t.Helper()
+	home = setupKataEnv(t)
+	input = writeExportFixture(t, home)
+	target = filepath.Join(home, "target.db")
+	return home, input, target
+}
+
+func TestImportCreatesTargetDB(t *testing.T) {
+	_, input, target := setupImportTest(t)
+
+	out, err := runCmdOutput(t, nil, "import", "--input", input, "--target", target)
+	require.NoError(t, err)
+
+	d := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = d.Close() })
+	got, err := d.ProjectByName(t.Context(), "poomsae")
+	require.NoError(t, err)
+	assert.Equal(t, "poomsae", got.Name)
+	assert.Contains(t, out, target)
+}
+
+func TestImportFormatAgentSelectsOutputMode(t *testing.T) {
+	_, input, target := setupImportTest(t)
+
+	out, err := runCmdOutput(t, nil, "import", "--format", "agent", "--source-format", "poomsae", "--input", input, "--target", target)
+	require.NoError(t, err)
+
+	d := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = d.Close() })
+	got, err := d.ProjectByName(t.Context(), "poomsae")
+	require.NoError(t, err)
+	assert.Equal(t, "poomsae", got.Name)
+	// agentValue quotes Windows paths (backslashes); assert the formatted value.
+	assert.Equal(t, "OK import source_format=poomsae target="+agentValue(target)+"\n", out)
+}
+
+func TestImportLegacyFormatConflictsWithSourceFormat(t *testing.T) {
+	setupKataEnv(t)
+
+	_, err := runCmdOutput(t, nil, "import", "--format", "beads", "--source-format", "poomsae")
+	ce := requireCLIError(t, err, ExitUsage)
+	assert.Contains(t, ce.Message, "--format beads cannot be combined with --source-format")
+}
+
+func TestImportLegacyFormatBeadsAllowsAgentOutputMode(t *testing.T) {
+	resetRunEEntered(t)
+	resetFlags(t)
+	setupKataEnv(t)
+
+	_, stderr, err := executeRootCapture(t, t.Context(),
+		"import", "--format", "beads", "--agent", "--input", "beads.jsonl")
+	require.Error(t, err)
+	assert.Truef(t, strings.HasPrefix(stderr, "ERR import validation:"),
+		"stderr should use agent mode for legacy beads import, got %q", stderr)
+	assert.Contains(t, stderr, "--input is not supported")
+}
+
+func TestImportLegacyFormatBeadsParseErrorPreservesAgentMode(t *testing.T) {
+	resetRunEEntered(t)
+	resetFlags(t)
+	setupKataEnv(t)
+
+	_, stderr, err := executeRootCapture(t, t.Context(),
+		"import", "--format", "beads", "--agent", "--bogus")
+	require.Error(t, err)
+	assert.Truef(t, strings.HasPrefix(stderr, "ERR import usage:"),
+		"stderr should use agent mode for legacy beads parse error, got %q", stderr)
+}
+
+func TestImportLegacyFormatBeadsParseErrorPreservesJSONMode(t *testing.T) {
+	resetRunEEntered(t)
+	resetFlags(t)
+	setupKataEnv(t)
+
+	_, stderr, err := executeRootCapture(t, t.Context(),
+		"import", "--format", "beads", "--json", "--bogus")
+	require.Error(t, err)
+	got := parseErrorEnvelope(t, []byte(stderr))
+	assert.Equal(t, "usage", got.Error.Kind)
+	assert.Contains(t, got.Error.Message, "unknown flag: --bogus")
+}
+
+func TestImportRejectsExistingTargetWithoutForce(t *testing.T) {
+	_, input, target := setupImportTest(t)
+	d := openKataTestDB(t, target)
+	_, err := d.CreateProject(t.Context(), "existing")
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	_, err = runCmdOutput(t, nil, "import", "--input", input, "--target", target)
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "target already exists")
+}
+
+func TestImportMergeRejectsReplacementFlags(t *testing.T) {
+	setupKataEnv(t)
+	for _, incompatible := range []string{"--force", "--new-instance"} {
+		t.Run(incompatible, func(t *testing.T) {
+			_, err := runCmdOutput(t, nil,
+				"import", "--merge", incompatible, "--input", "snapshot.jsonl", "--target", "target.db")
+			ce := requireCLIError(t, err, ExitValidation)
+			assert.Contains(t, ce.Message, incompatible+" cannot be combined with --merge")
+		})
+	}
+}
+
+func TestImportMergeRejectsUninitializedSQLiteTargetsWithoutMutation(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		targetSuffix  string
+		wantErrorText string
+	}{
+		{name: "empty main file", wantErrorText: "merge target is not initialized"},
+		{name: "orphan WAL sidecar", targetSuffix: "-wal", wantErrorText: "merge target does not exist"},
+		{name: "orphan SHM sidecar", targetSuffix: "-shm", wantErrorText: "merge target does not exist"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			home := setupKataEnv(t)
+			ctx := t.Context()
+			source := openKataTestDB(t, filepath.Join(home, "source.db"))
+			project, err := source.CreateProject(ctx, "spoke-project")
+			require.NoError(t, err)
+			var snapshot bytes.Buffer
+			require.NoError(t, jsonl.Export(ctx, source, &snapshot, jsonl.ExportOptions{ProjectID: project.ID}))
+			require.NoError(t, source.Close())
+			input := filepath.Join(home, "spoke-project.jsonl")
+			require.NoError(t, os.WriteFile(input, snapshot.Bytes(), 0o600))
+			target := filepath.Join(home, "target.db")
+			marker := target + tt.targetSuffix
+			require.NoError(t, os.WriteFile(marker, nil, 0o600))
+
+			_, err = runCmdOutput(t, nil,
+				"import", "--merge", "--input", input, "--target", target)
+			ce := requireCLIError(t, err, ExitValidation)
+			assert.Contains(t, ce.Message, tt.wantErrorText)
+
+			if tt.targetSuffix != "" {
+				_, statErr := os.Stat(target)
+				assert.True(t, os.IsNotExist(statErr), "merge must not create a missing main database file")
+			}
+			info, statErr := os.Stat(marker)
+			require.NoError(t, statErr)
+			assert.Zero(t, info.Size(), "merge must not modify the uninitialized target marker")
+		})
+	}
+}
+
+func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *testing.T) {
+	home := setupKataEnv(t)
+	ctx := t.Context()
+
+	sourcePath := filepath.Join(home, "source.db")
+	source := openKataTestDB(t, sourcePath)
+	importedProject, err := source.CreateProject(ctx, "spoke-project")
+	require.NoError(t, err)
+	importedIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: importedProject.ID, Title: "imported issue", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	_, _, err = source.CreateComment(ctx, db.CreateCommentParams{
+		IssueID: importedIssue.ID, Author: "fixture-author", Body: "imported comment",
+	})
+	require.NoError(t, err)
+	_, err = source.AddLabel(ctx, importedIssue.ID, "portable", "fixture-author")
+	require.NoError(t, err)
+	purgedIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: importedProject.ID, Title: "purged issue", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	sourcePurge, err := source.PurgeIssue(ctx, purgedIssue.ID, "fixture-author", nil)
+	require.NoError(t, err)
+	require.NotNil(t, sourcePurge.PurgeResetAfterEventID)
+	_, err = source.ExecContext(ctx, `UPDATE events SET hlc_physical_ms = ?, hlc_counter = ?`,
+		projectMergeHLCSafeBoundary, projectMergeHLCSafeBoundary)
+	require.NoError(t, err)
+	sourceEvents, err := source.EventsAfter(ctx, db.EventsAfterParams{
+		ProjectID: importedProject.ID, Limit: 100,
+	})
+	require.NoError(t, err)
+	var snapshot bytes.Buffer
+	require.NoError(t, jsonl.Export(ctx, source, &snapshot, jsonl.ExportOptions{
+		ProjectID: importedProject.ID, IncludeDeleted: true,
+	}))
+	require.NoError(t, source.Close())
+	input := filepath.Join(home, "spoke-project.jsonl")
+	require.NoError(t, os.WriteFile(input, snapshot.Bytes(), 0o600))
+
+	target := filepath.Join(home, "target.db")
+	targetStore := openKataTestDB(t, target)
+	existingProject, err := targetStore.CreateProject(ctx, "spoke-project")
+	require.NoError(t, err)
+	existingIssue, _, err := targetStore.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: existingProject.ID, Title: "existing issue", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	targetEvents, err := targetStore.EventsAfter(ctx, db.EventsAfterParams{
+		ProjectID: existingProject.ID, Limit: 100,
+	})
+	require.NoError(t, err)
+	_, err = targetStore.ExecContext(ctx, `UPDATE sqlite_sequence SET seq = 2000 WHERE name = 'issues'`)
+	require.NoError(t, err)
+	_, err = targetStore.ExecContext(ctx, `
+		INSERT INTO project_purge_log(
+			uid, origin_instance_uid, project_id, project_name,
+			issue_count, event_count, alias_count, comment_count, link_count,
+			label_count, claim_count, pending_claim_request_count,
+			purge_reset_after_event_id, actor
+		) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 3000, ?)`,
+		"01H00000000000000000000009", targetStore.InstanceUID(), existingProject.ID,
+		existingProject.Name, "fixture-author")
+	require.NoError(t, err)
+	require.NoError(t, targetStore.Close())
+
+	out, err := runCmdOutput(t, nil,
+		"import", "--merge", "--input", input, "--target", target)
+	require.NoError(t, err)
+	assert.Contains(t, out, target)
+
+	merged := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = merged.Close() })
+	gotExisting, err := merged.ProjectByUID(ctx, existingProject.UID)
+	require.NoError(t, err)
+	assert.Equal(t, existingProject.Name, gotExisting.Name)
+	gotExistingIssue, err := merged.IssueByUID(ctx, existingIssue.UID, db.IncludeDeletedNo)
+	require.NoError(t, err)
+	assert.Equal(t, "existing issue", gotExistingIssue.Title)
+	gotImported, err := merged.ProjectByUID(ctx, importedProject.UID)
+	require.NoError(t, err)
+	assert.NotEqual(t, importedProject.ID, gotImported.ID, "colliding numeric project ID must be remapped")
+	assert.Equal(t, "spoke-project-2", gotImported.Name)
+	gotImportedIssue, err := merged.IssueByUID(ctx, importedIssue.UID, db.IncludeDeletedNo)
+	require.NoError(t, err)
+	assert.Greater(t, gotImportedIssue.ID, int64(2000), "merge must allocate above the target sequence high-water mark")
+	assert.Equal(t, gotImported.ID, gotImportedIssue.ProjectID)
+	assert.Equal(t, importedIssue.ShortID, gotImportedIssue.ShortID)
+	comments, err := merged.CommentsByIssue(ctx, gotImportedIssue.ID)
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "imported comment", comments[0].Body)
+	labels, err := merged.LabelsByIssue(ctx, gotImportedIssue.ID)
+	require.NoError(t, err)
+	require.Len(t, labels, 1)
+	assert.Equal(t, "portable", labels[0].Label)
+	mergedEvents, err := merged.EventsAfter(ctx, db.EventsAfterParams{
+		ProjectID: gotImported.ID, Limit: 100,
+	})
+	require.NoError(t, err)
+	require.Len(t, mergedEvents, len(sourceEvents))
+	for i := range sourceEvents {
+		assert.Equal(t, sourceEvents[i].UID, mergedEvents[i].UID)
+		if i > 0 {
+			assert.Greater(t, mergedEvents[i].ID, mergedEvents[i-1].ID)
+		}
+	}
+	require.NotEmpty(t, targetEvents)
+	assert.Greater(t, mergedEvents[0].ID, targetEvents[len(targetEvents)-1].ID)
+	assert.Greater(t, mergedEvents[0].ID, int64(3000), "merge events must remain visible beyond the purge reset cursor")
+	var mergedPurgedIssueID, mergedSourceReset int64
+	require.NoError(t, merged.QueryRowContext(ctx,
+		`SELECT purged_issue_id, purge_reset_after_event_id FROM purge_log WHERE issue_uid = ?`, purgedIssue.UID).
+		Scan(&mergedPurgedIssueID, &mergedSourceReset))
+	_, postMergeEvent, err := merged.CreateComment(ctx, db.CreateCommentParams{
+		IssueID: gotImportedIssue.ID, Author: "fixture-author", Body: "after merge",
+	})
+	require.NoError(t, err)
+	assert.Greater(t, postMergeEvent.ID, mergedSourceReset,
+		"a post-merge event must remain visible beyond the imported purge reset cursor")
+	assert.Equal(t, projectMergeHLCSafeBoundary, postMergeEvent.HLCPhysicalMS)
+	assert.Equal(t, projectMergeHLCSafeBoundary+1, postMergeEvent.HLCCounter,
+		"a post-merge event must advance beyond the imported HLC boundary")
+	postMergeIssue, _, err := merged.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: gotImported.ID, Title: "after merge", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	assert.Greater(t, postMergeIssue.ID, mergedPurgedIssueID,
+		"a post-merge issue must not reuse the imported tombstone's numeric ID")
+	require.NoError(t, merged.Close())
+
+	_, err = runCmdOutput(t, nil,
+		"import", "--merge", "--input", input, "--target", target)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "project UID")
+	assert.Contains(t, err.Error(), "already exists")
+
+	unchanged := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = unchanged.Close() })
+	_, err = unchanged.IssueByUID(ctx, existingIssue.UID, db.IncludeDeletedNo)
+	require.NoError(t, err)
+}
+
+func TestImportMergeRefusesMultiProjectSnapshotWithoutMutation(t *testing.T) {
+	_, input, target := setupImportTest(t)
+	ctx := t.Context()
+	targetStore := openKataTestDB(t, target)
+	existing, err := targetStore.CreateProject(ctx, "existing-project")
+	require.NoError(t, err)
+	require.NoError(t, targetStore.Close())
+
+	_, err = runCmdOutput(t, nil,
+		"import", "--merge", "--input", input, "--target", target)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "project merge requires one non-system project")
+
+	unchanged := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = unchanged.Close() })
+	got, err := unchanged.ProjectByUID(ctx, existing.UID)
+	require.NoError(t, err)
+	assert.Equal(t, existing.Name, got.Name)
+}
+
+func TestImportMergeCreatesCrossProjectLink(t *testing.T) {
+	merged, importedID, peerID := mergeCrossProjectLinkFixture(t)
+	link, err := merged.LinkByEndpoints(t.Context(), importedID, peerID, "blocks")
+	require.NoError(t, err)
+	assert.Equal(t, "fixture-author", link.Author)
+}
+
+// mergeCrossProjectLinkFixture merges one project into a target that already
+// holds the project its issue is linked to, and returns the merged store with
+// the local IDs of the imported issue and its peer.
+func mergeCrossProjectLinkFixture(t *testing.T) (db.Storage, int64, int64) {
+	t.Helper()
+	home := setupKataEnv(t)
+	ctx := t.Context()
+	source := openKataTestDB(t, filepath.Join(home, "source-links.db"))
+	importedProject, err := source.CreateProject(ctx, "spoke-project")
+	require.NoError(t, err)
+	peerProject, err := source.CreateProject(ctx, "hub-project")
+	require.NoError(t, err)
+	importedIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: importedProject.ID, Title: "imported issue", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	peerIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: peerProject.ID, Title: "peer issue", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	_, err = source.CreateLink(ctx, db.CreateLinkParams{
+		FromIssueID: importedIssue.ID, ToIssueID: peerIssue.ID,
+		Type: "blocks", Author: "fixture-author",
+	})
+	require.NoError(t, err)
+	var importedSnapshot, peerSnapshot bytes.Buffer
+	require.NoError(t, jsonl.Export(ctx, source, &importedSnapshot, jsonl.ExportOptions{
+		ProjectID: importedProject.ID, IncludeDeleted: true,
+	}))
+	require.NoError(t, jsonl.Export(ctx, source, &peerSnapshot, jsonl.ExportOptions{
+		ProjectID: peerProject.ID, IncludeDeleted: true,
+	}))
+	require.NoError(t, source.Close())
+
+	target := filepath.Join(home, "target-links.db")
+	targetStore := openKataTestDB(t, target)
+	require.NoError(t, jsonl.ImportWithOptions(ctx, bytes.NewReader(peerSnapshot.Bytes()), targetStore,
+		jsonl.ImportOptions{RequireFreshTarget: true}))
+	require.NoError(t, targetStore.Close())
+	input := filepath.Join(home, "spoke-links.jsonl")
+	require.NoError(t, os.WriteFile(input, importedSnapshot.Bytes(), 0o600))
+
+	_, err = runCmdOutput(t, nil, "import", "--merge", "--input", input, "--target", target)
+	require.NoError(t, err)
+
+	merged := openKataTestDB(t, target)
+	t.Cleanup(func() { _ = merged.Close() })
+	gotImported, err := merged.IssueByUID(ctx, importedIssue.UID, db.IncludeDeletedNo)
+	require.NoError(t, err)
+	gotPeer, err := merged.IssueByUID(ctx, peerIssue.UID, db.IncludeDeletedNo)
+	require.NoError(t, err)
+	return merged, gotImported.ID, gotPeer.ID
+}
+
+func TestImportRejectsExistingTargetSidecarWithoutForce(t *testing.T) {
+	_, input, target := setupImportTest(t)
+	require.NoError(t, os.WriteFile(target+"-wal", []byte("stale-wal"), 0o600))
+
+	_, err := runCmdOutput(t, nil, "import", "--input", input, "--target", target)
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "target already exists")
+
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "non-force import must not install beside stale sidecars")
+	gotWAL, readErr := os.ReadFile(target + "-wal") //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "stale-wal", string(gotWAL))
+}
+
+func TestInstallImportedTargetMovesTempSidecars(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.db")
+	tmpTarget := filepath.Join(dir, "imported.db")
+	require.NoError(t, os.WriteFile(tmpTarget, []byte("new-db"), 0o600))
+	require.NoError(t, os.WriteFile(tmpTarget+"-wal", []byte("new-wal"), 0o600))
+	require.NoError(t, os.WriteFile(tmpTarget+"-shm", []byte("new-shm"), 0o600))
+
+	require.NoError(t, installImportedTarget(tmpTarget, target))
+
+	gotTarget, readErr := os.ReadFile(target) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "new-db", string(gotTarget))
+	gotWAL, readErr := os.ReadFile(target + "-wal") //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "new-wal", string(gotWAL))
+	gotSHM, readErr := os.ReadFile(target + "-shm") //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "new-shm", string(gotSHM))
+	_, statErr := os.Stat(tmpTarget + "-wal")
+	assert.True(t, os.IsNotExist(statErr), "installed import must not leave wal sidecar at temp path")
+	_, statErr = os.Stat(tmpTarget + "-shm")
+	assert.True(t, os.IsNotExist(statErr), "installed import must not leave shm sidecar at temp path")
+}
+
+func TestImportForcePreservesExistingTargetOnFailure(t *testing.T) {
+	home := setupKataEnv(t)
+	input := filepath.Join(home, "bad.jsonl")
+	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
+	target := filepath.Join(home, "target.db")
+	ctx := t.Context()
+	d := openKataTestDB(t, target)
+	_, err := d.CreateProject(ctx, "existing")
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	_, err = runCmdOutput(t, nil, "import", "--force", "--input", input, "--target", target)
+	require.Error(t, err)
+
+	d = openKataTestDB(t, target)
+	t.Cleanup(func() { _ = d.Close() })
+	_, err = d.ProjectByName(ctx, "existing")
+	require.NoError(t, err)
+}
+
+func TestImportFailureRemovesNewPartialTarget(t *testing.T) {
+	home := setupKataEnv(t)
+	input := filepath.Join(home, "bad.jsonl")
+	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
+	target := filepath.Join(home, "target.db")
+
+	_, err := runCmdOutput(t, nil, "import", "--input", input, "--target", target)
+	require.Error(t, err)
+
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "failed import must not leave a partial target DB")
+}
+
+func TestMoveSQLiteFileSetRollsBackAlreadyMovedSidecarOnError(t *testing.T) {
+	dir := t.TempDir()
+	from := filepath.Join(dir, "from.db")
+	to := filepath.Join(dir, "to.db")
+	require.NoError(t, os.WriteFile(from+"-wal", []byte("wal"), 0o600))
+	require.NoError(t, os.WriteFile(from+"-shm", []byte("shm"), 0o600))
+	require.NoError(t, os.Mkdir(to+"-shm", 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(to+"-shm", "block"), []byte("x"), 0o600))
+
+	moved, err := moveSQLiteFileSet(from, to)
+	require.Error(t, err)
+	assert.True(t, moved)
+
+	gotWAL, readErr := os.ReadFile(from + "-wal") //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "wal", string(gotWAL))
+	gotSHM, readErr := os.ReadFile(from + "-shm") //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "shm", string(gotSHM))
+	_, statErr := os.Stat(to + "-wal")
+	assert.True(t, os.IsNotExist(statErr), "rolled back wal sidecar must not remain at destination")
+}
+
+func TestImportRefusesDaemon(t *testing.T) {
+	home, input, target := setupImportTest(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	require.NoError(t, d.Close())
+	addr, cleanup := pipeServer(t)
+	t.Cleanup(cleanup)
+	require.NoError(t, writeRuntimeFor(home, addr))
+
+	_, err := runCmdOutput(t, nil, "import", "--input", input, "--target", target)
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "daemon is running")
+	assert.NotContains(t, ce.Message, "--allow-running-daemon")
+}
+
+func writeExportFixture(t *testing.T, home string) string {
+	t.Helper()
+	srcPath := filepath.Join(home, "source.db")
+	src := openKataTestDB(t, srcPath)
+	p, err := src.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	_, _, err = src.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: p.ID,
+		Title:     "imported issue",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	var out bytes.Buffer
+	require.NoError(t, jsonl.Export(t.Context(), src, &out, jsonl.ExportOptions{IncludeDeleted: true}))
+	require.NoError(t, src.Close())
+	input := filepath.Join(home, "input.jsonl")
+	require.NoError(t, os.WriteFile(input, out.Bytes(), 0o600))
+	return input
+}
+
+func TestInstallImportedTargetDoesNotReplaceTargetCreatedAfterCheck(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.db")
+	tmpTarget := filepath.Join(dir, "imported.db")
+	require.NoError(t, os.WriteFile(tmpTarget, []byte("new-db"), 0o600))
+	// A file that appears at the target after the pre-install existence check
+	// must survive; moving the imported set uses no-replace publication.
+	require.NoError(t, os.WriteFile(target, []byte("concurrent-db"), 0o600))
+
+	_, err := moveSQLiteFileSet(tmpTarget, target)
+	require.ErrorIs(t, err, fs.ErrExist)
+
+	gotTarget, readErr := os.ReadFile(target) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "concurrent-db", string(gotTarget))
+	gotTmp, readErr := os.ReadFile(tmpTarget) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "new-db", string(gotTmp))
+}

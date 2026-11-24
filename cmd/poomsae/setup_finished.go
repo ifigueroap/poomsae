@@ -1,0 +1,44 @@
+package main
+
+import (
+	"context"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
+)
+
+func startSetupFinished(ctx context.Context, workers *daemonWorkerGroup, store db.Storage, reporter telemetry.Client) {
+	if reporter == nil || !reporter.Enabled() {
+		return
+	}
+	workers.Go(func() {
+		for ctx.Err() == nil {
+			if captureSetupFinished(ctx, store, reporter) {
+				return
+			}
+			timer := time.NewTimer(time.Minute)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+		}
+	})
+}
+
+func captureSetupFinished(ctx context.Context, store db.Storage, reporter telemetry.Client) bool {
+	pending, complete, err := store.PrepareSetupFinished(ctx, time.Now())
+	if err == nil && pending != nil && reporter.Enabled() {
+		sendCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		var status telemetry.Status
+		status, err = reporter.CaptureConfirmed(sendCtx, "setup_finished", nil, telemetry.Delivery{ID: pending.ID, Time: pending.Time})
+		if err == nil && status == telemetry.StatusDelivered {
+			err = store.CompleteSetupFinished(ctx, *pending)
+			complete = err == nil
+		}
+	}
+	return complete
+}

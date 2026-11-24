@@ -18,22 +18,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/connector/fakeconnector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/connector/fakeconnector"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestExternalRootBridgeEndToEnd(t *testing.T) {
 	executable := buildFakeConnector(t)
 	backends := []e2eBackend{{name: "sqlite", open: openSQLiteE2E}}
-	if dsn := strings.TrimSpace(os.Getenv("KATA_TEST_POSTGRES_DSN")); dsn != "" {
+	if dsn := strings.TrimSpace(os.Getenv("POOMSAE_TEST_POSTGRES_DSN")); dsn != "" {
 		backends = append(backends, e2eBackend{
 			name: "postgres",
 			open: func(t *testing.T) *e2eDatabase { return openPostgresE2E(t, dsn) },
@@ -107,11 +107,11 @@ func TestRecordedExternalSurfaceRejectsEmbeddedLongUIDsOnly(t *testing.T) {
 
 func TestRecordedExternalSurfaceRejectsForbiddenKataKeysInsideFieldValues(t *testing.T) {
 	for _, key := range []string{
-		"kata_uid", "kataUid", "kata-uid", "kata.uid",
-		"kata_ref", "kataRef", "kata-ref", "kata.ref",
-		"kata_project_id", "kataProjectId", "kata-project-id", "kata.project.id",
-		"kata_binding_id", "kataBindingId", "kata-binding-id", "kata.binding.id",
-		"kata_work_branch", "kataWorkBranch", "kata-work-branch", "kata.work.branch",
+		"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+		"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+		"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+		"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+		"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 	} {
 		params, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
@@ -242,9 +242,9 @@ func testE2ERestartInboundCompletion(t *testing.T, executable string, backend e2
 	assert.Equal(t, 1, reopened.ReopenRequests)
 	issue, err = h.database.store.IssueByID(t.Context(), issue.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "closed", issue.Status, "external lifecycle never reopens Kata")
+	assert.Equal(t, "closed", issue.Status, "external lifecycle never reopens Poomsae")
 	state = h.readState(t)
-	assert.Equal(t, "complete", state.Roots[0].Root.State, "verified Kata close re-completes an externally reopened root")
+	assert.Equal(t, "complete", state.Roots[0].Root.State, "verified Poomsae close re-completes an externally reopened root")
 	assert.Len(t, state.Roots, 1)
 	assertExternalCallsContainNoKataOrChildIdentity(
 		t, state,
@@ -378,7 +378,7 @@ func testE2EPendingPublication(t *testing.T, executable string, backend e2eBacke
 func testE2EPlanningFields(t *testing.T, executable string, backend e2eBackend) {
 	h := newE2EHarness(t, executable, backend, false)
 	_, err := h.service.MapField(t.Context(), MapFieldParams{
-		ConnectorInstance: "example", KataField: "scheduled_on", ExternalField: "field-schedule",
+		ConnectorInstance: "example", PoomsaeField: "scheduled_on", ExternalField: "field-schedule",
 	})
 	require.NoError(t, err)
 	first, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{Manual: true})
@@ -571,7 +571,7 @@ func closeStorage(store db.Storage) error {
 
 func openSQLiteE2E(t *testing.T) *e2eDatabase {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	open := func(ctx context.Context) (db.Storage, error) { return sqlitestore.Open(ctx, path) }
 	store, err := open(t.Context())
 	require.NoError(t, err)

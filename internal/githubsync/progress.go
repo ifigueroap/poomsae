@@ -3,7 +3,7 @@ package githubsync
 import (
 	"context"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // Progress retains the GitHub API while sharing one registry.

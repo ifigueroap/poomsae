@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 var (
@@ -104,7 +104,7 @@ type HubClient struct {
 
 // NewHubClient resolves only the selected catalog entry's authentication
 // policy. In particular, an empty token_env is an authentication error and
-// never falls back to KATA_AUTH_TOKEN or [auth].token.
+// never falls back to POOMSAE_AUTH_TOKEN or [auth].token.
 func NewHubClient(
 	ctx context.Context, catalog config.CatalogDaemonConfig,
 ) (*HubClient, error) {
@@ -186,7 +186,7 @@ func (c *HubClient) EnsureProject(
 		ReplayHorizonEventID:   enabled.ReplayHorizonEventID,
 		BaselineThroughEventID: enabled.BaselineThroughEventID,
 	}
-	if result.ID <= 0 || !katauid.Valid(result.UID) || result.Name == "" ||
+	if result.ID <= 0 || !poomsaeuid.Valid(result.UID) || result.Name == "" ||
 		result.ReplayHorizonEventID <= 0 ||
 		result.ID != project.ID ||
 		result.UID != project.UID ||
@@ -227,7 +227,7 @@ func (c *HubClient) resolveProject(ctx context.Context, name string) (projectRes
 		return projectResponse{}, hubError(ErrHubValidation, "resolve project", responseHTTP.StatusCode)
 	}
 	if response.Project.ID <= 0 ||
-		!katauid.Valid(response.Project.UID) ||
+		!poomsaeuid.Valid(response.Project.UID) ||
 		response.Project.Name == "" {
 		return projectResponse{}, hubError(ErrHubValidation, "resolve project", http.StatusOK)
 	}
@@ -251,7 +251,7 @@ func (c *HubClient) createProject(ctx context.Context, name, actor string) (proj
 		return projectResponse{}, hubError(ErrHubValidation, "create project", responseHTTP.StatusCode)
 	}
 	if response.Project.ID <= 0 ||
-		!katauid.Valid(response.Project.UID) ||
+		!poomsaeuid.Valid(response.Project.UID) ||
 		response.Project.Name == "" {
 		return projectResponse{}, hubError(ErrHubValidation, "create project", http.StatusOK)
 	}

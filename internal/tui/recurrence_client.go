@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // RecurrenceInput is one Repeat form save. Recurrence is the recurrence the
 // form read (nil when the issue had none) and IssueRevision the issue revision
 // it read: a start is guarded on the issue's revision, a change on
 // the recurrence's. Zone is the zone as typed; blank takes the recurrence's
-// zone, then the issue's, then the caller's own, as kata schedule does.
+// zone, then the issue's, then the caller's own, as poomsae schedule does.
 type RecurrenceInput struct {
 	recurrenceclient.Terms
 	IssueRevision int64
@@ -26,7 +26,7 @@ type recurrenceAPI interface {
 }
 
 // SaveRecurrence starts, changes, or stops the recurrence of an issue through
-// the same shared logic as kata schedule --repeat. The daemon validates the
+// the same shared logic as poomsae schedule --repeat. The daemon validates the
 // rule; its refusal comes back as the error.
 func (c *Client) SaveRecurrence(ctx context.Context, projectID int64, ref string, in RecurrenceInput) (*MutationResp, error) {
 	apiClient, err := c.generatedClient()

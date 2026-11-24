@@ -6,9 +6,9 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
 )
 
 // A document close validates and freezes the current reference in its mutation

@@ -2,28 +2,28 @@
   import RecurrenceDeleteDialog from './RecurrenceDeleteDialog.svelte'
   import RecurrenceEditorDialog from './RecurrenceEditorDialog.svelte'
   import type {
-    KataCreateRecurrenceInput,
-    KataPatchRecurrenceInput,
-    KataRecurrence,
-    KataTaskDetail,
-  } from '../lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaePatchRecurrenceInput,
+    PoomsaeRecurrence,
+    PoomsaeTaskDetail,
+  } from '../lib/poomsae/types'
 
   interface Props {
-    selectedIssue: KataTaskDetail | null
-    recurrences: readonly KataRecurrence[]
+    selectedIssue: PoomsaeTaskDetail | null
+    recurrences: readonly PoomsaeRecurrence[]
     actor: string
     disabled?: boolean | undefined
     draftFenceGeneration?: number | undefined
-    onCreate: (projectID: number, input: KataCreateRecurrenceInput) => Promise<void>
+    onCreate: (projectID: number, input: PoomsaeCreateRecurrenceInput) => Promise<void>
     // Edit and stop are offered only where a caller passes these.
     onPatch?:
       | ((
-          recurrence: KataRecurrence,
-          input: KataPatchRecurrenceInput,
+          recurrence: PoomsaeRecurrence,
+          input: PoomsaePatchRecurrenceInput,
           etag: string,
         ) => Promise<void>)
       | undefined
-    onDelete?: ((recurrence: KataRecurrence) => Promise<void>) | undefined
+    onDelete?: ((recurrence: PoomsaeRecurrence) => Promise<void>) | undefined
   }
 
   let {
@@ -40,13 +40,13 @@
   let recurrenceDialog = $state<
     | { open: false; mode: 'create'; recurrence: null; etag: '' }
     | { open: true; mode: 'create'; recurrence: null; etag: '' }
-    | { open: true; mode: 'edit'; recurrence: KataRecurrence; etag: string }
+    | { open: true; mode: 'edit'; recurrence: PoomsaeRecurrence; etag: string }
   >({ open: false, mode: 'create', recurrence: null, etag: '' })
   // `changed` marks a rule that moved to a newer revision while its stop
   // dialog was open; Stop stays off until the user acknowledges the new rule.
   let recurrenceDelete = $state<{
     open: boolean
-    recurrence: KataRecurrence | null
+    recurrence: PoomsaeRecurrence | null
     changed?: boolean
   }>({
     open: false,
@@ -78,7 +78,7 @@
     recurrenceDialog = { open: true, mode: 'create', recurrence: null, etag: '' }
   }
 
-  export function openEditRecurrence(recurrence: KataRecurrence): void {
+  export function openEditRecurrence(recurrence: PoomsaeRecurrence): void {
     if (disabled || !onPatch) return
     recurrenceDialog = {
       open: true,
@@ -88,7 +88,7 @@
     }
   }
 
-  export function openDeleteRecurrence(recurrence: KataRecurrence): void {
+  export function openDeleteRecurrence(recurrence: PoomsaeRecurrence): void {
     if (disabled || !onDelete) return
     deleteError = ''
     recurrenceDelete = { open: true, recurrence }
@@ -101,7 +101,7 @@
 
   // A delete conflict (412) reloads the recurrence list; without reconciling,
   // the open delete dialog would retry with the stale revision forever.
-  export function reconcileRecurrences(recurrences: readonly KataRecurrence[]): void {
+  export function reconcileRecurrences(recurrences: readonly PoomsaeRecurrence[]): void {
     const target = recurrenceDelete.recurrence
     if (!recurrenceDelete.open || !target) return
     const fresh = recurrences.find((item) => item.uid === target.uid)

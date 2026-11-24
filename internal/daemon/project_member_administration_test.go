@@ -6,11 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 // Project administration follows project access: a principal that can see a
@@ -28,7 +28,7 @@ func TestProjectAccessMemberAdministration(t *testing.T) {
 						status, _, body := f.request(t, http.MethodPost,
 							project+"/issues/"+f.issue.ShortID+"/actions/purge", actor,
 							map[string]string{"actor": actor},
-							map[string]string{"X-Kata-Confirm": "PURGE " + f.private.Name + "#" + f.issue.ShortID})
+							map[string]string{"X-Poomsae-Confirm": "PURGE " + f.private.Name + "#" + f.issue.ShortID})
 						return status, body
 					case "rename":
 						status, _, body := f.request(t, http.MethodPatch, project, actor,
@@ -112,7 +112,7 @@ func TestProjectAccessArchivedProjectAdministration(t *testing.T) {
 		})
 		require.NoError(t, err)
 		purge := fmt.Sprintf("/api/v1/projects/%d/actions/purge", f.private.ID)
-		confirm := map[string]string{"X-Kata-Confirm": "PURGE " + f.private.Name}
+		confirm := map[string]string{"X-Poomsae-Confirm": "PURGE " + f.private.Name}
 		status, _, body = f.request(t, http.MethodPost, purge, "nonmember",
 			map[string]string{"actor": "nonmember"}, confirm)
 		require.Equal(t, http.StatusNotFound, status, string(body))
@@ -256,7 +256,7 @@ func TestProjectAccessGatewayAllowsPrincipalWithNoHiddenProjects(t *testing.T) {
 		require.Equal(t, http.StatusOK, status, string(body))
 		assert.Contains(t, string(body), "remote-example")
 		status, _, body = f.request(t, http.MethodGet, "/api/v1/ui/proxy/api/v1/ui/snapshot", "member", nil,
-			map[string]string{"X-Kata-Web-Daemon": "remote-example"})
+			map[string]string{"X-Poomsae-Web-Daemon": "remote-example"})
 		assert.NotEqual(t, http.StatusForbidden, status, string(body))
 		assert.Equal(t, 1, snapshots, "the gateway forwards the member's read")
 
@@ -264,7 +264,7 @@ func TestProjectAccessGatewayAllowsPrincipalWithNoHiddenProjects(t *testing.T) {
 		require.Equal(t, http.StatusOK, status, string(body))
 		assert.NotContains(t, string(body), "remote-example", "a principal with hidden projects keeps the restriction")
 		status, _, body = f.request(t, http.MethodGet, "/api/v1/ui/proxy/api/v1/ui/snapshot", "nonmember", nil,
-			map[string]string{"X-Kata-Web-Daemon": "remote-example"})
+			map[string]string{"X-Poomsae-Web-Daemon": "remote-example"})
 		assert.Equal(t, http.StatusForbidden, status, string(body))
 		assert.Equal(t, 1, snapshots, "the restricted read never reaches the target")
 	})

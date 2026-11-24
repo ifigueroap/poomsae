@@ -11,7 +11,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 type authCapabilitiesMsg struct {
@@ -189,7 +189,7 @@ func (m Model) openCloseForm(target formTarget, attachments []closeAttachment) M
 	return m
 }
 
-func dispatchLegacyClose(apiClient KataAPI, target formTarget, actor string) tea.Cmd {
+func dispatchLegacyClose(apiClient PoomsaeAPI, target formTarget, actor string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

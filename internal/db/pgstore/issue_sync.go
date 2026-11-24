@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const issueSyncBindingSelect = `SELECT b.id, b.project_id, b.provider, b.source_key,

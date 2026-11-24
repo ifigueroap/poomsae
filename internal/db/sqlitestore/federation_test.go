@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 func TestFederationSchemaVersionAndTable(t *testing.T) {
@@ -1123,9 +1123,9 @@ func assertClaimProjectionCounts(ctx context.Context, t *testing.T, d *sqlitesto
 
 func TestFederationTokenHash(t *testing.T) {
 	t.Parallel()
-	got := db.FederationTokenHash("kata-federation-token")
+	got := db.FederationTokenHash("poomsae-federation-token")
 
-	assert.Equal(t, "4260028b25f27cdfc5555050688678320f251c8f9a02ca473d4309ffe3e53947", got)
+	assert.Equal(t, "bce7215bf8ad39c7b22d1fe66c89180efd6a842f55a03bd9237e79ea019f33e4", got)
 	assert.Len(t, got, 64)
 }
 
@@ -5282,7 +5282,7 @@ type federationSnapshotPayload struct {
 
 func newTestUID(t *testing.T) string {
 	t.Helper()
-	v, err := katauid.New()
+	v, err := poomsaeuid.New()
 	require.NoError(t, err)
 	return v
 }

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // projectAccessReleaseStore runs a concurrent change at the precise point a
@@ -176,7 +176,7 @@ func TestProjectAccessPurgeRechecksCurrentProjectInTransaction(t *testing.T) {
 		})
 		status, _, body := f.request(t, http.MethodPost,
 			fmt.Sprintf("/api/v1/projects/%d/issues/%s/actions/purge", f.private.ID, f.issue.ShortID), "member",
-			map[string]any{"actor": "member"}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("PURGE %s#%s", f.private.Name, f.issue.ShortID)})
+			map[string]any{"actor": "member"}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("PURGE %s#%s", f.private.Name, f.issue.ShortID)})
 		assert.Equal(t, http.StatusNotFound, status, string(body))
 		kept, err := store.IssueByID(t.Context(), f.issue.ID)
 		require.NoError(t, err, "the moved issue survives the refused purge")

@@ -3,8 +3,8 @@ package dbtest
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkCommentEventExportAfterTargetDeletion(t *testing.T, target db.Storage, backend Backend) error {

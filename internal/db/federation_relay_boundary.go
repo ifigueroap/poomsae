@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/notification"
 )
 
 // RelayEventPeerProjects resolves the projects named by a source event.

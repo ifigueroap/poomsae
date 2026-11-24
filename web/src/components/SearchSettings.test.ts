@@ -244,13 +244,13 @@ describe('SearchSettings', () => {
   })
 
   test.each([
-    [true, undefined, true, "Couldn't reconnect. Run kata daemon status, then reopen kata ui."],
-    [false, undefined, false, "Couldn't reconnect. Run kata daemon status."],
+    [true, undefined, true, "Couldn't reconnect. Run poomsae daemon status, then reopen poomsae ui."],
+    [false, undefined, false, "Couldn't reconnect. Run poomsae daemon status."],
     [
       false,
       'daemon.example',
       true,
-      "Couldn't reconnect. Run kata daemon status on daemon.example.",
+      "Couldn't reconnect. Run poomsae daemon status on daemon.example.",
     ],
   ])(
     'gives observing admin=%s host=%s recovery guidance',
@@ -521,7 +521,7 @@ describe('SearchSettings', () => {
         screen.getByText(
           remoteHost
             ? `Restart the server on ${remoteHost} to finish.`
-            : 'Restart the server to finish: run kata daemon restart. If this server uses a custom home, set KATA_HOME to it first.',
+            : 'Restart the server to finish: run poomsae daemon restart. If this server uses a custom home, set POOMSAE_HOME to it first.',
         ),
       ).not.toBeNull()
       expect(screen.queryByRole('button', { name: 'Restart server…' })).toBeNull()

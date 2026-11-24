@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestMCPDiscoveryPagination(t *testing.T) {
@@ -37,7 +37,7 @@ func TestMCPDiscoveryPagination(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = env.DB.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: foreign.ID, Title: "foreign needle", Author: "example-agent"})
 	require.NoError(t, err)
-	client, err := kataclient.NewWithHTTPClient(env.URL, env.HTTP)
+	client, err := poomsaeclient.NewWithHTTPClient(env.URL, env.HTTP)
 	require.NoError(t, err)
 	bound, err := NewBoundScope(ProjectIdentity{ID: p.ID, UID: p.UID, Name: p.Name})
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestMCPDiscoveryPagination(t *testing.T) {
 			seen := map[string]bool{}
 			for i := 0; i < tc.count; i++ {
 				args := map[string]any{"limit": 1, "include_total": true, "cursor": cursor}
-				result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.list", Arguments: args})
+				result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: args})
 				require.NoError(t, err)
 				require.False(t, result.IsError, "%s", mustJSON(t, result))
 				var page struct {
@@ -81,11 +81,11 @@ func TestMCPDiscoveryPagination(t *testing.T) {
 				}
 			}
 			require.Len(t, seen, tc.count)
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.list", Arguments: map[string]any{"priority_unset": true, "project": p.Name, "include_total": true}})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: map[string]any{"priority_unset": true, "project": p.Name, "include_total": true}})
 			require.NoError(t, err)
 			require.False(t, result.IsError, "%s", mustJSON(t, result))
 			require.Equal(t, float64(1), result.StructuredContent.(map[string]any)["total"])
-			result, err = session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.list", Arguments: map[string]any{"priority_unset": true, "priority": 0}})
+			result, err = session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: map[string]any{"priority_unset": true, "priority": 0}})
 			require.NoError(t, err)
 			require.True(t, result.IsError)
 		})
@@ -94,7 +94,7 @@ func TestMCPDiscoveryPagination(t *testing.T) {
 	cursor := ""
 	seen := map[string]bool{}
 	for i := range 6 {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "needle", "mode": "lexical", "limit": 1, "cursor": cursor}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "needle", "mode": "lexical", "limit": 1, "cursor": cursor}})
 		require.NoError(t, err)
 		require.False(t, result.IsError, "%s", mustJSON(t, result))
 		page := result.StructuredContent.(map[string]any)
@@ -126,7 +126,7 @@ func TestMCPDiscoveryRejectsOldDaemon(t *testing.T) {
 }
 
 func TestMCPListSchemaPaginationConstraints(t *testing.T) {
-	schema, err := inputSchemaFor[ListInput]("kata.list").Resolve(nil)
+	schema, err := inputSchemaFor[ListInput]("poomsae.list").Resolve(nil)
 	require.NoError(t, err)
 	require.NoError(t, schema.Validate(map[string]any{"sort": "oldest", "priority_unset": true}))
 	require.Error(t, schema.Validate(map[string]any{"sort": "updated"}))

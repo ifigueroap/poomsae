@@ -9,12 +9,12 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type unavailableFormerOriginStore struct{ db.Storage }
@@ -28,7 +28,7 @@ func TestLegacyAttachmentReadDoesNotRequireFormerOrigins(t *testing.T) {
 		t.Run(state, func(t *testing.T) {
 			vault := docbanktest.New(t)
 			version := uuid.MustParse(linkVersion)
-			vault.Seed("/kata/file.pdf", docbank.Node{ID: 42, Name: "file.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("fixture")})
+			vault.Seed("/poomsae/file.pdf", docbank.Node{ID: 42, Name: "file.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("fixture")})
 			env := testenv.New(t, func(cfg *daemon.ServerConfig) {
 				cfg.DB = unavailableFormerOriginStore{Storage: cfg.DB}
 				cfg.Docbank = docbank.NewClient(vault.Server.URL, func() (string, error) { return "test-key", nil })

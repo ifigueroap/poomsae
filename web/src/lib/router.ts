@@ -25,9 +25,9 @@ interface RouteBase {
   filters: ShareableFilters
 }
 
-export type KataRoute =
+export type PoomsaeRoute =
   | (RouteBase & {
-      kind: 'kata'
+      kind: 'poomsae'
       view?: SystemView | DaemonView
       section?: SettingsSection
       projectUID?: string
@@ -42,7 +42,7 @@ export type KataRoute =
       searchRef?: string
     }
 
-export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRoute {
+export function parseRoute(url: URL, routePath = applicationRoutePath()): PoomsaeRoute {
   const filters = parseFilters(url.searchParams)
   if (normalizeRoutePath(url.pathname) !== normalizeRoutePath(routePath)) {
     return { kind: 'route-error', path: url.pathname, reason: 'path' }
@@ -51,7 +51,7 @@ export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRo
   if (view === 'credentials' || view === 'settings') {
     const section = url.searchParams.get('section')
     return {
-      kind: 'kata',
+      kind: 'poomsae',
       view,
       ...(view === 'settings' && isSettingsSection(section) ? { section } : {}),
       graph: false,
@@ -70,7 +70,7 @@ export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRo
     (scope || issue.includes('#'))
   ) {
     return {
-      kind: 'kata',
+      kind: 'poomsae',
       ...(normalizedView ? { view: normalizedView } : {}),
       link: { ...(scope ? { scope } : {}), issue },
       graph: url.searchParams.get('graph') === '1',
@@ -83,7 +83,7 @@ export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRo
   }
   const issueUID = issue?.trim()
   if (issueUID && !validUID(issueUID)) {
-    const routeError: Extract<KataRoute, { kind: 'route-error' }> = {
+    const routeError: Extract<PoomsaeRoute, { kind: 'route-error' }> = {
       kind: 'route-error',
       path: url.pathname + url.search,
       reason: 'issue_uid',
@@ -92,7 +92,7 @@ export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRo
     return routeError
   }
   return {
-    kind: 'kata',
+    kind: 'poomsae',
     ...(normalizedView ? { view: normalizedView } : {}),
     ...(projectUID ? { projectUID } : {}),
     ...(issueUID ? { issueUID } : {}),
@@ -101,7 +101,7 @@ export function parseRoute(url: URL, routePath = applicationRoutePath()): KataRo
   }
 }
 
-export function serializeRoute(route: KataRoute, routePath = applicationRoutePath()): string {
+export function serializeRoute(route: PoomsaeRoute, routePath = applicationRoutePath()): string {
   if (route.kind === 'route-error') return route.path
   const query = new URLSearchParams()
   if (route.view) query.set('view', route.view)
@@ -156,7 +156,7 @@ export function validUID(value: string): boolean {
   return /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(value)
 }
 
-export function screenNameForRoute(route: KataRoute): string | undefined {
+export function screenNameForRoute(route: PoomsaeRoute): string | undefined {
   if (route.kind === 'route-error') return undefined
   if (route.view === 'credentials' || route.view === 'settings') return route.view
   if (route.issueUID) return route.graph ? 'graph' : 'issue'

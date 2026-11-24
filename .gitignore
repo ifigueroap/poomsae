@@ -1,6 +1,6 @@
 # Build artifacts
-/kata
-/kata.exe
+/poomsae
+/poomsae.exe
 /dist/
 /release-artifacts/
 /site/
@@ -13,7 +13,7 @@ coverage.out
 /gotestsum/
 
 # Local data dir for manual testing
-/.kata/
+/.poomsae/
 /.cache/golangci-lint/
 /.venv/
 /docs/.venv/
@@ -30,7 +30,7 @@ __pycache__/
 /web/coverage/
 /web/playwright-report/
 /web/test-results/
-/.kata-web-dev/
+/.poomsae-web-dev/
 
 # Git worktrees
 /.worktrees/
@@ -51,6 +51,7 @@ __pycache__/
 *.swp
 *~
 .DS_Store
+.poomsae.local.toml
 .kata.local.toml
 # roborev snapshots
 /.roborev/

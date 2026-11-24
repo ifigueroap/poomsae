@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 // All notification pointers admitted by the token remain visible, regardless
 // of recipient count or how many comments share the same issue.
 func checkNotificationStreamReferences(t *testing.T, count uint8, distinct, previous bool) {
 	t.Helper()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -141,7 +141,7 @@ func TestNotificationStreamRechecksTargetsInARepeatedImportEvent(t *testing.T) {
 // hidden from a scoped reader and linked to one the reader can see, the
 // reader's view of readiness changes, so the reader must reload.
 func TestHiddenRepeatedImportEventResetsAScopedReader(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const importMappingSelect = `SELECT id, source, external_id, object_type, project_id,

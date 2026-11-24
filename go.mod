@@ -1,4 +1,4 @@
-module go.kenn.io/kata
+module github.com/ifigueroap/poomsae
 
 go 1.27.4
 

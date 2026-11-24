@@ -6,9 +6,9 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
 )
 
 // R1/R4: enrolling an explicitly shared populated project must include its

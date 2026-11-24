@@ -27,12 +27,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER spins up a daemon
-// bound to TCP loopback under one KATA_HOME, then runs a client
-// subprocess in a separate KATA_HOME and workspace pointed at that
-// daemon via KATA_SERVER. Exercises init/create/list/close end-to-end
+// TestRemoteClient_DaemonOnTCPClientViaPOOMSAE_SERVER spins up a daemon
+// bound to TCP loopback under one POOMSAE_HOME, then runs a client
+// subprocess in a separate POOMSAE_HOME and workspace pointed at that
+// daemon via POOMSAE_SERVER. Exercises init/create/list/close end-to-end
 // and asserts the client never auto-started a local daemon.
-func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
+func TestRemoteClient_DaemonOnTCPClientViaPOOMSAE_SERVER(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
@@ -44,15 +44,15 @@ func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
 	port := freeTCPPort(t)
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
-	// Server-side state: its own KATA_HOME, runs the daemon.
+	// Server-side state: its own POOMSAE_HOME, runs the daemon.
 	serverHome := t.TempDir()
 
 	daemonStderr := &safeBuffer{}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	daemon := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground", "--listen", addr) //nolint:gosec
 	daemon.Env = append(os.Environ(),
-		"KATA_HOME="+serverHome,
-		"KATA_DB="+filepath.Join(serverHome, "kata.db"),
+		"POOMSAE_HOME="+serverHome,
+		"POOMSAE_DB="+filepath.Join(serverHome, "poomsae.db"),
 	)
 	daemon.Stdout = io.Discard
 	daemon.Stderr = daemonStderr
@@ -68,15 +68,15 @@ func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
 	// Wait for /api/v1/ping to answer on the bound address.
 	waitForPing(t, "http://"+addr, 5*time.Second)
 
-	// Client-side state: separate KATA_HOME, separate workspace.
+	// Client-side state: separate POOMSAE_HOME, separate workspace.
 	clientHome := t.TempDir()
 	clientWS := initRepo(t, "https://github.com/wesm/system.git")
 
 	clientEnv := append(os.Environ(),
-		"KATA_HOME="+clientHome,
-		"KATA_DB="+filepath.Join(clientHome, "kata.db"),
-		"KATA_SERVER=http://"+addr,
-		"KATA_AUTHOR=e2e-bot",
+		"POOMSAE_HOME="+clientHome,
+		"POOMSAE_DB="+filepath.Join(clientHome, "poomsae.db"),
+		"POOMSAE_SERVER=http://"+addr,
+		"POOMSAE_AUTHOR=e2e-bot",
 	)
 
 	// init through the remote.
@@ -84,7 +84,7 @@ func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
 
 	// create an issue.
 	runRemoteCmd(t, bin, clientWS, clientEnv,
-		"create", "hello from remote", "--body", "via KATA_SERVER")
+		"create", "hello from remote", "--body", "via POOMSAE_SERVER")
 
 	// list and confirm the issue is in the SERVER's DB. Capture the
 	// short_id so we can close the issue without relying on a fixed
@@ -107,7 +107,7 @@ func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
 		"--message", "Implemented the remote close round-trip and confirmed it ran.",
 		"--evidence", "commit:abc1234")
 
-	// Critical assertion: the client KATA_HOME has no runtime files.
+	// Critical assertion: the client POOMSAE_HOME has no runtime files.
 	// If a local daemon had been auto-started on the client side,
 	// we'd find a daemon.<pid>.json under <clientHome>/runtime/<dbhash>/.
 	clientRuntime := filepath.Join(clientHome, "runtime")
@@ -115,7 +115,7 @@ func TestRemoteClient_DaemonOnTCPClientViaKATA_SERVER(t *testing.T) {
 }
 
 // TestRemoteInit_PathFreeWireShape spins up a daemon on TCP, slots a
-// recording reverse-proxy in front of it, and runs `kata init`
+// recording reverse-proxy in front of it, and runs `poomsae init`
 // through the proxy. It asserts the on-the-wire request body so we
 // know the daemon never receives a client filesystem path — that's
 // what makes init work when client and daemon are on different
@@ -134,8 +134,8 @@ func TestRemoteInit_PathFreeWireShape(t *testing.T) {
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	daemon := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground", "--listen", addr) //nolint:gosec
 	daemon.Env = append(os.Environ(),
-		"KATA_HOME="+serverHome,
-		"KATA_DB="+filepath.Join(serverHome, "kata.db"),
+		"POOMSAE_HOME="+serverHome,
+		"POOMSAE_DB="+filepath.Join(serverHome, "poomsae.db"),
 	)
 	daemon.Stdout = io.Discard
 	daemon.Stderr = daemonStderr
@@ -177,17 +177,17 @@ func TestRemoteInit_PathFreeWireShape(t *testing.T) {
 	clientHome := t.TempDir()
 	clientWS := initRepo(t, "https://github.com/wesm/system.git")
 	clientEnv := append(os.Environ(),
-		"KATA_HOME="+clientHome,
-		"KATA_DB="+filepath.Join(clientHome, "kata.db"),
-		"KATA_SERVER="+recorder.URL,
-		"KATA_AUTHOR=e2e-bot",
+		"POOMSAE_HOME="+clientHome,
+		"POOMSAE_DB="+filepath.Join(clientHome, "poomsae.db"),
+		"POOMSAE_SERVER="+recorder.URL,
+		"POOMSAE_AUTHOR=e2e-bot",
 	)
 
 	runRemoteCmd(t, bin, clientWS, clientEnv, "init")
 
 	mu.Lock()
 	defer mu.Unlock()
-	require.Len(t, bodies, 1, "kata init should issue exactly one POST /api/v1/projects")
+	require.Len(t, bodies, 1, "poomsae init should issue exactly one POST /api/v1/projects")
 	body := bodies[0]
 	assert.Contains(t, body, `"name":"system"`,
 		"client must send the locally-derived project name")
@@ -195,15 +195,15 @@ func TestRemoteInit_PathFreeWireShape(t *testing.T) {
 	assert.NotContains(t, body, "start_path",
 		"remote init must not leak the client filesystem path to the daemon")
 
-	// .kata.toml must be written on the client side, not the daemon's KATA_HOME.
-	assert.FileExists(t, filepath.Join(clientWS, ".kata.toml"))
+	// .poomsae.toml must be written on the client side, not the daemon's POOMSAE_HOME.
+	assert.FileExists(t, filepath.Join(clientWS, ".poomsae.toml"))
 }
 
 // TestRemoteResolve_PathFreeWireShape is the regression e2e for issue
-// #35. After kata init binds a workspace, every subsequent project-
+// #35. After poomsae init binds a workspace, every subsequent project-
 // scoped command (list, show, create, …) goes through
 // POST /api/v1/projects/resolve. The wire shape must stay path-free
-// — {name, alias?} when .kata.toml is committed — so a client on host
+// — {name, alias?} when .poomsae.toml is committed — so a client on host
 // B can resolve against a daemon on host A without the daemon stat'ing
 // a path that doesn't exist on its filesystem.
 func TestRemoteResolve_PathFreeWireShape(t *testing.T) {
@@ -219,8 +219,8 @@ func TestRemoteResolve_PathFreeWireShape(t *testing.T) {
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	daemon := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground", "--listen", addr) //nolint:gosec
 	daemon.Env = append(os.Environ(),
-		"KATA_HOME="+serverHome,
-		"KATA_DB="+filepath.Join(serverHome, "kata.db"),
+		"POOMSAE_HOME="+serverHome,
+		"POOMSAE_DB="+filepath.Join(serverHome, "poomsae.db"),
 	)
 	daemon.Stdout = io.Discard
 	daemon.Stderr = daemonStderr
@@ -260,23 +260,23 @@ func TestRemoteResolve_PathFreeWireShape(t *testing.T) {
 	clientHome := t.TempDir()
 	clientWS := initRepo(t, "https://github.com/wesm/system.git")
 	clientEnv := append(os.Environ(),
-		"KATA_HOME="+clientHome,
-		"KATA_DB="+filepath.Join(clientHome, "kata.db"),
-		"KATA_SERVER="+recorder.URL,
-		"KATA_AUTHOR=e2e-bot",
+		"POOMSAE_HOME="+clientHome,
+		"POOMSAE_DB="+filepath.Join(clientHome, "poomsae.db"),
+		"POOMSAE_SERVER="+recorder.URL,
+		"POOMSAE_AUTHOR=e2e-bot",
 	)
 
-	// Bind the workspace first; init writes .kata.toml.
+	// Bind the workspace first; init writes .poomsae.toml.
 	runRemoteCmd(t, bin, clientWS, clientEnv, "init")
-	require.FileExists(t, filepath.Join(clientWS, ".kata.toml"))
+	require.FileExists(t, filepath.Join(clientWS, ".poomsae.toml"))
 
-	// list goes through resolve. With .kata.toml present, the request
+	// list goes through resolve. With .poomsae.toml present, the request
 	// must carry {name, alias} and never start_path.
 	runRemoteCmd(t, bin, clientWS, clientEnv, "list")
 
 	mu.Lock()
 	defer mu.Unlock()
-	require.NotEmpty(t, resolveBodies, "kata list must issue POST /api/v1/projects/resolve")
+	require.NotEmpty(t, resolveBodies, "poomsae list must issue POST /api/v1/projects/resolve")
 	body := resolveBodies[0]
 	assert.Contains(t, body, `"name":"system"`,
 		"client must send the locally-derived project name")
@@ -324,7 +324,7 @@ func waitForPing(t *testing.T, base string, timeout time.Duration) {
 	t.Fatalf("daemon at %s did not answer /api/v1/ping within %s", base, timeout)
 }
 
-// runRemoteCmd runs a kata subcommand and asserts success, dumping
+// runRemoteCmd runs a poomsae subcommand and asserts success, dumping
 // combined output on failure for debugging.
 func runRemoteCmd(t *testing.T, bin, workdir string, env []string, args ...string) {
 	t.Helper()
@@ -332,10 +332,10 @@ func runRemoteCmd(t *testing.T, bin, workdir string, env []string, args ...strin
 	cmd.Dir = workdir
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	require.NoErrorf(t, err, "kata %s: %s", strings.Join(args, " "), out)
+	require.NoErrorf(t, err, "poomsae %s: %s", strings.Join(args, " "), out)
 }
 
-// runRemoteCmdOutput runs a kata subcommand, returns combined output,
+// runRemoteCmdOutput runs a poomsae subcommand, returns combined output,
 // and asserts success.
 func runRemoteCmdOutput(t *testing.T, bin, workdir string, env []string, args ...string) string {
 	t.Helper()
@@ -343,7 +343,7 @@ func runRemoteCmdOutput(t *testing.T, bin, workdir string, env []string, args ..
 	cmd.Dir = workdir
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	require.NoErrorf(t, err, "kata %s: %s", strings.Join(args, " "), out)
+	require.NoErrorf(t, err, "poomsae %s: %s", strings.Join(args, " "), out)
 	return string(out)
 }
 

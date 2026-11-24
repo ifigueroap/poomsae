@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import type { KataProjectSummary, KataTaskSearchFilters } from '../lib/kata/types'
+import type { PoomsaeProjectSummary, PoomsaeTaskSearchFilters } from '../lib/poomsae/types'
 import IssueFilters from './IssueFilters.svelte'
 
-const filters: KataTaskSearchFilters = {
+const filters: PoomsaeTaskSearchFilters = {
   scope: { kind: 'all' },
   status: 'open',
   owner: '',
@@ -16,8 +16,8 @@ afterEach(cleanup)
 
 describe('IssueFilters', () => {
   test('emits compact search and filter control changes', async () => {
-    const changes: KataTaskSearchFilters[] = []
-    const onChange = vi.fn((next: KataTaskSearchFilters) => {
+    const changes: PoomsaeTaskSearchFilters[] = []
+    const onChange = vi.fn((next: PoomsaeTaskSearchFilters) => {
       changes.push(next)
     })
 
@@ -115,8 +115,8 @@ describe('IssueFilters', () => {
   })
 
   test('keeps fast filter edits when parent state has not rerendered yet', async () => {
-    const changes: KataTaskSearchFilters[] = []
-    const onChange = vi.fn((next: KataTaskSearchFilters) => {
+    const changes: PoomsaeTaskSearchFilters[] = []
+    const onChange = vi.fn((next: PoomsaeTaskSearchFilters) => {
       changes.push(next)
     })
 
@@ -166,7 +166,7 @@ describe('IssueFilters', () => {
   })
 })
 
-const projects: KataProjectSummary[] = [
+const projects: PoomsaeProjectSummary[] = [
   {
     id: 1,
     uid: 'project-workspace',

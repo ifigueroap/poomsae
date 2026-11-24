@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/notification"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/notification"
 )
 
 func TestNotifyRelayPreservesSourceActor(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
 		ctx := t.Context()
 		credentials := newReplicaCredentialStore()

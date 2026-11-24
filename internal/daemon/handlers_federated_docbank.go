@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 func authorizeDocbankService(ctx context.Context, cfg ServerConfig, in api.DocbankServiceRequest, capabilities, operation string) (context.Context, db.Project, federationPrincipal, error) {

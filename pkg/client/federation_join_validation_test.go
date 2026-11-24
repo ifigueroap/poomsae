@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // Required JSON string properties may be present but empty: a legacy grant can

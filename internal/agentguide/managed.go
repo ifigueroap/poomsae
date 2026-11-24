@@ -7,8 +7,8 @@ import (
 
 // Managed markers are shared by both modes so switching replaces one owned span.
 const (
-	BlockBegin = "<!-- BEGIN KATA (managed by `kata init --with-agents`) -->"
-	BlockEnd   = "<!-- END KATA -->"
+	BlockBegin = "<!-- BEGIN POOMSAE (managed by `poomsae init --with-agents`) -->"
+	BlockEnd   = "<!-- END POOMSAE -->"
 )
 
 // ManagedBlock returns exact managed text, without a final separator newline.
@@ -25,7 +25,7 @@ func ManagedBlock(mode string) (string, error) {
 	return BlockBegin + "\n" + text + BlockEnd, nil
 }
 
-// UpsertManagedBlock updates only one unambiguous Kata span. Stray, reversed or
+// UpsertManagedBlock updates only one unambiguous Poomsae span. Stray, reversed or
 // duplicate markers are conflicts, never guessed replacement boundaries.
 func UpsertManagedBlock(content, block string) (string, error) {
 	begins, ends := strings.Count(content, BlockBegin), strings.Count(content, BlockEnd)
@@ -42,7 +42,7 @@ func UpsertManagedBlock(content, block string) (string, error) {
 	}
 	begin, end := strings.Index(content, BlockBegin), strings.Index(content, BlockEnd)
 	if begins != 1 || ends != 1 || end < begin {
-		return "", fmt.Errorf("agent guidance file has malformed or duplicate Kata markers; expected one %q followed by one %q", BlockBegin, BlockEnd)
+		return "", fmt.Errorf("agent guidance file has malformed or duplicate Poomsae markers; expected one %q followed by one %q", BlockBegin, BlockEnd)
 	}
 	end += len(BlockEnd)
 	return content[:begin] + block + content[end:], nil

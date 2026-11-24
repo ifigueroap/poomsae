@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // PlaneSyncConfig pins daemon-owned API credentials and user-facing links to
@@ -24,7 +24,7 @@ var planeTokenEnvPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func NormalizePlaneSyncConfig(c PlaneSyncConfig) (PlaneSyncConfig, error) {
 	c.TokenEnv = strings.TrimSpace(c.TokenEnv)
 	if c.TokenEnv == "" {
-		c.TokenEnv = "KATA_PLANE_TOKEN"
+		c.TokenEnv = "POOMSAE_PLANE_TOKEN"
 	}
 	if !planeTokenEnvPattern.MatchString(c.TokenEnv) {
 		return PlaneSyncConfig{}, errors.New("plane_sync.token_env must be a valid environment variable name")

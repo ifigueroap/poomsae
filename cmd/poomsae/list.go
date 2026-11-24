@@ -1,0 +1,413 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"io"
+	"runtime"
+	"strings"
+
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+)
+
+func newListCmd() *cobra.Command {
+	var status string
+	var sortOrder, cursor string
+	var priorityUnset, includeTotal bool
+	var limit int
+	var priority int
+	var maxPriority int
+	var unowned bool
+	var owner string
+	var labels []string
+	var noLabels []string
+	var meta []string
+	var all bool
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "list issues with filters (default: open, this project)",
+		Long: `List issues in the bound project (or --project). Defaults to open issues,
+most recently updated first, at most 200 rows. --all lists every active
+project, newest created first, with no default row limit.
+--meta key or key=value filters metadata, for example work.attention=stuck.
+For what to work on next, use poomsae ready or poomsae next instead.`,
+		Example: `  poomsae list --agent
+  poomsae list --status all --label bug --owner alice --agent
+  poomsae list --meta work.attention=stuck --all --agent`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if sortOrder != "" && sortOrder != "oldest" && sortOrder != "created" {
+				return &cliError{Message: "--sort must be oldest or created", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if priorityUnset && (cmd.Flags().Changed("priority") || cmd.Flags().Changed("max-priority")) {
+				return &cliError{Message: "--priority-unset is mutually exclusive with --priority and --max-priority", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if cursor != "" && sortOrder == "" {
+				return &cliError{Message: "--cursor requires --sort oldest or created", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if limit < 0 {
+				return &cliError{Message: "--limit must be non-negative", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if cmd.Flags().Changed("priority") && (priority < 0 || priority > 4) {
+				return &cliError{Message: "--priority must be between 0 and 4", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if cmd.Flags().Changed("max-priority") && (maxPriority < 0 || maxPriority > 4) {
+				return &cliError{Message: "--max-priority must be between 0 and 4", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if unowned && owner != "" {
+				return &cliError{Message: "--unowned and --owner are mutually exclusive", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if all && (strings.TrimSpace(flags.Project) != "" || strings.TrimSpace(flags.Workspace) != "") {
+				return &cliError{Message: "--all is mutually exclusive with --project and --workspace", Kind: kindUsage, ExitCode: ExitUsage}
+			}
+			ctx := cmd.Context()
+			ctx, baseURL, err := ensureDaemonContext(ctx)
+			if err != nil {
+				return err
+			}
+			client, err := httpClientFor(ctx, baseURL)
+			if err != nil {
+				return err
+			}
+			if cursor != "" || includeTotal || priorityUnset || sortOrder == "created" {
+				if err := requireDaemonAPIVersion(ctx, client, baseURL, apiVersionDiscoveryPagination, "paginated list"); err != nil {
+					return err
+				}
+			} else if sortOrder != "" {
+				if err := requireDaemonAPIVersion(ctx, client, baseURL, apiVersionListSort, "list --sort"); err != nil {
+					return err
+				}
+			}
+			if all && (unowned || owner != "" || len(labels) > 0 || len(noLabels) > 0 || len(meta) > 0) {
+				if err := requireDaemonAPIVersion(ctx, client, baseURL,
+					apiVersionGlobalListFilters, "filtered list --all"); err != nil {
+					return err
+				}
+			}
+			// "all" is a CLI sentinel meaning "no filter"; the server expects
+			// an empty status to return both open and closed.
+			apiStatus := status
+			if apiStatus == "all" {
+				apiStatus = ""
+			}
+			requestLimit := limit
+			if all && !cmd.Flags().Changed("limit") {
+				requestLimit = 0
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+			if err != nil {
+				return err
+			}
+			params := &generated.ListIssuesQuery{Status: new(generated.ListIssuesQueryStatus(apiStatus)), Label: labels, ExcludeLabel: noLabels, Meta: meta}
+			if cursor != "" {
+				params.Cursor = &cursor
+			}
+			if includeTotal {
+				params.IncludeTotal = &includeTotal
+			}
+			if priorityUnset {
+				params.Priority = new("none")
+			}
+			if requestLimit > 0 {
+				params.Limit = new(int64(requestLimit))
+			}
+			if sortOrder != "" {
+				params.Sort = new(generated.ListIssuesQuerySort(sortOrder))
+			}
+			var allSort *generated.ListAllIssuesQuerySort
+			if sortOrder != "" {
+				allSort = new(generated.ListAllIssuesQuerySort(sortOrder))
+			}
+			if cmd.Flags().Changed("priority") {
+				params.Priority = new(fmt.Sprint(priority))
+			}
+			if cmd.Flags().Changed("max-priority") {
+				params.MaxPriority = new(fmt.Sprint(maxPriority))
+			}
+			if unowned {
+				params.Unowned = &unowned
+			}
+			if owner != "" {
+				params.Owner = &owner
+			}
+			var empty bool
+			var countProjectID *int64
+			allQuery := generated.ListAllIssuesQuery{
+				Status: new(generated.ListAllIssuesQueryStatus(apiStatus)), Priority: params.Priority, MaxPriority: params.MaxPriority,
+				Limit: params.Limit, Sort: allSort, Cursor: params.Cursor, IncludeTotal: params.IncludeTotal, Unowned: params.Unowned, Owner: params.Owner, Label: labels, ExcludeLabel: noLabels, Meta: meta,
+			}
+			var bs []byte
+			if all {
+				response, callErr := apiClient.ListAllIssuesWithResponse(ctx, &generated.ListAllIssuesRequestOptions{Query: &allQuery})
+				if err := externalCLITransportError(response, callErr); err != nil {
+					return err
+				}
+				if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+					return err
+				}
+				bs = response.Body
+				empty = response.JSON200 != nil && len(response.JSON200.Issues) == 0
+			} else {
+				start, err := resolveStartPath(flags.Workspace)
+				if err != nil {
+					return err
+				}
+				pid, err := resolveProjectID(ctx, baseURL, start)
+				if err != nil {
+					return err
+				}
+				countProjectID = &pid
+				response, callErr := apiClient.ListIssuesWithResponse(ctx, &generated.ListIssuesRequestOptions{
+					PathParams: &generated.ListIssuesPath{ProjectID: pid}, Query: params,
+				})
+				if err := externalCLITransportError(response, callErr); err != nil {
+					return err
+				}
+				if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+					return err
+				}
+				bs = response.Body
+				empty = response.JSON200 != nil && len(response.JSON200.Issues) == 0
+			}
+			opposite := map[string]string{"open": "closed", "closed": "open"}[status]
+			if empty && cursor == "" && opposite != "" && (!flags.Quiet || currentOutputMode() == outputJSON) {
+				probe := allQuery
+				probe.ProjectID, probe.Status, probe.Limit, probe.IncludeTotal = countProjectID, new(generated.ListAllIssuesQueryStatus(opposite)), new(int64(1)), new(true)
+				count, err := apiClient.ListAllIssuesWithResponse(ctx, &generated.ListAllIssuesRequestOptions{Query: &probe})
+				if err == nil && count.JSON200 != nil && count.JSON200.Total != nil && *count.JSON200.Total > 0 {
+					commands, err := retryCommand(cmd, "list", []string{"--status", "all"}, []string{"all", "sort", "limit", "include-total",
+						"priority", "max-priority", "priority-unset", "unowned", "owner", "label", "no-label", "meta"})
+					if err != nil {
+						return err
+					}
+					next := commands.POSIX
+					if runtime.GOOS == "windows" {
+						next = commands.PowerShell
+					}
+					message := fmt.Sprintf("no %s issues; %d %s; see %s", status, *count.JSON200.Total, opposite, next)
+					// The count applies the same filters, so it says nothing about
+					// issues outside them.
+					if params.Priority != nil || params.MaxPriority != nil || unowned || owner != "" || len(labels)+len(noLabels)+len(meta) > 0 {
+						message = fmt.Sprintf("no %s issues match the filters; %d %s match; see %s", status, *count.JSON200.Total, opposite, next)
+					}
+					if bs, err = reportHint(cmd, bs, cliHint{Code: "excluded_" + opposite, Message: message, Next: next}); err != nil {
+						return err
+					}
+				}
+			}
+			mode := currentOutputMode()
+			if mode == outputJSON {
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			}
+			var b struct {
+				Complete   *bool  `json:"complete"`
+				NextCursor string `json:"next_cursor"`
+				Total      *int64 `json:"total"`
+				Issues     []struct {
+					ShortID     string   `json:"short_id"`
+					QualifiedID string   `json:"qualified_id"`
+					ProjectName string   `json:"project_name"`
+					Title       string   `json:"title"`
+					Status      string   `json:"status"`
+					Owner       *string  `json:"owner"`
+					Priority    *int64   `json:"priority"`
+					Revision    int64    `json:"revision"`
+					Labels      []string `json:"labels"`
+					Blocked     bool     `json:"blocked"`
+					Parent      *struct {
+						QualifiedID string `json:"qualified_id"`
+					} `json:"parent"`
+				} `json:"issues"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if mode == outputAgent {
+				out := cmd.OutOrStdout()
+				header := fmt.Sprintf("OK list count=%d", len(b.Issues))
+				if b.Complete != nil {
+					header += fmt.Sprintf(" complete=%t", *b.Complete)
+				}
+				if b.NextCursor != "" {
+					header += " next_cursor=" + agentValue(b.NextCursor)
+				}
+				if b.Total != nil {
+					header += fmt.Sprintf(" total=%d", *b.Total)
+				}
+				if _, err := fmt.Fprintln(out, header); err != nil {
+					return err
+				}
+				for _, i := range b.Issues {
+					ref := i.ShortID
+					if all {
+						ref = i.QualifiedID
+					}
+					if err := writeAgentKVRow(out,
+						agentRowField("issue", ref),
+						agentRowField("status", i.Status),
+						agentRowIntField("priority", i.Priority),
+						agentOptionalRowField("owner", i.Owner),
+						agentRowListField("labels", i.Labels),
+						agentRowField("title", i.Title),
+						agentRowField("revision", fmt.Sprint(i.Revision)),
+					); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			// Show owner in parens to match ready's convention. Owner
+			// is the actionable identity ("who's responsible") whereas
+			// author is historical metadata; mixing the two between
+			// list and ready confused users (hammer-test finding #10).
+			// Unowned issues render as "(unowned)" so the trailing
+			// "(...)" cell is never empty.
+			rows := make([]issueRow, len(b.Issues))
+			// Tree keys are qualified ids: parent links can cross
+			// projects, and a bare short_id is only unique per project.
+			keys := make([]string, len(b.Issues))
+			parents := make([]string, len(b.Issues))
+			for idx, i := range b.Issues {
+				owner := "unowned"
+				if i.Owner != nil && *i.Owner != "" {
+					owner = *i.Owner
+				}
+				rows[idx] = issueRow{
+					ID:       i.ShortID,
+					Title:    i.Title,
+					Owner:    owner,
+					Priority: i.Priority,
+					Status:   i.Status,
+					Blocked:  i.Blocked,
+					Labels:   i.Labels,
+				}
+				if all {
+					rows[idx].ID = i.QualifiedID
+				}
+				keys[idx] = i.QualifiedID
+				if i.Parent != nil {
+					parents[idx] = i.Parent.QualifiedID
+				}
+			}
+			if sortOrder == "" {
+				rows = treeRows(rows, keys, parents)
+			}
+			renderer := newRowRenderer(cmd.OutOrStdout())
+			if err := renderer.renderRows(cmd.OutOrStdout(), rows); err != nil {
+				return err
+			}
+			// Older daemons omit completeness; retain their bounded-list hint.
+			truncated := requestLimit > 0 && len(b.Issues) == requestLimit
+			if b.Complete != nil {
+				truncated = !*b.Complete
+			}
+
+			if !flags.Quiet && len(rows) > 0 {
+				if err := renderer.renderListFooter(cmd.OutOrStdout(), rows, truncated); err != nil {
+					return err
+				}
+			}
+			// Truncation hint: print to stderr so pipelines stay clean
+			// (poomsae list | grep ...). Quiet suppresses it.
+			if !flags.Quiet && truncated {
+				if _, err := fmt.Fprintf(cmd.ErrOrStderr(),
+					"... showing %d (raise --limit to see more)\n", requestLimit); err != nil {
+					return err
+				}
+			}
+			if !flags.Quiet && b.NextCursor != "" {
+				if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "next_cursor=%s\n", b.NextCursor); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&cursor, "cursor", "", "continue a creation-sorted list with the same filters")
+	cmd.Flags().BoolVar(&includeTotal, "include-total", false, "include the matching count in JSON and agent output")
+	cmd.Flags().BoolVar(&priorityUnset, "priority-unset", false, "only issues with no priority; excludes --priority and --max-priority")
+	cmd.Flags().StringVar(&status, "status", "open", "filter by status: open|closed|all")
+	cmd.Flags().StringVar(&sortOrder, "sort", "", "sort by creation: oldest (ascending) or created (descending); human output is flat")
+	cmd.Flags().IntVar(&limit, "limit", 200, "max rows (0 = no limit; --all defaults to 0)")
+	cmd.Flags().BoolVar(&all, "all", false, "list issues across all non-archived projects")
+	cmd.Flags().IntVar(&priority, "priority", 0, "exact priority filter (0..4); 0 = highest")
+	cmd.Flags().IntVar(&maxPriority, "max-priority", 0, "include only priority <= this value (0..4); excludes unset")
+	cmd.Flags().BoolVar(&unowned, "unowned", false, "only issues with no owner")
+	cmd.Flags().StringVar(&owner, "owner", "", "only issues owned by this actor")
+	cmd.Flags().StringSliceVar(&labels, "label", nil, "only issues with this label (repeatable, AND logic)")
+	cmd.Flags().StringSliceVar(&noLabels, "no-label", nil, "exclude issues with this label (repeatable)")
+	cmd.Flags().StringArrayVar(&meta, "meta", nil,
+		"filter by metadata key or key=value (repeatable, AND logic)")
+	return cmd
+}
+
+type agentField struct {
+	name  string
+	value *string
+}
+
+func agentRowField(name, value string) agentField {
+	return agentField{name: name, value: &value}
+}
+
+func agentOptionalRowField(name string, value *string) agentField {
+	if value == nil || *value == "" {
+		return agentField{name: name}
+	}
+	return agentField{name: name, value: value}
+}
+
+func agentRowIntField(name string, value *int64) agentField {
+	if value == nil {
+		return agentField{name: name}
+	}
+	s := fmt.Sprint(*value)
+	return agentField{name: name, value: &s}
+}
+
+func agentRowFloatField(name string, value float64) agentField {
+	s := fmt.Sprintf("%.2f", value)
+	return agentField{name: name, value: &s}
+}
+
+func agentRowListField(name string, values []string) agentField {
+	if len(values) == 0 {
+		return agentField{name: name}
+	}
+	s := strings.Join(values, ",")
+	return agentField{name: name, value: &s}
+}
+
+func writeAgentKVRow(w io.Writer, fields ...agentField) error {
+	return writeAgentFieldLine(w, "-", fields...)
+}
+
+// writeAgentOKLine emits the agent success header for command followed by
+// its key=value fields, so the first token is always OK.
+func writeAgentOKLine(w io.Writer, command string, fields ...agentField) error {
+	return writeAgentFieldLine(w, "OK "+command, fields...)
+}
+
+func writeAgentFieldLine(w io.Writer, lead string, fields ...agentField) error {
+	if _, err := fmt.Fprint(w, lead); err != nil {
+		return err
+	}
+	for _, f := range fields {
+		if f.value == nil {
+			continue
+		}
+		if _, err := fmt.Fprintf(w, " %s=%s", f.name, agentValue(*f.value)); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintln(w)
+	return err
+}

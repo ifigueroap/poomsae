@@ -10,8 +10,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // Local writes and federated materialization share SQLite's single writer.
@@ -224,7 +224,7 @@ func TestReconcileDueNotificationInvalidRecipientDoesNotWaitForWriter(t *testing
 	for _, recipient := range []string{"valid", "author", "owner"} {
 		t.Run(recipient, func(t *testing.T) {
 			ctx := t.Context()
-			store, err := Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+			store, err := Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, store.Close()) })
 			project, err := store.CreateProject(ctx, "unaddressable-project")

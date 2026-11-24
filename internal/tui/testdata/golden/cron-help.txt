@@ -1,18 +1,18 @@
- Project: example-project                                       kata カタ · dev
-kata カタ [jobs] runs workflows
+ Project: example-project                                    poomsae カタ · dev
+poomsae カタ [jobs] runs workflows
 
 A job is a schedule plus an action.
 A workflow is a named list of steps jobs can run.
 A run records what the executor reports and which version of the job or workflow
 it used.
-kata cron --help shows creation examples.
+poomsae cron --help shows creation examples.
 
 Cron keys
 j/k    move
 ↵/l    open
 /      filter
 n/e    new/edit
-h/esc  kata
+h/esc  poomsae
 r      refresh
 1-4    tabs
 ?      help

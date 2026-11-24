@@ -1,0 +1,713 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestCloseReopen_RoundTrip(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	out := runCLI(t, env, dir, "close", ref,
+		"--reason", "wontfix",
+		"--message", "Decided not to fix this; it doesn't match the current product direction.")
+	assert.Contains(t, out, "closed")
+	assert.Contains(t, out, "Reminder:")
+
+	out = runCLI(t, env, dir, "reopen", ref)
+	assert.Contains(t, out, "open")
+	assert.NotContains(t, out, "Reminder:")
+}
+
+func TestClose_AgentOutput(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	out := runCLI(t, env, dir, "--agent", "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+
+	assert.Regexp(t, `(?m)^OK close \S+`, out)
+	assert.Contains(t, out, "Status: closed")
+	assert.Contains(t, out, "Reason: done")
+	assert.Contains(t, out, "Evidence: commit:abc1234")
+	assert.Contains(t, out, "Reminder:")
+}
+
+func TestClose_AgentOutputExternalEvidence(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "coordination task")
+	account := "arranged by email with the venue; calendar hold sent"
+
+	out := runCLI(t, env, dir, "--agent", "close", ref,
+		"--done",
+		"--message", "Arranged the meeting by email and sent the calendar hold.",
+		"--evidence", "external:"+account)
+
+	assert.Contains(t, out, "Status: closed")
+	assert.Contains(t, out, `Evidence: "external:`+account+`"`)
+
+	audit := runCLI(t, env, dir, "audit", "closes", "--json")
+	assert.Contains(t, audit, `"evidence_types":["external"]`)
+}
+
+func TestCloseCmd_RetryFlagsReplayOriginalReceipt(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	args := []string{
+		"--json", "close", ref,
+		"--done",
+		"--message", "Implemented the requested behavior and ran the focused tests.",
+		"--test", "go test ./cmd/poomsae",
+		"--idempotency-key", "close-request-1",
+		"--if-match", "1",
+	}
+	first := runCLI(t, env, dir, args...)
+	assert.Contains(t, first, `"changed":true`)
+
+	second := runCLI(t, env, dir, args...)
+	assert.Contains(t, second, `"changed":false`)
+	assert.Contains(t, second, `"reused":true`)
+	assert.Contains(t, second, `"original_event":`)
+}
+
+func TestCloseCmd_RejectsBlankIfMatch(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--done",
+		"--message", "Implemented the requested behavior and ran the focused tests.",
+		"--test", "go test ./cmd/poomsae",
+		"--if-match", "")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "--if-match must not be blank")
+}
+
+func TestCloseCmd_RejectsBlankIdempotencyKey(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--wontfix",
+		"--message", "Reviewed the request and recorded why the work should stop here.",
+		"--idempotency-key", "   ")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "--idempotency-key must not be blank")
+
+	show := runCLI(t, env, dir, "show", ref, "--json")
+	assert.Contains(t, show, `"status":"open"`)
+}
+
+func TestClose_AgentDryRunSuppressesHumanBanner(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	stdout, stderr, err := runCLIWithErr(t, env, dir, "--agent", "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234",
+		"--dry")
+
+	require.NoError(t, err)
+	assert.Regexp(t, `(?m)^OK close \S+`, stdout)
+	assert.NotContains(t, stdout, "Reminder:")
+	assert.Empty(t, stderr)
+}
+
+func TestReopen_AgentOutput(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	runCLI(t, env, dir, "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+
+	resetFlags(t)
+	out := runCLI(t, env, dir, "--agent", "reopen", ref)
+
+	assert.Regexp(t, `(?m)^OK reopen \S+`, out)
+	assert.Contains(t, out, "Status: open")
+}
+
+func TestCloseCmd_CanonicalDoneRequiresEvidence(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--reason", "done",
+		"--message", "Fixed Safari callback double-submit and ran tests.")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "evidence required")
+}
+
+func TestCloseCmd_CanonicalDoneWithCommitEvidence(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	out := runCLI(t, env, dir,
+		"close", ref,
+		"--reason", "done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--evidence", "commit:abc1234")
+	assert.Contains(t, out, "closed")
+}
+
+func TestCloseCmd_SugarDoneWithCommit(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	out := runCLI(t, env, dir,
+		"close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+	assert.Contains(t, out, "closed")
+}
+
+// TestCloseCmd_SugarEvidenceFlagsAreRepeatable pins that every repeated
+// --pr, --commit, and --test value becomes its own evidence item, so work
+// fixed by two pull requests records both instead of only the last one.
+func TestCloseCmd_SugarEvidenceFlagsAreRepeatable(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	out := runCLI(t, env, dir, "--json", "close", ref,
+		"--done",
+		"--message", "Fixed by two pull requests; both merged and the tests pass.",
+		"--pr", "https://example.com/pull/1", "--pr", "https://example.com/pull/2",
+		"--commit", "abc1234", "--commit", "def5678",
+		"--test", "go test ./a", "--test", "go test ./b")
+
+	var response struct {
+		Event struct {
+			Payload string `json:"payload"`
+		} `json:"event"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &response))
+	var payload struct {
+		Evidence []api.Evidence `json:"evidence"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(response.Event.Payload), &payload))
+	assert.ElementsMatch(t, []api.Evidence{
+		{Type: api.EvidencePR, URL: "https://example.com/pull/1"},
+		{Type: api.EvidencePR, URL: "https://example.com/pull/2"},
+		{Type: api.EvidenceCommit, SHA: "abc1234"},
+		{Type: api.EvidenceCommit, SHA: "def5678"},
+		{Type: api.EvidenceTest, Command: "go test ./a"},
+		{Type: api.EvidenceTest, Command: "go test ./b"},
+	}, payload.Evidence)
+}
+
+// TestCloseCmd_SugarEmptyPRRejected pins that an empty --pr value fails the
+// close even when other evidence is valid, instead of being silently dropped.
+func TestCloseCmd_SugarEmptyPRRejected(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, _, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234",
+		"--pr", "")
+	_ = requireCLIError(t, err, ExitValidation)
+}
+
+func TestCloseCmd_SugarDuplicateOf(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	target := createIssue(t, env, pid, "target")
+	out := runCLI(t, env, dir,
+		"close", ref,
+		"--duplicate-of", target,
+		"--message", "Same Safari race; merge there.")
+	assert.Contains(t, out, "closed")
+}
+
+func TestCloseCmd_SugarConflictsWithCanonical(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--reason", "done", "--done",
+		"--message", "Fixed it.",
+		"--evidence", "commit:abc1234")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "conflict")
+}
+
+// TestCloseCmd_MultipleSugarFlagsRejected pins that combining two reason
+// sugar flags (e.g. --done --wontfix) is refused with a clear conflict
+// error rather than silently picking the first match in source order.
+func TestCloseCmd_MultipleSugarFlagsRejected(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--done", "--wontfix",
+		"--message", "Fixed it.",
+		"--commit", "abc1234")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "conflict")
+	assert.Contains(t, stderr, "done")
+	assert.Contains(t, stderr, "wontfix")
+}
+
+func TestCloseCmd_SugarDuplicateEvidenceConflict(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	target := createIssue(t, env, pid, "target")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--duplicate-of", target,
+		"--evidence", "duplicate-of:"+target,
+		"--message", "Same Safari race; merge there.")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "conflict")
+}
+
+func TestParseEvidenceFlags_RejectsEmptyDuplicateOf(t *testing.T) {
+	_, err := parseEvidenceFlags([]string{"duplicate-of:"})
+	require.Error(t, err)
+}
+
+func TestParseEvidenceFlags_RejectsEmptySupersededBy(t *testing.T) {
+	_, err := parseEvidenceFlags([]string{"superseded-by:"})
+	require.Error(t, err)
+}
+
+func TestParseEvidenceFlags_RejectsDuplicateReviewedPath(t *testing.T) {
+	_, err := parseEvidenceFlags([]string{
+		"reviewed-paths:internal/foo.go",
+		"reviewed-paths:internal/foo.go",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate path")
+}
+
+func TestCloseCmd_SugarReviewedAndCanonicalReviewedPathConflict(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--audit-no-change",
+		"--message", "Reviewed and concluded no change is needed for this path.",
+		"--evidence", "no-change-audit:metadata-only",
+		"--reviewed", "internal/foo.go",
+		"--evidence", "reviewed-paths:internal/foo.go")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "duplicate path")
+}
+
+// TestCloseCmd_EvidenceValueWithCommaIsPreserved pins that --evidence
+// values containing commas survive cobra's flag parser intact. cobra's
+// StringSliceVar would split "no-change-audit:Reviewed schemas, queries,
+// and migrations" into three broken evidence items; the audit row's
+// stored evidence must reflect the original prose.
+func TestCloseCmd_EvidenceValueWithCommaIsPreserved(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	runCLI(t, env, dir,
+		"close", ref,
+		"--audit-no-change",
+		"--message", "Reviewed; comma-laden rationale should round-trip cleanly through cobra parsing.",
+		"--evidence", "no-change-audit:Reviewed schemas, queries, and migrations")
+
+	show := runCLI(t, env, dir, "show", ref, "--json")
+	assert.Contains(t, show, `"status":"closed"`,
+		"comma-bearing --evidence value must not be split into invalid sub-items")
+}
+
+func TestCloseCmd_DryRunDoesNotMutate(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	out := runCLI(t, env, dir,
+		"close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234",
+		"--comment", "finished",
+		"--dry")
+	assert.Contains(t, out, "dry-run")
+	assert.Contains(t, out, "[open]")
+
+	show := runCLI(t, env, dir, "show", ref, "--json")
+	assert.Contains(t, show, `"status":"open"`)
+	got := fetchIssueViaHTTPWithComments(t, env, pid, ref)
+	assert.Empty(t, got.Comments)
+}
+
+func TestCloseCmd_RejectsDryRunSpelling(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	_, stderr, err := runCLIWithErr(t, env, dir,
+		"close", ref,
+		"--done",
+		"--message", "Fixed the issue and recorded evidence.",
+		"--commit", "abc1234",
+		"--dry-run")
+	require.Error(t, err)
+	assert.Contains(t, stderr, "unknown flag: --dry-run")
+
+	show := runCLI(t, env, dir, "show", ref, "--json")
+	assert.Contains(t, show, `"status":"open"`)
+}
+
+// TestCloseCmd_AlreadyClosedIsIdempotent pins that a second close on an
+// already-closed issue is a no-op: it returns successfully without
+// triggering 429 throttles or 409 parent-completeness refusals based on
+// current state. The close handler short-circuits before running the
+// structural guards once the issue is in the target state.
+//
+// To prove the short-circuit really skips the guards, the test stages a
+// scenario where the parent-close completeness guard WOULD fire on a
+// fresh attempt: the parent is closed first, then a child is created
+// after that close (linking back via --parent). Re-closing the parent
+// would normally 409 with "open children", but the already-closed
+// short-circuit must surface success instead. Shape validation still
+// runs, so the retry uses a different valid reason+message to verify
+// the short-circuit isn't gated on matching prior inputs.
+func TestCloseCmd_AlreadyClosedIsIdempotent(t *testing.T) {
+	env, dir, _, parent := setupWorkspaceWithIssue(t, "parent issue")
+	runCLI(t, env, dir, "close", parent, "--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+	// Link an OPEN child to the (now closed) parent. A fresh close of
+	// the parent would trip CheckParentCloseCompleteness and 409.
+	runCLI(t, env, dir, "create", "open child of closed parent", "--parent", parent)
+
+	// Second close attempt with a different reason and well-formed
+	// message. If the short-circuit broke and the guard ran, this would
+	// fail with "open children" 409.
+	out := runCLI(t, env, dir, "close", parent, "--wontfix",
+		"--message", "Decided not to pursue this after further architectural review of the trade-offs.")
+	assert.Contains(t, out, "closed")
+
+	// Status remains closed; the original close-reason is preserved.
+	show := runCLI(t, env, dir, "show", parent, "--json")
+	assert.Contains(t, show, `"status":"closed"`)
+}
+
+// TestCloseCmd_AlreadyClosed_RetryWithInvalidPayloadStillIdempotent pins
+// that the already-closed short-circuit runs BEFORE substance / evidence
+// validation. A retry that omits --message and --evidence (e.g., a
+// caller replaying a stale request after a connection drop) must still
+// surface success because the issue is already in the target state.
+// Pre-fix the validator ran first and returned 400 even though no state
+// transition was on the table.
+func TestCloseCmd_AlreadyClosed_RetryWithInvalidPayloadStillIdempotent(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	runCLI(t, env, dir, "close", ref, "--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+
+	// Retry with empty message and no evidence. A first close with this
+	// payload would 400 — but the issue is already closed, so the
+	// handler must short-circuit ahead of ValidateCloseInput.
+	out := runCLI(t, env, dir, "close", ref, "--done")
+	assert.Contains(t, out, "closed",
+		"already-closed retry with invalid payload must return success envelope")
+}
+
+func TestCloseCmd_HelpBannerNamesObligation(t *testing.T) {
+	out := string(executeRoot(t, newRootCmd(), "close", "--help"))
+	assert.Contains(t, out, "asserts that the work it describes is complete")
+	assert.Contains(t, out, "do not close it")
+	assert.Contains(t, out, "needs-review")
+}
+
+func TestCloseCmd_ErrorTextNamesAlternative(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	for _, tc := range []struct {
+		name, message, errorText string
+	}{
+		{"missing evidence", "Fixed Safari callback double-submit and ran tests.", "evidence required"},
+		{"trivial message", "done", "trivial"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, stderr, err := runCLIWithErr(t, env, dir,
+				"close", ref, "--done", "--message", tc.message)
+			require.Error(t, err)
+			assert.Contains(t, stderr, tc.errorText)
+			assert.NotContains(t, stderr, "edit <ref> --label")
+		})
+	}
+}
+
+// TestCloseAPI_TUISourceBypassesSubstanceAndEvidence pins that an
+// owner-local close posted with source="tui" succeeds without --message
+// or --evidence, so the interactive close keystroke isn't broken by the
+// CLI substance/evidence gate. Posts directly to the loopback daemon
+// endpoint to mirror the wire shape internal/tui/client.Close uses.
+func TestCloseAPI_TUISourceBypassesSubstanceAndEvidence(t *testing.T) {
+	env, _, pid, ref := setupWorkspaceWithIssue(t, "issue one")
+	body, err := json.Marshal(map[string]any{
+		"actor":  "alice",
+		"source": "tui",
+	})
+	require.NoError(t, err)
+	req, reqErr := http.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("%s/api/v1/projects/%d/issues/%s/actions/close", env.URL, pid, ref), bytes.NewReader(body))
+	require.NoError(t, reqErr)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	bs, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode, "TUI close must succeed: %s", bs)
+}
+
+// TestCloseAPI_TUISourceWithNonDoneReasonStillValidates pins the
+// scope of the source="tui" bypass: only reason="done" is exempt
+// from substance / evidence validation. A caller setting
+// source="tui" with reason="duplicate" or "superseded" must still
+// pass the evidence-target check — otherwise an agent could forge
+// the TUI origin to skip the duplicate-of / superseded-by guard and
+// persist a corrupt audit row.
+func TestCloseAPI_TUISourceWithNonDoneReasonStillValidates(t *testing.T) {
+	env, _, pid, ref := setupWorkspaceWithIssue(t, "issue one")
+	body, err := json.Marshal(map[string]any{
+		"actor":  "agent",
+		"source": "tui",
+		"reason": "duplicate",
+		// Deliberately omit duplicate-of evidence; the daemon must
+		// refuse rather than bypass validation on the TUI claim.
+	})
+	require.NoError(t, err)
+	req, reqErr := http.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("%s/api/v1/projects/%d/issues/%s/actions/close", env.URL, pid, ref), bytes.NewReader(body))
+	require.NoError(t, reqErr)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	bs, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 400, resp.StatusCode,
+		"source=tui with reason=duplicate must still require duplicate-of evidence: %s", bs)
+}
+
+// TestCloseAPI_NonTUIRequiresSubstance is the symmetric guard: without
+// source="tui", an empty message must surface as 400 validation.
+func TestCloseAPI_NonTUIRequiresSubstance(t *testing.T) {
+	env, _, pid, ref := setupWorkspaceWithIssue(t, "issue one")
+	body, err := json.Marshal(map[string]any{
+		"actor": "alice",
+	})
+	require.NoError(t, err)
+	req, reqErr := http.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("%s/api/v1/projects/%d/issues/%s/actions/close", env.URL, pid, ref), bytes.NewReader(body))
+	require.NoError(t, reqErr)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	bs, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 400, resp.StatusCode,
+		"agent close without substance must be refused: %s", bs)
+}
+
+// TestReopen_SingleRefWorks pins that poomsae reopen <ref> reopens a single
+// closed issue back to open.
+func TestReopen_SingleRefWorks(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "issue one")
+	runCLI(t, env, dir, "close", ref, "--done",
+		"--message", "Closed first issue after thorough review.",
+		"--commit", "abc1234")
+
+	out := runCLI(t, env, dir, "reopen", ref)
+	assert.Contains(t, out, "open")
+
+	show := runCLI(t, env, dir, "show", ref, "--json")
+	assert.Contains(t, show, `"status":"open"`)
+}
+
+func TestClose_WithComment_AppendsComment(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+
+	runCLI(t, env, dir, "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234",
+		"--comment", "fixed in abc1234")
+
+	got := fetchIssueViaHTTPWithComments(t, env, pid, ref)
+	require.Len(t, got.Comments, 1, "close --comment must append exactly one comment")
+	assert.Equal(t, "fixed in abc1234", got.Comments[0].Body)
+	assert.Equal(t, "closed", got.Issue.Status)
+}
+
+func TestClose_RetryWithCommentAppendsOneComment(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	args := []string{
+		"close", ref,
+		"--done",
+		"--message", "Implemented the requested behavior and ran the focused tests.",
+		"--test", "go test ./cmd/poomsae",
+		"--comment", "fixed in abc1234",
+		"--idempotency-key", "close-request-with-comment-1",
+	}
+	runCLI(t, env, dir, args...)
+	runCLI(t, env, dir, args...)
+
+	got := fetchIssueViaHTTPWithComments(t, env, pid, ref)
+	require.Len(t, got.Comments, 1)
+	assert.Equal(t, "fixed in abc1234", got.Comments[0].Body)
+}
+
+func TestClose_RetryWithCommentAfterMoveAppendsOneComment(t *testing.T) {
+	env, dir, sourceProjectID, ref := setupWorkspaceWithIssue(t, "test issue")
+	args := []string{
+		"close", ref,
+		"--done",
+		"--message", "Implemented the requested behavior and ran the focused tests.",
+		"--test", "go test ./cmd/poomsae",
+		"--comment", "fixed in abc1234",
+		"--idempotency-key", "close-request-with-comment-then-move",
+	}
+	runCLI(t, env, dir, args...)
+	issue, err := env.DB.IssueByShortID(t.Context(), sourceProjectID, ref, db.IncludeDeletedNo)
+	require.NoError(t, err)
+	target, err := env.DB.CreateProject(t.Context(), "target-project")
+	require.NoError(t, err)
+	_, err = env.DB.MoveIssueProject(t.Context(), db.MoveIssueProjectIn{
+		IssueID: issue.ID, FromProjectID: sourceProjectID, ToProjectID: target.ID,
+		IfMatchRev: issue.Revision, Actor: "coordinator",
+	})
+	require.NoError(t, err)
+
+	runCLI(t, env, dir, args...)
+
+	comments, err := env.DB.CommentsByIssue(t.Context(), issue.ID)
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "fixed in abc1234", comments[0].Body)
+}
+
+func TestReopen_WithComment_AppendsComment(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	runCLI(t, env, dir, "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234")
+
+	runCLI(t, env, dir, "reopen", ref, "--comment", "regressed")
+
+	got := fetchIssueViaHTTPWithComments(t, env, pid, ref)
+	require.Len(t, got.Comments, 1)
+	assert.Equal(t, "regressed", got.Comments[0].Body)
+	assert.Equal(t, "open", got.Issue.Status)
+}
+
+func TestClose_EmptyComment_Rejected(t *testing.T) {
+	env, dir := setupCLIEnv(t)
+	ref := createIssueViaHTTP(t, env, dir, "x")
+
+	_, err := runCLICapture(t, env, dir, "close", ref,
+		"--done",
+		"--message", "Fixed Safari callback double-submit and ran tests.",
+		"--commit", "abc1234",
+		"--comment", "   ")
+	_ = requireCLIError(t, err, ExitValidation)
+}
+
+func TestCloseCmd_MessageShorthand(t *testing.T) {
+	env, dir, _, ref := setupWorkspaceWithIssue(t, "test issue")
+	message := "Fixed the parser crash and ran the parser tests."
+
+	out := runCLI(t, env, dir, "close", ref, "--done", "-m", message, "--commit", "abc1234")
+	assert.Contains(t, out, "closed")
+
+	audit := runCLI(t, env, dir, "audit", "closes", "--json")
+	assert.Contains(t, audit, message)
+}
+
+func TestCloseCmd_BodyAliasesMessage(t *testing.T) {
+	env, dir, pid, ref := setupWorkspaceWithIssue(t, "test issue")
+	message := "Fixed the parser crash and ran the parser tests."
+
+	out := runCLI(t, env, dir, "close", ref, "--done", "--body", message,
+		"--comment", "follow-up note", "--commit", "abc1234")
+	assert.Contains(t, out, "closed")
+
+	audit := runCLI(t, env, dir, "audit", "closes", "--json")
+	assert.Contains(t, audit, message)
+	issue := fetchIssueViaHTTPWithComments(t, env, pid, ref)
+	require.Len(t, issue.Comments, 1)
+	assert.Equal(t, "follow-up note", issue.Comments[0].Body)
+}
+
+type failingHintWriter struct{}
+
+func (failingHintWriter) Write([]byte) (int, error) { return 0, errors.New("stderr unavailable") }
+
+func TestClose_CommentAndHintFailures(t *testing.T) {
+	for _, failure := range []string{"none", "stderr", "comment"} {
+		t.Run(failure, func(t *testing.T) {
+			env, dir, pid := setupCLIWorkspace(t)
+			parent := createIssue(t, env, pid, "Parent")
+			child := createIssue(t, env, pid, "Child")
+			runCLI(t, env, dir, "edit", child, "--parent", parent)
+			baseURL := env.URL
+			if failure == "comment" {
+				target, err := url.Parse(env.URL)
+				require.NoError(t, err)
+				proxy := &httputil.ReverseProxy{Rewrite: func(r *httputil.ProxyRequest) { r.SetURL(target) }}
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/comments") {
+						http.Error(w, "unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					proxy.ServeHTTP(w, r)
+				}))
+				t.Cleanup(server.Close)
+				baseURL = server.URL
+			}
+			resetFlags(t)
+			cmd := newRootCmd()
+			cmd.SetOut(io.Discard)
+			var stderr bytes.Buffer
+			if failure == "stderr" {
+				cmd.SetErr(failingHintWriter{})
+			} else {
+				cmd.SetErr(&stderr)
+			}
+			cmd.SetArgs([]string{"--workspace", dir, "close", child, "--done", "--message", "Completed the requested work and verified the result.", "--commit", "abc1234", "--comment", "follow-up note", "--idempotency-key", "close-child"})
+			cmd.SetContext(contextWithBaseURL(t.Context(), baseURL))
+			err := cmd.Execute()
+			switch failure {
+			case "none":
+				require.NoError(t, err)
+				assert.Contains(t, stderr.String(), "Hint: parent poomsae#"+parent+" ")
+			case "stderr":
+				require.ErrorContains(t, err, "stderr unavailable")
+				issue := fetchIssueViaHTTPWithComments(t, env, pid, child)
+				require.Len(t, issue.Comments, 1)
+				assert.Equal(t, "follow-up note", issue.Comments[0].Body)
+			case "comment":
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "comment")
+				assert.Contains(t, stderr.String(), "Hint: parent poomsae#"+parent)
+			}
+		})
+	}
+}
+
+func TestParentReadyHint_QuotesRefAndCarriesDaemonSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name, ref, daemon, workspace, want string
+	}{
+		{
+			name: "plain ref", ref: "poomsae#abc1", want: "parent poomsae#abc1 has no open children: close it with poomsae close poomsae#abc1 --done …",
+		},
+		{
+			name:      "explicit daemon and workspace",
+			ref:       "My Project#abc1",
+			daemon:    "work laptop",
+			workspace: "/tmp/my repo",
+			want: "parent My Project#abc1 has no open children: close it with poomsae close 'My Project#abc1'" +
+				" --daemon 'work laptop' --workspace '/tmp/my repo' --done …",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetFlags(t)
+			flags.Daemon, flags.Workspace = tc.daemon, tc.workspace
+			hint := parentReadyHint(tc.ref)
+			assert.Equal(t, "parent_ready", hint.Code)
+			assert.Equal(t, tc.want, hint.Message)
+		})
+	}
+}

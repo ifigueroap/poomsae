@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // inPlaceUpgrades drop retired indexes, then add canonical tables and canonical

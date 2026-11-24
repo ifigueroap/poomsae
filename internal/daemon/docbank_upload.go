@@ -13,9 +13,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 func attachmentRawBody(ctx huma.Context, next func(huma.Context)) {
@@ -29,7 +29,7 @@ func uploadDocbankAttachment(ctx context.Context, cfg ServerConfig, iss db.Issue
 		return metadata.Attachment{}, attachmentError(503, "docbank_not_configured")
 	}
 	e := metadata.Attachment{Name: name}
-	file, err := os.CreateTemp("", "kata-attachment-*")
+	file, err := os.CreateTemp("", "poomsae-attachment-*")
 	if err != nil {
 		return metadata.Attachment{}, internalAPIError(err)
 	}

@@ -5,17 +5,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 // On a relay, only the account that connected the bridge can enroll a
 // downstream daemon that will itself serve the project onward. Any member may
 // still enroll a leaf.
 func TestRelayDownstreamEnrollmentRequiresBridgeConnector(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	store := openReplicaServiceStore(t)
 	for _, actor := range []string{"local-member", "other-member"} {

@@ -1,11 +1,11 @@
-package kata
+package poomsae
 
 import (
 	"context"
 	"errors"
 	"sync"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // FederationCredential is the secret material used by one spoke project to

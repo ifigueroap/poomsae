@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"go.kenn.io/kata/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank"
 	"hegel.dev/go/hegel"
 )
 

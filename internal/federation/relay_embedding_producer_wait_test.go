@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/vector"
 )
 
 // The pending-offer wait belongs to one episode of pending offers. When sync

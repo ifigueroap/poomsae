@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // CronQuery is supplied by the backend's pinned export snapshot.

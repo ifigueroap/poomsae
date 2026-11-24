@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func TestClaimGateEditCloseReopenPriorityAllowsUnclaimedFederatedHubIssueMutations(t *testing.T) {
@@ -889,7 +889,7 @@ func claimGateDeleteRequest(t *testing.T, federated bool) (*testenv.Env, claimGa
 	return env, claimGateHTTPRequest{
 		method:  http.MethodPost,
 		path:    issuePathRef(project.ID, issue.ShortID, "actions/delete"),
-		headers: map[string]string{"X-Kata-Confirm": "DELETE " + project.Name + "#" + issue.ShortID},
+		headers: map[string]string{"X-Poomsae-Confirm": "DELETE " + project.Name + "#" + issue.ShortID},
 		body:    map[string]string{"actor": "agent"},
 	}
 }

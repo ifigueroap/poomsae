@@ -122,7 +122,7 @@ func TestAgentUseDailyThresholds(t *testing.T) {
 }
 
 func TestAgentTelemetryRouteOwnsBuckets(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	r := &agentTelemetry{}
 	server := newTelemetryTestServer(t, r, Principal{Kind: PrincipalWebLocal})
 	response := server.post(t.Context(), t, `{"event":"agent_active","properties":{"call_count_bucket":"over-100","path":"/example","actor":"example-agent"}}`)

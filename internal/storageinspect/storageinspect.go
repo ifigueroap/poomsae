@@ -1,7 +1,7 @@
-// Package storageinspect reads existing kata storage without bootstrap,
+// Package storageinspect reads existing poomsae storage without bootstrap,
 // migration, or cutover, for the checks the client makes before it starts or
 // replaces a local daemon. It is separate from internal/client so client-only
-// programs that discover a daemon do not link the storage engines. The kata
+// programs that discover a daemon do not link the storage engines. The poomsae
 // binary installs Inspector with client.UseStorageInspector.
 package storageinspect
 
@@ -12,10 +12,10 @@ import (
 	"os"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 )
 
 // Inspector reads storage with this binary's storage engines.
@@ -47,7 +47,7 @@ func (Inspector) ReadProfileIdentity(ctx context.Context, profile config.LocalPr
 // current home would open, using the same storage settings that daemon reads.
 // A SQLite database that does not exist yet reports zero.
 func (Inspector) PeekCurrentSchema(ctx context.Context) (int, bool, error) {
-	dsn, err := config.KataDSN(ctx)
+	dsn, err := config.PoomsaeDSN(ctx)
 	if err != nil {
 		return 0, false, err
 	}
@@ -62,7 +62,7 @@ func (Inspector) PeekCurrentSchema(ctx context.Context) (int, bool, error) {
 			return 0, false, nil
 		}
 	case storeopen.BackendPostgres:
-		pg, err := config.KataPostgresStorageConfig(ctx)
+		pg, err := config.PoomsaePostgresStorageConfig(ctx)
 		if err != nil {
 			return 0, false, err
 		}

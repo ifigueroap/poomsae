@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	forgejosdk "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 // pages requests numbered pages until one is empty. Page numbers are
@@ -42,12 +42,12 @@ func (c *client) comments(ref issueRef) ([]*forgejosdk.Comment, *connector.Error
 func (c *client) scope(root string) string { return digest([]string{c.instance, root}) }
 func (c *client) marker(root string, actor int64, operation string) string {
 	hash := sha256.Sum256([]byte(operation))
-	return "<!-- kata-publish:" + c.scope(root) + ":" + id(actor) + ":" + hex.EncodeToString(hash[:]) + " -->"
+	return "<!-- poomsae-publish:" + c.scope(root) + ":" + id(actor) + ":" + hex.EncodeToString(hash[:]) + " -->"
 }
 func (c *client) hasMarker(body, root, operation string) bool {
 	hash := sha256.Sum256([]byte(operation))
 	operationHash := hex.EncodeToString(hash[:])
-	prefix := "<!-- kata-publish:" + c.scope(root) + ":"
+	prefix := "<!-- poomsae-publish:" + c.scope(root) + ":"
 	for len(body) > 0 {
 		index := strings.Index(body, prefix)
 		if index < 0 {
@@ -81,7 +81,7 @@ func (c *client) visibleBody(raw *forgejosdk.Comment, root string, self int64) s
 	if raw.Poster == nil {
 		return raw.Body
 	}
-	prefix := "\n\n<!-- kata-publish:" + c.scope(root) + ":"
+	prefix := "\n\n<!-- poomsae-publish:" + c.scope(root) + ":"
 	index := strings.LastIndex(raw.Body, prefix)
 	if index < 0 {
 		return raw.Body

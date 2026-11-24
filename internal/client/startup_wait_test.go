@@ -9,16 +9,16 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/storageinspect"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/storageinspect"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestAutoStartWaitsForSQLiteMigrationBeyondReadinessBudget(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
@@ -61,13 +61,13 @@ func TestAutoStartReportsChildExitAfterReadinessGrace(t *testing.T) {
 
 func TestAutoStartWaitsForConcurrentCutoverOwnerAfterChildExits(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	require.NoError(t, source.Close())
-	lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
 	t.Cleanup(func() { require.NoError(t, lock.Close()) })
 	originalStart, originalDiscover := startDetachedDaemonForEnsure, discoverDaemonForAutoStart
@@ -94,8 +94,8 @@ func TestAutoStartWaitsForConcurrentCutoverOwnerAfterChildExits(t *testing.T) {
 
 func TestWaitForDaemonStartupBoundsExitAfterLateCutoverLockObservation(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestWaitForDaemonStartupRestartsGraceAfterCutoverLockReacquisition(t *testi
 
 func TestWaitForDaemonStartupGrantsReadinessBudgetWhenCutoverEndsAtDeadline(t *testing.T) {
 	setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
+	t.Setenv("POOMSAE_DSN", "")
 	synctest.Test(t, func(t *testing.T) {
 		started := time.Now()
 		// The deadline falls between 50ms ticks, so the last loop probe still
@@ -161,8 +161,8 @@ func TestWaitForDaemonStartupGrantsReadinessBudgetWhenCutoverEndsAtDeadline(t *t
 
 func TestWaitForDaemonStartupAllowsCurrentSchemaConcurrentStarterGrace(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	require.NoError(t, source.Close())
 
@@ -202,8 +202,8 @@ func TestWaitForDaemonStartupKeepsBudgetWhileStoreOwned(t *testing.T) {
 
 func TestWaitForDaemonStartupReturnsChildExitForOldSchemaWithoutCutover(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
@@ -225,8 +225,8 @@ func TestWaitForDaemonStartupReturnsChildExitForOldSchemaWithoutCutover(t *testi
 
 func TestWaitForDaemonStartupBoundsOldSchemaWithoutChildOrCutover(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
@@ -246,8 +246,8 @@ func TestWaitForDaemonStartupBoundsOldSchemaWithoutChildOrCutover(t *testing.T) 
 
 func TestWaitForDaemonStartupExtendsBudgetWhileCutoverLockHeld(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+	t.Setenv("POOMSAE_DSN", "")
+	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
 	t.Cleanup(func() { require.NoError(t, lock.Close()) })
 
@@ -265,20 +265,20 @@ func TestWaitForDaemonStartupExtendsBudgetWhileCutoverLockHeld(t *testing.T) {
 
 func TestMigrationPendingUsesCutoverLockDuringSourceSwap(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
+	t.Setenv("POOMSAE_DSN", "")
 	// The source pathname can briefly be absent while the lock owner installs
 	// its replacement. Readiness polling must neither open it nor report failure.
-	lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
 	t.Cleanup(func() { require.NoError(t, lock.Close()) })
 	require.True(t, sqliteMigrationPending(t.Context()))
-	require.NoFileExists(t, filepath.Join(home, "kata.db"))
+	require.NoFileExists(t, filepath.Join(home, "poomsae.db"))
 }
 
 func TestMigrationPendingKeepsCutoverLockThroughSchemaPeek(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	path := filepath.Join(home, "kata.db")
+	t.Setenv("POOMSAE_DSN", "")
+	path := filepath.Join(home, "poomsae.db")
 	source, err := sqlitestore.Open(t.Context(), path)
 	require.NoError(t, err)
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value='28' WHERE key='schema_version'`)
@@ -322,8 +322,8 @@ func TestAutoStartWaitsForReadinessAfterCutoverUnlock(t *testing.T) {
 	for _, unlockAfter := range []time.Duration{0, 2 * time.Second} {
 		t.Run(unlockAfter.String(), func(t *testing.T) {
 			home := setupKataEnv(t)
-			t.Setenv("KATA_DSN", "")
-			lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+			t.Setenv("POOMSAE_DSN", "")
+			lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 			require.NoError(t, lock.Lock())
 			t.Cleanup(func() { require.NoError(t, lock.Close()) })
 			exited := make(chan error, 1)
@@ -348,8 +348,8 @@ func TestAutoStartWaitsForReadinessAfterCutoverUnlock(t *testing.T) {
 
 func TestAutoStartProfileIgnoresDefaultHomeCutover(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+	t.Setenv("POOMSAE_DSN", "")
+	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
 	t.Cleanup(func() { require.NoError(t, lock.Close()) })
 	profileHome := t.TempDir()
@@ -362,8 +362,8 @@ func TestAutoStartProfileIgnoresDefaultHomeCutover(t *testing.T) {
 		defer cancel()
 		started := time.Now()
 		_, err := autoStartWithEnvironment(ctx, profileHome, nil, []string{
-			"KATA_HOME=" + profileHome,
-			"KATA_DSN=" + filepath.Join(profileHome, "kata.db"),
+			"POOMSAE_HOME=" + profileHome,
+			"POOMSAE_DSN=" + filepath.Join(profileHome, "poomsae.db"),
 		})
 		require.ErrorIs(t, err, ErrLocalDaemonUnreachable)
 		require.Equal(t, daemonStartupWait, time.Since(started))
@@ -372,8 +372,8 @@ func TestAutoStartProfileIgnoresDefaultHomeCutover(t *testing.T) {
 
 func TestAutoStartWaitsAfterOwnMigrationUnlock(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_DSN", "")
-	lock := flock.New(filepath.Join(home, "kata.db.import.lock"))
+	t.Setenv("POOMSAE_DSN", "")
+	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
 	t.Cleanup(func() { require.NoError(t, lock.Close()) })
 	synctest.Test(t, func(t *testing.T) {

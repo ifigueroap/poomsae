@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 func exchange(t *testing.T, h connector.Handler, origin, method string, params any) connector.Response {

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // undoAttempt travels on a mutation response, even when the write failed.
@@ -37,10 +37,10 @@ func (a *undoAttempt) complete() {
 	}
 }
 
-// undoClient wraps only the TUI's write methods. Embedding KataAPI forwards
+// undoClient wraps only the TUI's write methods. Embedding PoomsaeAPI forwards
 // all reads and unrelated operations to the connected daemon client.
 type undoClient struct {
-	KataAPI
+	PoomsaeAPI
 	mu       sync.Mutex
 	pending  []*undoAttempt
 	instance InstanceInfo
@@ -62,10 +62,10 @@ func (m *Model) advanceMutationEpoch() {
 	}
 }
 
-func newUndoClient(base KataAPI) *undoClient { return &undoClient{KataAPI: base} }
+func newUndoClient(base PoomsaeAPI) *undoClient { return &undoClient{PoomsaeAPI: base} }
 
 func (c *undoClient) CheckDateFilter(ctx context.Context) error {
-	api, ok := c.KataAPI.(dateFilterAPI)
+	api, ok := c.PoomsaeAPI.(dateFilterAPI)
 	if !ok {
 		return errors.New("date filter client unavailable")
 	}
@@ -73,7 +73,7 @@ func (c *undoClient) CheckDateFilter(ctx context.Context) error {
 }
 
 func (c *undoClient) ListTokens(ctx context.Context) ([]TokenInfo, time.Time, error) {
-	audit, ok := c.KataAPI.(credentialAuditAPI)
+	audit, ok := c.PoomsaeAPI.(credentialAuditAPI)
 	if !ok {
 		return nil, time.Time{}, errors.New("credential audit client unavailable")
 	}
@@ -81,7 +81,7 @@ func (c *undoClient) ListTokens(ctx context.Context) ([]TokenInfo, time.Time, er
 }
 
 func (c *undoClient) ReopenBacklog(ctx context.Context, projectID int64, ref string) (int, error) {
-	api, ok := c.KataAPI.(reopenBacklogAPI)
+	api, ok := c.PoomsaeAPI.(reopenBacklogAPI)
 	if !ok {
 		return 0, errors.New("reopen backlog client unavailable")
 	}
@@ -89,7 +89,7 @@ func (c *undoClient) ReopenBacklog(ctx context.Context, projectID int64, ref str
 }
 
 func (c *undoClient) ReportAppOpened(ctx context.Context) error {
-	reporter, ok := c.KataAPI.(appOpenedAPI)
+	reporter, ok := c.PoomsaeAPI.(appOpenedAPI)
 	if !ok {
 		return errors.New("telemetry client unavailable")
 	}
@@ -203,13 +203,13 @@ func (c *undoClient) edit(ctx context.Context, projectID int64, ref, actor, kind
 
 func (c *undoClient) Close(ctx context.Context, projectID int64, ref, actor string) (*MutationResp, error) {
 	return c.edit(ctx, projectID, ref, actor, "close", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.Close(ctx, projectID, uid, actor)
+		return c.PoomsaeAPI.Close(ctx, projectID, uid, actor)
 	})
 }
 
 func (c *undoClient) AddLink(ctx context.Context, projectID int64, ref string, body LinkBody, actor string) (*MutationResp, error) {
 	resp, err := c.edit(ctx, projectID, ref, actor, "link.add", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.AddLink(ctx, projectID, uid, body, actor)
+		return c.PoomsaeAPI.AddLink(ctx, projectID, uid, body, actor)
 	})
 	if resp != nil && resp.undo != nil && resp.undo.entry != nil {
 		entry := resp.undo.entry
@@ -226,25 +226,25 @@ func (c *undoClient) AddLink(ctx context.Context, projectID int64, ref string, b
 
 func (c *undoClient) Reopen(ctx context.Context, projectID int64, ref, actor string) (*MutationResp, error) {
 	return c.edit(ctx, projectID, ref, actor, "reopen", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.Reopen(ctx, projectID, uid, actor)
+		return c.PoomsaeAPI.Reopen(ctx, projectID, uid, actor)
 	})
 }
 
 func (c *undoClient) Assign(ctx context.Context, projectID int64, ref, owner, actor string) (*MutationResp, error) {
 	return c.edit(ctx, projectID, ref, actor, "owner.assign", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.Assign(ctx, projectID, uid, owner, actor)
+		return c.PoomsaeAPI.Assign(ctx, projectID, uid, owner, actor)
 	})
 }
 
 func (c *undoClient) SetPriority(ctx context.Context, projectID int64, ref string, priority *int64, actor string) (*MutationResp, error) {
 	return c.edit(ctx, projectID, ref, actor, "priority.set", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.SetPriority(ctx, projectID, uid, priority, actor)
+		return c.PoomsaeAPI.SetPriority(ctx, projectID, uid, priority, actor)
 	})
 }
 
 func (c *undoClient) AddLabel(ctx context.Context, projectID int64, ref, label, actor string) (*MutationResp, error) {
 	resp, err := c.edit(ctx, projectID, ref, actor, "label.add", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.AddLabel(ctx, projectID, uid, label, actor)
+		return c.PoomsaeAPI.AddLabel(ctx, projectID, uid, label, actor)
 	})
 	if resp != nil && resp.undo != nil && resp.undo.entry != nil {
 		resp.undo.entry.label = label
@@ -254,7 +254,7 @@ func (c *undoClient) AddLabel(ctx context.Context, projectID int64, ref, label, 
 
 func (c *undoClient) RemoveLabel(ctx context.Context, projectID int64, ref, label, actor string) (*MutationResp, error) {
 	resp, err := c.edit(ctx, projectID, ref, actor, "label.remove", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.RemoveLabel(ctx, projectID, uid, label, actor)
+		return c.PoomsaeAPI.RemoveLabel(ctx, projectID, uid, label, actor)
 	})
 	if resp != nil && resp.undo != nil && resp.undo.entry != nil {
 		if db.IsPriorityLabel(label) {
@@ -269,12 +269,12 @@ func (c *undoClient) RemoveLabel(ctx context.Context, projectID int64, ref, labe
 
 func (c *undoClient) EditBody(ctx context.Context, projectID int64, ref, body, actor string, expectedContentRevision *int64) (*MutationResp, error) {
 	return c.edit(ctx, projectID, ref, actor, "body.edit", func(uid string) (*MutationResp, error) {
-		return c.KataAPI.EditBody(ctx, projectID, uid, body, actor, expectedContentRevision)
+		return c.PoomsaeAPI.EditBody(ctx, projectID, uid, body, actor, expectedContentRevision)
 	})
 }
 
 func (c *undoClient) SetDates(ctx context.Context, projectID int64, ref string, in DatesInput) (*MutationResp, error) {
-	writer, ok := c.KataAPI.(datesAPI)
+	writer, ok := c.PoomsaeAPI.(datesAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot edit dates")
 	}
@@ -287,7 +287,7 @@ func (c *undoClient) SetDates(ctx context.Context, projectID int64, ref string, 
 // boundary, because the issue's project-qualified reference changes (and its
 // short id can too) and earlier edits can no longer be written back to it.
 func (c *undoClient) MoveIssue(ctx context.Context, projectID int64, ref string, in MoveInput) (*MutationResp, error) {
-	mover, ok := c.KataAPI.(moveAPI)
+	mover, ok := c.PoomsaeAPI.(moveAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot move issues")
 	}
@@ -300,7 +300,7 @@ func (c *undoClient) MoveIssue(ctx context.Context, projectID int64, ref string,
 }
 
 func (c *undoClient) SaveRecurrence(ctx context.Context, projectID int64, ref string, in RecurrenceInput) (*MutationResp, error) {
-	writer, ok := c.KataAPI.(recurrenceAPI)
+	writer, ok := c.PoomsaeAPI.(recurrenceAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot edit recurrences")
 	}
@@ -310,7 +310,7 @@ func (c *undoClient) SaveRecurrence(ctx context.Context, projectID int64, ref st
 }
 
 func (c *undoClient) CloseWithEvidence(ctx context.Context, projectID int64, ref string, in CloseInput) (*MutationResp, error) {
-	closer, ok := c.KataAPI.(evidenceCloseAPI)
+	closer, ok := c.PoomsaeAPI.(evidenceCloseAPI)
 	if !ok {
 		return nil, errors.New("connected client cannot close with evidence")
 	}
@@ -339,24 +339,24 @@ func (c *undoClient) boundaryWrite(ctx context.Context, reason string, write fun
 
 func (c *undoClient) CreateIssue(ctx context.Context, projectID int64, body CreateIssueBody) (*MutationResp, error) {
 	return c.boundaryWrite(ctx, "issue creation cannot be undone", func() (*MutationResp, error) {
-		return c.KataAPI.CreateIssue(ctx, projectID, body)
+		return c.PoomsaeAPI.CreateIssue(ctx, projectID, body)
 	})
 }
 
 func (c *undoClient) AddComment(ctx context.Context, projectID int64, ref, body, actor string) (*MutationResp, error) {
 	return c.boundaryWrite(ctx, "comment addition cannot be undone", func() (*MutationResp, error) {
-		return c.KataAPI.AddComment(ctx, projectID, ref, body, actor)
+		return c.PoomsaeAPI.AddComment(ctx, projectID, ref, body, actor)
 	})
 }
 
 func (c *undoClient) ClaimTimedAssignment(ctx context.Context, projectID int64, ref, actor string, ttl time.Duration) (*MutationResp, error) {
 	return c.boundaryWrite(ctx, "timed assignment cannot be undone", func() (*MutationResp, error) {
-		return c.KataAPI.ClaimTimedAssignment(ctx, projectID, ref, actor, ttl)
+		return c.PoomsaeAPI.ClaimTimedAssignment(ctx, projectID, ref, actor, ttl)
 	})
 }
 
 func (c *undoClient) ReportScreenViewed(ctx context.Context, screen string) error {
-	reporter, ok := c.KataAPI.(screenViewedAPI)
+	reporter, ok := c.PoomsaeAPI.(screenViewedAPI)
 	if !ok {
 		return errors.New("telemetry client unavailable")
 	}
@@ -364,7 +364,7 @@ func (c *undoClient) ReportScreenViewed(ctx context.Context, screen string) erro
 }
 
 func (c *undoClient) AddCommentReply(ctx context.Context, pid int64, ref, body, actor, target, kind string, force bool, key string) (*MutationResp, error) {
-	client, ok := c.KataAPI.(typedCommentAPI)
+	client, ok := c.PoomsaeAPI.(typedCommentAPI)
 	if !ok {
 		return nil, errors.New("client does not support typed comment replies")
 	}
@@ -374,21 +374,21 @@ func (c *undoClient) AddCommentReply(ctx context.Context, pid int64, ref, body, 
 }
 
 func (c *undoClient) ReportOutcome(ctx context.Context, event, kind string) error {
-	if reporter, ok := c.KataAPI.(outcomeAPI); ok {
+	if reporter, ok := c.PoomsaeAPI.(outcomeAPI); ok {
 		return reporter.ReportOutcome(ctx, event, kind)
 	}
 	return nil
 }
 
 func (c *undoClient) ListAttentionRequests(ctx context.Context, projectID *int64, recipient string) ([]attentionRequest, int, error) {
-	api, ok := c.KataAPI.(attentionAPI)
+	api, ok := c.PoomsaeAPI.(attentionAPI)
 	if !ok {
 		return nil, 0, errors.New("attention client unavailable")
 	}
 	return api.ListAttentionRequests(ctx, projectID, recipient)
 }
 func (c *undoClient) ClearAttentionRequest(ctx context.Context, projectID int64, ref, key string, raw jsontext.Value, actor string) error {
-	api, ok := c.KataAPI.(attentionAPI)
+	api, ok := c.PoomsaeAPI.(attentionAPI)
 	if !ok {
 		return errors.New("attention client unavailable")
 	}

@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // MergeProjects folds all supported source projections into a surviving

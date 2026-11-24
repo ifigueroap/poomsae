@@ -1,6 +1,6 @@
 package api
 
-import "go.kenn.io/kata/internal/db"
+import "github.com/ifigueroap/poomsae/internal/db"
 
 // NotifyIssueRequest resolves comment attention recipients at the writing daemon.
 type NotifyIssueRequest struct {

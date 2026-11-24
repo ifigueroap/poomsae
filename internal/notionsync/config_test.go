@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 const sourceID = "11111111-1111-4111-8111-111111111111"

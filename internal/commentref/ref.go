@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strings"
 
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // MinLength is the minimum suffix length for a comment handle.

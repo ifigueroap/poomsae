@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestFederationClaimsTwoSpokeLifecycle(t *testing.T) {
@@ -215,7 +215,7 @@ func setupFederationClaimE2E(t *testing.T, name string) federationClaimFixture {
 func startFederationClaimSpoke(ctx context.Context, t *testing.T, bin string) federationClaimSpoke {
 	t.Helper()
 	dirs := newE2EDirs(t)
-	stderr := startDaemon(t, bin, append(dirs.env(), "KATA_FEDERATION_PULL_INTERVAL_MS=25"))
+	stderr := startDaemon(t, bin, append(dirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=25"))
 	url, client := connectDaemon(t, dirs, stderr)
 	store, err := sqlitestore.Open(ctx, dirs.dbPath)
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func hubClaimCLIDirs(t *testing.T, fx federationClaimFixture) e2eDirs {
 	t.Helper()
 	dirs := newE2EDirs(t)
 	localConfig := fmt.Sprintf("version = 1\n\n[server]\nurl = %q\nallow_insecure = true\n", fx.hub.URL)
-	require.NoError(t, os.WriteFile(filepath.Join(dirs.repoDir, ".kata.local.toml"), []byte(localConfig), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dirs.repoDir, ".poomsae.local.toml"), []byte(localConfig), 0o600))
 	return dirs
 }
 
@@ -321,14 +321,14 @@ func runKataJSONWantExit[T any](t *testing.T, bin string, dirs e2eDirs, wantExit
 func runKataOK(t *testing.T, bin string, dirs e2eDirs, args ...string) e2eClaimRun {
 	t.Helper()
 	res, exitCode := runKataWithSQLiteBusyRetry(t, bin, dirs, args...)
-	require.Equalf(t, 0, exitCode, "kata %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
+	require.Equalf(t, 0, exitCode, "poomsae %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
 	return res
 }
 
 func runKataWantExit(t *testing.T, bin string, dirs e2eDirs, wantExit int, args ...string) e2eClaimRun {
 	t.Helper()
 	res, exitCode := runKata(t, bin, dirs, args...)
-	require.Equalf(t, wantExit, exitCode, "kata %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
+	require.Equalf(t, wantExit, exitCode, "poomsae %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
 	return res
 }
 
@@ -360,21 +360,21 @@ func runKata(t *testing.T, bin string, dirs e2eDirs, args ...string) (e2eClaimRu
 
 	cmd := exec.CommandContext(ctx, bin, args...) //nolint:gosec // test-built binary and test-controlled args
 	cmd.Dir = dirs.repoDir
-	cmd.Env = append(dirs.env(), "KATA_HTTP_TIMEOUT=10s")
+	cmd.Env = append(dirs.env(), "POOMSAE_HTTP_TIMEOUT=10s")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	out := e2eClaimRun{stdout: stdout.String(), stderr: stderr.String()}
 	if ctx.Err() != nil {
-		t.Fatalf("kata %s timed out\nstdout: %s\nstderr: %s", strings.Join(args, " "), out.stdout, out.stderr)
+		t.Fatalf("poomsae %s timed out\nstdout: %s\nstderr: %s", strings.Join(args, " "), out.stdout, out.stderr)
 	}
 	if err == nil {
 		return out, 0
 	}
 	var exitErr *exec.ExitError
 	if !assert.ErrorAs(t, err, &exitErr) {
-		t.Fatalf("kata %s failed to start: %v\nstdout: %s\nstderr: %s",
+		t.Fatalf("poomsae %s failed to start: %v\nstdout: %s\nstderr: %s",
 			strings.Join(args, " "), err, out.stdout, out.stderr)
 	}
 	return out, exitErr.ExitCode()

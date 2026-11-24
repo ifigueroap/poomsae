@@ -4,14 +4,14 @@ test.use({ trace: 'off' })
 
 test('production CSP permits the dynamic styles used by the application layout', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   const violations: string[] = []
   page.on('console', (message) => {
     if (message.text().includes('Refused to apply inline style')) violations.push(message.text())
   })
 
-  await kata.launch(page)
+  await poomsae.launch(page)
 
   const table = page.getByRole('region', { name: 'Issues' }).locator('.table')
   await expect(table).toBeVisible()

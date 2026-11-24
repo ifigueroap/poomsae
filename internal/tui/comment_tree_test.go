@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/commentref"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/commentref"
 )
 
 func TestThreadOrder(t *testing.T) {
@@ -101,7 +101,7 @@ func TestCommentTags(t *testing.T) {
 }
 
 func TestCommentTreeColoredTags(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "dark")
+	t.Setenv("POOMSAE_COLOR_MODE", "dark")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	t.Cleanup(applyDefaultColorMode)

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // relationshipAccessFixture links issues in a visible project to issues in a

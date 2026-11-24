@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 	gitcmd "go.kenn.io/kit/git/cmd"
 )
 
@@ -301,7 +301,7 @@ type smokeResp struct {
 
 // postWithHeaderHTTP is postJSON + extra request headers, draining the body
 // up front so callers can inspect both status and body. Used by the Plan 3
-// lifecycle smoke for Idempotency-Key and X-Kata-Confirm.
+// lifecycle smoke for Idempotency-Key and X-Poomsae-Confirm.
 func postWithHeaderHTTP(t *testing.T, client *http.Client, url string,
 	headers map[string]string, body any) smokeResp {
 	t.Helper()
@@ -387,7 +387,7 @@ func TestSmoke_Plan3Lifecycle(t *testing.T) {
 	// 6. soft-delete the first issue with confirm header.
 	projectName := "system"
 	delResp := postWithHeaderHTTP(t, env.HTTP, env.URL+"/api/v1/projects/"+pidStr+"/issues/"+firstIssue.ShortID+"/actions/delete",
-		map[string]string{"X-Kata-Confirm": "DELETE " + projectName + "#" + firstIssue.ShortID},
+		map[string]string{"X-Poomsae-Confirm": "DELETE " + projectName + "#" + firstIssue.ShortID},
 		map[string]any{"actor": "agent"})
 	require.Equal(t, 200, delResp.status, string(delResp.body))
 	assert.Contains(t, string(delResp.body), `"issue.soft_deleted"`)
@@ -417,7 +417,7 @@ func TestSmoke_Plan3Lifecycle(t *testing.T) {
 
 	// 9. purge the second issue (irreversible). Verify purge_log row in the response.
 	purgeResp := postWithHeaderHTTP(t, env.HTTP, env.URL+"/api/v1/projects/"+pidStr+"/issues/"+secondIssue.ShortID+"/actions/purge",
-		map[string]string{"X-Kata-Confirm": "PURGE " + projectName + "#" + secondIssue.ShortID},
+		map[string]string{"X-Poomsae-Confirm": "PURGE " + projectName + "#" + secondIssue.ShortID},
 		map[string]any{"actor": "agent"})
 	require.Equal(t, 200, purgeResp.status, string(purgeResp.body))
 	assert.Contains(t, string(purgeResp.body), `"purge_log"`)
@@ -540,7 +540,7 @@ func TestSmoke_Plan4Events(t *testing.T) {
 		strings.NewReader(`{"actor":"agent"}`))
 	require.NoError(t, err)
 	pReq.Header.Set("Content-Type", "application/json")
-	pReq.Header.Set("X-Kata-Confirm", "PURGE plan4-a#"+firstA.ShortID)
+	pReq.Header.Set("X-Poomsae-Confirm", "PURGE plan4-a#"+firstA.ShortID)
 	pResp, err := env.HTTP.Do(pReq) //nolint:gosec // G704: test-only loopback
 	require.NoError(t, err)
 	_ = pResp.Body.Close()

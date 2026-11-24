@@ -1,27 +1,27 @@
 ---
 title: Configuration
-description: Reference Kata environment variables, workspace files, daemon settings, authentication, and integrations.
+description: Reference Poomsae environment variables, workspace files, daemon settings, authentication, and integrations.
 last_edited: 2026-11-21
 ---
 
 # Configuration
 
-Kata splits its configuration across environment variables, committed workspace
+Poomsae splits its configuration across environment variables, committed workspace
 bindings, local per-machine overrides, and daemon settings.
 
 ## Validation by command
 
 Several commands read only the configuration sections they use: TUI preferences
 and connection, federation spoke authentication,
-`kata federation embedding-recipe`, and `kata doctor`'s daemon lookup. Those
+`poomsae federation embedding-recipe`, and `poomsae doctor`'s daemon lookup. Those
 commands still reject bad values and unknown keys in the sections they read,
-including `[tui]`, `[search]`, and the daemon catalog. Only `kata doctor`'s
-configuration check and `kata daemon start` validate the full configuration.
+including `[tui]`, `[search]`, and the daemon catalog. Only `poomsae doctor`'s
+configuration check and `poomsae daemon start` validate the full configuration.
 
 ## Closing-session transcripts
 
 To help readers find the chat that completed an issue, enable transcript
-attachment in the **invoking CLI client's** `<KATA_HOME>/config.toml`:
+attachment in the **invoking CLI client's** `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [close.transcript]
@@ -34,14 +34,14 @@ agentsview_url = "https://archive.example"
 ```
 
 Project entries match the resolved issue's current project, including when an
-old reference points to an issue that moved. When a project has no entry, Kata
+old reference points to an issue that moved. When a project has no entry, Poomsae
 uses the global settings. When an entry is present, it inherits `enabled` if
 you omit it and uses its own `agentsview_url`. If the URL is empty, omitted, or
-invalid, Kata records only the session identifier. To omit a project's
+invalid, Poomsae records only the session identifier. To omit a project's
 transcript, set its `enabled` key to `false`. For keyed retries, the client
 still sends the candidate session identifier to the daemon, and an opted-out
 close stores only its fingerprint rather than the transcript. If the issue or
-project lookup fails, Kata warns and closes without provenance, though an
+project lookup fails, Poomsae warns and closes without provenance, though an
 explicit process override of `true` or `auto` still records the identifier. If
 the issue moves between selection and close, the close returns an `issue_moved`
 conflict; resolve the issue and retry with the same key.
@@ -59,21 +59,21 @@ Transcript attachment is off by default and needs no daemon restart. When you
 set `enabled = true`, every close that finds no current session warns on stderr.
 Set `enabled = "auto"` to attach a transcript when a session is named and stay
 quiet when none is; a named session that is invalid still warns. In the config
-file, `enabled` accepts `true`, `false`, or `"auto"`. Only `kata close` checks
+file, `enabled` accepts `true`, `false`, or `"auto"`. Only `poomsae close` checks
 it: any other value produces a warning and skips attachment without stopping
 the daemon or other commands. A project entry's `enabled` key takes the same
 values and overrides the global mode for that project, and `"auto"` records a
-transcript when a session is named. Because Kata does not look up the issue's
+transcript when a session is named. Because Poomsae does not look up the issue's
 project when no session is named, a close with no named session warns only when
 at least one target is `true`. When every target is `auto` or `false`, it stays
 quiet.
 
-Before attaching a transcript, `kata close` checks the daemon's API version.
-With an older daemon, Kata warns on stderr and completes the close without the
+Before attaching a transcript, `poomsae close` checks the daemon's API version.
+With an older daemon, Poomsae warns on stderr and completes the close without the
 transcript. When attachment is disabled, close requests stay unchanged.
 
 To turn attachment on or off for a single process without editing the file, set
-`KATA_CLOSE_TRANSCRIPT_ENABLED` to `true`, `false`, or `auto`:
+`POOMSAE_CLOSE_TRANSCRIPT_ENABLED` to `true`, `false`, or `auto`:
 
 - `true` attaches transcripts even without a config file, while `agentsview_url`
   and `session_id_env` still come from the file.
@@ -84,18 +84,18 @@ To turn attachment on or off for a single process without editing the file, set
 - Any other value warns on stderr, and the close proceeds without a transcript.
 - Leaving the variable unset or empty lets the config file decide.
 
-An agent integration can combine `KATA_CLOSE_TRANSCRIPT_ENABLED` with
-`KATA_TRANSCRIPT_AGENT` and `KATA_TRANSCRIPT_SESSION_ID` to attach its own
+An agent integration can combine `POOMSAE_CLOSE_TRANSCRIPT_ENABLED` with
+`POOMSAE_TRANSCRIPT_AGENT` and `POOMSAE_TRANSCRIPT_SESSION_ID` to attach its own
 sessions without changing transcript behavior for other agents on the machine.
 
-When `kata close` supplies evidence, it attaches a separate `transcript` object
+When `poomsae close` supplies evidence, it attaches a separate `transcript` object
 to the same durable `issue.closed` event. Evidence and substantive-message
 requirements still apply. A chat identifier is provenance, not proof that work
-passed. Kata copies no transcript body, local filename, token, or hook
+passed. Poomsae copies no transcript body, local filename, token, or hook
 ownership hash. This setting affects CLI closes, including remote-daemon calls.
 Browser closes do not infer a session from the daemon's environment.
 
-Kata always checks `CLAUDE_CODE_SESSION_ID` for `claude`, then
+Poomsae always checks `CLAUDE_CODE_SESSION_ID` for `claude`, then
 `CODEX_THREAD_ID` and `CODEX_SESSION_ID` for `codex`, in that fixed order. Use
 the `session_id_env` table to map each additional agent name to one session
 variable. For example, pi passes its session ID to shell commands as
@@ -114,29 +114,29 @@ that variable to `omp` when you close issues from oh-my-pi:
 omp = "PI_SESSION_ID"
 ```
 
-If one configuration maps `PI_SESSION_ID` to both `pi` and `omp`, Kata treats
+If one configuration maps `PI_SESSION_ID` to both `pi` and `omp`, Poomsae treats
 every pi or oh-my-pi session as ambiguous and skips attachment. If you use both
-agents, set `KATA_TRANSCRIPT_AGENT` and `KATA_TRANSCRIPT_SESSION_ID` instead,
+agents, set `POOMSAE_TRANSCRIPT_AGENT` and `POOMSAE_TRANSCRIPT_SESSION_ID` instead,
 as shown below.
 
 For the link to open, the agent name must match the ID prefix AgentsView uses
 for that agent's sessions, such as `pi` or `omp`. Agent names must match
 `^[a-z0-9][a-z0-9-]*$` and contain at most 32 characters. If you configure any
-other name, `kata close` warns that the configuration is unavailable, names the
+other name, `poomsae close` warns that the configuration is unavailable, names the
 key, and skips attachment. Each nonempty variable supplies both its agent and
 session ID. Different agents are ambiguous even when their IDs match, and
 variables for the same agent must agree on the ID case-insensitively. When
-context is ambiguous, Kata warns and skips attachment.
+context is ambiguous, Poomsae warns and skips attachment.
 
-Setting either `KATA_TRANSCRIPT_AGENT` or `KATA_TRANSCRIPT_SESSION_ID` skips
+Setting either `POOMSAE_TRANSCRIPT_AGENT` or `POOMSAE_TRANSCRIPT_SESSION_ID` skips
 variable discovery. Set both to supply an explicit agent and session ID. The
 agent accepts any name matching the token rules above, and a missing or invalid
-agent or session ID causes Kata to warn and skip attachment.
+agent or session ID causes Poomsae to warn and skip attachment.
 
 ```sh
-KATA_TRANSCRIPT_AGENT=pi \
-KATA_TRANSCRIPT_SESSION_ID=00000000-0000-4000-8000-000000000001 \
-kata close example-project#abc4 --done \
+POOMSAE_TRANSCRIPT_AGENT=pi \
+POOMSAE_TRANSCRIPT_SESSION_ID=00000000-0000-4000-8000-000000000001 \
+poomsae close example-project#abc4 --done \
   --message "Implemented the requested behavior and ran the focused tests." \
   --test "go test ./internal/example"
 ```
@@ -146,9 +146,9 @@ ID must start with an ASCII letter or digit and contain only ASCII letters,
 digits, `.`, `_`, or `-`, up to 128 characters. Examples include UUIDs, Amp's
 `T-<UUID>`, and OpenCode's `ses_<alnum>`. Use the ID that AgentsView uses after
 the agent prefix so the link can open. Agents whose AgentsView session IDs have
-more than one part cannot be linked from a variable. Kata never scans recent
+more than one part cannot be linked from a variable. Poomsae never scans recent
 chat files or reuses another issue's session. When context is missing, invalid,
-or ambiguous, Kata warns on stderr and skips the attachment, and the close can
+or ambiguous, Poomsae warns on stderr and skips the attachment, and the close can
 still succeed. An unconfigured AgentsView URL stores only the identifier, while
 an invalid URL warns and stores only the identifier. URLs must be absolute
 HTTP(S) with no embedded credentials, query, or fragment.
@@ -163,9 +163,9 @@ omit `agentsview_url` and use AgentsView's **Go to session** lookup with the
 saved session ID, or supply a verified exact URL through the
 [HTTP close API](http-api.md). If multiple archives contain that session ID,
 lookup reports ambiguity; use the archive's canonical ID or a verified locator.
-Kata does not infer an import namespace.
+Poomsae does not infer an import namespace.
 
-Kata makes no AgentsView request during close. A generated URL is a locator,
+Poomsae makes no AgentsView request during close. A generated URL is a locator,
 not an availability receipt. Offline hosting, delayed indexing, authentication,
 or a session excluded from the archive can prevent the link from opening, while
 the identifier remains useful for lookup once indexing catches up. When
@@ -179,9 +179,9 @@ Because the AgentsView link is not part of retry identity, changing
 `agentsview_url` does not break a retry. Adding or removing the transcript
 conflicts, while a lookup failure or project move keeps the original receipt
 when the candidate session is unchanged. Retrying from another chat with
-different automatic context conflicts; set `KATA_TRANSCRIPT_SESSION_ID` to the
-original session ID and `KATA_TRANSCRIPT_AGENT` to the original agent. If the
-original close turned attachment on with `KATA_CLOSE_TRANSCRIPT_ENABLED`, set
+different automatic context conflicts; set `POOMSAE_TRANSCRIPT_SESSION_ID` to the
+original session ID and `POOMSAE_TRANSCRIPT_AGENT` to the original agent. If the
+original close turned attachment on with `POOMSAE_CLOSE_TRANSCRIPT_ENABLED`, set
 it again for the retry. Passing `--dry` validates without writing an event or
 attaching persistent provenance.
 
@@ -189,7 +189,7 @@ You can open the session link in the web issue's **Events** history, or
 retrieve provenance with the event API. For example, in a small project:
 
 ```sh
-kata --project example-project events --after 0 --limit 100 --json |
+poomsae --project example-project events --after 0 --limit 100 --json |
   jq '.events[] | select(.type == "issue.closed" and .issue_short_id == "abc4") |
       .payload.transcript'
 ```
@@ -203,73 +203,73 @@ object as the parsed event stream.
 
 | Variable | Meaning |
 | --- | --- |
-| `KATA_HOME` | Data directory. Defaults to `~/.kata`. |
-| `KATA_DSN` | Explicit database DSN. Accepts a bare SQLite path, `sqlite://...`, `postgres://...`, or `postgresql://...`. |
-| `KATA_DB` | Legacy explicit SQLite database path. Used when `KATA_DSN` is unset. |
-| `KATA_SQLITE_BUSY_TIMEOUT` | Overrides `[storage.sqlite].busy_timeout` for SQLite writer contention between processes. Default `5s`; whole milliseconds from `1ms` to `5m`. Restart the daemon to apply. |
-| `KATA_POSTGRES_SCHEMA` | Dedicated Postgres schema. Defaults to `kata`. |
-| `KATA_POSTGRES_SCHEMA_MODE` | Postgres startup policy: `bootstrap` or `validate`. Defaults to `bootstrap`. |
-| `KATA_POSTGRES_SCHEMA_OWNER` | Trusted owner role for the selected schema. Required in `validate` mode. |
-| `KATA_POSTGRES_ALLOW_INSECURE` | Set to `1` only to permit a non-loopback Postgres connection without server-identity-verified TLS. |
-| `KATA_AUTHOR` | Default actor for mutations. |
-| `KATA_TEAMMATE` | Optional teammate attribution for comments and newly created issues. A command-level `--teammate` overrides it; `--teammate=''` suppresses it. |
-| `KATA_CLOSE_TRANSCRIPT_ENABLED` | Overrides `[close.transcript].enabled` for the process that runs `kata close`. Takes `true`, `false` or `auto`; `false` also ignores the file's other transcript settings. An invalid value warns and the close proceeds without a transcript. Set it again when retrying a keyed close that used it. |
-| `KATA_TRANSCRIPT_AGENT` | Agent name for an explicit `KATA_TRANSCRIPT_SESSION_ID`, using the token rules above; setting it skips variable discovery, and an agent alone warns and skips attachment. Preserves the original agent when replaying a keyed close from another shell. |
-| `KATA_TRANSCRIPT_SESSION_ID` | Explicit current closing session ID. Used only when close transcript attachment is enabled; overrides the configured session variables. |
-| `KATA_INBOX_USER` | Exact actor or `actor/teammate` inbox address for `kata inbox` when `--for` is omitted and the TUI Attention view (`T`), which otherwise falls back to the authenticated actor. It does not set attribution and is independent of `KATA_AUTHOR` and `KATA_TEAMMATE`. |
-| `KATA_SERVER` | Remote daemon URL. Skips local discovery and auto-start. |
-| `KATA_AUTH_TOKEN` | Bearer token for daemon API auth. |
-| `KATA_AUTH_TOKEN_FILE` | Overrides `[auth].token_file`. A nonempty `KATA_AUTH_TOKEN` continues to win. A selected file failure stops startup and client construction. |
-| `KATA_LISTEN` | Daemon API bind address. Overrides `listen` in the daemon config; `--listen` wins over both. |
-| `KATA_WEB_LISTEN` | Overrides `[web].listen`, the separate browser listener used with a Unix-socket API. |
-| `KATA_WEB_PUBLIC_ORIGIN` | Overrides `[web].public_origin`, the exact root browser origin. Non-loopback plain HTTP requires private-network trust. |
-| `KATA_MCP_ENABLED` | Overrides `[mcp].enabled`. Takes a boolean; an invalid value stops startup. |
-| `KATA_MCP_ACTOR` | Overrides `[mcp].actor`, the actor for daemon MCP mutations. |
-| `KATA_MCP_ALL_PROJECTS` | Overrides `[mcp].all_projects`. Takes a boolean; an invalid value stops startup. |
-| `KATA_MCP_PROJECTS` | Overrides `[mcp].projects` with comma-separated project names. Names are trimmed and resolve at startup. Missing or archived listed projects disable `/mcp` (503, reason logged); REST and the web UI keep serving. Create or restore the project, then restart. |
-| `KATA_MCP_STARTUP_SECTIONS` | Overrides `[mcp].startup_sections` with comma-separated section IDs. IDs are trimmed; an empty value preserves TOML. Restart the daemon after changes. See [Startup sections](mcp.md#startup-sections). |
-| `KATA_MCP_TOKEN_FILE` | Overrides `[mcp].token_file`, the file containing the daemon MCP bearer token. |
-| `KATA_SEARCH_EMBEDDINGS_BASE_URL` | Overrides `[search.embeddings].base_url`. |
-| `KATA_SEARCH_EMBEDDINGS_MODEL` | Overrides `[search.embeddings].model`. |
-| `KATA_SEARCH_EMBEDDINGS_DIMS` | Overrides `[search.embeddings].dims`. Must be a non-negative integer; `0` keeps the default dimensionality. |
-| `KATA_SEARCH_EMBEDDINGS_API_KEY_FILE` | Overrides `[search.embeddings].api_key_file`; the existing credential precedence and file restrictions apply. |
-| `KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX`, `KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX`, `KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX`, `KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX` | Override the matching `[search.embeddings]` affix. Kata keeps the value's leading and trailing spaces; a blank value leaves the file setting in place. |
-| `KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS` | Overrides `[search.embeddings].request_dimensions`. Accepts `true` or `false` (also `1`/`0`); any other value stops startup. |
-| `KATA_BACKUP_DIR` | Destination for [scheduled full JSONL backups](../operations/backup-restore.md#scheduled-backups); overrides `[backup].dir`. |
-| `KATA_BACKUP_INTERVAL` | Overrides `[backup].interval`. Positive duration; defaults to `24h` when a backup directory is configured. |
-| `KATA_BACKUP_RETAIN` | Overrides `[backup].retain`. Positive duration; defaults to `720h`. |
-| `KATA_TRUST_PRIVATE_NETWORK` | Set to `1` to permit trusted plaintext bearer use on private non-loopback HTTP. Without it (or `allow_insecure`), a plaintext non-loopback target fails when the client is built, before any request is sent. |
-| `KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES` | Set to `1` to permit tokenless writes and event streams on a literal private-IP daemon bind. |
-| `KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION` | Set to `1` to let database-backed identity tokens administer connectors and external-root bridges. Off by default. |
-| `KATA_ALLOW_INSECURE` | Set to `1` or `true` to allow a configured remote daemon hostname over plain HTTP. Federation uses `kata federation enroll --allow-insecure` and `kata federation join --allow-insecure` instead because enrollment credentials are stored separately. |
-| `KATA_HTTP_TIMEOUT` | Timeout for configured-remote connectivity probes and non-streaming CLI requests, such as `30s` or `2m`. Defaults to `5s`; raise it for bulk imports. It also overrides the federation sync client's separate 60-second request budget, including in autostarted local-profile daemons; under `16s`, spokes stop holding polls at their hubs. Larger values increase how long an unreachable remote can delay a command or sync attempt. |
-| `KATA_AUTOSTART` | Internal process marker for an automatically started daemon; it does not override the client `autostart` policy. |
-| `KATA_AUTOSTART_IDLE_TIMEOUT` | Overrides `autostart_idle_timeout`. Empty or `0` disables idle shutdown; positive values must be at least `10s`. |
-| `KATA_LINEAR_TOKEN` | Default daemon-owned Linear credential; `[linear_sync].token_env` selects another variable. |
-| `KATA_TWENTY_TOKEN` | Default daemon-side Twenty API key; `[twenty_sync].token_env` can select another environment variable. |
-| `KATA_TICKTICK_TOKEN` | Default daemon-side TickTick access token; `[ticktick_sync].token_env` can select another environment variable. |
-| `KATA_PLANE_TOKEN` | Default daemon-side Plane API key; `[plane_sync].token_env` can select another environment variable. |
-| `KATA_TODOIST_TOKEN` | Todoist daemon API token; `[todoist_sync].token_env` selects another variable. |
-| `KATA_NOTION_TOKEN` | Default daemon-side read-only Notion credential; `[notion_sync].token_env` can name another environment variable. Client workstations need no Notion token. |
-| `KATA_GITHUB_TOKEN` | Default explicit token source for GitHub sync when no matching `[[github_sync.app]]` credential is configured. It is scoped to `github.com` unless `[github_sync].token_host` names a different host. `[github_sync].token_env` can name a different env var. |
-| `KATA_GITHUB_SYNC_ALLOWED_HOSTS` | Comma-separated exact GitHub Enterprise hostnames trusted for GitHub sync and git-remote inference. `github.com` is always trusted. |
-| `KATA_FEDERATION_PULL_INTERVAL_MS` | Federation runner poll interval for tests or latency-sensitive private deployments. |
+| `POOMSAE_HOME` | Data directory. Defaults to `~/.poomsae`. |
+| `POOMSAE_DSN` | Explicit database DSN. Accepts a bare SQLite path, `sqlite://...`, `postgres://...`, or `postgresql://...`. |
+| `POOMSAE_DB` | Legacy explicit SQLite database path. Used when `POOMSAE_DSN` is unset. |
+| `POOMSAE_SQLITE_BUSY_TIMEOUT` | Overrides `[storage.sqlite].busy_timeout` for SQLite writer contention between processes. Default `5s`; whole milliseconds from `1ms` to `5m`. Restart the daemon to apply. |
+| `POOMSAE_POSTGRES_SCHEMA` | Dedicated Postgres schema. Defaults to `poomsae`. |
+| `POOMSAE_POSTGRES_SCHEMA_MODE` | Postgres startup policy: `bootstrap` or `validate`. Defaults to `bootstrap`. |
+| `POOMSAE_POSTGRES_SCHEMA_OWNER` | Trusted owner role for the selected schema. Required in `validate` mode. |
+| `POOMSAE_POSTGRES_ALLOW_INSECURE` | Set to `1` only to permit a non-loopback Postgres connection without server-identity-verified TLS. |
+| `POOMSAE_AUTHOR` | Default actor for mutations. |
+| `POOMSAE_TEAMMATE` | Optional teammate attribution for comments and newly created issues. A command-level `--teammate` overrides it; `--teammate=''` suppresses it. |
+| `POOMSAE_CLOSE_TRANSCRIPT_ENABLED` | Overrides `[close.transcript].enabled` for the process that runs `poomsae close`. Takes `true`, `false` or `auto`; `false` also ignores the file's other transcript settings. An invalid value warns and the close proceeds without a transcript. Set it again when retrying a keyed close that used it. |
+| `POOMSAE_TRANSCRIPT_AGENT` | Agent name for an explicit `POOMSAE_TRANSCRIPT_SESSION_ID`, using the token rules above; setting it skips variable discovery, and an agent alone warns and skips attachment. Preserves the original agent when replaying a keyed close from another shell. |
+| `POOMSAE_TRANSCRIPT_SESSION_ID` | Explicit current closing session ID. Used only when close transcript attachment is enabled; overrides the configured session variables. |
+| `POOMSAE_INBOX_USER` | Exact actor or `actor/teammate` inbox address for `poomsae inbox` when `--for` is omitted and the TUI Attention view (`T`), which otherwise falls back to the authenticated actor. It does not set attribution and is independent of `POOMSAE_AUTHOR` and `POOMSAE_TEAMMATE`. |
+| `POOMSAE_SERVER` | Remote daemon URL. Skips local discovery and auto-start. |
+| `POOMSAE_AUTH_TOKEN` | Bearer token for daemon API auth. |
+| `POOMSAE_AUTH_TOKEN_FILE` | Overrides `[auth].token_file`. A nonempty `POOMSAE_AUTH_TOKEN` continues to win. A selected file failure stops startup and client construction. |
+| `POOMSAE_LISTEN` | Daemon API bind address. Overrides `listen` in the daemon config; `--listen` wins over both. |
+| `POOMSAE_WEB_LISTEN` | Overrides `[web].listen`, the separate browser listener used with a Unix-socket API. |
+| `POOMSAE_WEB_PUBLIC_ORIGIN` | Overrides `[web].public_origin`, the exact root browser origin. Non-loopback plain HTTP requires private-network trust. |
+| `POOMSAE_MCP_ENABLED` | Overrides `[mcp].enabled`. Takes a boolean; an invalid value stops startup. |
+| `POOMSAE_MCP_ACTOR` | Overrides `[mcp].actor`, the actor for daemon MCP mutations. |
+| `POOMSAE_MCP_ALL_PROJECTS` | Overrides `[mcp].all_projects`. Takes a boolean; an invalid value stops startup. |
+| `POOMSAE_MCP_PROJECTS` | Overrides `[mcp].projects` with comma-separated project names. Names are trimmed and resolve at startup. Missing or archived listed projects disable `/mcp` (503, reason logged); REST and the web UI keep serving. Create or restore the project, then restart. |
+| `POOMSAE_MCP_STARTUP_SECTIONS` | Overrides `[mcp].startup_sections` with comma-separated section IDs. IDs are trimmed; an empty value preserves TOML. Restart the daemon after changes. See [Startup sections](mcp.md#startup-sections). |
+| `POOMSAE_MCP_TOKEN_FILE` | Overrides `[mcp].token_file`, the file containing the daemon MCP bearer token. |
+| `POOMSAE_SEARCH_EMBEDDINGS_BASE_URL` | Overrides `[search.embeddings].base_url`. |
+| `POOMSAE_SEARCH_EMBEDDINGS_MODEL` | Overrides `[search.embeddings].model`. |
+| `POOMSAE_SEARCH_EMBEDDINGS_DIMS` | Overrides `[search.embeddings].dims`. Must be a non-negative integer; `0` keeps the default dimensionality. |
+| `POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE` | Overrides `[search.embeddings].api_key_file`; the existing credential precedence and file restrictions apply. |
+| `POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX`, `POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX`, `POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX`, `POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX` | Override the matching `[search.embeddings]` affix. Poomsae keeps the value's leading and trailing spaces; a blank value leaves the file setting in place. |
+| `POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS` | Overrides `[search.embeddings].request_dimensions`. Accepts `true` or `false` (also `1`/`0`); any other value stops startup. |
+| `POOMSAE_BACKUP_DIR` | Destination for [scheduled full JSONL backups](../operations/backup-restore.md#scheduled-backups); overrides `[backup].dir`. |
+| `POOMSAE_BACKUP_INTERVAL` | Overrides `[backup].interval`. Positive duration; defaults to `24h` when a backup directory is configured. |
+| `POOMSAE_BACKUP_RETAIN` | Overrides `[backup].retain`. Positive duration; defaults to `720h`. |
+| `POOMSAE_TRUST_PRIVATE_NETWORK` | Set to `1` to permit trusted plaintext bearer use on private non-loopback HTTP. Without it (or `allow_insecure`), a plaintext non-loopback target fails when the client is built, before any request is sent. |
+| `POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES` | Set to `1` to permit tokenless writes and event streams on a literal private-IP daemon bind. |
+| `POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION` | Set to `1` to let database-backed identity tokens administer connectors and external-root bridges. Off by default. |
+| `POOMSAE_ALLOW_INSECURE` | Set to `1` or `true` to allow a configured remote daemon hostname over plain HTTP. Federation uses `poomsae federation enroll --allow-insecure` and `poomsae federation join --allow-insecure` instead because enrollment credentials are stored separately. |
+| `POOMSAE_HTTP_TIMEOUT` | Timeout for configured-remote connectivity probes and non-streaming CLI requests, such as `30s` or `2m`. Defaults to `5s`; raise it for bulk imports. It also overrides the federation sync client's separate 60-second request budget, including in autostarted local-profile daemons; under `16s`, spokes stop holding polls at their hubs. Larger values increase how long an unreachable remote can delay a command or sync attempt. |
+| `POOMSAE_AUTOSTART` | Internal process marker for an automatically started daemon; it does not override the client `autostart` policy. |
+| `POOMSAE_AUTOSTART_IDLE_TIMEOUT` | Overrides `autostart_idle_timeout`. Empty or `0` disables idle shutdown; positive values must be at least `10s`. |
+| `POOMSAE_LINEAR_TOKEN` | Default daemon-owned Linear credential; `[linear_sync].token_env` selects another variable. |
+| `POOMSAE_TWENTY_TOKEN` | Default daemon-side Twenty API key; `[twenty_sync].token_env` can select another environment variable. |
+| `POOMSAE_TICKTICK_TOKEN` | Default daemon-side TickTick access token; `[ticktick_sync].token_env` can select another environment variable. |
+| `POOMSAE_PLANE_TOKEN` | Default daemon-side Plane API key; `[plane_sync].token_env` can select another environment variable. |
+| `POOMSAE_TODOIST_TOKEN` | Todoist daemon API token; `[todoist_sync].token_env` selects another variable. |
+| `POOMSAE_NOTION_TOKEN` | Default daemon-side read-only Notion credential; `[notion_sync].token_env` can name another environment variable. Client workstations need no Notion token. |
+| `POOMSAE_GITHUB_TOKEN` | Default explicit token source for GitHub sync when no matching `[[github_sync.app]]` credential is configured. It is scoped to `github.com` unless `[github_sync].token_host` names a different host. `[github_sync].token_env` can name a different env var. |
+| `POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS` | Comma-separated exact GitHub Enterprise hostnames trusted for GitHub sync and git-remote inference. `github.com` is always trusted. |
+| `POOMSAE_FEDERATION_PULL_INTERVAL_MS` | Federation runner poll interval for tests or latency-sensitive private deployments. |
 | `PORT` | Hosted-mode listener port when no explicit listener is configured and the daemon is not an auto-start child. |
 | `XDG_RUNTIME_DIR` | Runtime socket parent on Unix when applicable. |
 
 ## Database selection
 
-Kata resolves its database in this order:
+Poomsae resolves its database in this order:
 
-1. `KATA_DSN`
-2. `KATA_DB`
-3. `[storage].dsn` in `<KATA_HOME>/config.toml`
-4. `<KATA_HOME>/kata.db`
+1. `POOMSAE_DSN`
+2. `POOMSAE_DB`
+3. `[storage].dsn` in `<POOMSAE_HOME>/config.toml`
+4. `<POOMSAE_HOME>/poomsae.db`
 
 Bare paths and `sqlite://` DSNs select SQLite, while `postgres://` and
 `postgresql://` DSNs select Postgres. A standalone Postgres open owns the
-dedicated `kata` schema, prepares it under an advisory lock, and never uses
-`public` for Kata tables. `KATA_DB` stays ahead of `[storage].dsn` so existing
+dedicated `poomsae` schema, prepares it under an advisory lock, and never uses
+`public` for Poomsae tables. `POOMSAE_DB` stays ahead of `[storage].dsn` so existing
 shells and scripts keep using their explicit database path after the
 config-file key is introduced.
 
@@ -283,7 +283,7 @@ needs a total wait limit, supply a context deadline; the transient retry loop's
 elapsed-time budget does not interrupt an in-flight queue wait.
 
 A writer waiting for another process or database handle still uses SQLite's
-busy handler. You can configure that wait in `<KATA_HOME>/config.toml`:
+busy handler. You can configure that wait in `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [storage.sqlite]
@@ -291,8 +291,8 @@ busy_timeout = "5s"
 ```
 
 The default remains `5s`. Values must be whole milliseconds from `1ms` through
-`5m`; Kata rejects zero, negative, fractional-millisecond, and larger
-durations. `KATA_SQLITE_BUSY_TIMEOUT` overrides the file setting, and you need
+`5m`; Poomsae rejects zero, negative, fractional-millisecond, and larger
+durations. `POOMSAE_SQLITE_BUSY_TIMEOUT` overrides the file setting, and you need
 to restart the daemon after changing it. This setting does not change
 PostgreSQL or the vector sidecar.
 
@@ -301,8 +301,8 @@ PostgreSQL or the vector sidecar.
 For example:
 
 ```sh
-export KATA_DSN='postgres://kata:password@db.example/kata?sslmode=verify-full&sslrootcert=system'
-kata daemon start
+export POOMSAE_DSN='postgres://poomsae:password@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+poomsae daemon start
 ```
 
 In production, prepare the schema with a privileged role and run the daemon
@@ -310,10 +310,10 @@ with a separate DML-only role:
 
 ```toml
 [storage]
-dsn = "postgres://kata_runtime@db.example/kata?sslmode=verify-full&sslrootcert=system"
+dsn = "postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
 
 [storage.postgres]
-schema = "kata"
+schema = "poomsae"
 mode = "validate"
 schema_owner = "kata_schema_owner"
 # Dangerous lab-only escape hatch for remote plaintext or unverified TLS:
@@ -331,22 +331,22 @@ server identity verification, including fallback hosts generated by the DSN.
 `sslmode=disable`, `allow`, `prefer`, `require`, and `verify-ca` do not satisfy
 that remote requirement on their own. Use `sslmode=verify-full` with system
 roots or an explicit CA. The `allow_insecure` setting and
-`KATA_POSTGRES_ALLOW_INSECURE=1` are deliberate lab-only exceptions that apply
+`POOMSAE_POSTGRES_ALLOW_INSECURE=1` are deliberate lab-only exceptions that apply
 to the whole Postgres connection configuration and can expose database
 credentials and all stored data to a network-positioned attacker.
 
-Kata validates the shape of `KATA_DSN` and `[storage].dsn` before using them.
+Poomsae validates the shape of `POOMSAE_DSN` and `[storage].dsn` before using them.
 It rejects unknown schemes and treats common Postgres-only query parameters on
 a bare path or `sqlite://` DSN as likely formatting mistakes. This validation
 is local and does not dial Postgres or stat SQLite paths.
 
 ## Workspace binding
 
-Commit `.kata.toml` with your project:
+Commit `.poomsae.toml` with your project:
 
 ```toml
-# This repository tracks its work in kata.
-# Coding agents: read `kata quickstart --format contract` before changing code here.
+# This repository tracks its work in poomsae.
+# Coding agents: read `poomsae quickstart --format contract` before changing code here.
 version = 1
 
 [project]
@@ -357,7 +357,7 @@ Keep this file free of secrets.
 
 ## Local override
 
-Keep `.kata.local.toml` gitignored and use it for machine-specific daemon
+Keep `.poomsae.local.toml` gitignored and use it for machine-specific daemon
 routing:
 
 ```toml
@@ -367,15 +367,15 @@ version = 1
 url = "http://100.64.0.5:7777"
 ```
 
-`KATA_SERVER` takes precedence over the local file unless a command passes
+`POOMSAE_SERVER` takes precedence over the local file unless a command passes
 `--daemon <name>`.
 
-Kata resolves the daemon target in this order:
+Poomsae resolves the daemon target in this order:
 
 1. `--daemon <name>`
-2. `KATA_SERVER`
-3. `.kata.local.toml` `[server].url` or `[server].daemon`
-4. `active_daemon` in `<KATA_HOME>/config.toml`
+2. `POOMSAE_SERVER`
+3. `.poomsae.local.toml` `[server].url` or `[server].daemon`
+4. `active_daemon` in `<POOMSAE_HOME>/config.toml`
 5. local daemon discovery or auto-start
 
 To pin an existing home on this machine, use `[server].daemon = "work"` instead
@@ -398,7 +398,7 @@ process. Legacy `local = true` entries without `home` retain current-home
 behavior. See [Local daemon profiles](../operations/local-daemon-profiles.md)
 for registration, isolated credentials, PostgreSQL restrictions, and recovery.
 
-Committed `.kata.toml` files bind the project name only. Do not put daemon
+Committed `.poomsae.toml` files bind the project name only. Do not put daemon
 routing or tokens there.
 
 A catalog entry's bearer credential uses `token` > `token_file` > `token_env`.
@@ -408,21 +408,21 @@ On a device, prefer `token_file` to keep the token out of `config.toml`:
 [[daemon]]
 name = "team-hub"
 url = "https://hub.example"
-token_file = "~/.config/kata/tokens/team-hub"
+token_file = "~/.config/poomsae/tokens/team-hub"
 ```
 
 The file must use an absolute or `~/` path, be a regular file owned by the user
-running Kata, and have no group or world permissions (`chmod 600`). On Windows,
+running Poomsae, and have no group or world permissions (`chmod 600`). On Windows,
 it must be a private current-user file. The file must be at most 64 KiB, and
 its trimmed contents must be nonempty. For containers or service managers that
 already inject secrets, use `token_env`.
 
 Loading or listing the catalog does not read its credentials, though selection,
-including `kata daemon locate`, may inspect a selected credential. Remote and
+including `poomsae daemon locate`, may inspect a selected credential. Remote and
 plain local entries defer source errors until connection. If a selected file
 fails or a selected environment variable is unset or empty, the connection
-stops without fallback. `KATA_AUTH_TOKEN` replaces a remote entry's credential,
-so Kata does not read its file or variable in that case. Hub administration
+stops without fallback. `POOMSAE_AUTH_TOKEN` replaces a remote entry's credential,
+so Poomsae does not read its file or variable in that case. Hub administration
 uses only the hub's catalog credential, and the local daemon's global token
 never replaces it.
 
@@ -439,11 +439,11 @@ allow_insecure = true
 
 ## Client display preferences
 
-`[display]` belongs to the client reading `<KATA_HOME>/config.toml`. Kata does
+`[display]` belongs to the client reading `<POOMSAE_HOME>/config.toml`. Poomsae does
 not send it to a remote daemon, and it does not change daemon rendering or API
 responses.
 
-By default, `kata show --render` uses the built-in terminal Markdown renderer.
+By default, `poomsae show --render` uses the built-in terminal Markdown renderer.
 To use an external stdin/stdout renderer instead, set `markdown_renderer`:
 
 ```toml
@@ -451,7 +451,7 @@ To use an external stdin/stdout renderer instead, set `markdown_renderer`:
 markdown_renderer = ["leaf"]
 ```
 
-The value is an argv array. Kata passes it verbatim without a shell, appended
+The value is an argv array. Poomsae passes it verbatim without a shell, appended
 flags, width injection, or environment changes. For example:
 
 ```toml
@@ -459,33 +459,33 @@ flags, width injection, or environment changes. For example:
 markdown_renderer = ["glow", "-", "-s", "dark", "-w", "80"]
 ```
 
-Kata starts the configured program once per non-empty Markdown field, with a
-10-second timeout per invocation. When that timeout expires, Kata spends up to
+Poomsae starts the configured program once per non-empty Markdown field, with a
+10-second timeout per invocation. When that timeout expires, Poomsae spends up to
 2 seconds on platform-specific termination: Unix signals and then force-kills
 the renderer process group, while Windows waits through the grace period and
-then force-kills only the renderer process. Kata then bounds any remaining
+then force-kills only the renderer process. Poomsae then bounds any remaining
 process or captured-pipe wait by a separate 2-second interval, so a timed-out
-call can take about 14 seconds to return. Because Kata captures the child's
+call can take about 14 seconds to return. Because Poomsae captures the child's
 stdout, you are responsible for renderer-specific color and width flags or
-inherited environment variables such as `CLICOLOR_FORCE`. After capture, Kata
+inherited environment variables such as `CLICOLOR_FORCE`. After capture, Poomsae
 normalizes the output and ANSI-safely hard-wraps it to the terminal width for a
-description or the remaining field width for a comment. Kata treats output with
+description or the remaining field width for a comment. Poomsae treats output with
 or without a final newline the same while preserving internal blank lines.
-Because a program may echo the Markdown input to stderr, Kata discards renderer
+Because a program may echo the Markdown input to stderr, Poomsae discards renderer
 stderr; run the configured argv directly to diagnose renderer-specific
 failures.
 
 The common daemon-config path recognizes `[display]` without decoding or
 semantically validating it, so unknown display keys and invalid display values
 do not break daemon startup. A TOML syntax error anywhere in `config.toml`
-still prevents common config parsing. Kata validates this client section only
+still prevents common config parsing. Poomsae validates this client section only
 when `show --render` is active on a terminal, so display-only semantic mistakes
 do not break plain output or redirected output.
 
 ## Default priority for issue creation
 
-To set a default priority for `kata create`, add `[create]` to the invoking CLI
-client's `<KATA_HOME>/config.toml`:
+To set a default priority for `poomsae create`, add `[create]` to the invoking CLI
+client's `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [create]
@@ -501,12 +501,12 @@ creation keeps its existing behavior.
 
 The CLI reads this setting for each creation, so you do not need to restart the
 daemon. It uses the invoking client's config even when connecting to a remote
-or named daemon. This default applies only to `kata create` and does not change
+or named daemon. This default applies only to `poomsae create` and does not change
 API, MCP, TUI, or import behavior. When `--priority` is omitted, an invalid
-value or a misspelled key under `[create]` makes `kata create` fail before it
+value or a misspelled key under `[create]` makes `poomsae create` fail before it
 contacts the daemon. Passing an explicit valid priority skips these defaults.
 
-The daemon ignores `[create]` values and keys, `kata doctor` checks them, and
+The daemon ignores `[create]` values and keys, `poomsae doctor` checks them, and
 config readers still reject TOML syntax errors.
 
 Retries with the same idempotency key and effective fields reuse the issue.
@@ -516,7 +516,7 @@ gets `idempotency_mismatch`; see [the CLI reference](cli.md).
 
 ## TUI preferences
 
-You can configure the terminal UI in `<KATA_HOME>/config.toml`:
+You can configure the terminal UI in `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [tui]
@@ -530,7 +530,7 @@ is a client preference and does not change the daemon or other clients.
 
 ## Daemon config
 
-Use `<KATA_HOME>/config.toml` to configure storage, listeners, authentication,
+Use `<POOMSAE_HOME>/config.toml` to configure storage, listeners, authentication,
 and named daemon targets:
 
 ```toml
@@ -541,10 +541,10 @@ timezone = "America/Los_Angeles"
 [[daemon]]
 name = "shared"
 url = "http://100.64.0.5:7777"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 
 [storage]
-dsn = "/var/lib/kata/kata.db"
+dsn = "/var/lib/poomsae/poomsae.db"
 
 [auth]
 token = "change-me"
@@ -557,21 +557,21 @@ public_origin = "https://daemon.example"
 [twenty_sync]
 api_origin = "https://api.twenty.com"
 web_origin = "https://app.twenty.com"
-token_env = "KATA_TWENTY_TOKEN"
+token_env = "POOMSAE_TWENTY_TOKEN"
 
 [ticktick_sync]
-token_env = "KATA_TICKTICK_TOKEN"
+token_env = "POOMSAE_TICKTICK_TOKEN"
 
 [plane_sync]
 api_origin = "https://api.plane.so"
 web_origin = "https://app.plane.so"
-token_env = "KATA_PLANE_TOKEN"
+token_env = "POOMSAE_PLANE_TOKEN"
 
 [notion_sync]
-token_env = "KATA_NOTION_TOKEN"
+token_env = "POOMSAE_NOTION_TOKEN"
 
 [github_sync]
-token_env = "KATA_GITHUB_TOKEN"
+token_env = "POOMSAE_GITHUB_TOKEN"
 token_host = "github.com"
 
 [[github_sync.app]]
@@ -579,7 +579,7 @@ host = "github.com"
 owner = "example-org"
 app_id = 12345
 installation_id = 67890
-private_key_path = "/var/lib/kata/github-app.pem"
+private_key_path = "/var/lib/poomsae/github-app.pem"
 ```
 
 The optional `[mcp]` section serves `/mcp` on the daemon's listener. It is
@@ -591,7 +591,7 @@ enabled = true
 actor = "gateway-agent" # optional; defaults to the normal actor
 projects = ["alpha"]  # or all_projects = true; set exactly one
 token_file = "/run/secrets/mcp-token"
-# Alternatively: token_env = "KATA_MCP_TOKEN"
+# Alternatively: token_env = "POOMSAE_MCP_TOKEN"
 startup_sections = ["issue_discovery", "docs"] # optional; defaults to []
 ```
 
@@ -600,11 +600,11 @@ Choose the project scope explicitly by listing `projects` or setting
 leaving `projects` empty stops daemon startup. If any listed project is missing
 or archived, `/mcp` is disabled with HTTP 503 and the reason is logged, while
 REST and the web UI keep serving; create or restore the project and restart the
-daemon. `kata daemon status` reports the endpoint as `serving` or
+daemon. `poomsae daemon status` reports the endpoint as `serving` or
 `unavailable`.
 
 Outside identity mode, set `token_file` or `token_env` for the separate MCP
-bearer. `token_file` takes precedence, and Kata resolves secrets at startup.
+bearer. `token_file` takes precedence, and Poomsae resolves secrets at startup.
 Set `startup_sections` to existing section IDs to publish their typed tools in
 the first `tools/list` after every restart. Omitting `startup_sections` or
 leaving it empty keeps loader-only progressive loading, and loaders remain
@@ -613,26 +613,26 @@ available in both modes. Unknown, duplicate, or unavailable sections disable
 fix the setting and restart. See [Startup sections](mcp.md#startup-sections)
 for IDs and availability rules.
 
-In Kata 0.23.0 and later, identity mode (`[auth] require_token_identity = true`)
+In Poomsae 0.23.0 and later, identity mode (`[auth] require_token_identity = true`)
 uses each caller's identity bearer at `/mcp`. Remove `[mcp] token_file` and
 `token_env` in this mode; either setting stops startup. Because the token
-determines the actor, Kata ignores `[mcp] actor`. See
+determines the actor, Poomsae ignores `[mcp] actor`. See
 [Daemon mount with identity tokens](mcp.md#daemon-mount-with-identity-tokens)
-for authentication and session behavior. Kata 0.21.0 and 0.22.0 require
-`kata mcp serve --http` with a user token in this mode.
+for authentication and session behavior. Poomsae 0.21.0 and 0.22.0 require
+`poomsae mcp serve --http` with a user token in this mode.
 
 Proxy actor mode (`[auth.proxy] trusted_actor_header`) requires
-`kata mcp serve --http` when the daemon's REST self-calls use a listener in
+`poomsae mcp serve --http` when the daemon's REST self-calls use a listener in
 `trusted_proxy_listeners`, because those calls carry no proxy actor header. The
 sidecar must reach the daemon through a REST listener outside
 `trusted_proxy_listeners` or through the proxy that sets the actor header. See
 [MCP transport](mcp.md#transport) for gateway setup and scope.
 
-Configure local startup policy at the top level of `<KATA_HOME>/config.toml`:
+Configure local startup policy at the top level of `<POOMSAE_HOME>/config.toml`:
 
 | Key | Default | Behavior |
 | --- | --- | --- |
-| `autostart` | `true` | `false` prevents implicit daemon starts and replacement. Commands wait up to 30 seconds (or their shorter deadline) for the service manager's daemon, then fail; if a SQLite migration is still running, the error says so, and you should let it finish rather than restart the daemon. Recovery retains its storage and project checks before waiting. Restart an incompatible daemon through its service manager. Explicit `kata daemon start` remains available. |
+| `autostart` | `true` | `false` prevents implicit daemon starts and replacement. Commands wait up to 30 seconds (or their shorter deadline) for the service manager's daemon, then fail; if a SQLite migration is still running, the error says so, and you should let it finish rather than restart the daemon. Recovery retains its storage and project checks before waiting. Restart an incompatible daemon through its service manager. Explicit `poomsae daemon start` remains available. |
 
 Idle shutdown is meant for the default owner-local daemon rather than the
 shared-daemon configuration above. Its minimal configuration is:
@@ -641,39 +641,39 @@ shared-daemon configuration above. Its minimal configuration is:
 autostart_idle_timeout = "15m"
 ```
 
-Listener precedence is `--listen`, `KATA_LISTEN`, top-level `listen`,
-hosted-mode `PORT`, and then the platform default. Kata trims environment
+Listener precedence is `--listen`, `POOMSAE_LISTEN`, top-level `listen`,
+hosted-mode `PORT`, and then the platform default. Poomsae trims environment
 overrides, and empty or whitespace-only values leave the config-file value
-unchanged. Plain `kata daemon start` starts the daemon in the background and
+unchanged. Plain `poomsae daemon start` starts the daemon in the background and
 returns once startup is confirmed; for service-manager and hosted deployments,
-use `kata daemon start --foreground`. Auto-started daemons also read the
+use `poomsae daemon start --foreground`. Auto-started daemons also read the
 config-file listener value. An empty `[storage].dsn` means no storage override,
 and environment variables or the default database path still apply.
 
 Daemon bearer credentials resolve in the order `[auth].token` >
 `[auth].token_file` > `[auth].token_env` (the name of a variable containing the
-token). A nonempty `KATA_AUTH_TOKEN` overrides the inline token. Token files
+token). A nonempty `POOMSAE_AUTH_TOKEN` overrides the inline token. Token files
 follow the [key file rules](#credentials-and-batching): absolute or `~/` paths,
 regular files owned by the daemon user, no Unix group or world permissions, no
 inherited Windows permissions or access for other users, and at most 64 KiB.
-Kata trims whitespace and a trailing newline. An unusable selected file or
+Poomsae trims whitespace and a trailing newline. An unusable selected file or
 named environment variable fails loudly without falling back. For example,
 mount a `0600` secret file owned by the daemon user and set
-`KATA_AUTH_TOKEN_FILE=/run/secrets/daemon-token`.
+`POOMSAE_AUTH_TOKEN_FILE=/run/secrets/daemon-token`.
 
 `autostart_idle_timeout` lets an implicitly started, owner-local daemon exit
-after a period without client activity. It is off by default. Kata ignores this
+after a period without client activity. It is off by default. Poomsae ignores this
 setting for explicit daemon starts and for daemons exposed through non-loopback
 listeners, a public web origin, trusted-proxy configuration, shared-listener
 host aliases, an enabled `[federation.ingress]` listener, or an enabled `[mcp]`
-endpoint. Running `kata daemon start` replaces a running idle-eligible
+endpoint. Running `poomsae daemon start` replaces a running idle-eligible
 auto-started daemon with an explicit one so it stays resident, while
-`kata daemon restart` retains the running daemon's idle policy. When the daemon
-exits for idle shutdown, it writes one `kata daemon: idle shutdown after ...`
+`poomsae daemon restart` retains the running daemon's idle policy. When the daemon
+exits for idle shutdown, it writes one `poomsae daemon: idle shutdown after ...`
 line to its log. Active requests and already-admitted finite background work
 receive a bounded drain before process exit, so exit can happen after the
 configured interval. Ordinary health probes do not renew the timeout. A running
-`kata mcp serve` process discovers the effective timeout from `/health` and
+`poomsae mcp serve` process discovers the effective timeout from `/health` and
 sends marked `GET /api/v1/ping` keepalives after applicable listener policy
 checks in both stdio and streamable-HTTP modes, so the bridge remains usable
 for its full lifetime. If GitHub, Notion, Plane, Linear, Twenty, or TickTick
@@ -682,34 +682,34 @@ without a client present, run an explicit daemon service.
 
 The optional top-level `timezone` supplies the default for date-only and local
 date-time schedules and deadlines without an explicit zone or issue timezone.
-When neither is set, Kata uses UTC. UTC instants ending in `Z` do not use this
+When neither is set, Poomsae uses UTC. UTC instants ending in `Z` do not use this
 setting.
 
 The web UI's daemon selector lists URL entries and home-less local entries.
 Home-bearing profiles are omitted and cannot alias the serving daemon. A plain
-`kata ui` opens a selected local profile directly. Otherwise, it starts or
+`poomsae ui` opens a selected local profile directly. Otherwise, it starts or
 discovers the local browser gateway and initially selects `active_daemon`;
 changing the selection keeps configured tokens on the daemon side. Use
-`kata ui --daemon <name>` only when you prefer to open one named target
+`poomsae ui --daemon <name>` only when you prefer to open one named target
 directly. Identity-authenticated tabs can read remote gateway targets, but must
 open the target directly for writes because the gateway does not delegate
 browser identities. Request-actor tabs can write when the target advertises the
 same request-actor policy or its `[[daemon]]` token belongs to an account. An
 account-bound target records each write as the token's account, the same as
-`kata --daemon <name>`. Before every mutation, the gateway rechecks that
+`poomsae --daemon <name>`. Before every mutation, the gateway rechecks that
 target's authenticated capabilities.
 
 `[web].listen` selects the browser listener when the normal daemon transport
-cannot also serve HTTP. If you omit it, Kata binds `127.0.0.1:0`, lets the
+cannot also serve HTTP. If you omit it, Poomsae binds `127.0.0.1:0`, lets the
 operating system assign an available port, and publishes the resolved URL
-through `kata daemon status`. Setting `[web].listen` with port `0` behaves the
+through `poomsae daemon status`. Setting `[web].listen` with port `0` behaves the
 same way; set a nonzero port when you need a fixed browser origin. The
 top-level `listen` remains the daemon API listener and is shared with the
 browser when it is TCP, including on Windows and in hosted mode.
 
 On a direct-loopback origin, a fresh browser tab transparently receives a
 local-web session. A static daemon token does not disable this owner-local
-path. Kata disables it when the listener or public origin is non-loopback, a
+path. Poomsae disables it when the listener or public origin is non-loopback, a
 forwarding header is present, or identity or trusted-proxy authentication is
 configured. Authenticated browser requests still require both the HttpOnly
 cookie and the tab-local session header. If the browser listener is itself
@@ -719,8 +719,8 @@ showing token login.
 
 `[web].public_origin` declares the exact HTTP or HTTPS origin visible to the
 browser when a same-origin TLS terminator or development proxy sits in front of
-Kata. It must contain only scheme and authority, with no credentials, path,
-query, or fragment. Kata never derives this security boundary from forwarded
+Poomsae. It must contain only scheme and authority, with no credentials, path,
+query, or fragment. Poomsae never derives this security boundary from forwarded
 request headers. The proxy must preserve streaming for `/api/v1/events/stream`
 and route the SPA, assets, session endpoints, and data API to the same daemon.
 
@@ -735,33 +735,33 @@ allowed_hosts = ["daemon.example:7777"]
 ```
 
 Entries contain only `host` or `host:port`, with no scheme, path, credentials,
-query, or fragment. For ephemeral deployments, `KATA_WEB_ALLOWED_HOSTS`
-supplies a comma-separated environment override. Kata rejects unlisted `Host`
+query, or fragment. For ephemeral deployments, `POOMSAE_WEB_ALLOWED_HOSTS`
+supplies a comma-separated environment override. Poomsae rejects unlisted `Host`
 values before API or browser route handling, even when a request presents a
 bearer header; this prevents credentials from turning DNS rebinding into an
 authority bypass.
 
 `[notion_sync].token_env` names the daemon environment variable containing its
-Notion read-content credential, which defaults to `KATA_NOTION_TOKEN`. Share
+Notion read-content credential, which defaults to `POOMSAE_NOTION_TOKEN`. Share
 each task database with the Notion internal connection. The credential is
 shared across Notion bindings, resolved once per run, and sent only to fixed
-`https://api.notion.com:443`; Kata rejects redirects. Supply this variable in
+`https://api.notion.com:443`; Poomsae rejects redirects. Supply this variable in
 the daemon's service environment, including for remote daemons, and restart
 after service environment or config changes. Tokens and environment-variable
 selectors never enter binding config or JSONL. Source and mapping IDs,
 interval, and cutoff are project binding settings managed by
-`kata sync notion enable`, not keys in `[notion_sync]`. See
+`poomsae sync notion enable`, not keys in `[notion_sync]`. See
 [Notion sync](../operations/notion-sync.md).
 
 `[github_sync]` controls daemon-side GitHub credentials. For a shared daemon,
 the recommended path is `[[github_sync.app]]`, matched exactly by normalized
 `(host, owner)`. The GitHub App needs only Metadata read and Issues read
-permissions. If no App matches a binding, Kata reads the environment variable
-named by `[github_sync].token_env` (default `KATA_GITHUB_TOKEN`) only when the
+permissions. If no App matches a binding, Poomsae reads the environment variable
+named by `[github_sync].token_env` (default `POOMSAE_GITHUB_TOKEN`) only when the
 binding host matches `[github_sync].token_host` (default `github.com`). If no
-host-bound env token matches, Kata falls back to
+host-bound env token matches, Poomsae falls back to
 `gh auth token --hostname <host>` for local or single-user deployments. You
-still must list GitHub Enterprise hosts in `KATA_GITHUB_SYNC_ALLOWED_HOSTS`,
+still must list GitHub Enterprise hosts in `POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS`,
 and Enterprise env-token deployments should set both `token_env` and
 `token_host`.
 
@@ -793,24 +793,24 @@ Each `[[connector]]` table configures one external-root connector process for
 ```toml
 [[connector]]
 id = "notes"
-command = "/usr/local/bin/kata-connector-notes"
+command = "/usr/local/bin/poomsae-connector-notes"
 args = ["--workspace-mode"]
 timeout_seconds = 30
 
 [connector.env]
-NOTES_TOKEN = "KATA_NOTES_TOKEN"
+NOTES_TOKEN = "POOMSAE_NOTES_TOKEN"
 
 [connector.settings]
 workspace = "example-workspace"
 ```
 
-- `id` is the unique lowercase instance name used by `kata connector` and
-  `kata bridge --connector`.
+- `id` is the unique lowercase instance name used by `poomsae connector` and
+  `poomsae bridge --connector`.
 - `command` is the absolute path of the connector executable, and `args` sets
   its fixed arguments.
 - `timeout_seconds` bounds each connector call; omit it for the default.
 - `connector.env` maps child environment variable names to daemon environment
-  variable names. Only these variables reach the connector process, and Kata
+  variable names. Only these variables reach the connector process, and Poomsae
   redacts their values from connector errors as secrets.
 - `connector.settings` is non-secret JSON-compatible configuration passed to
   the connector on every call.
@@ -818,7 +818,7 @@ workspace = "example-workspace"
 The daemon validates this structure at startup and refuses to start if a
 `[[connector]]` table is invalid. It does not run the executable or read the
 mapped environment sources until a connector call needs them. Check connector
-health with `kata connector status`. Because bridge reconciliation workers
+health with `poomsae connector status`. Because bridge reconciliation workers
 always run, durable bindings are still handled when you remove their connector
 from configuration.
 
@@ -849,14 +849,14 @@ credential provider, and cannot mix them.
 This form creates projects and enrolls or adopts direct-spoke replicas at
 startup. Outside identity mode, it requires the hub owner's administration
 credential. To connect with an ordinary account token, configure a catalog
-entry and use [`kata federation bridge connect`](../guide/project-relays.md);
+entry and use [`poomsae federation bridge connect`](../guide/project-relays.md);
 do not add a `[[federation.project]]` mapping for that bridge.
 
 ```toml
 [[daemon]]
 name = "team-hub"
 url = "https://hub.example"
-token_env = "KATA_TEAM_HUB_TOKEN"
+token_env = "POOMSAE_TEAM_HUB_TOKEN"
 
 [[federation.project]]
 hub = "team-hub"
@@ -865,7 +865,7 @@ hub_project = "hub-project"
 actor = "user-a"
 ```
 
-`hub` names a remote `[[daemon]]` entry. Kata reuses its URL, authentication,
+`hub` names a remote `[[daemon]]` entry. Poomsae reuses its URL, authentication,
 and `allow_insecure` policy without falling back to the spoke daemon's global
 bearer token. To keep the hub administration credential out of `config.toml`,
 prefer `token_file` on a device, or `token_env` when the service environment
@@ -875,7 +875,7 @@ retries without sending another credential.
 
 Each mapping makes sure the named hub project and a `pull,push,lease`
 enrollment exist, then creates the local `spoke_project` if it is missing or
-adopts the existing standalone project. Kata generates enrollment credentials
+adopts the existing standalone project. Poomsae generates enrollment credentials
 automatically and stores them in the spoke's owner-only federation credential
 store, durably reserving a generated credential once under the resolved hub
 project UID before enrollment. A database-backed account token is refused on
@@ -883,14 +883,14 @@ this legacy enrollment path with `federation_enrollment_requires_relay`.
 Credential-file updates use a same-directory, failure-atomic replacement so a
 failed write cannot truncate the last readable credential set.
 
-If the named hub project is deleted and recreated, its UID changes. Kata
+If the named hub project is deleted and recreated, its UID changes. Poomsae
 reports a conflict instead of silently enrolling the replacement:
 `configuration_conflict` before adoption and `binding_conflict` after the local
-project is bound. To recover, run `kata federation leave <spoke-project>` to
+project is bound. To recover, run `poomsae federation leave <spoke-project>` to
 clear the old managed reservation, verify the mapping, and restart the daemon
 to enroll again.
 
-Kata loads mappings once when the daemon starts. Restart the daemon after adding
+Poomsae loads mappings once when the daemon starts. Restart the daemon after adding
 or changing one. Reconciliation runs asynchronously: hub outages,
 authentication failures, and runtime conflicts do not delay daemon readiness or
 make `/health` unhealthy. Each mapping retries independently with exponential
@@ -903,7 +903,7 @@ rebind, including after a restart. Resolve that expected migration state
 explicitly:
 
 ```sh
-kata federation rebind spoke-project --hub team-hub
+poomsae federation rebind spoke-project --hub team-hub
 ```
 
 The selected spoke daemon resolves `team-hub` from its own startup config. It
@@ -922,12 +922,12 @@ Removing a mapping and restarting stops managing it, but does not detach the
 existing replica or revoke its hub enrollment. Teardown is always explicit:
 
 ```sh
-kata federation leave spoke-project
+poomsae federation leave spoke-project
 ```
 
 Explicit leave also removes exact config-managed credential reservations left
 by an interrupted startup reconciliation, including reservations created before
-local adoption completed. Kata retains conflicting or manual credentials and
+local adoption completed. Poomsae retains conflicting or manual credentials and
 reports them as cleanup errors instead of deleting them. If leave removes a
 reservation while hub enrollment or rotation is in flight, reconciliation
 compensates by revoking the completed enrollment rather than stranding it.
@@ -949,7 +949,7 @@ token identity overrides the requested actor at reconciliation time.
 #### Credential provider
 
 Use this form when the hub supplies a helper to approve access without giving
-Kata its administration credentials:
+Poomsae its administration credentials:
 
 ```toml
 [[daemon]]
@@ -969,7 +969,7 @@ credential_provider = ["access-helper", "credentials", "--profile", "work"]
 | `hub` | Names a remote catalog entry with an HTTPS URL. |
 | `spoke_project`, `hub_project` | Required local project name and destination project key. |
 | `intent` | Required: `read_only`, `collaborate`, or `migrate`. |
-| `credential_provider` | Nonempty executable/argument array. Kata executes it directly, without a shell. |
+| `credential_provider` | Nonempty executable/argument array. Poomsae executes it directly, without a shell. |
 | `actor` | Must be absent; the provider supplies the approved actor. |
 | Catalog `token`, `token_file`, `token_env` | Must be absent for a provider mapping. |
 
@@ -995,7 +995,7 @@ An attached replica can switch between `read_only` and `collaborate`: edit
 [Change replica intent](../operations/federation.md#change-replica-intent).
 Changing to or from `migrate` still requires leaving the hub first.
 
-Kata retains the request across restarts and failed exchanges. If a helper
+Poomsae retains the request across restarts and failed exchanges. If a helper
 exits `2`, reconciliation health reports `configuration_conflict`; check its
 command and protocol version. Unlike catalog-admin mappings, removing a
 provider mapping releases its saved request and detaches the replica on
@@ -1021,10 +1021,10 @@ Restart the daemon with this configuration, then create per-user tokens with
 the bootstrap token:
 
 ```sh
-export KATA_AUTH_TOKEN=bootstrap-admin-token
-kata tokens create --actor member --name laptop
-kata tokens list
-kata tokens revoke 1
+export POOMSAE_AUTH_TOKEN=bootstrap-admin-token
+poomsae tokens create --actor member --name laptop
+poomsae tokens list
+poomsae tokens revoke 1
 ```
 
 Unscoped `tokens create` prints the plaintext token once, and the daemon stores
@@ -1032,7 +1032,7 @@ only a SHA-256 hash. If you lose a token, revoke it and create a new one. To
 bound an ordinary token's lifetime, pass `--expires-in 4h`; omitting it keeps
 the existing non-expiring lifetime.
 
-Kata refuses `tokens create` when a shared token is configured but
+Poomsae refuses `tokens create` when a shared token is configured but
 `require_token_identity` is false, preventing you from minting a credential
 that the daemon would immediately reject as a bearer token. A local no-auth
 daemon may still pre-provision unscoped tokens before you restart it in
@@ -1065,19 +1065,19 @@ connectors.
 
 ## Close throttle
 
-Kata refuses structurally dangerous close patterns. The parent-completeness
+Poomsae refuses structurally dangerous close patterns. The parent-completeness
 guard always refuses closing an issue while it has open children, and normal
 CLI and API close paths also require close evidence and a substantive message.
 
-By default, Kata does not throttle sibling close bursts. If you want stricter
+By default, Poomsae does not throttle sibling close bursts. If you want stricter
 pacing, you can enable two additional guards daemon-wide:
 
-- **Sibling burst.** Kata refuses closing more than three sibling issues within
+- **Sibling burst.** Poomsae refuses closing more than three sibling issues within
   the configured window.
-- **Repeated message.** Kata refuses closing a second sibling with an identical
+- **Repeated message.** Poomsae refuses closing a second sibling with an identical
   `done` or `audit-no-change` message within thirty minutes.
 
-Enable these optional throttles in `<KATA_HOME>/config.toml`:
+Enable these optional throttles in `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [close.throttle]
@@ -1087,7 +1087,7 @@ window = "60s"
 
 `enabled` defaults to `false`. `window` controls only the sibling-burst
 lookback and defaults to `"60s"`; use Go duration syntax such as `"30s"`,
-`"2m"`, or `"1h"`. When Kata refuses a sibling-burst close, the error message
+`"2m"`, or `"1h"`. When Poomsae refuses a sibling-burst close, the error message
 reports the resolved window.
 
 Normal CLI and API close paths still run the parent-completeness refusal,
@@ -1105,7 +1105,7 @@ widen authority. Structural guards still apply to every transport.
 
 `[mcp_events]` turns on daemon-owned MCP Events. While the daemon runs, it
 stores webhook subscriptions and delivers signed inbox events to them;
-`kata mcp serve` only forwards requests to the daemon.
+`poomsae mcp serve` only forwards requests to the daemon.
 
 ```toml
 [mcp_events]
@@ -1128,7 +1128,7 @@ Subscriptions created before you change the setting keep their lifetime until
 the subscriber next refreshes.
 
 The daemon seals subscription secrets with a 32-byte key in
-`<KATA_HOME>/runtime/<storage-id>/mcp-events.key`. The first time Events starts
+`<POOMSAE_HOME>/runtime/<storage-id>/mcp-events.key`. The first time Events starts
 against a database with no Events data, the daemon creates this file readable
 only by its owner. Daemons that share one PostgreSQL database must use the same
 key file.
@@ -1174,7 +1174,7 @@ IP.
 
 A matching callback always connects to its pins without DNS or a public
 fallback. Other callbacks remain public-only: every address in a DNS answer
-must be public before Kata attempts any connection. TLS still checks the
+must be public before Poomsae attempts any connection. TLS still checks the
 original callback hostname and certificate using system roots. Install a
 trusted certificate chain on the receiver; literal-IP callbacks need a matching
 IP subject alternative name. Signing and receiver verification remain required,
@@ -1197,7 +1197,7 @@ addresses. No environment variable grants callback trust.
 This section is the field reference. See the
 [Semantic search guide](../guide/semantic-search.md) for setup and behavior.
 
-Semantic search is opt-in. Run `kata daemon local-embeddings` to use a running
+Semantic search is opt-in. Run `poomsae daemon local-embeddings` to use a running
 Ollama in a home without embeddings configured, or to download the shared
 built-in server with your consent. Running it again switches a configured
 provider to the built-in server:
@@ -1210,15 +1210,15 @@ local = true
 `local` uses `nomic-embed-text` with 768 dimensions by default. It accepts
 `nomic-embed-text`, `nomic-embed-text:latest`, and `nomic-embed-text:v1.5`,
 with widths up to 768; widths below 768 require `request_dimensions = true`. A
-`base_url` from any source, including `KATA_SEARCH_EMBEDDINGS_BASE_URL`, takes
-precedence over `local = true`. Kata ignores API key settings only while the
+`base_url` from any source, including `POOMSAE_SEARCH_EMBEDDINGS_BASE_URL`, takes
+precedence over `local = true`. Poomsae ignores API key settings only while the
 built-in server is selected. The setup command refuses to run while that
 environment variable is set and restores the config if a daemon refuses its
 restart. On SQLite, a recorded shared choice enables the built-in server when
 no provider is configured, while PostgreSQL requires explicit setup. The daemon
 reuses installed files. On SQLite, a recorded shared choice allows it to
 download missing built-in files; otherwise, run the setup command to approve
-the download. Older Kata releases reject the `local` key.
+the download. Older Poomsae releases reject the `local` key.
 
 With embeddings disabled, search matches words only. To use an external
 OpenAI-compatible provider, set `local = false` and configure its endpoint and
@@ -1229,7 +1229,7 @@ model:
 base_url = "http://localhost:11434/v1"  # any OpenAI-compatible /embeddings
 model    = "nomic-embed-text"
 # api_key = "..."               # only for providers that require a key
-# api_key_file = "~/.config/kata/embedding.key"
+# api_key_file = "~/.config/poomsae/embedding.key"
 # api_key_env  = "VOYAGE_API_KEY"
 # fingerprint_salt = ""         # bump to force re-embed when model weights change
 # document_prefix = ""          # literal affix applied to each indexed chunk
@@ -1253,18 +1253,18 @@ keyless local providers such as Ollama need only `base_url` and `model`.
 The built-in server defaults to 8 inputs per request and a 300-second request
 timeout, whereas configured endpoints default to 64 inputs and 30 seconds. Set
 `batch_size` or `timeout_seconds` to override either default. During indexing,
-Kata sends one embedding request at a time. If a multi-input request times out,
-Kata splits it into smaller requests. If a single input also times out, later
+Poomsae sends one embedding request at a time. If a multi-input request times out,
+Poomsae splits it into smaller requests. If a single input also times out, later
 fills use smaller batches until the daemon restarts.
 
-Affixes preserve every space and newline. Kata applies document affixes once
+Affixes preserve every space and newline. Poomsae applies document affixes once
 around each prepared issue chunk and query affixes once around the search query
-text, which Kata sends as entered. With empty affixes and
+text, which Poomsae sends as entered. With empty affixes and
 `request_dimensions = false`, existing generation fingerprints stay unchanged
-and Kata reuses stored vectors. Setting any affix or enabling dimension requests
+and Poomsae reuses stored vectors. Setting any affix or enabling dimension requests
 creates a separate generation. `dims` always validates response width, while
 `request_dimensions` also sends that width as the request's `dimensions` field.
-Kata never slices vectors to fit.
+Poomsae never slices vectors to fit.
 
 ### Optional EmbeddingGemma 2 text endpoint
 
@@ -1284,10 +1284,10 @@ query_prefix = "task: search result | query: "
 
 You must bind that alias to `google/embeddinggemma-2` at the specified
 revision, tokenizer, pooling, precision, and dimension policy. The alias and
-salt record that assertion; Kata does not verify the server's weights. Use mean
+salt record that assertion; Poomsae does not verify the server's weights. Use mean
 pooling including prompts, L2 normalization, and bfloat16 or float32
 activations, rather than float16. Configure the server to accept literal client
-prompts without adding them again. Kata sends text only; this transport does
+prompts without adding them again. Poomsae sends text only; this transport does
 not enable image, audio, or video input.
 
 The model card recommends `title: {title}` when a title exists. Because affixes
@@ -1295,42 +1295,42 @@ are fixed text, every chunk uses `title: none` and the issue title stays at the
 start of the first chunk's text.
 
 The server must enforce the shared 8192-token input window, including prompt
-overhead. Kata's `model_context_tokens` and `max_batch_tokens` only bound batch
+overhead. Poomsae's `model_context_tokens` and `max_batch_tokens` only bound batch
 packing; they do not tokenize or enforce admission for an individual input.
 Character-based chunk limits also do not establish that token bound.
 
-Kata does not download weights or configure the serving runtime.
+Poomsae does not download weights or configure the serving runtime.
 
 For 512, 256, or 128 dimensions, set `dims` to that width and set
 `request_dimensions = true` only if the server supports explicit truncation
 followed by L2 renormalization. Both queries and documents must use the same
-width, and Kata rejects a server that returns the wrong width. Changing these
+width, and Poomsae rejects a server that returns the wrong width. Changing these
 settings requires a restart and backfill before semantic search can resume.
 
 ### Credentials and batching
 
 Credential resolution follows `api_key` > `api_key_file` > `api_key_env`, and
 the first selected source wins. If its file is missing, unreadable, or empty,
-or its environment variable is unset or empty, Kata makes no provider requests
+or its environment variable is unset or empty, Poomsae makes no provider requests
 and keeps issues in the backlog. It reports the source problem without falling
 back to a lower-priority source.
 
 Key files must use an absolute path or start with `~/`, which expands to the
-daemon user's home directory rather than `KATA_HOME`. Other relative paths are
+daemon user's home directory rather than `POOMSAE_HOME`. Other relative paths are
 rejected. Symlinks are accepted, and there is no parent-directory ownership or
-permission policy. Kata validates the opened file: it must be regular and owned
+permission policy. Poomsae validates the opened file: it must be regular and owned
 by the daemon's effective user. On Unix, group and world permissions are
 rejected (`chmod 600`). On Windows, the file must not inherit permissions from
 its folder, and it may grant access only to the current user, SYSTEM, and
 Administrators. A file created in a user profile inherits its folder's
 permissions and is rejected even when they list only those accounts. To fix it,
 run this in PowerShell as the daemon user:
-`icacls <file> /inheritance:r /grant:r "${env:USERNAME}:R"`. Kata refuses files
+`icacls <file> /inheritance:r /grant:r "${env:USERNAME}:R"`. Poomsae refuses files
 larger than 64 KiB and bounds reads to enforce that limit. File contents are
 trimmed, including a trailing newline.
 
-Kata resolves the selected credential once at startup and once per
-`kata daemon reload`. Reloading wakes the embedding backlog, while changes to
+Poomsae resolves the selected credential once at startup and once per
+`poomsae daemon reload`. Reloading wakes the embedding backlog, while changes to
 provider settings, including `base_url` or `model`, require a restart. An
 environment key must be present in the daemon's environment, not only in the
 shell running a later CLI command.
@@ -1342,7 +1342,7 @@ explicit semantic or hybrid searches return readable validation errors. See
 [Missing or rejected credentials](../guide/semantic-search.md#missing-or-rejected-credentials)
 for status meanings and recovery.
 
-Kata attaches the embedding API key only to requests whose origin matches
+Poomsae attaches the embedding API key only to requests whose origin matches
 `base_url`, following the same bearer-token trust ladder as daemon catalog
 tokens: HTTPS is always allowed, HTTP to loopback is allowed, and HTTP to other
 private IPs needs `trust_private_network = true`.
@@ -1350,7 +1350,7 @@ private IPs needs `trust_private_network = true`.
 Some providers cap the total input tokens across one embedding request in
 addition to the number of inputs. When that applies, set
 `model_context_tokens` to the model's per-input context limit and
-`max_batch_tokens` to the provider's aggregate request limit. Kata passes both
+`max_batch_tokens` to the provider's aggregate request limit. Poomsae passes both
 limits to kit, which conservatively treats every input as capable of filling
 the model context and reduces `batch_size` as needed. This avoids repeatable
 oversized-request errors from providers that truncate each input before
@@ -1359,7 +1359,7 @@ enforcing their aggregate limit.
 Both settings are optional and default to zero, so existing deployments keep
 count-only batching. When you use either setting, both must be positive and
 `max_batch_tokens` must fit at least one `model_context_tokens` input; kit
-checks this during daemon startup before Kata processes documents.
+checks this during daemon startup before Poomsae processes documents.
 
 Configuring an endpoint sends issue titles and bodies to it on every embed.
 That is the privacy consent boundary: the operator who writes this section
@@ -1372,7 +1372,7 @@ are sent to or pulled from federated hubs.
 ### Index freshness
 
 The daemon keeps the index fresh on its own with a background reconciler that
-embeds new and edited issues within seconds. `kata` reports its state under
+embeds new and edited issues within seconds. `poomsae` reports its state under
 `embeddings` in the `/health` response (`configured`, `last_success_at`,
 `last_error_status`, `embedded`, `skipped`, and `backlog`). During a backfill,
 it also reports `started_at` and `last_progress_at`, then adds a smoothed
@@ -1380,19 +1380,19 @@ it also reports `started_at` and `last_progress_at`, then adds a smoothed
 never blocks on embedding lag: an issue is findable lexically the instant it is
 created and gains semantic recall once the reconciler catches up.
 
-Kata chunks issue text before embedding rather than embedding a single
+Poomsae chunks issue text before embedding rather than embedding a single
 truncated vector, so long issues get full semantic coverage instead of losing
 everything past a fixed length cutoff.
 
 With SQLite, embeddings live in a sidecar database that the daemon creates next
-to the main database (`kata.vectors.db` for the default `kata.db`). With
-PostgreSQL, they live in `halfvec` tables in the selected Kata schema when the
+to the main database (`poomsae.vectors.db` for the default `poomsae.db`). With
+PostgreSQL, they live in `halfvec` tables in the selected Poomsae schema when the
 optional pgvector extension is installed; core PostgreSQL storage works without
 pgvector. See [PostgreSQL operations](../operations/postgres.md) for extension
 and role requirements. Both forms are derived state rebuilt by re-embedding,
 and portable JSONL exports do not include vectors.
 
-When you upgrade to a Kata version that changes embedding storage, Kata
+When you upgrade to a Poomsae version that changes embedding storage, Poomsae
 re-embeds every issue from scratch on the first daemon start after the upgrade.
 The rebuilt index starts serving immediately, so search returns partial
 semantic results while the backfill drains; the `embeddings` backlog in
@@ -1418,9 +1418,9 @@ labeled lexical results and explicit `--hybrid`/`--semantic` requests return
 
 ## Usage reporting
 
-Kata can send general, anonymous usage telemetry. Telemetry stays off unless
+Poomsae can send general, anonymous usage telemetry. Telemetry stays off unless
 you opt in or set `TELEMETRY_ENABLED=1`. Setting any of
-`KATA_TELEMETRY_ENABLED=0`, `TELEMETRY_ENABLED=0`, `DO_NOT_TRACK`, or `CI`
+`POOMSAE_TELEMETRY_ENABLED=0`, `TELEMETRY_ENABLED=0`, `DO_NOT_TRACK`, or `CI`
 turns it off. Development builds never send telemetry.
 Tagged `go install` builds report their release version but send no usage telemetry because they lack version control revision metadata.
 
@@ -1431,7 +1431,7 @@ stores only token hashes, while a spoke stores the plaintext enrollment token
 in its local federation credentials file so it can call hub federation
 transport routes.
 
-Do not put federation enrollment tokens in `.kata.toml`.
+Do not put federation enrollment tokens in `.poomsae.toml`.
 
 ## Hosted mode
 
@@ -1441,29 +1441,29 @@ private-network trust. See [Hosted mode](../operations/hosted-mode.md).
 
 `[plane_sync]` sets daemon-owned `api_origin`, `web_origin`, and `token_env`.
 The Plane Cloud defaults are `https://api.plane.so`, `https://app.plane.so`, and
-`KATA_PLANE_TOKEN`. A self-hosted API origin also becomes the default web
+`POOMSAE_PLANE_TOKEN`. A self-hosted API origin also becomes the default web
 origin. Origins must be root HTTPS origins or HTTP on literal loopback IPs.
-Kata resolves API keys once per run, sends them only to the configured API
+Poomsae resolves API keys once per run, sends them only to the configured API
 origin through `X-API-Key`, and rejects redirects. Binding requests cannot
 choose origins or credentials. Set workspace, project UUID, cutoff, interval,
-and title presentation with `kata sync plane enable`. See
+and title presentation with `poomsae sync plane enable`. See
 [Plane sync](../operations/plane-sync.md).
 
 ## Linear credentials
 
-`[linear_sync]` selects daemon-owned `token_env` (default `KATA_LINEAR_TOKEN`)
+`[linear_sync]` selects daemon-owned `token_env` (default `POOMSAE_LINEAR_TOKEN`)
 and `auth_type` (`api-key` by default, or `oauth` for an operator-managed
-Bearer token). All requests go to `https://api.linear.app/graphql`, and Kata
+Bearer token). All requests go to `https://api.linear.app/graphql`, and Poomsae
 rejects redirects and does not refresh OAuth tokens. Configure workspace/team
-UUIDs and an optional project restriction with `kata sync linear enable`. See
+UUIDs and an optional project restriction with `poomsae sync linear enable`. See
 [Linear sync](../operations/linear-sync.md).
 
 ## Twenty credentials
 
 `[twenty_sync]` selects daemon-owned `api_origin`, `web_origin`, and
 `token_env`, defaulting to `https://api.twenty.com`, `https://app.twenty.com`,
-and `KATA_TWENTY_TOKEN`. Self-hosted HTTPS root origins and literal-loopback
-HTTP are supported, and an omitted web origin follows a custom API origin. Kata
+and `POOMSAE_TWENTY_TOKEN`. Self-hosted HTTPS root origins and literal-loopback
+HTTP are supported, and an omitted web origin follows a custom API origin. Poomsae
 captures keys once per run, sends them as bearer credentials only to the
 configured API origin, and rejects redirects. Enabling the sync discovers the
 key's workspace UUID, and bindings cannot choose origins, keys, or another
@@ -1472,24 +1472,24 @@ workspace. See [Twenty sync](../operations/twenty-sync.md).
 ## Todoist credentials
 
 `[todoist_sync]` selects daemon-owned `token_env` (default
-`KATA_TODOIST_TOKEN`). Requests go to `https://api.todoist.com`; the only
+`POOMSAE_TODOIST_TOKEN`). Requests go to `https://api.todoist.com`; the only
 alternative `api_origin` is literal loopback HTTP for isolated fixture APIs.
-Kata captures tokens once per run, rejects redirects, and does not let binding
+Poomsae captures tokens once per run, rejects redirects, and does not let binding
 requests select credentials or origins. Configure the selected project and
-history floor with `kata sync todoist enable`. See
+history floor with `poomsae sync todoist enable`. See
 [Todoist sync](../operations/todoist-sync.md).
 
 `[ticktick_sync]` selects the daemon-owned token environment variable through
-`token_env`, which defaults to `KATA_TICKTICK_TOKEN`. The API origin is fixed
+`token_env`, which defaults to `POOMSAE_TICKTICK_TOKEN`. The API origin is fixed
 to `https://api.ticktick.com`. Select project scope and status direction with
-`kata sync ticktick enable`. See [TickTick sync](../operations/ticktick-sync.md)
+`poomsae sync ticktick enable`. See [TickTick sync](../operations/ticktick-sync.md)
 for access tokens, field ownership, completion writeback, and recovery limits.
 
 ## Docbank attachments
 
-In Kata 0.21.0 and later, `[docbank]` enables issue file uploads and reads
+In Poomsae 0.21.0 and later, `[docbank]` enables issue file uploads and reads
 through a Docbank, either separately hosted (`url`) or running on the same
-machine (`local`). `kata docbank setup` writes and checks this section. See
+machine (`local`). `poomsae docbank setup` writes and checks this section. See
 [Issue attachments](../guide/attachments.md#configure-the-daemon) for setup and
 the shared-vault trust boundary. Shared projects use the root daemon's configuration; upgrade every daemon on the route. The configured folder is visible to enrolled project readers and metadata writers, and `/` exposes the entire vault.
 
@@ -1499,18 +1499,18 @@ the shared-vault trust boundary. Shared projects use the root daemon's configura
 | `api_key` | empty | Inline key, preferred over file and environment sources. |
 | `api_key_file` | empty | Key file, preferred over the environment source; it must follow the [key file rules](#credentials-and-batching). |
 | `api_key_env` | empty | Name of the environment variable containing the key. |
-| `folder` | `/kata` | Clean absolute Docbank folder; uploads go under a project-UID subfolder. |
+| `folder` | `/poomsae` | Clean absolute Docbank folder; uploads go under a project-UID subfolder. |
 | `local` | `false` | Use the Docbank running on this machine, found through its runtime record. |
 | `trust_private_network` | `false` | Allow plain HTTP `url` to a private, link-local, or carrier-grade NAT address, or to a host name such as a container name (`http://docbank:8485`). Public IP literals stay refused; host names are not resolved to check their addresses. |
 
 A configured URL requires a key source. If the selected source cannot supply a
-key, Kata does not fall back to another source and sends nothing to Docbank;
+key, Poomsae does not fall back to another source and sends nothing to Docbank;
 attachment requests fail with `docbank_key_unavailable` (see
-[attachment endpoints](http-api.md#attachment-endpoints)). `kata doctor`
+[attachment endpoints](http-api.md#attachment-endpoints)). `poomsae doctor`
 (`daemon.docbank`) shows the failing source and asks Docbank once whether it
-answers and accepts the key. Kata resolves keys on each request.
+answers and accepts the key. Poomsae resolves keys on each request.
 
-A `url` in the file or `KATA_DOCBANK_URL` takes precedence over `local`. With
+A `url` in the file or `POOMSAE_DOCBANK_URL` takes precedence over `local`. With
 `local`, `api_key`, `api_key_file`, and `api_key_env` are unused, while
 `folder` still applies.
 
@@ -1519,5 +1519,5 @@ Over plain HTTP the API key and attachment contents travel unencrypted, so set
 container network. Redirects stay refused and the key is still sent only in a
 header.
 
-`KATA_DOCBANK_URL`, `KATA_DOCBANK_API_KEY_FILE`, `KATA_DOCBANK_FOLDER`, and
-`KATA_DOCBANK_TRUST_PRIVATE_NETWORK` override their corresponding file settings.
+`POOMSAE_DOCBANK_URL`, `POOMSAE_DOCBANK_API_KEY_FILE`, `POOMSAE_DOCBANK_FOLDER`, and
+`POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK` override their corresponding file settings.

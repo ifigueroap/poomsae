@@ -8,9 +8,9 @@ import (
 	"slices"
 	"sync"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // RootSigning holds this daemon's owner-only root signing key. A missing or

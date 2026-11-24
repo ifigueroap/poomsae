@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { KataTaskEvent } from '../lib/kata/types'
+  import type { PoomsaeTaskEvent } from '../lib/poomsae/types'
   import DetailSection from './DetailSection.svelte'
   import { formatTimestamp } from '@kenn-io/kit-ui/utils/time'
 
@@ -8,7 +8,7 @@
   import { describeKataEvent } from '../lib/history/format'
 
   interface Props {
-    events: readonly KataTaskEvent[]
+    events: readonly PoomsaeTaskEvent[]
     selfActor?: string | undefined
     metadata?: Record<string, unknown> | undefined
     attachmentLinks?: boolean | undefined
@@ -34,7 +34,7 @@
     return { short: formatTimestamp(value), full: fullTimestamp.format(parsed) }
   }
 
-  function closingSession(event: KataTaskEvent): { label: string; url?: string } | undefined {
+  function closingSession(event: PoomsaeTaskEvent): { label: string; url?: string } | undefined {
     if (event.type !== 'issue.closed') return undefined
     const value = event.payload?.transcript
     if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined

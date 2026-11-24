@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/projectscope"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/projectscope"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestProjectScopeClientIsImmutableAndPreservesStackedLimits(t *testing.T) {
@@ -24,7 +24,7 @@ func TestProjectScopeClientIsImmutableAndPreservesStackedLimits(t *testing.T) {
 		_, _ = w.Write([]byte(`{"projects":[]}`))
 	}))
 	t.Cleanup(server.Close)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client(), kataclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client(), poomsaeclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
 		r.Header.Set("Authorization", "Bearer example-token")
 		return nil
 	}))
@@ -36,7 +36,7 @@ func TestProjectScopeClientIsImmutableAndPreservesStackedLimits(t *testing.T) {
 	refs[0] = target
 	stacked, err := scoped.WithProjectScope([]string{target})
 	require.NoError(t, err)
-	for _, c := range []*kataclient.Client{client, scoped, stacked} {
+	for _, c := range []*poomsaeclient.Client{client, scoped, stacked} {
 		_, err := c.ListProjects(t.Context(), nil)
 		require.NoError(t, err)
 	}

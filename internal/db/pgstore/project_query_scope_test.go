@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A link is visible only when both of its endpoints are in an authorized

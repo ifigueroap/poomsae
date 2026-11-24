@@ -1,6 +1,6 @@
 package client
 
-import "go.kenn.io/kata/internal/uid"
+import "github.com/ifigueroap/poomsae/internal/uid"
 
 // NewCronUID generates a normalized ULID for a cron definition or run
 // observation. Generate it once, persist it with the intended request, and

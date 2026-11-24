@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/notification"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 // Imports can also make a title or the request itself larger than the inbox's
@@ -54,7 +54,7 @@ func TestInboxPagesPastOversizedImportedRequests(t *testing.T) {
 		if cursor != "" {
 			arguments["cursor"] = cursor
 		}
-		page := callAdministrationTool(t, session, "kata.inbox", arguments)
+		page := callAdministrationTool(t, session, "poomsae.inbox", arguments)
 		for _, raw := range page["requests"].([]any) {
 			got = append(got, raw.(map[string]any)["issue_uid"].(string))
 		}
@@ -85,7 +85,7 @@ func TestInboxPagesPastAnIssueWithAHugeBody(t *testing.T) {
 	for i, body := range []string{"short", strings.Repeat("a", 9<<20)} {
 		issue, _, err := store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: project.ID, Title: fmt.Sprint("Imported ", i), Body: body, Author: "importer"})
 		require.NoError(t, err)
-		callAdministrationTool(t, session, "kata.set_metadata", map[string]any{"ref": issue.ShortID, "patch": request})
+		callAdministrationTool(t, session, "poomsae.set_metadata", map[string]any{"ref": issue.ShortID, "patch": request})
 		want = append(want, issue.UID)
 	}
 
@@ -96,7 +96,7 @@ func TestInboxPagesPastAnIssueWithAHugeBody(t *testing.T) {
 		if cursor != "" {
 			arguments["cursor"] = cursor
 		}
-		page := callAdministrationTool(t, session, "kata.inbox", arguments)
+		page := callAdministrationTool(t, session, "poomsae.inbox", arguments)
 		for _, raw := range page["requests"].([]any) {
 			got = append(got, raw.(map[string]any)["issue_uid"].(string))
 		}
@@ -110,22 +110,22 @@ func TestInboxPagesPastAnIssueWithAHugeBody(t *testing.T) {
 func TestInboxPaginationPreservesEmptyCandidatePage(t *testing.T) {
 	session, _ := newCoordinationSession(t)
 	for i := range 25 {
-		created := callAdministrationTool(t, session, "kata.create", map[string]any{"title": fmt.Sprint("Attention issue ", i), "idempotency_key": fmt.Sprint("page-", i)})
+		created := callAdministrationTool(t, session, "poomsae.create", map[string]any{"title": fmt.Sprint("Attention issue ", i), "idempotency_key": fmt.Sprint("page-", i)})
 		ref := created["issue"].(map[string]any)["ref"].(string)
 		from := "example-agent"
 		if i == 24 {
 			from = ""
 		}
-		callAdministrationTool(t, session, "kata.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{notification.MetadataKey("reader/worker"): map[string]any{"from": from, "message": "Review"}}})
+		callAdministrationTool(t, session, "poomsae.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{notification.MetadataKey("reader/worker"): map[string]any{"from": from, "message": "Review"}}})
 	}
-	first := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "reader/worker", "limit": 1})
+	first := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "reader/worker", "limit": 1})
 	require.Empty(t, first["requests"])
 	cursor, ok := first["next_cursor"].(string)
 	require.True(t, ok, "an empty filtered page must preserve the candidate continuation")
 	seen := map[string]bool{}
 	for pages := 0; cursor != ""; pages++ {
 		require.Less(t, pages, 30)
-		page := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "reader/worker", "limit": 3, "cursor": cursor})
+		page := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "reader/worker", "limit": 3, "cursor": cursor})
 		for _, raw := range page["requests"].([]any) {
 			item := raw.(map[string]any)
 			uid := item["issue_uid"].(string)
@@ -141,14 +141,14 @@ func TestInboxPaginationPreservesEmptyCandidatePage(t *testing.T) {
 func TestInboxCursorScopeMismatch(t *testing.T) {
 	session, _ := newCoordinationSession(t)
 	for i := range 2 {
-		created := callAdministrationTool(t, session, "kata.create", map[string]any{"title": fmt.Sprint("Request ", i), "idempotency_key": fmt.Sprint("scope-", i)})
+		created := callAdministrationTool(t, session, "poomsae.create", map[string]any{"title": fmt.Sprint("Request ", i), "idempotency_key": fmt.Sprint("scope-", i)})
 		ref := created["issue"].(map[string]any)["ref"].(string)
-		callAdministrationTool(t, session, "kata.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{notification.MetadataKey("reader"): map[string]any{"from": "example-agent", "message": "Review"}}})
+		callAdministrationTool(t, session, "poomsae.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{notification.MetadataKey("reader"): map[string]any{"from": "example-agent", "message": "Review"}}})
 	}
-	first := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "reader", "limit": 1})
+	first := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "reader", "limit": 1})
 	cursor, ok := first["next_cursor"].(string)
 	require.True(t, ok)
-	callToolError(t, session, "kata.inbox", map[string]any{"for": "reader/other", "limit": 1, "cursor": cursor})
+	callToolError(t, session, "poomsae.inbox", map[string]any{"for": "reader/other", "limit": 1, "cursor": cursor})
 }
 
 func TestInboxResponseBoundBeforeDecode(t *testing.T) {
@@ -172,7 +172,7 @@ func TestInboxResponseBoundBeforeDecode(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	scope, err := NewBoundScope(ProjectIdentity{ID: 1, Name: "spoke-project"})
 	require.NoError(t, err)

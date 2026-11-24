@@ -15,14 +15,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const dispatcherTestGraceWindow = 500 * time.Millisecond
 const dispatcherTestRunWait = 15 * time.Second
 
-// mustNewDispatcher builds a Dispatcher rooted at a fresh temp KataHome with
+// mustNewDispatcher builds a Dispatcher rooted at a fresh temp PoomsaeHome with
 // no-op resolvers and returns the dispatcher, a buffer capturing the daemon
 // log, and the absolute path to the runs.jsonl appender for that DB.
 func mustNewDispatcher(t *testing.T, hooks []ResolvedHook, cfg Config) (*Dispatcher, *strings.Builder, string) {
@@ -32,7 +32,7 @@ func mustNewDispatcher(t *testing.T, hooks []ResolvedHook, cfg Config) (*Dispatc
 	logBuf := &strings.Builder{}
 	deps := DispatcherDeps{
 		DBHash:          dbHash,
-		KataHome:        root,
+		PoomsaeHome:     root,
 		DaemonLog:       log.New(logBuf, "", 0),
 		AliasResolver:   func(_ context.Context, _ db.Event) (AliasSnapshot, bool, error) { return AliasSnapshot{}, false, nil },
 		IssueResolver:   func(_ context.Context, _ int64) (IssueSnapshot, error) { return IssueSnapshot{}, nil },
@@ -410,9 +410,9 @@ func TestDispatcher_AliasResolverContext_CancelsOnShutdown(t *testing.T) {
 	// Capture the ctx the resolver was given.
 	captured := make(chan context.Context, 1)
 	deps := DispatcherDeps{
-		DBHash:    "testdbhash01",
-		KataHome:  t.TempDir(),
-		DaemonLog: log.New(&strings.Builder{}, "", 0),
+		DBHash:      "testdbhash01",
+		PoomsaeHome: t.TempDir(),
+		DaemonLog:   log.New(&strings.Builder{}, "", 0),
 		AliasResolver: func(ctx context.Context, _ db.Event) (AliasSnapshot, bool, error) {
 			select {
 			case captured <- ctx:

@@ -1,18 +1,18 @@
 ---
 title: Federation
-description: Configure and operate trusted Kata hub-and-spoke federation across SQLite or PostgreSQL daemons.
+description: Configure and operate trusted Poomsae hub-and-spoke federation across SQLite or PostgreSQL daemons.
 last_edited: 2026-11-20
 ---
 
 # Federation
 
-Federation lets multiple Kata daemons share selected projects while each user
+Federation lets multiple Poomsae daemons share selected projects while each user
 keeps a local daemon and local database. You opt in per project.
 
 If you are setting up a new relay connection, start with
 [Share projects between hubs](../guide/project-relays.md), which explains the
 roles and walks through preview, connection, and recovery. Project relays
-require Kata 0.19.0 or later. Direct-spoke enrollment uses daemon-owner
+require Poomsae 0.19.0 or later. Direct-spoke enrollment uses daemon-owner
 credentials. In identity mode, the owner uses the bootstrap token and names an
 existing hub account with `--actor`.
 
@@ -70,8 +70,8 @@ You can move an issue and its active descendants between projects on the same
 hub:
 
 ```sh
-kata move intake-project#abc4 repository-project --dry
-kata move intake-project#abc4 repository-project
+poomsae move intake-project#abc4 repository-project --dry
+poomsae move intake-project#abc4 repository-project
 ```
 
 Both projects must have active federation bindings. On a spoke, both must use
@@ -102,8 +102,8 @@ back the project's other unsent changes.
 
 To subscribe to the placeholder project later:
 
-1. Run `kata projects restore <local-name>`.
-2. Optionally run `kata projects rename <local-name> <chosen-name>`.
+1. Run `poomsae projects restore <local-name>`.
+2. Optionally run `poomsae projects rename <local-name> <chosen-name>`.
 3. Rerun the enrollment's join command with `--project <current-local-name>`.
 
 A configured mapping can name the placeholder's project directly. A mapping
@@ -127,13 +127,13 @@ the issue in the destination while another project joined directly to the same
 hub still holds the local row, the destination's pull moves that row as an
 applied move would. The local issue ID, discussion, labels, and links stay with
 it, while the destination's baseline sets its current fields and short ID. The
-former short ID keeps resolving in the source, and Kata does not author a move
+former short ID keeps resolving in the source, and Poomsae does not author a move
 for this. A change the hub made before that baseline and never sent to the
 spoke, such as a removed label or link or an edited comment, may not appear on
 the relocated issue until the hub changes it again.
 
 The destination's pull stops with an error and leaves the issue in place if the
-two projects are not both joined directly to the same hub, or if Kata refuses
+two projects are not both joined directly to the same hub, or if Poomsae refuses
 the move as an applied move, such as an issue in a recurrence or an
 import-mapping collision. Other projects keep syncing.
 
@@ -144,7 +144,7 @@ source does not discard that recovered history. Its original project identity
 and move history must remain for historical references to keep resolving.
 
 Leaving or archiving a former project preserves its identity for delayed
-events. Kata refuses to purge, merge, or adopt it under a different project UID
+events. Poomsae refuses to purge, merge, or adopt it under a different project UID
 while another joined project's retained move history still needs that identity.
 This includes source and transit streams even when the current destination has
 left. Leave the dependent projects before you remove the former identity.
@@ -238,7 +238,7 @@ refuse that hub with `hub_signing_required` unless the bridge has a signing
 source. Either pass `signing_key_id` with `signing_key_env` or an absolute
 `signing_key_file` on the daemon, or select a source for an already retained
 bridge credential with
-`kata federation signing configure --project-uid <hub-project-uid>`. The daemon
+`poomsae federation signing configure --project-uid <hub-project-uid>`. The daemon
 validates the source before saving anything, keeps a retained credential's
 source, and sends no secret to the hub. The hub operator then registers that
 key for the bridge's enrollment ID; see
@@ -271,7 +271,7 @@ rotation endpoint rejects negotiated relay grants with `409` before changing
 state; use bridge connect for this recovery.
 
 The target must be a root HTTP(S) origin. Non-loopback plain HTTP requires the
-catalog's explicit `allow_insecure` setting, and Kata rejects redirects.
+catalog's explicit `allow_insecure` setting, and Poomsae rejects redirects.
 Preview and connect require daemon-owner authority; ordinary browser sessions
 and scoped user credentials cannot run this operation. When the hub rejects a
 request, bridge connect and disconnect report an upstream failure with the
@@ -293,7 +293,7 @@ the hub: `connected` reflects the configured connection and last recorded
 outcome, while `offline`, `paused`, and `revoked` describe observed local
 state. `revoked` records an upstream `401`, `403`, or `404` other than a
 recognized signature failure, and it can clear after access returns. Explicit
-enrollment revocation, such as running `kata federation revoke <id>` on the
+enrollment revocation, such as running `poomsae federation revoke <id>` on the
 hub, is permanent and requires a new enrollment.
 
 `signing_rejected` means the hub refused or could not verify this bridge's
@@ -311,14 +311,14 @@ deliveries and remove downstream enrollments before disconnecting. The real
 disconnect drains transport, durably marks the credential as leaving, revokes
 only that saved narrow grant, detaches the replica, and removes the exact
 observed credential while keeping the local project and its issues. If a
-response is lost or cleanup is interrupted, Kata keeps retry state so you can
+response is lost or cleanup is interrupted, Poomsae keeps retry state so you can
 repeat the request to resume. A concurrent credential change returns a conflict
 and keeps the replacement. Repeating completed local cleanup succeeds without
 another upstream call.
 
 Archiving a replica with pending local work is blocked. If a replica was
 already archived with retained delivery, restore it with
-`kata projects restore`, sync, and retry disconnect. Relay archive and restore
+`poomsae projects restore`, sync, and retry disconnect. Relay archive and restore
 events keep the source instance's local lifecycle audit and do not archive
 another instance's project catalog.
 
@@ -336,33 +336,33 @@ needs the hub to confirm revocation and waits for retained deliveries. Detach
 the bridge locally instead:
 
 ```sh
-kata federation bridge disconnect --project shared-replica --local-only --preflight
-kata federation bridge disconnect --project shared-replica --local-only
+poomsae federation bridge disconnect --project shared-replica --local-only --preflight
+poomsae federation bridge disconnect --project shared-replica --local-only
 ```
 
 In the HTTP API, send the same disconnect request with `"local_only": true`. It
-requires daemon-owner authority and never contacts the hub. Kata discards this
+requires daemon-owner authority and never contacts the hub. Poomsae discards this
 bridge's undelivered relay work (its relay outbox, inbox, and cursors), removes
 the binding and any retained credential, and keeps the project and its issues
 as a standalone local project. Local edits that never reached the hub stay in
 the local project only. The response sets `local_only` and includes a `warning`
 noting that the hub grant was not revoked. Ask the hub operator to revoke the
-bridge's relay enrollment with `kata federation revoke <id>` on the hub.
+bridge's relay enrollment with `poomsae federation revoke <id>` on the hub.
 
 A local-only disconnect resolves the bridge from its database binding and does
 not need the saved hub credential. You can still detach a database restored
 without its credential file, or a bridge whose hub vanished while its
 enrollment was still pending; in that case, the detach removes only the binding
 and relay state. If a saved credential is present, it must belong to this
-bridge (a manual credential for the binding's hub and hub project), or Kata
+bridge (a manual credential for the binding's hub and hub project), or Poomsae
 refuses the request with `federation_credential_conflict`.
 
-Kata refuses a local-only disconnect with `federation_downstream_enrollments`
+Poomsae refuses a local-only disconnect with `federation_downstream_enrollments`
 while downstream relays still receive this project through the bridge. To clear
 that blocker:
 
-1. List downstream enrollments on this daemon with `kata federation enrollments list`.
-2. Revoke each enrollment with `kata federation revoke <id>`.
+1. List downstream enrollments on this daemon with `poomsae federation enrollments list`.
+2. Revoke each enrollment with `poomsae federation revoke <id>`.
 3. Retry the disconnect.
 
 Local-only disconnect also resumes an ordinary disconnect that is stuck because
@@ -382,14 +382,14 @@ team does not change the project to `all` visibility.
 Create a team and select it for a project:
 
 ```sh
-kata teams create engineering
-kata teams members add engineering --actor member
-kata projects access set shared-project --visibility teams --team engineering
-kata projects access show shared-project
+poomsae teams create engineering
+poomsae teams members add engineering --actor member
+poomsae projects access set shared-project --visibility teams --team engineering
+poomsae projects access show shared-project
 ```
 
 To issue a credential and enroll its actor in a team together, run
-`kata tokens create --actor member --team engineering`. For the remaining
+`poomsae tokens create --actor member --team engineering`. For the remaining
 commands, see the
 [CLI reference](../reference/cli.md#teams-and-project-visibility).
 
@@ -440,8 +440,8 @@ canonical actor.
 Federation uses two separate bearer-token systems.
 
 Daemon API tokens identify clients calling normal daemon routes. They come from
-`KATA_AUTH_TOKEN` or `[auth].token`, while database-backed identity tokens are
-managed with `kata tokens ...`.
+`POOMSAE_AUTH_TOKEN` or `[auth].token`, while database-backed identity tokens are
+managed with `poomsae tokens ...`.
 
 Federation enrollment tokens authorize spoke-to-hub transport routes and are
 created by bridge connection or direct enrollment. The hub stores them hashed,
@@ -458,7 +458,7 @@ attribution.
 A direct project-scoped enrollment with `push` can create, replace, archive,
 and restore [native recurring jobs](../reference/cron.md) on its enabled owning
 hub. The hub attributes each write to the enrollment's bound account. If the
-request body omits `actor`, Kata uses that account; a different account is
+request body omits `actor`, Poomsae uses that account; a different account is
 refused. The account must keep project access and the enrollment must stay live
 through commit. The hub validates the definition and creates its progress
 anchor atomically. Adapter jobs and workflows require ordinary daemon
@@ -470,56 +470,56 @@ while ordinary daemon credentials still work on the normal listener.
 
 Enrollment tokens are not general daemon API tokens.
 
-`kata federation enroll` makes a normal daemon API call to the hub rather than
+`poomsae federation enroll` makes a normal daemon API call to the hub rather than
 a spoke-to-hub transport call. The command sends that hub API call to
 `--hub-url` and authenticates it with `--hub-token-env` or a daemon-catalog
 credential whose URL shares the same origin. If neither is configured, the
-request goes out unauthenticated. Kata never sends the local daemon's global
-`KATA_AUTH_TOKEN` or `[auth].token` to the hub. Your CLI's default daemon
+request goes out unauthenticated. Poomsae never sends the local daemon's global
+`POOMSAE_AUTH_TOKEN` or `[auth].token` to the hub. Your CLI's default daemon
 should be the spoke you are enrolling, whether that is the implicit local
-daemon or a remote daemon selected by `KATA_SERVER` or `.kata.local.toml`.
+daemon or a remote daemon selected by `POOMSAE_SERVER` or `.poomsae.local.toml`.
 `enroll` uses the default spoke daemon only to check whether the named project
 already exists on the spoke and whether to print `--adopt-existing`. The
-generated token printed in the `kata federation join ...` command is a separate
+generated token printed in the `poomsae federation join ...` command is a separate
 spoke transport credential.
 
 If you omit the project argument and `--project`, `enroll` finds the project
-from your `.kata.toml` or Git alias and sends only that name or alias to the
+from your `.poomsae.toml` or Git alias and sends only that name or alias to the
 hub. An unbound directory fails with `project_not_initialized`, and a missing
-`--workspace` path fails with a validation error. Kata never asks the hub to
+`--workspace` path fails with a validation error. Poomsae never asks the hub to
 search client directories, even when `--hub-url` is a loopback address.
 
-A database-backed account token from `kata tokens create` cannot create or
+A database-backed account token from `poomsae tokens create` cannot create or
 rotate a legacy enrollment, regardless of the hub's
 `[auth].require_token_identity` setting. The hub answers
 `403 federation_enrollment_requires_relay`, because a legacy grant would
 outlive the account token that issued it. An account token can only create a
-credential-bound relay enrollment, which `kata federation bridge connect` does
+credential-bound relay enrollment, which `poomsae federation bridge connect` does
 using a hub account selected in the local daemon catalog. Because
-`kata federation enroll` always contacts `--hub-url` over HTTP, running it on
+`poomsae federation enroll` always contacts `--hub-url` over HTTP, running it on
 the hub host does not bypass the hub's authentication.
 
 On a hub outside identity mode, create a legacy enrollment by authenticating
 with the hub's daemon token (`[auth].token`) through `--hub-token-env` or a
 catalog entry that holds it; only a keyless loopback hub accepts the command
 without a credential. In identity mode, the daemon token is a bootstrap token.
-Use it with `kata federation enroll` to create a direct enrollment with
+Use it with `poomsae federation enroll` to create a direct enrollment with
 `--actor` naming an existing hub account. That account must have an unscoped
 API token, which may be expired or revoked; an actor with only issue-scoped
 tokens cannot receive a direct grant. For a project-scoped grant, the account
 must be able to see the project, or the hub rejects a grant the account could
 never use. The grant then follows that account's project visibility and stays
 valid even after the account's API tokens expire or are revoked. To cut off the
-device, revoke the grant with `kata federation revoke <id>` using owner
+device, revoke the grant with `poomsae federation revoke <id>` using owner
 authority, or remove the account's access to the project.
 
 Before creating a project-scoped enrollment, enable federation with an account
-token by running `kata federation enable`. Select the project with a positional
+token by running `poomsae federation enable`. Select the project with a positional
 argument, `--project`, or a bound workspace.
 
 To replace a project-scoped enrollment token, call
 `POST /api/v1/federation/enrollments/actions/rotate`. Repeating
-`kata federation enroll` with a new token creates another grant and leaves the
+`poomsae federation enroll` with a new token creates another grant and leaves the
 old token valid. Rotation revokes active grants for the same spoke and project
 and installs the replacement in one transaction.
 
@@ -537,8 +537,8 @@ Rotation requires an explicit replacement token. An exact retry with the same
 token and attributes returns the same grant. Treat the response as a secret.
 
 `--hub-token-env` replaces `--hub-token` for enrollment and leave. Pass only
-the environment variable's name, and Kata reads its value inside the process.
-If the selected variable is unset or empty, Kata returns an error and does not
+the environment variable's name, and Poomsae reads its value inside the process.
+If the selected variable is unset or empty, Poomsae returns an error and does not
 fall back to catalog credentials.
 
 ## Credential-bound relay transport
@@ -548,7 +548,7 @@ A client can narrow an existing ordinary user token to one project with
 `spoke_instance_uid`, `capabilities: "claim,pull,push"`, and
 `relay: {"protocol_version": 1}`. Add `"serve_downstream": true` only when the
 receiving daemon relays the project to its own spokes; it defaults to `false`.
-Kata takes the actor from the user token and rejects a different supplied
+Poomsae takes the actor from the user token and rejects a different supplied
 actor. Subtree tokens, bootstrap credentials, and wildcard project grants
 cannot enroll a relay. On a relay, only the local account that connected the
 bridge can enroll a downstream daemon with `serve_downstream: true`; another
@@ -592,7 +592,7 @@ below that hub:
   through that hub's own upstream connection.
 
 Cron definitions and run observations pushed over a relay go through the same
-replay validation as a direct spoke push: Kata refuses any definition version
+replay validation as a direct spoke push: Poomsae refuses any definition version
 or run reference that names an unrelated event or another project's definition.
 
 A rejected push returns a validation error and changes nothing.
@@ -625,7 +625,7 @@ daemon keeps every outbox envelope it emitted (including acknowledged ones),
 every inbox envelope it accepted, and one cursor row per stream and epoch.
 Those retained bodies let a lost reply replay with the same identities. While
 the binding lives, they also act as the fallback copy of a compacted source:
-when a receipt arrives for an event whose local row was already compacted, Kata
+when a receipt arrives for an event whose local row was already compacted, Poomsae
 recovers its creation reference from any binding's retained outbox envelope.
 Acknowledgement and compaction do not delete these rows, and no time or size
 limit prunes them. Growth is proportional to delivered work, with one outbox
@@ -633,27 +633,27 @@ row per delivery per downstream binding and one inbox row per accepted
 delivery, and is unbounded by design.
 
 Ending a binding removes its rows in the same transaction. Revoking a relay
-enrollment, either with `kata federation revoke <id>` on the hub or through the
+enrollment, either with `poomsae federation revoke <id>` on the hub or through the
 relay's own `relay:disconnect` request, deletes that grant's outbox, inbox, and
-cursor rows. `kata federation leave` and `kata federation bridge disconnect`
+cursor rows. `poomsae federation leave` and `poomsae federation bridge disconnect`
 delete the bridge binding's rows once its deliveries are resolved, while
-`kata federation bridge disconnect --local-only` deletes them without waiting.
+`poomsae federation bridge disconnect --local-only` deletes them without waiting.
 Other bindings on the same project keep their rows. Receipts and creation
 references already recorded stay in the provenance tables, so a later
 checkpoint for a live binding does not depend on a removed binding's rows. If a
 receipt arrives after both the local event and the last retained copy of its
-source are gone, Kata keeps it without a creation reference. Restore skips a
+source are gone, Poomsae keeps it without a creation reference. Restore skips a
 grant's delivery rows when the backup itself records that grant as revoked,
 including backups from older builds that retained those rows. A backup written
 before the revocation still records the grant as live, so restoring it brings
 back both the grant and its rows. Archiving a project keeps its binding and
-rows for restore, and Kata also removes a project's rows when adoption gives
+rows for restore, and Poomsae also removes a project's rows when adoption gives
 the project a new UID.
 
 ### Sync scheduling
 
 The runner polls every 30 seconds by default. To change that interval, set
-`KATA_FEDERATION_PULL_INTERVAL_MS` on the daemon process. Shorter intervals
+`POOMSAE_FEDERATION_PULL_INTERVAL_MS` on the daemon process. Shorter intervals
 increase wakeups and database traffic.
 
 A direct spoke also keeps one held poll open per binding when its hub supports
@@ -682,7 +682,7 @@ Held polls need a few things from the deployment:
   answers at once and the spoke falls back to its interval. It asks for a held
   poll again after a growing delay, up to 16 intervals.
 - The spoke asks for a wait 15 seconds shorter than its request budget, so a
-  `KATA_HTTP_TIMEOUT` under 16 seconds turns held polls off. The daemon log
+  `POOMSAE_HTTP_TIMEOUT` under 16 seconds turns held polls off. The daemon log
   says so once for each binding.
 
 The hub checks the poll's full authorization again before each read after a
@@ -724,7 +724,7 @@ for each one on every interval and every local write:
 | `401` or `403`, the credential was refused | 1 minute | 15 minutes | the credential, binding, or enabled state changes, or another sync of the project succeeds |
 | `429` or `503`, the hub is throttling or unavailable | the sync interval | 5 minutes, or longer when the hub sends `Retry-After` | the credential, binding, or enabled state changes, or another sync of the project succeeds |
 
-Each wait doubles after a failure of the same kind, and Kata subtracts up to a
+Each wait doubles after a failure of the same kind, and Poomsae subtracts up to a
 quarter at random so spokes spread out their retries. A `Retry-After` hint, in
 seconds or as an HTTP date, sets the shortest wait and is capped at one hour.
 When a turn gets several hints, the longest one counts, even when a refusal in
@@ -735,7 +735,7 @@ write does not bring a waiting project forward. A refused move of one pushed
 issue, `403 federation_project_not_enrolled`, does not count as a refused
 credential. Other projects keep syncing.
 
-`kata federation status` shows a waiting project's reason, last status code,
+`poomsae federation status` shows a waiting project's reason, last status code,
 failure count, and next attempt, for example `sync retry: hub refused the
 credential (403) on 5 attempts; next attempt 2026-01-01T00:15:00Z; to retry
 now, enroll again on the hub and run the join command it prints`. A
@@ -758,7 +758,7 @@ an existing relay's reset would exceed this capacity, and the error includes
 the measured size and limit. Existing relays can continue ordinary sync, but
 they cannot recover from a later reset until the project fits again.
 
-`kata federation status` estimates checkpoint size for each locally rooted
+`poomsae federation status` estimates checkpoint size for each locally rooted
 project with a live relay enrollment. It reports the exact retained-history
 size plus an upper bound for newly captured state and receipts, allowing for
 the largest encoded live relay account name. The estimate covers a checkpoint
@@ -773,7 +773,7 @@ captured from that state and does not reserve capacity against future writes.
 Human output shows `relay checkpoint: <size> of 64.0 MiB`, warns within 10% of
 the limit, and warns again above it. A failed estimate shows `not measured`.
 
-Only removing content shrinks the checkpoint. `kata purge <ref>` removes an
+Only removing content shrinks the checkpoint. `poomsae purge <ref>` removes an
 issue's retained history and current-state record. Purge is irreversible, so
 export anything you need first. It waits for pending relay deliveries across
 the whole project and for prepared resets to activate
@@ -811,12 +811,12 @@ A root with a configured encoder chooses itself when its worker first needs
 shared-project vectors. To use a relay instead, enroll that relay for this
 project and configure its encoder. Then set the producer at the root:
 
-1. On the intended producer, select its Kata home and export its configured
+1. On the intended producer, select its Poomsae home and export its configured
    recipe and daemon identity:
 
    ```bash
-   kata federation embedding-recipe > recipe.json
-   kata federation identity --json
+   poomsae federation embedding-recipe > recipe.json
+   poomsae federation identity --json
    ```
 
    `embedding-recipe` always writes JSON. It reads local home configuration,
@@ -844,7 +844,7 @@ project and configure its encoder. Then set the producer at the root:
    `patch.federation_embedding` holds `producer_instance_uid` from that
    producer's identity and `recipe` with the complete exported JSON.
 
-4. Confirm the assignment and state by running `kata federation status` at each
+4. Confirm the assignment and state by running `poomsae federation status` at each
    participant and checking the shared project row.
 
 Ordinary project credentials and replicas cannot change this reserved key.
@@ -875,7 +875,7 @@ metadata writes, and a hub rejects any root-origin event pushed by a downstream
 enrollment. Root-origin changes travel downstream through each hub's
 authenticated upstream relay connection.
 
-Kata rejects invalid producer configuration before a metadata change commits.
+Poomsae rejects invalid producer configuration before a metadata change commits.
 If an older backup retains malformed configuration, that project's vectors stay
 pending while private projects keep indexing, and ordinary enrollment and
 content synchronization continue. Clear or repair the root's configuration to
@@ -905,7 +905,7 @@ When this daemon cannot generate vectors for a project it is selected to
 produce for, status adds a `reason`:
 
 - `producer_recipe_changed`: this daemon's configured recipe differs from the
-  selected recipe. After an upgrade that changes the recipe version, Kata can
+  selected recipe. After an upgrade that changes the recipe version, Poomsae can
   no longer read the selection and `state` is also `rejected`. Select the
   producer again at the root as described in
   [Select an embedding producer](#select-an-embedding-producer).
@@ -919,7 +919,7 @@ produce for, status adds a `reason`:
 When `waiting` appears without a `reason`, the producer is expected to supply
 vectors and nothing has failed on this daemon.
 
-`kata federation status` and the TUI federation detail show the producer,
+`poomsae federation status` and the TUI federation detail show the producer,
 preferred model and dimension count, and counts from this retained window. The
 agent output adds a separate embedding row for each project, including `reason`
 and `last_error`. A `limited` inventory can omit older artifacts. These counts
@@ -941,7 +941,7 @@ The browser status summary withholds diagnostic error text. When sync needs
 attention, copy the diagnostic command for Bash/Zsh or PowerShell and connect
 the CLI to the same daemon with your own credential. A local install uses its
 existing home or registered daemon profile; for a remote daemon, select its
-configured API connection with `--daemon` or `KATA_SERVER`. Project readers
+configured API connection with `--daemon` or `POOMSAE_SERVER`. Project readers
 need daemon API 0.49.0 or later, while owners can run the diagnostic against
 older daemons. Remove the older-daemon path, its dedicated tests, and its
 filtering helper if unused when the CLI's documented minimum supported daemon
@@ -1042,7 +1042,7 @@ sent to the provider, and the fill continues with the remaining documents.
 Artifact-only arrivals wake the existing worker after commit, even when a sync
 loses its acknowledgement.
 
-If a retained artifact fails validation against the current issue input, Kata
+If a retained artifact fails validation against the current issue input, Poomsae
 skips and logs it. Its issue stays pending so the selected producer embeds it
 locally, and reuse continues for other documents.
 
@@ -1112,7 +1112,7 @@ projection changes to `verified`, while historical rows without proof stay
 `legacy`. Complete owner backups keep local pending intent, and project-only
 exports omit it.
 
-`kata show` displays this creation status for the issue and each comment, along
+`poomsae show` displays this creation status for the issue and each comment, along
 with source actor and teammate labels. A `verified` projection also names the
 accountable actor certified by the root receipt. `pending` and `legacy`
 projections show only source labels, which do not establish an accountable
@@ -1143,7 +1143,7 @@ alone cannot discard work still waiting for its root receipt. Detach and
 archive recheck these blockers in the native transaction. Reset installation
 keeps downstream enrollments; see
 [Downstream reset recovery](#root-resets-on-a-relay-with-downstream-enrollments).
-If a change is refused, Kata leaves the project, credential, and descendant
+If a change is refused, Poomsae leaves the project, credential, and descendant
 grants intact so you can retry.
 
 Installing a reset is blocked by any of the following:
@@ -1251,7 +1251,7 @@ checkpoint to that downstream either. Installation fails with
 still holds events deliveries the root has not accepted; let it synchronize
 or revoke it, then retry`. Let the hierarchy sync so the root accepts the work
 and its receipt reaches the relay, or revoke the enrollment with
-`kata federation revoke <id>`, then let the relay sync again.
+`poomsae federation revoke <id>`, then let the relay sync again.
 
 ## External-agent onboarding without hooks
 
@@ -1262,7 +1262,7 @@ access to the resulting local project. The enroll-and-join procedure below is fo
 a direct spoke on a hub that uses daemon-owner authentication outside identity
 mode.
 
-Run `kata quickstart` when a session starts, and keep ordinary commands pointed
+Run `poomsae quickstart` when a session starts, and keep ordinary commands pointed
 at the spoke daemon throughout this setup. If the spoke uses a registered local
 profile, pass its `--daemon` selector explicitly. The hub administrator can run
 enrollment from an environment that can select the spoke daemon. Do not give
@@ -1271,7 +1271,7 @@ the agent the hub's administration token.
 1. On the spoke, read its durable instance identity:
 
    ```sh
-   kata federation identity --json
+   poomsae federation identity --json
    ```
 
    Send the returned `instance_uid` to the hub administrator along with the
@@ -1281,7 +1281,7 @@ the agent the hub's administration token.
 2. Have the hub administrator enroll the spoke using a configured catalog entry
    with hub administration credentials. Keep `--daemon` pointed at the spoke
    because it identifies the local project. Do not select the hub profile with
-   `--daemon`; Kata matches `--hub-url` against the hub catalog entry with that
+   `--daemon`; Poomsae matches `--hub-url` against the hub catalog entry with that
    exact origin to pick its credentials.
 
    On this request-actor hub, `--actor external-agent` selects the enrollment
@@ -1289,7 +1289,7 @@ the agent the hub's administration token.
    identity-mode hub, use a project bridge instead.
 
    ```sh
-   kata --daemon <spoke-profile> federation enroll hub-project \
+   poomsae --daemon <spoke-profile> federation enroll hub-project \
      --hub-url https://hub.example \
      --spoke-instance <spoke-instance-uid> \
      --actor external-agent
@@ -1300,7 +1300,7 @@ the agent the hub's administration token.
    command as a secret when you send or store it. The token does not grant
    general hub API access.
 
-3. On the spoke, run the generated `kata federation join` command without
+3. On the spoke, run the generated `poomsae federation join` command without
    changing its hub URL, project ID, actor, or capabilities. When `join` runs,
    it reads the current project UID and replay or baseline cursors from the
    hub. If the hub requires request signing, replace the signing key
@@ -1309,7 +1309,7 @@ the agent the hub's administration token.
    manual command has this shape:
 
    ```sh
-   kata federation join --project spoke-project \
+   poomsae federation join --project spoke-project \
      --hub-url https://hub.example \
      --hub-project-id <hub-project-id> \
      --token <enrollment-token> \
@@ -1319,27 +1319,27 @@ the agent the hub's administration token.
 
    Pass `--adopt-existing` only for an existing standalone spoke project with
    the administrator's matching adoption-enabled enrollment. A new replica does
-   not need a prior `kata init` or adoption. Use the operator's HTTPS hostname
+   not need a prior `poomsae init` or adoption. Use the operator's HTTPS hostname
    that matches the certificate; substituting an IP address can fail
    certificate validation. `--allow-insecure` is a plaintext private-network
    opt-in and does not bypass TLS certificate checks.
 
 4. Set the actor to match the spoke's authentication mode, then inspect status
-   before taking work. On a request-actor spoke, set `KATA_AUTHOR` to the actor
+   before taking work. On a request-actor spoke, set `POOMSAE_AUTHOR` to the actor
    from the generated join command:
 
    ```sh
    # Request-actor spoke only.
-   export KATA_AUTHOR='<actor-from-generated-join-command>'
-   export KATA_INBOX_USER=external-agent
-   kata whoami
-   kata federation status --project spoke-project --json
-   kata inbox --project spoke-project --for external-agent --json
-   kata events --project spoke-project --after 0 --limit 100 --json
+   export POOMSAE_AUTHOR='<actor-from-generated-join-command>'
+   export POOMSAE_INBOX_USER=external-agent
+   poomsae whoami
+   poomsae federation status --project spoke-project --json
+   poomsae inbox --project spoke-project --for external-agent --json
+   poomsae events --project spoke-project --after 0 --limit 100 --json
    ```
 
-   Replace the `KATA_AUTHOR` placeholder with the actor from the generated join
-   command. Identity-mode spokes ignore `KATA_AUTHOR` and use the identity
+   Replace the `POOMSAE_AUTHOR` placeholder with the actor from the generated join
+   command. Identity-mode spokes ignore `POOMSAE_AUTHOR` and use the identity
    token's actor, which must match the enrollment actor for push-enabled
    bindings. Confirm pull and push health and inspect existing work rather than
    creating a practice issue. Inbox and event reads come from the selected
@@ -1349,21 +1349,21 @@ Without hooks, the agent's harness polls the exact inbox address while idle.
 Save the returned event cursor and resume with `--after <cursor>`. Keep each
 cursor scoped to the selected daemon and project. If you receive
 `reset_required`, discard cached issue state, refresh reads, and resume from
-the reset cursor. A live `kata events --tail --json` stream can wake the
+the reset cursor. A live `poomsae events --tail --json` stream can wake the
 harness too; reconnect using `--last-event-id <cursor>`.
 
 Reading an inbox never clears its request. Handle the work first, then clear
 the notification and read the inbox again:
 
 ```sh
-kata notify abc4 --project spoke-project --to external-agent --clear
-kata inbox --project spoke-project --for external-agent --json
+poomsae notify abc4 --project spoke-project --to external-agent --clear
+poomsae inbox --project spoke-project --for external-agent --json
 ```
 
 Map teammate recipients such as `external-agent/teammate-1` separately. The
 actor inbox does not aggregate child inboxes. Attention signals can be
 replaced, so coalesce updates and reconcile state after each wakeup. Running
-`kata quickstart` prints this contract without installing hooks, polling
+`poomsae quickstart` prints this contract without installing hooks, polling
 processes, or configuration. To use optional embeddings, configure them on the
 intended search daemon; see
 [first-run embeddings setup](../get-started/quickstart.md#optional-first-run-embeddings-setup).
@@ -1371,7 +1371,7 @@ intended search daemon; see
 ## Config-driven enrollment
 
 You can declare direct-spoke project mappings in the spoke's
-`<KATA_HOME>/config.toml` when you connect with a hub-owner administration
+`<POOMSAE_HOME>/config.toml` when you connect with a hub-owner administration
 credential outside identity mode. Account tokens cannot use this legacy
 enrollment path. For an account-token relay, use a catalog entry and
 [bridge connect](../guide/project-relays.md) without a `[[federation.project]]`
@@ -1381,7 +1381,7 @@ mapping:
 [[daemon]]
 name = "team-hub"
 url = "https://hub.example"
-token_env = "KATA_TEAM_HUB_TOKEN"
+token_env = "POOMSAE_TEAM_HUB_TOKEN"
 
 [[federation.project]]
 hub = "team-hub"
@@ -1390,7 +1390,7 @@ hub_project = "hub-project"
 actor = "user-a"
 ```
 
-Set `KATA_TEAM_HUB_TOKEN` in the spoke daemon's environment to a normal hub
+Set `POOMSAE_TEAM_HUB_TOKEN` in the spoke daemon's environment to a normal hub
 administration credential. The reconciler uses only the selected catalog
 entry's credential for that hub origin and never substitutes the spoke daemon's
 global bearer token. The hub refuses a database-backed account token with
@@ -1399,19 +1399,19 @@ global bearer token. The hub refuses a database-backed account token with
 When the spoke daemon starts, the mapping finds or creates `hub-project`,
 enables federation on it, creates a project-scoped `claim,pull,push`
 enrollment, and binds `spoke-project` with push enabled. If the local project
-is missing, Kata creates it automatically. If an existing standalone project
-has that name, Kata adopts it. After confirming or creating the hub project,
+is missing, Poomsae creates it automatically. If an existing standalone project
+has that name, Poomsae adopts it. After confirming or creating the hub project,
 the spoke generates and durably reserves an enrollment secret under that hub
 project's UID whenever no compatible credential exists, then asks the hub to
 enroll it. That secret stays in the owner-only federation credential file,
-where Kata can reuse it safely after a restart or a lost response. Every
+where Poomsae can reuse it safely after a restart or a lost response. Every
 credential change uses failure-atomic file replacement.
 
 The reservation is tied to the resolved hub UID. If a named hub project is
 deleted and recreated, the replacement gets a different UID, and reconciliation
 reports a conflict instead of silently enrolling it. Before local adoption, the
 category is `configuration_conflict`; after binding, it is `binding_conflict`.
-To recover, run `kata federation leave <spoke-project>` to clear the old
+To recover, run `poomsae federation leave <spoke-project>` to clear the old
 managed reservation, verify the mapping, and restart the daemon to enroll the
 intended project.
 
@@ -1424,14 +1424,14 @@ field stays true during hub outages, authentication failures, and conflicts. A
 failed `token_file`, or an unset or empty `token_env`, appears as
 `hub_authentication` and uses the same retry schedule.
 
-Kata reads these mappings only at startup. Restart the spoke daemon whenever
+Poomsae reads these mappings only at startup. Restart the spoke daemon whenever
 you add or change a mapping. Once a mapping succeeds, it stays quiet until the
 next restart. Removing a mapping and restarting does not revoke the enrollment
 or turn the replica back into a standalone project. To tear down the replica,
 leave explicitly:
 
 ```sh
-kata federation leave spoke-project
+poomsae federation leave spoke-project
 ```
 
 Running `leave` also cleans up exact config-managed credential reservations
@@ -1454,7 +1454,7 @@ For the health and credential-rotation contract, see
 ## External credential providers
 
 Some hubs supply a local helper program that arranges project access. You can
-point Kata at that helper instead of copying a token or configuring hub
+point Poomsae at that helper instead of copying a token or configuring hub
 administration credentials:
 
 ```toml
@@ -1470,7 +1470,7 @@ intent = "collaborate"
 credential_provider = ["access-helper", "credentials", "--profile", "work"]
 ```
 
-Use the helper command from your hub operator. Kata runs the listed program
+Use the helper command from your hub operator. Poomsae runs the listed program
 directly without a shell. Leave `actor` unset on the mapping, and leave
 `token`, `token_file`, and `token_env` unset on its catalog entry. The provider
 supplies the approved identity and permissions.
@@ -1480,13 +1480,13 @@ Choose `intent` based on what the local replica needs:
 - `read_only` starts an empty local replica that can pull tasks.
 - `collaborate` starts an empty replica that can also push work. The hub may
   also allow it to claim tasks.
-- `migrate` requests Kata's adoption workflow, which imports an existing
+- `migrate` requests Poomsae's adoption workflow, which imports an existing
   project's tasks and authors and then uses the hub's project identity for
   federation. It is not an automatic fallback when an ordinary connection finds
   local data.
 
-Before asking the helper for approval, Kata saves its candidate credential. If
-approval is pending, waiting for sign-in, or hit by a temporary failure, Kata
+Before asking the helper for approval, Poomsae saves its candidate credential. If
+approval is pending, waiting for sign-in, or hit by a temporary failure, Poomsae
 retries the same request, including after a restart. A `denied` or `conflict`
 decision stops automatic authorization retries and shows up as a conflict in
 daemon health. Restarting does not clear that decision; remove the mapping and
@@ -1494,10 +1494,10 @@ restart to release the saved request before you configure a new one.
 
 After approval, ordinary sync uses the saved credential directly and does not
 run the helper for every task. The provider controls approval and whether
-credentials expire. `kata federation status` shows the approval status and any
+credentials expire. `poomsae federation status` shows the approval status and any
 supplied expiry without displaying credentials or helper arguments.
 
-To disconnect, run `kata federation leave spoke-project`. Kata stops local sync
+To disconnect, run `poomsae federation leave spoke-project`. Poomsae stops local sync
 before asking the provider to release that exact connection. If the provider is
 unavailable, cleanup stays pending until you retry the command when it is
 available. `--local-only` cannot discard a provider-owned request. Your local
@@ -1506,27 +1506,27 @@ tasks remain available after disconnection.
 Removing a provider mapping behaves differently from removing a catalog-admin
 mapping:
 
-- Remove the `[[federation.project]]` block and restart Kata to release the
+- Remove the `[[federation.project]]` block and restart Poomsae to release the
   provider connection and detach the replica. Cleanup retries in the background
   even if you removed the last mapping.
-- After an explicit leave completes, Kata keeps a secret-free closed marker
+- After an explicit leave completes, Poomsae keeps a secret-free closed marker
   until you remove the mapping. Restarting with that same mapping does not
   request new access.
-- Kata does not remove or revoke other projects or manually stored credentials.
+- Poomsae does not remove or revoke other projects or manually stored credentials.
 - Cleanup follows the saved project identity after a rename or after an unbound
-  project is purged. If a temporary database failure interrupts cleanup, Kata
+  project is purged. If a temporary database failure interrupts cleanup, Poomsae
   retries it.
 - If startup reports `credential_io`, fix the owner-private credential file and
-  restart the daemon. Kata does not guess how to repair invalid credentials.
+  restart the daemon. Poomsae does not guess how to repair invalid credentials.
 
 ### Change replica intent
 
 An attached replica can switch between `read_only` and `collaborate` without
-leaving the hub. Edit `intent` in the mapping and restart the daemon. Kata
+leaving the hub. Edit `intent` in the mapping and restart the daemon. Poomsae
 keeps the local project, its tasks and history, and the binding with its sync
 progress. It never asks the hub to delete anything.
 
-On restart, Kata:
+On restart, Poomsae:
 
 1. Turns push off first when the new intent is `read_only`.
 2. Asks the provider to release the saved request.
@@ -1545,10 +1545,10 @@ retry as for a first approval. A `denied` decision keeps the replica and its
 data; restore the earlier intent and restart to ask for that access again.
 An approval for a different hub project is refused as `binding_conflict`, and
 the binding is unchanged. A switch also reports `binding_conflict`, and contacts
-no provider, while an interrupted `kata federation rebind` has left the binding
+no provider, while an interrupted `poomsae federation rebind` has left the binding
 on the old hub address; rerun the rebind first.
 
-Kata records the release in the saved request before sending it. If no answer
+Poomsae records the release in the saved request before sending it. If no answer
 arrives, for example because the provider failed or the daemon stopped, the
 provider may have revoked the old approval. The next attempt sends the release
 again and asks for a new approval, even when you restored the earlier intent.
@@ -1560,21 +1560,21 @@ replica refuses local edits and cannot push or claim. While the hub has not
 accepted every local change, another project still has to deliver a task moved
 out of this one, or this replica holds a live claim or a queued claim request,
 reconciliation reports `binding_conflict`, keeps collaborating, and retries.
-`kata federation status` shows the pending push depth and claim counts. It
+`poomsae federation status` shows the pending push depth and claim counts. It
 does not show owed task moves; for those, wait until the destination project
 syncs. Once the hub accepts the pushed changes and you release the claims,
 the change completes on the next attempt.
 
-A claim request already on its way to the hub finishes before Kata checks for
+A claim request already on its way to the hub finishes before Poomsae checks for
 claims, and new claim requests wait until the saved request is replaced. If an
 earlier attempt turned push off but the provider did not confirm the release,
 claims still work with the old approval, and a claim taken since then holds
 the switch the same way until you release it.
 
-The local changes and claims stay on this computer while Kata waits; nothing
+The local changes and claims stay on this computer while Poomsae waits; nothing
 is dropped. If the hub no longer accepts this replica's changes, the wait does
 not end on its own. Get write access back, set the earlier intent, and restart
-so Kata can send them. Then lower the intent again.
+so Poomsae can send them. Then lower the intent again.
 
 A project with an active external root binding cannot become read-only.
 Lowering its intent reports `binding_conflict` and keeps collaborating; unbind
@@ -1593,13 +1593,13 @@ bindings. After you edit the entry and restart the spoke daemon so it loads the
 new catalog, migrate one spoke explicitly:
 
 ```sh
-kata federation rebind spoke-project --hub primary-hub
+poomsae federation rebind spoke-project --hub primary-hub
 ```
 
 To migrate every local spoke independently, run:
 
 ```sh
-kata federation rebind --all --hub primary-hub
+poomsae federation rebind --all --hub primary-hub
 ```
 
 Use `--daemon` to pick the spoke daemon that owns the binding and credential,
@@ -1608,13 +1608,13 @@ carries only the catalog name. Before updating the endpoint, the spoke daemon
 captures its existing binding and credential state and compares them
 internally. It requires the catalog entry to use remote HTTPS, deliberately
 sends the existing enrollment token to that configured origin, and fetches the
-same hub project's federation metadata. Kata does not use catalog credentials
+same hub project's federation metadata. Poomsae does not use catalog credentials
 for this check, and it updates local state only when both the numeric project
 ID and stable project UID match.
 
 Rebind checks the old binding and credential expectations through the update.
 If the principal, catalog target, binding revision, or project identity
-changes, Kata refuses the replacement. Shared cron definitions and run
+changes, Poomsae refuses the replacement. Shared cron definitions and run
 observations use the ordinary federation binding and stable project identity,
 so rebind needs no cron-specific step.
 
@@ -1624,7 +1624,7 @@ across a restart. Running `rebind` resolves that state without reenrolling,
 rotating the enrollment token, resetting cursors, altering capabilities or
 actors, or running a database migration. If an earlier run updated the two
 local stores only partially, repeating the same command resumes safely.
-Repeating the command after migration completes returns `unchanged`. Kata
+Repeating the command after migration completes returns `unchanged`. Poomsae
 rejects plain HTTP targets even when the old binding allowed insecure
 transport.
 
@@ -1689,7 +1689,7 @@ Nothing changes until you confirm the preview screen. Review the operation
 type, local spoke project, hub daemon, hub auth state, requested actor,
 capabilities, push setting, and `allow_insecure` value before you press
 **Enter**. To enter an optional hub-local spoke name, equivalent to
-`kata federation enroll --spoke-name`, press `N`. A blank value keeps any
+`poomsae federation enroll --spoke-name`, press `N`. A blank value keeps any
 existing name:
 
 ![Previewing a simulated federation enrollment](/docs/assets/screenshots/federation-tui/preview.svg)
@@ -1718,24 +1718,24 @@ Gather these values before you start:
 | `<spoke-worktree>` | `~/src/local-tool` | Worktree for the spoke project when the spoke is a local workstation. |
 | `<actor>` | `member` | Actor bound to this direct-spoke enrollment. |
 | `<hub-admin-token>` | secret | The hub's configured daemon token, outside identity mode. |
-| `<spoke-instance-uid>` | `01H...` | Printed by `kata federation identity` on the spoke daemon. |
-| `<enrollment-token>` | secret | Printed by `kata federation enroll` on the hub. |
+| `<spoke-instance-uid>` | `01H...` | Printed by `poomsae federation identity` on the spoke daemon. |
+| `<enrollment-token>` | secret | Printed by `poomsae federation enroll` on the hub. |
 
 Do not infer any of these values from another. The direct hub token and the
 enrollment token are separate secrets, and the spoke instance UID must come
 from the spoke daemon rather than the hub.
 
-Make sure ordinary `kata ...` commands point to the spoke daemon you are enrolling,
-not the hub. For a remote spoke, set `KATA_SERVER` to the spoke URL. For an
-implicit local spoke, leave `KATA_SERVER` unset. `federation enroll` contacts
+Make sure ordinary `poomsae ...` commands point to the spoke daemon you are enrolling,
+not the hub. For a remote spoke, set `POOMSAE_SERVER` to the spoke URL. For an
+implicit local spoke, leave `POOMSAE_SERVER` unset. `federation enroll` contacts
 the hub through `--hub-url`, while `identity`, spoke project detection, and
 `join` talk to the default daemon, which is the spoke.
 
 Before enrollment, clean any current-state data that should not appear in
 baseline snapshots. Run
-`kata comment edit <ref> <comment-uid> --body ...` to replace comment text
+`poomsae comment edit <ref> <comment-uid> --body ...` to replace comment text
 while keeping the comment's UID, author, and timestamp. Run
-`kata projects rewrite-author <project> --from <old-author> --to <new-author>`
+`poomsae projects rewrite-author <project> --from <old-author> --to <new-author>`
 to rewrite exact current-row author identities across issue authors, issue
 owners, comment authors, and link authors. These are pre-federation hygiene
 tools, and they do not redact historical event logs that have already been
@@ -1745,7 +1745,7 @@ exported or shared.
 
    ```sh
    cd <spoke-worktree>
-   kata federation identity
+   poomsae federation identity
    ```
 
    Expected output:
@@ -1754,17 +1754,17 @@ exported or shared.
    instance: <spoke-instance-uid>
    ```
 
-2. Create the hub enrollment from the same machine. Keep normal `kata` commands
+2. Create the hub enrollment from the same machine. Keep normal `poomsae` commands
    pointed at the spoke daemon; `--hub-url` is the explicit hub API target for
    this command. Authenticate with `--hub-token-env` or a same-origin
-   daemon-catalog credential; Kata never sends the spoke daemon's global token
+   daemon-catalog credential; Poomsae never sends the spoke daemon's global token
    to the hub. If `<hub-project>` does not exist on the hub yet, this command
    creates it, enables federation, and creates the enrollment:
 
    ```sh
    export HUB_ADMIN_TOKEN="<hub-admin-token>"
 
-   kata federation enroll --project <hub-project> \
+   poomsae federation enroll --project <hub-project> \
      --spoke-instance <spoke-instance-uid> \
      --hub-url <hub-api-url> \
      --hub-token-env HUB_ADMIN_TOKEN \
@@ -1775,7 +1775,7 @@ exported or shared.
 
    ```text
    enrolled <spoke-instance-uid> for <hub-project>
-   join: kata federation join --project <hub-project> --hub-url <hub-api-url> --hub-project-id <hub-project-id> --token <enrollment-token> --capabilities pull,push,lease --actor <actor> --push --adopt-existing
+   join: poomsae federation join --project <hub-project> --hub-url <hub-api-url> --hub-project-id <hub-project-id> --token <enrollment-token> --capabilities pull,push,lease --actor <actor> --push --adopt-existing
    ```
 
    When a spoke project named `<hub-project>` already exists, the printed
@@ -1783,7 +1783,7 @@ exported or shared.
    printed command omits `--adopt-existing` and `join` creates a new spoke
    replica. When the spoke project uses a different name than the hub project,
    replace `--project <hub-project>` with `--project <spoke-project>` and
-   create the enrollment with `kata federation enroll --adopt-existing` so the
+   create the enrollment with `poomsae federation enroll --adopt-existing` so the
    token allows adoption snapshots. That permission preserves historical issue,
    comment, and link authors across every chunk of the initial baseline,
    including resumed transfers, while the event actor still names the enrolled
@@ -1795,7 +1795,7 @@ exported or shared.
    ```sh
    cd <spoke-worktree>
 
-   kata federation join --project <spoke-project> \
+   poomsae federation join --project <spoke-project> \
      --hub-url <hub-api-url> \
      --hub-project-id <hub-project-id> \
      --token <enrollment-token> \
@@ -1810,8 +1810,8 @@ exported or shared.
 
    ```sh
    cd <spoke-worktree>
-   kata create "verify federation sync"
-   kata federation status
+   poomsae create "verify federation sync"
+   poomsae federation status
    ```
 
    Then check the central hub with your normal direct hub administration access
@@ -1830,7 +1830,7 @@ private-network enrollment, pass `--allow-insecure`:
 ```sh
 export HUB_ADMIN_TOKEN="<hub-admin-token>"
 
-kata federation enroll --project <hub-project> \
+poomsae federation enroll --project <hub-project> \
   --spoke-instance <spoke-instance-uid> \
   --hub-url http://hub.internal:7787 \
   --hub-token-env HUB_ADMIN_TOKEN \
@@ -1844,7 +1844,7 @@ the spoke:
 ```sh
 cd <spoke-worktree>
 
-kata federation join --project <spoke-project> \
+poomsae federation join --project <spoke-project> \
   --hub-url http://hub.internal:7787 \
   --hub-project-id <hub-project-id> \
   --token <enrollment-token> \
@@ -1864,13 +1864,13 @@ the [relay setup guide](../guide/project-relays.md) instead.
 If you want to create or register the hub project as a separate step, run:
 
 ```sh
-kata init --project fedlab
+poomsae init --project fedlab
 ```
 
 If you want to enable federation explicitly first, run:
 
 ```sh
-kata federation enable --project fedlab
+poomsae federation enable --project fedlab
 ```
 
 Enrolling a spoke creates the hub project if it does not already exist and
@@ -1879,17 +1879,17 @@ automatically enables federation on it if it is not already federated.
 On each spoke daemon you want to enroll, get its instance UID:
 
 ```sh
-kata federation identity
+poomsae federation identity
 ```
 
 Create one enrollment for each trusted spoke. Pass `--hub-url` to target the
 hub daemon, and authenticate with `--hub-token-env` or a same-origin
 daemon-catalog entry using `token`, `token_file`, or `token_env`, checked in
-that order. Kata never sends the spoke's global daemon token to the hub:
+that order. Poomsae never sends the spoke's global daemon token to the hub:
 
 ```sh
 export HUB_ADMIN_TOKEN="<hub-admin-token>"
-kata federation enroll --project fedlab \
+poomsae federation enroll --project fedlab \
   --spoke-instance 01H... \
   --hub-url http://100.64.0.5:7787 \
   --hub-token-env HUB_ADMIN_TOKEN \
@@ -1898,7 +1898,7 @@ kata federation enroll --project fedlab \
 
 The hub binds the direct-spoke enrollment to the actor you requested. Treat the
 actor and capabilities in the printed join command as the enrollment contract.
-The CLI prints a pasteable `kata federation join ...` command containing the
+The CLI prints a pasteable `poomsae federation join ...` command containing the
 generated token. Treat that command as a secret.
 
 The spoke stores `--hub-url` for later pull, push, and lease transport unless
@@ -1906,17 +1906,17 @@ the hub requires signing. When signing is required, the spoke stores the hub's
 `external_url` instead; see [federation signing](federation-signing.md). Manual
 `--hub-url` values must be HTTP(S) base URLs without user info, a query, or a
 fragment. They can include a reverse-proxy path prefix such as
-`https://hub.example/kata`, which Kata keeps for later federation requests.
+`https://hub.example/poomsae`, which Poomsae keeps for later federation requests.
 
 CLI and TUI output use `lease` for coordination, while API and JSON capability
-fields use the canonical `claim` name. Kata accepts either spelling as input.
+fields use the canonical `claim` name. Poomsae accepts either spelling as input.
 
 ## Spoke setup
 
 Run the join command printed by `enroll` against the spoke daemon:
 
 ```sh
-kata federation join --project fedlab \
+poomsae federation join --project fedlab \
   --hub-url http://100.64.0.5:7787 \
   --hub-project-id 1 \
   --token ... \
@@ -1942,14 +1942,14 @@ When you pass both a non-empty `--hub-project-uid` and a positive
 `--baseline-through` too if your script needs that value. Otherwise, the
 metadata request fills an empty project UID and replaces nonpositive
 replay-horizon and baseline values while keeping any positive values you
-supplied. Kata sets the initial pull cursor to one below the replay horizon,
+supplied. Poomsae sets the initial pull cursor to one below the replay horizon,
 with a minimum of zero. `--baseline-through` does not select the pull cursor.
 
 If you reach the hub over plain HTTP through a private overlay hostname instead
 of a literal non-public IP address, opt in with `--allow-insecure`:
 
 ```sh
-kata federation join --project fedlab \
+poomsae federation join --project fedlab \
   --hub-url http://hub.internal:7787 \
   --hub-project-id 1 \
   --token ... \
@@ -1958,9 +1958,9 @@ kata federation join --project fedlab \
   --allow-insecure
 ```
 
-Kata stores `--allow-insecure` with the local federation credential so later
+Poomsae stores `--allow-insecure` with the local federation credential so later
 background pull, push, and lease requests can keep using that hub hostname.
-Origin pinning still applies, so Kata never sends enrollment tokens across
+Origin pinning still applies, so Poomsae never sends enrollment tokens across
 cross-origin redirects. If the hub is not on a trusted private network, use
 HTTPS instead.
 
@@ -1980,7 +1980,7 @@ enrollment token created with adoption enabled and add `--adopt-existing` to
 the join command. Adoption requires `--push`:
 
 ```sh
-kata federation join --project fedlab \
+poomsae federation join --project fedlab \
   --hub-url http://100.64.0.5:7787 \
   --hub-project-id 1 \
   --token ... \
@@ -1990,13 +1990,13 @@ kata federation join --project fedlab \
 ```
 
 The spoke and hub project names do not have to match. To adopt under a
-different name, run `kata federation enroll --adopt-existing`, then select the
+different name, run `poomsae federation enroll --adopt-existing`, then select the
 spoke project with `--project` in the printed join command and the hub project
 with the hub selector.
 
 Adoption preserves the current state of your local issues, including closed and
 soft-deleted issues, comments, labels, metadata, priority, owner, and links. It
-does not preserve the old local event history. Instead, Kata removes those
+does not preserve the old local event history. Instead, Poomsae removes those
 pre-adoption local events, queues fresh snapshots for the hub with each issue's
 links embedded in the snapshot payloads, and reports how many snapshots it
 queued.
@@ -2007,17 +2007,17 @@ same hub. Until then, the edge stays absent. Spoke projects that share links mus
 or IP aliases are separate federation groups by design.
 
 Adoption snapshot events use the bound federation actor as their event actor.
-Kata preserves snapshot payload authors and comment authors, so adopted issues
+Poomsae preserves snapshot payload authors and comment authors, so adopted issues
 keep their original displayed content authors. New snapshots also preserve
 relationship creation dates across rebuilds on SQLite and PostgreSQL. Older
 snapshots without those dates keep their existing insertion-time behavior, and
-Kata does not invent missing dates. On PostgreSQL, rebuilds skip unchanged
+Poomsae does not invent missing dates. On PostgreSQL, rebuilds skip unchanged
 comments so they do not delay unrelated writes by rewriting the same rows.
 
 > **Preserving the pre-adoption timeline.** Adoption is a cutover, not an
 > in-place history merge. If you need the old local event timeline for audit or
-> rollback context, run `kata --project <project> export --output <path>.jsonl`
-> before `kata federation join --adopt-existing`. kata does not currently keep
+> rollback context, run `poomsae --project <project> export --output <path>.jsonl`
+> before `poomsae federation join --adopt-existing`. poomsae does not currently keep
 > a separate in-product archive of pre-adoption events.
 
 After adoption, the issues become ordinary federated spoke issues. You can keep
@@ -2052,7 +2052,7 @@ When a newer snapshot wins, the hub merges fields with these rules:
   unwanted link, delete it on the hub after the push. Any link to an issue the
   hub does not hold is omitted.
 - An issue that already has a parent keeps it. To change the parent, run
-  `kata edit --parent` on the hub.
+  `poomsae edit --parent` on the hub.
 - The issue keeps its author.
 
 For an issue it already holds, the hub does not store the pushed snapshot
@@ -2076,15 +2076,15 @@ to a winning copy. If a snapshot links to an issue in another hub project, that
 push requires the same authority as any other push touching that project, or
 the hub refuses it. Issues the hub does not hold yet are created as usual.
 
-The hub's response names the snapshots it did not store. The Kata home that
+The hub's response names the snapshots it did not store. The Poomsae home that
 pushed them deletes those snapshots from its local history and displays the
 hub's state. It does this only after a pull brings back the hub's history for
 those issues, so the push is acknowledged one sync cycle later than usual.
-Until then, `kata federation status` shows that the push waits for the hub's
+Until then, `poomsae federation status` shows that the push waits for the hub's
 history. If that home's copy was older, any comments and links that existed
 only on that home are gone afterward.
 
-Every Kata home that reads the project must support repeated adoptions. The
+Every Poomsae home that reads the project must support repeated adoptions. The
 hub accepts a repeated snapshot only from a spoke that advertises the
 `repeated_adoption_v1` event feature. An older spoke receives `400 validation`
 with `targets existing issue`, as before, and quarantines the push; upgrade it
@@ -2094,7 +2094,7 @@ project until you upgrade it.
 
 Keep these limits in mind:
 
-- A Kata home that already completed an adoption of a project cannot adopt the
+- A Poomsae home that already completed an adoption of a project cannot adopt the
   same project into the same hub again. Push a newer copy from another home.
 - A link from a held issue to an issue that arrives in a later chunk of the
   same adoption is not created. Add that link on the hub afterward.
@@ -2118,21 +2118,21 @@ returns `400 validation` and names the issue, and the spoke
 ## Leaving a federation
 
 To disconnect a direct spoke from its hub and turn the project back into an
-ordinary standalone local project, run `kata federation leave`:
+ordinary standalone local project, run `poomsae federation leave`:
 
 ```sh
-kata federation leave <project>
+poomsae federation leave <project>
 ```
 
-For a project connected with `kata federation bridge connect`, use
-`kata federation bridge disconnect` instead. Running `leave` on a relay fails
+For a project connected with `poomsae federation bridge connect`, use
+`poomsae federation bridge disconnect` instead. Running `leave` on a relay fails
 with `federation_lifecycle_blocked` while the relay holds deliveries its hub
 never acknowledged or active downstream enrollments. Neither `leave` nor
 `leave --local-only` discards that work. When the hub is gone for good, run
-`kata federation bridge disconnect --project <project> --local-only`; see
+`poomsae federation bridge disconnect --project <project> --local-only`; see
 [Detach a bridge whose hub is gone](#detach-a-bridge-whose-hub-is-gone).
 
-By default, `leave` **detaches** the project. Kata revokes the hub enrollment
+By default, `leave` **detaches** the project. Poomsae revokes the hub enrollment
 first, then removes the local `federation_bindings`, `federation_sync_status`,
 and quarantine rows, deletes the stored hub credential, and keeps all of the
 project's issues and current state. Because the hub revoke runs before any
@@ -2145,7 +2145,7 @@ For config-driven federation, `leave` also removes the exact managed credential
 reservation, whether reconciliation stopped before or after adoption. If the
 credential changes while `leave` is cleaning it up, the API returns
 `federation_credential_conflict`. Resolve the conflict in `credentials.toml`
-and retry `kata federation leave <project>`.
+and retry `poomsae federation leave <project>`.
 
 After you confirm the command, the CLI asks the spoke daemon to prepare the
 leave before contacting the hub:
@@ -2159,14 +2159,14 @@ leave before contacting the hub:
   after it rejoins the source with push enabled and every referenced issue
   returns to a joined project. A prepared leave finishes even if a later pull
   moves an issue to another project.
-- Otherwise, Kata atomically pauses writes on the leaving binding so a new move
+- Otherwise, Poomsae atomically pauses writes on the leaving binding so a new move
   cannot race hub revocation.
 - For a config-managed reservation, preparation durably marks the reservation,
   blocks new reconciliation work for that mapping, and waits for earlier hub
   enrollment or rotation requests to finish. If writing the credential marker
   fails, the binding stays paused; retry the same leave command to finish
   preparation.
-- Kata records and revokes any completed enrollment idempotently before local
+- Poomsae records and revokes any completed enrollment idempotently before local
   teardown. If the command or daemon stops midway, rerun the same leave
   command. The marker prevents automatic re-enrollment and carries cleanup
   forward. A successful leave suppresses the still-configured mapping until the
@@ -2174,24 +2174,24 @@ leave before contacting the hub:
 
 If the hub revoke fails, for example because the hub is unreachable, the CLI
 releases the preparation before exiting. The project stays bound, and
-`kata federation rebind` and `kata federation join` work again without a daemon
+`poomsae federation rebind` and `poomsae federation join` work again without a daemon
 restart. A config-managed reservation keeps its leave marker, so finish that
-leave with `kata federation leave <project>` or `--local-only`.
+leave with `poomsae federation leave <project>` or `--local-only`.
 
 To archive the now-standalone project at the same time, pass `--delete`. You
-can reverse the archive later with `kata projects restore`. To archive even
+can reverse the archive later with `poomsae projects restore`. To archive even
 when the project has open issues, pass `--delete --force`:
 
 ```sh
-kata federation leave <project> --delete
+poomsae federation leave <project> --delete
 ```
 
 Before revoking the hub enrollment, a daemon preflight checks for local
-blockers. If you run `kata federation leave <project> --delete` on a project
+blockers. If you run `poomsae federation leave <project> --delete` on a project
 with open issues and omit `--force`, preflight refuses the archive leave with
 `project_has_open_issues` **before the hub enrollment is revoked**, and keeps
 the binding, credential, and hub enrollment intact. That open-issue check
-applies only to an archive leave. Kata allows a plain detach leave without
+applies only to an archive leave. Poomsae allows a plain detach leave without
 `--delete` when the project has open issues. Plain detach leaves still run the
 same daemon preflight, so any other local refusal the daemon can predict
 surfaces before hub contact. To retry an archive leave, close the open issues
@@ -2202,29 +2202,29 @@ issue opened in that small window can leave the spoke revoked on the hub and
 intact locally. Rerun `leave --delete --local-only` or `leave --delete --force`
 to complete that teardown.
 
-Kata resolves hub administration authentication for the revoke in this order:
+Poomsae resolves hub administration authentication for the revoke in this order:
 
 1. `--hub-token-env`.
 2. The `--hub <name>` daemon-catalog entry.
 3. The catalog entry whose URL matches the binding's hub URL.
 
-With no hub credential, Kata sends the revoke request **unauthenticated**. It
-never sends the local daemon's global `KATA_AUTH_TOKEN` or `[auth].token` to
+With no hub credential, Poomsae sends the revoke request **unauthenticated**. It
+never sends the local daemon's global `POOMSAE_AUTH_TOKEN` or `[auth].token` to
 the hub origin implicitly, so a token-protected hub requires `--hub-token-env`,
 a catalog entry, or `--local-only`. The hub URL always comes from the binding,
-and Kata sends a catalog token only to the origin its entry is configured for.
+and Poomsae sends a catalog token only to the origin its entry is configured for.
 A missing `--hub <name>` entry, or one whose URL does not match the binding's
 hub URL, is rejected so a catalog admin token cannot leak to a different hub.
 Use `--hub-token-env` when you deliberately need to present a token the catalog
 does not associate with that hub.
 
-For plain-HTTP overlay hubs joined with `--allow-insecure`, Kata records the
+For plain-HTTP overlay hubs joined with `--allow-insecure`, Poomsae records the
 transport opt-in on both the binding and the credential, so the leave-time hub
 client can send a bearer token to the plaintext hostname even after a partial
 leave lost `credentials.toml`. A same-origin catalog entry with
 `allow_insecure = true` also restores the opt-in, and
-`kata federation leave --allow-insecure` asserts it explicitly when no local
-record survives. Without one of those, Kata refuses a token-bearing request to
+`poomsae federation leave --allow-insecure` asserts it explicitly when no local
+record survives. Without one of those, Poomsae refuses a token-bearing request to
 a plaintext hostname before any network I/O. Leave also warns when the hub
 holds a matching **global** enrollment without a project scope for this spoke.
 That enrollment still authorizes the left project and is not auto-revoked,
@@ -2235,15 +2235,15 @@ project-scoped enrollments still authorize the hub project, `leave` **aborts**
 and names them instead of treating zero matches as success. The instance UID
 can change after a clone or import, or the enrollment may belong to another
 instance, such as another spoke of a shared hub project. Revoke the right
-enrollment on the hub with `kata federation revoke <id>`, or rerun with
+enrollment on the hub with `poomsae federation revoke <id>`, or rerun with
 `--local-only`.
 
 If the hub is unreachable, pass `--local-only` to tear down the local spoke
 without contacting the hub. The enrollment token **remains valid** until you
-run `kata federation revoke <enrollment-id>` on the hub yourself:
+run `poomsae federation revoke <enrollment-id>` on the hub yourself:
 
 ```sh
-kata federation leave <project> --local-only
+poomsae federation leave <project> --local-only
 ```
 
 Leaving is idempotent. Running it on a project that is already standalone
@@ -2254,13 +2254,13 @@ holder can use `--delete` only while the project is federated, and on a daemon
 with a host access controller, that controller also authorizes the archive.
 
 Retrying an archive-leave on an already-archived project resumes instead of
-erroring. Kata detaches any surviving binding, deletes any stale credential,
+erroring. Poomsae detaches any surviving binding, deletes any stale credential,
 and reports `archived=false` for that call. Because `leave` resolves archived
 projects for both positional argument and `--project` forms, rerunning the same
-`kata federation leave <project>` finishes pending cleanup directly. A binding
+`poomsae federation leave <project>` finishes pending cleanup directly. A binding
 surviving on an archived project takes the normal bound path. The hub revoke
 runs first, and because it is idempotent, a retry whose enrollment was already
-revoked is a no-op, while a spoke archived with `kata projects remove`, which
+revoked is a no-op, while a spoke archived with `poomsae projects remove`, which
 does not revoke, gets its enrollment revoked instead of silently stranded. Local
 teardown then finishes, and `--local-only` remains the unreachable-hub escape.
 
@@ -2269,7 +2269,7 @@ Toggle detach or archive and local-only, then confirm to apply the change.
 
 Removing the spoke's already-pushed data from the hub project is a separate
 hub-admin action. To permanently delete the archived local project, run
-`kata projects purge <project> --force`.
+`poomsae projects purge <project> --force`.
 
 ### Rejoining after a leave
 
@@ -2279,7 +2279,7 @@ and **rejoins**, rebinding the existing local project instead of creating a
 second replica:
 
 ```sh
-kata federation join --project <spoke-project> --hub-url <url> \
+poomsae federation join --project <spoke-project> --hub-url <url> \
   --hub-project-id <id> --token <fresh-enrollment-token> --actor <actor> --push
 ```
 
@@ -2287,7 +2287,7 @@ Rejoin also recovers from a join that created the local project and failed
 before saving its binding. Repeat the join for the same local name and hub
 project identity to bind that existing project.
 
-On rejoin, pull restarts from the hub's replay horizon, and Kata deduplicates
+On rejoin, pull restarts from the hub's replay horizon, and Poomsae deduplicates
 already-applied events by event UID. A push-enabled rejoin re-offers
 local-origin events from the beginning; the hub deduplicates what it already
 has and absorbs any edits made while the project was standalone. Rejoin with
@@ -2297,10 +2297,10 @@ are rejected by the hub and quarantined.
 A read-only rejoin keeps held offline edits local until push is enabled.
 
 If you run `join` naming a *different* project while a local project still
-holds the hub project's UID, Kata refuses the join with
+holds the hub project's UID, Poomsae refuses the join with
 `federation_rejoin_name_mismatch` and names the holder. Rerun the join with
 `--project <holder>` to rejoin it. If that holder is archived, restore it with
-`kata projects restore` first.
+`poomsae projects restore` first.
 
 In the TUI, selecting a hub project whose identity is already held by a local
 unbound project presents the operation as **rejoin** of that project instead of
@@ -2368,22 +2368,22 @@ run the full link reconciliation.
 
 Federation push and poll requests use a 60-second default budget, separate from
 the shorter interactive CLI default. When a large, healthy hub needs more time,
-override that budget with `KATA_HTTP_TIMEOUT`. Set the variable in the
+override that budget with `POOMSAE_HTTP_TIMEOUT`. Set the variable in the
 environment that starts the daemon; local-profile autostart preserves it. A
 running daemon keeps the environment it started with. To apply a changed value,
 stop that daemon and let the next command autostart it. For a profile with its
-own home, run `KATA_HOME=/absolute/profile-home kata daemon stop`. The stop
+own home, run `POOMSAE_HOME=/absolute/profile-home poomsae daemon stop`. The stop
 command rejects `--daemon`; see
 [Local daemon profiles](local-daemon-profiles.md#reboots-idle-shutdown-and-clients).
 A timed-out request leaves the cursor unchanged and retries on the normal sync
 loop.
 
 SQLite push and pull application prepare first without holding the writer. For
-a full-history pull, Kata folds project and link history in a read-only
+a full-history pull, Poomsae folds project and link history in a read-only
 snapshot and prepares row changes there. Before applying those changes under
-the writer, Kata checks the event history, link group, and rows. If an input
-changed or an issue in that history gained a newly recorded move, Kata retries
-the preparation. If a concurrent write invalidates that snapshot, Kata tries
+the writer, Poomsae checks the event history, link group, and rows. If an input
+changed or an issue in that history gained a newly recorded move, Poomsae retries
+the preparation. If a concurrent write invalidates that snapshot, Poomsae tries
 once more the same way unless the invalidated preparation took a second or
 longer. After that, the next attempt acquires the writer before preparing.
 Optimistic preparation time does not count against that fallback's contention
@@ -2424,16 +2424,16 @@ ordinary edits.
 In federated projects, ordinary issue edits and new issue creation stay
 local-first, and ordinary edits converge by LWW. A lease is optional
 coordination. When another holder has a live lease on an affected existing
-issue, Kata denies non-comment mutations until the lease is released or
+issue, Poomsae denies non-comment mutations until the lease is released or
 expires. Comment creation and comment body edits bypass leases because they are
 comment-level collaboration and maintenance actions rather than leased issue
 work.
 
-Check the owner and current lease with `kata status <issue-ref> --agent`. To
+Check the owner and current lease with `poomsae status <issue-ref> --agent`. To
 keep a timed lease you already hold, renew it before it expires:
 
 ```sh
-kata federation lease renew abc4 --ttl 30m
+poomsae federation lease renew abc4 --ttl 30m
 ```
 
 Renewal keeps the same lease and sets its expiry to 30 minutes from the hub's
@@ -2453,10 +2453,10 @@ When you are offline, cached hard leases can still work as a continuity hint,
 though they do not prove that exclusivity still holds. Timed leases expire by
 hub time and stop blocking edits once they expire.
 
-A complete issue read on a spoke, including `kata show`, makes an optional
+A complete issue read on a spoke, including `poomsae show`, makes an optional
 lease-status refresh from the hub with a 500 ms budget. If that refresh times
 out or the hub is unavailable, the read still returns the locally cached lease
-state. In Kata 0.23.0 and later, local cache updates share an outer 600 ms
+state. In Poomsae 0.23.0 and later, local cache updates share an outer 600 ms
 optional-work budget that includes the 500 ms hub request. A busy local writer
 or a federation endpoint change therefore leaves the read using its committed
 local cache. Cache transactions that have already committed stay visible if a
@@ -2464,11 +2464,11 @@ later update times out. When the cache is available, failed hub refreshes still
 record their retry suppression marker. Caller cancellation and local
 authorization or storage errors remain errors. This budget applies to the
 optional hub refresh, not as a deadline for the complete issue read.
-Project-local projections such as `kata meta get` do not run the refresh.
+Project-local projections such as `poomsae meta get` do not run the refresh.
 
-On a hub, `kata show` and `kata status` read cached lease state without taking
+On a hub, `poomsae show` and `poomsae status` read cached lease state without taking
 the database write lock. A timed lease can remain in the response after its
-expiry time until the hub persists expiry, and `kata status` reports it as
+expiry time until the hub persists expiry, and `poomsae status` reports it as
 `hold=expired`. The hub's background sweeper checks every 30 seconds and
 publishes expiry events. The lease-status API at
 `GET /api/v1/projects/{project_id}/issues/{ref}/lease` also persists expiry
@@ -2492,7 +2492,7 @@ acquires a lease and be recorded as a violation.
 A hub signs a root receipt for every attributed write to a project it roots.
 The project's first signed write or first relay enrollment pins the project to
 the daemon's public key. The private key is `federation-root.key` in the
-daemon's namespace data directory, `<KATA_HOME>/runtime/<storage-id>/`. JSONL
+daemon's namespace data directory, `<POOMSAE_HOME>/runtime/<storage-id>/`. JSONL
 backups never include this file, so back it up with your other secrets. Every
 daemon process that serves the same database needs the same key file.
 
@@ -2510,10 +2510,10 @@ with `409 root_signing_key_unavailable`. The error names the project and the
 recovery command. Standalone projects, spoke replicas, and other writes that
 need no root receipt keep working. The condition appears in:
 
-- `kata daemon status` and `kata daemon diagnose`, as a warning line and the
+- `poomsae daemon status` and `poomsae daemon diagnose`, as a warning line and the
   `root_signing` JSON field.
 - `GET /api/v1/health`, as the [`root_signing` diagnostics block](../reference/http-api.md#health-diagnostics).
-- `kata federation status`, as `root signing key: unavailable` on each affected
+- `poomsae federation status`, as `root signing key: unavailable` on each affected
   hub project.
 
 Recover in this order:
@@ -2523,18 +2523,18 @@ Recover in this order:
    daemon. Pins do not change, and downstream relays keep working.
 2. **Rotate from the previous key.** If the daemon now holds a different key
    and you still have the previous key file, run
-   `kata federation root-key repin --project <project> --previous-key-file <path>`.
+   `poomsae federation root-key repin --project <project> --previous-key-file <path>`.
    The path is on the daemon host. The previous key signs a rotation to the
    loaded key, and downstream relays accept it on their next sync.
 3. **Repin without the previous key.** If the key is lost, run
-   `kata federation root-key repin --project <project>`. The daemon creates
+   `poomsae federation root-key repin --project <project>`. The daemon creates
    `federation-root.key` if it is missing, retires the project's old pin, and
    pins the loaded key. Receipts signed before the repin stay verifiable with
    the retired key, and new relays can connect and pin the new key. Downstream
    relays that pinned the old key reject receipts signed by the new key and can
    no longer sync the project. Re-enrolling does not help, because a relay
    keeps its existing pin and accepts a new key only through a signed rotation.
-   Kata has no command yet that moves an existing relay to the new key, so use
+   Poomsae has no command yet that moves an existing relay to the new key, so use
    this step only when the previous key is gone for good. While the project has
    active relay enrollments, the command refuses with
    `409 root_repin_strands_relays` and changes nothing. Pass `--strand-relays`
@@ -2554,35 +2554,35 @@ token. If this daemon does not root the project, the command fails with
 ## Operator commands
 
 ```sh
-kata federation identity
-kata federation enable --project <project>
-kata federation enroll --project <project> --spoke-instance <uid> --hub-url <url> \
+poomsae federation identity
+poomsae federation enable --project <project>
+poomsae federation enroll --project <project> --spoke-instance <uid> --hub-url <url> \
   --actor <actor> [--spoke-name laptop] [--hub-token-env <env-name>] [--allow-insecure]
-kata federation join --project <project> --hub-url <url> --hub-project-id <id> \
+poomsae federation join --project <project> --hub-url <url> --hub-project-id <id> \
   --token <token> --actor <actor> [--push]
-kata federation enroll --project <project> --spoke-instance <uid> \
+poomsae federation enroll --project <project> --spoke-instance <uid> \
   --hub-url <http-hostname-url> --actor <actor> --allow-insecure
-kata federation join --project <project> --hub-url <http-hostname-url> \
+poomsae federation join --project <project> --hub-url <http-hostname-url> \
   --hub-project-id <id> --token <token> --actor <actor> --allow-insecure [--push]
-kata federation join --project <existing-project> --hub-url <url> \
+poomsae federation join --project <existing-project> --hub-url <url> \
   --hub-project-id <id> --token <token> --actor <actor> --push --adopt-existing
-kata federation enrollments list
-kata federation enrollments name <spoke-instance-uid> laptop
-kata federation enrollments name <spoke-instance-uid> --clear
-kata federation revoke <enrollment-id>
-kata federation leave <project> [--delete [--force]] [--local-only] [--hub <name>]
-kata federation rebind <project> --hub <name>
-kata federation rebind --all --hub <name>
-kata federation root-key repin --project <project> [--preflight] \
+poomsae federation enrollments list
+poomsae federation enrollments name <spoke-instance-uid> laptop
+poomsae federation enrollments name <spoke-instance-uid> --clear
+poomsae federation revoke <enrollment-id>
+poomsae federation leave <project> [--delete [--force]] [--local-only] [--hub <name>]
+poomsae federation rebind <project> --hub <name>
+poomsae federation rebind --all --hub <name>
+poomsae federation root-key repin --project <project> [--preflight] \
   [--previous-key-file <path>] [--strand-relays]
-kata federation status
-kata federation status --json
-kata federation lease acquire <issue-ref> [--ttl 30m]
-kata federation lease renew <issue-ref> --ttl 30m
-kata federation lease release <issue-ref>
+poomsae federation status
+poomsae federation status --json
+poomsae federation lease acquire <issue-ref> [--ttl 30m]
+poomsae federation lease renew <issue-ref> --ttl 30m
+poomsae federation lease release <issue-ref>
 ```
 
-`kata federation enroll --project <project>` creates `<project>` on the hub if
+`poomsae federation enroll --project <project>` creates `<project>` on the hub if
 it does not already exist, then enables federation and creates the enrollment.
 
 Give a spoke a hub-local name with `federation enroll --spoke-name laptop`, or
@@ -2604,12 +2604,12 @@ Ordinary hub event responses from polling, issue history, and SSE add
 owner backups. They do not replicate to spokes and do not change event hashes
 or attribution.
 
-`kata federation status` reports local bindings, enabled and push state,
+`poomsae federation status` reports local bindings, enabled and push state,
 cursors, pending push depth, sync timestamps, enrollment counts, lease counts,
 quarantine counts, reset blockers, recent lease violations, and whether this
 daemon can sign root receipts for each hub project it roots. Run
-`kata federation quarantine list` to inspect every active quarantine and
-`kata federation quarantine show <id>` to see its complete retained event UID
+`poomsae federation quarantine list` to inspect every active quarantine and
+`poomsae federation quarantine show <id>` to see its complete retained event UID
 list and error. The TUI shows the same retained errors in a spoke row's detail
 view.
 
@@ -2637,7 +2637,7 @@ lacks support.
    service manager or normal daemon command. The hub is unavailable while it
    restarts or migrates.
 3. On a connected spoke, check an existing issue and run
-   `kata federation status`. Confirm fresh success times for the enabled sync
+   `poomsae federation status`. Confirm fresh success times for the enabled sync
    directions and no persistent error. Spokes retry after the hub becomes
    available.
 
@@ -2657,7 +2657,7 @@ its own with `unsupported_federation_schema`. The spoke treats that error as
 transient version skew. It records the sync error, leaves the push cursor
 unchanged, does not create a quarantine, and retries on later sync passes.
 
-If a spoke sends events that require a newer hub, `kata federation status`
+If a spoke sends events that require a newer hub, `poomsae federation status`
 shows pending push and the last schema-skew error until the hub catches up.
 Once you upgrade the hub, the next sync retries the same pending events
 automatically.
@@ -2670,13 +2670,13 @@ Parent replacement events queued by v0.19.0 through v0.23.0 can omit
 `link_from_uid` and `link_to_uid`. An upgraded hub accepts this legacy parent
 unlink only when its primary issue is `from_uid`, the child, and the hub still
 holds that parent. A mismatched unlink keeps the batch quarantined until an
-operator resolves it. Kata does not rewrite the stored event.
+operator resolves it. Poomsae does not rewrite the stored event.
 
 If the spoke has already quarantined such a batch, upgrade the hub first, then
 retry it explicitly as described in
 [other validation quarantines](#other-validation-quarantines).
 
-Older Kata builds may already have quarantined a batch after a transient
+Older Poomsae builds may already have quarantined a batch after a transient
 schema-skew rejection. After you upgrade the hub, upgrade and restart each
 spoke on a build with this compatibility behavior. The next sync releases that
 legacy schema-skew quarantine automatically and resends the same events without
@@ -2690,11 +2690,11 @@ push batch. Quarantine blocks further push and can block reset.
 Inspect the retained event range and error before choosing a disposition:
 
 ```sh
-kata federation quarantine list
-kata federation quarantine show <id>
+poomsae federation quarantine list
+poomsae federation quarantine show <id>
 ```
 
-Do not edit Kata's SQLite database to clear a quarantine or advance a cursor.
+Do not edit Poomsae's SQLite database to clear a quarantine or advance a cursor.
 Those edits bypass the retry and audit transitions and can silently strand
 events. A compatible spoke automatically releases and resends a push quarantine
 whose retained error has the exact former cross-project peer validation shape.
@@ -2712,7 +2712,7 @@ fresh issue.snapshot targets issue <uid>, which another project on this hub
 already holds
 ```
 
-The spoke quarantines the batch, and `kata federation status` shows the error.
+The spoke quarantines the batch, and `poomsae federation status` shows the error.
 This happens when a hub project was archived and replaced and the same issues
 are pushed into the replacement, because an archived project keeps its issues,
 so their UIDs stay taken. The error does not name the other project, because
@@ -2739,7 +2739,7 @@ before another network request. Fix the root cause, then retry other
 recoverable push quarantines explicitly:
 
 ```sh
-kata federation quarantine retry <id> \
+poomsae federation quarantine retry <id> \
   --confirm "RETRY FEDERATION BATCH <id>" \
   --reason "hub upgraded"
 ```
@@ -2800,7 +2800,7 @@ delivery attempts while status still shows the unresolved batch. Upgrade the
 incompatible recipient or resolve the validation failure, then retry
 explicitly. Retry keeps every source UID and hash, reset epoch, and
 emitted-prefix acknowledgement intact. If the recipient still rejects the batch,
-Kata quarantines it again. Local project catalog, transport, and root claim
+Poomsae quarantines it again. Local project catalog, transport, and root claim
 audit records stay in their own journals.
 
 Relay quarantine cannot use legacy skip. The request returns
@@ -2817,7 +2817,7 @@ Skip a batch intentionally only when you accept that those local events never
 reach the hub:
 
 ```sh
-kata federation quarantine skip <id> \
+poomsae federation quarantine skip <id> \
   --confirm "SKIP FEDERATION BATCH <id>" \
   --reason "operator accepted the skipped outbound batch"
 ```
@@ -2843,13 +2843,13 @@ For an existing relay pull quarantine, select that relay's daemon and project,
 inspect the error, then retry after the root upgrade:
 
 ```sh
-kata --project spoke-project federation quarantine list
+poomsae --project spoke-project federation quarantine list
 quarantine_id=7 # Replace with the affected entry's ID from the list.
-kata --project spoke-project federation quarantine show "$quarantine_id"
-kata --project spoke-project federation quarantine retry "$quarantine_id" \
+poomsae --project spoke-project federation quarantine show "$quarantine_id"
+poomsae --project spoke-project federation quarantine retry "$quarantine_id" \
   --confirm "RETRY FEDERATION BATCH $quarantine_id" \
   --reason "root upgraded for withheld creation recovery"
-kata --project spoke-project federation status
+poomsae --project spoke-project federation status
 ```
 
 Retry clears the active rejection without advancing delivery cursors. The next
@@ -2868,7 +2868,7 @@ On current `main` (unreleased), automatic retries wait at least the greater of
 one minute and the sync interval, doubling to a ceiling of the greater of five
 minutes and the interval. Other projects keep syncing. Local edits stay
 available locally and wait until the next due attempt to reach the hub.
-`kata federation status` shows the wait as
+`poomsae federation status` shows the wait as
 `sync retry: relay hub refused cross-project links (409)`. Restarting the spoke
 daemon makes a fresh attempt right away.
 
@@ -2948,11 +2948,11 @@ Federation has expected stale or deferred states:
 
 ## Cutover notes
 
-The actor-bound federation schema is a v13 JSONL cutover. Kata does not import
+The actor-bound federation schema is a v13 JSONL cutover. Poomsae does not import
 existing unbound hub enrollments because they cannot be made actor-safe; create
-new enrollments with `kata federation enroll --actor <actor>`. Existing
+new enrollments with `poomsae federation enroll --actor <actor>`. Existing
 push-enabled spoke bindings without a stored actor import with push disabled,
-so those spokes must rerun `kata federation join --actor <actor> --push` before
+so those spokes must rerun `poomsae federation join --actor <actor> --push` before
 local-origin work can sync to the hub again.
 
 If those trade-offs are unacceptable, use a shared daemon instead.

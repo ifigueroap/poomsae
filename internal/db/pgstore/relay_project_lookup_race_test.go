@@ -6,10 +6,10 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // A relay transaction that cannot read the project row because another

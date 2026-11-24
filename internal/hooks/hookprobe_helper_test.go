@@ -97,7 +97,7 @@ func TestHookprobe_ExitCode(t *testing.T) {
 }
 
 func TestHookprobe_EnvKey(t *testing.T) {
-	stdout, _, exit := runHookprobe(t, "", []string{"KATA_TEST_X=hello-world"}, "env", "KATA_TEST_X")
+	stdout, _, exit := runHookprobe(t, "", []string{"POOMSAE_TEST_X=hello-world"}, "env", "POOMSAE_TEST_X")
 	if exit != 0 {
 		t.Fatalf("exit = %d, want 0", exit)
 	}

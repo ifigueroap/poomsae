@@ -7,10 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 const (
@@ -291,7 +291,7 @@ func TestCronClientReportsClosedParent(t *testing.T) {
 				deleted, err := client.DeleteIssueWithResponse(ctx, &generated.DeleteIssueRequestOptions{
 					PathParams: &generated.DeleteIssuePath{ProjectID: project.ID, Ref: parent.Issue.UID},
 					Body:       &generated.DeleteIssueBody{Actor: "worker"},
-					Header:     &generated.DeleteIssueHeaders{XKataConfirm: new("DELETE " + project.Name + "#" + parent.Issue.ShortID)},
+					Header:     &generated.DeleteIssueHeaders{XPoomsaeConfirm: new("DELETE " + project.Name + "#" + parent.Issue.ShortID)},
 				})
 				require.NoError(t, err)
 				require.Equal(t, 200, deleted.HTTPResponse.StatusCode, string(deleted.Body))

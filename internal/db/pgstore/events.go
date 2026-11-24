@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const eventSelect = `SELECT e.id, e.uid, e.origin_instance_uid, e.project_id, p.uid, e.project_name,
@@ -355,7 +355,7 @@ func (s *Store) insertEventTx(ctx context.Context, tx *sql.Tx, input eventInsert
 	eventUID := input.UID
 	var err error
 	if eventUID == "" {
-		eventUID, err = katauid.New()
+		eventUID, err = poomsaeuid.New()
 		if err != nil {
 			return db.Event{}, fmt.Errorf("generate event uid: %w", err)
 		}

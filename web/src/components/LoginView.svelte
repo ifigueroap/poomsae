@@ -30,9 +30,9 @@
 
 <StatusPage title="Log in">
   <form aria-label="Log in" onsubmit={submit}>
-    <label for="kata-token">Token</label>
+    <label for="poomsae-token">Token</label>
     <input
-      id="kata-token"
+      id="poomsae-token"
       type="password"
       autocomplete="current-password"
       aria-invalid={error ? true : undefined}

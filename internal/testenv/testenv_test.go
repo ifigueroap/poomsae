@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestEnv_BootsDaemonAndAnswersPing(t *testing.T) {

@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
 )
 
 func TestAPIError_StatusAndBodyShape(t *testing.T) {
-	err := api.NewError(404, "issue_not_found", "issue #42 does not exist", "kata search", nil)
+	err := api.NewError(404, "issue_not_found", "issue #42 does not exist", "poomsae search", nil)
 	assert.Equal(t, 404, err.Status)
 
 	body := err.Envelope()
 	assert.Equal(t, "issue_not_found", body.Error.Code)
 	assert.Equal(t, "issue #42 does not exist", body.Error.Message)
-	assert.Equal(t, "kata search", body.Error.Hint)
+	assert.Equal(t, "poomsae search", body.Error.Hint)
 
 	js, err2 := json.Marshal(body)
 	require.NoError(t, err2)

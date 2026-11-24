@@ -29,7 +29,7 @@ func rootTransitionBytes(pin RootKeyPin, transition RootKeyTransition) ([]byte, 
 	return json.Marshal(struct {
 		Domain     string            `json:"domain"`
 		Transition RootKeyTransition `json:"transition"`
-	}{Domain: "kata.root-key-transition.v1", Transition: transition})
+	}{Domain: "poomsae.root-key-transition.v1", Transition: transition})
 }
 
 // SignRootKeyTransition signs an exact replacement key with the currently pinned root key.

@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 func TestScopedReplyTargetReparentedDuringProjectionFailsBufferedResponse(t *testing.T) {
@@ -128,7 +128,7 @@ type lateReplyTargetFixture struct {
 
 func newLateReplyTargetFixture(t *testing.T) lateReplyTargetFixture {
 	t.Helper()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")

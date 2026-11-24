@@ -17,24 +17,24 @@
 
   import type { TokenOut, UIIssueReference } from '../lib/api/generated'
   import type { WebDaemonInfo } from '../lib/daemons/client'
-  import type { KataRoute, SettingsSection, ShareableFilters, SystemView } from '../lib/router'
+  import type { PoomsaeRoute, SettingsSection, ShareableFilters, SystemView } from '../lib/router'
   import {
     deriveKataAreas,
     defaultKataTaskSearchFilters,
     projectKataWorkspaceView,
-  } from '../lib/kata/authority'
-  import { createKataLinkFilters } from '../lib/kata/linkFilters'
-  import { normalizeKataUISnapshot, withPendingSelection } from '../lib/kata/projection'
-  import { localDateString } from '../lib/kata/dates'
+  } from '../lib/poomsae/authority'
+  import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
+  import { normalizeKataUISnapshot, withPendingSelection } from '../lib/poomsae/projection'
+  import { localDateString } from '../lib/poomsae/dates'
   import type {
-    KataTaskMutationResponse,
-    KataCommentReplyIntent,
-    KataTaskCloseRequest,
-    KataTaskEditPatch,
-    KataTaskSearchFilters,
-    KataTaskStatusFilter,
-    KataTaskViewName,
-  } from '../lib/kata/types'
+    PoomsaeTaskMutationResponse,
+    PoomsaeCommentReplyIntent,
+    PoomsaeTaskCloseRequest,
+    PoomsaeTaskEditPatch,
+    PoomsaeTaskSearchFilters,
+    PoomsaeTaskStatusFilter,
+    PoomsaeTaskViewName,
+  } from '../lib/poomsae/types'
   import {
     collectionIntentKey,
     snapshotIntentForRoute,
@@ -49,7 +49,7 @@
   import IssueDetail from './IssueDetail.svelte'
   import IssueFilters from './IssueFilters.svelte'
   import IssueGraph from './IssueGraph.svelte'
-  import KataDaemonSwitcher from './KataDaemonSwitcher.svelte'
+  import PoomsaeDaemonSwitcher from './PoomsaeDaemonSwitcher.svelte'
   import QuickCapture from './QuickCapture.svelte'
   import ProjectRecurrences from './ProjectRecurrences.svelte'
   import SearchSettings from './SearchSettings.svelte'
@@ -57,7 +57,7 @@
   import Sidebar from './Sidebar.svelte'
   import SplitLayout from './SplitLayout.svelte'
 
-  type AppRoute = Exclude<KataRoute, { kind: 'route-error' }>
+  type AppRoute = Exclude<PoomsaeRoute, { kind: 'route-error' }>
   type ChildParent = { projectID: number; projectUID: string; issueUID: string }
 
   interface Props {
@@ -98,7 +98,7 @@
     onRefreshCredentials?: (() => void | Promise<void>) | undefined
     onSearchEmpty?: (() => void) | undefined
     onNavigate: (route: AppRoute) => void | Promise<void>
-    onCreateProject: (name: string, designateInbox?: boolean) => Promise<KataTaskMutationResponse>
+    onCreateProject: (name: string, designateInbox?: boolean) => Promise<PoomsaeTaskMutationResponse>
     onCreateIssue: (
       title: string,
       parent?: ChildParent,
@@ -111,9 +111,9 @@
     onAddComment: (
       uid: string,
       body: string,
-      reply?: KataCommentReplyIntent,
+      reply?: PoomsaeCommentReplyIntent,
     ) => boolean | Promise<boolean>
-    onEditIssue: (uid: string, patch: KataTaskEditPatch) => boolean | Promise<boolean>
+    onEditIssue: (uid: string, patch: PoomsaeTaskEditPatch) => boolean | Promise<boolean>
     onAssignOwner: (uid: string, owner: string) => boolean | Promise<boolean>
     onClaimAssignment?:
       | ((uid: string, ttlSeconds: number) => boolean | Promise<boolean>)
@@ -122,19 +122,19 @@
     onSetPriority: (uid: string, priority: number | null) => boolean | Promise<boolean>
     onAddLabel: (uid: string, label: string) => boolean | Promise<boolean>
     onRemoveLabel: (uid: string, label: string) => void | Promise<void>
-    onCloseIssue: (request: KataTaskCloseRequest) => boolean | Promise<boolean>
+    onCloseIssue: (request: PoomsaeTaskCloseRequest) => boolean | Promise<boolean>
     onReopenIssue: () => void | Promise<void>
     recurrenceRevision?: number
     onCreateRecurrence: (
       projectID: number,
-      input: import('../lib/kata/types').KataCreateRecurrenceInput,
+      input: import('../lib/poomsae/types').PoomsaeCreateRecurrenceInput,
     ) => Promise<void>
     onPatchRecurrence: (
-      recurrence: import('../lib/kata/types').KataRecurrence,
-      input: import('../lib/kata/types').KataPatchRecurrenceInput,
+      recurrence: import('../lib/poomsae/types').PoomsaeRecurrence,
+      input: import('../lib/poomsae/types').PoomsaePatchRecurrenceInput,
       etag: string,
     ) => Promise<void>
-    onDeleteRecurrence: (recurrence: import('../lib/kata/types').KataRecurrence) => Promise<void>
+    onDeleteRecurrence: (recurrence: import('../lib/poomsae/types').PoomsaeRecurrence) => Promise<void>
   }
 
   let {
@@ -370,7 +370,7 @@
         ? 'Editing is paused while workspace data may be out of date.'
         : readOnly || !snapshot.capabilities.writable
           ? 'This credential is read-only.'
-          : 'Changes are paused while Kata connects.',
+          : 'Changes are paused while Poomsae connects.',
   )
   let pendingReason = $derived(
     mutationPending ? 'Wait for the current change to finish.' : undefined,
@@ -405,10 +405,10 @@
     if (!mediumScreen.current) closeNavigation()
   })
 
-  function openView(name: KataTaskViewName): void {
+  function openView(name: PoomsaeTaskViewName): void {
     closeNavigation()
     navigate({
-      kind: 'kata',
+      kind: 'poomsae',
       view: systemViewName(name),
       graph: false,
       filters: emptyShareableFilters(),
@@ -418,7 +418,7 @@
   function openProject(projectUID: string): void {
     closeNavigation()
     navigate({
-      kind: 'kata',
+      kind: 'poomsae',
       projectUID,
       graph: false,
       filters: emptyShareableFilters(),
@@ -428,7 +428,7 @@
   function openSettings(): void {
     closeNavigation()
     navigate({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'settings',
       graph: false,
       filters: emptyShareableFilters(),
@@ -445,7 +445,7 @@
     )
       return
     navigate({
-      kind: 'kata',
+      kind: 'poomsae',
       ...(section === 'credentials'
         ? { view: 'credentials' as const }
         : { view: 'settings' as const, section: section as SettingsSection }),
@@ -466,8 +466,8 @@
   }
 
   function updateFilters(
-    filters: KataTaskSearchFilters,
-    changed: keyof KataTaskSearchFilters,
+    filters: PoomsaeTaskSearchFilters,
+    changed: keyof PoomsaeTaskSearchFilters,
   ): void {
     const shareable = shareableFilters(filters, viewName, changed)
     if (filters.scope.kind === 'project') {
@@ -558,7 +558,7 @@
     creationIntent = intent
   }
 
-  async function createProject(name: string): Promise<KataTaskMutationResponse> {
+  async function createProject(name: string): Promise<PoomsaeTaskMutationResponse> {
     const task = creationIntent === 'task'
     const result = await onCreateProject(name, task)
     if (task && creationIntent === 'task') {
@@ -574,20 +574,20 @@
       : onCreateIssue(title, undefined, projectUID)
   }
 
-  function viewNameForRoute(current: AppRoute): KataTaskViewName {
+  function viewNameForRoute(current: AppRoute): PoomsaeTaskViewName {
     if (current.view === 'credentials' || current.view === 'settings') return 'all'
     if (current.view) return current.view === 'all-open' ? 'all' : current.view
     return current.projectUID || current.issueUID ? 'all' : 'inbox'
   }
 
-  function systemViewName(name: KataTaskViewName): SystemView {
+  function systemViewName(name: PoomsaeTaskViewName): SystemView {
     return name === 'all' ? 'all-open' : name
   }
 
   function searchFiltersForRoute(
     current: AppRoute,
-    currentView: KataTaskViewName,
-  ): KataTaskSearchFilters {
+    currentView: PoomsaeTaskViewName,
+  ): PoomsaeTaskSearchFilters {
     const defaults = defaultKataTaskSearchFilters(currentView)
     return {
       scope: current.projectUID
@@ -603,8 +603,8 @@
 
   function statusFilter(
     values: readonly string[],
-    fallback: KataTaskStatusFilter,
-  ): KataTaskStatusFilter {
+    fallback: PoomsaeTaskStatusFilter,
+  ): PoomsaeTaskStatusFilter {
     if (values.length !== 1) return values.length === 0 ? fallback : 'all'
     const value = values[0]
     return value === 'open' || value === 'ready' || value === 'closed' || value === 'all'
@@ -613,9 +613,9 @@
   }
 
   function shareableFilters(
-    filters: KataTaskSearchFilters,
-    currentView: KataTaskViewName,
-    changed: keyof KataTaskSearchFilters,
+    filters: PoomsaeTaskSearchFilters,
+    currentView: PoomsaeTaskViewName,
+    changed: keyof PoomsaeTaskSearchFilters,
   ): ShareableFilters {
     const defaultStatus = defaultKataTaskSearchFilters(currentView).status
     const result: ShareableFilters = {
@@ -661,7 +661,7 @@
         { name: 'scheduled', label: 'Scheduled' },
         { name: 'all', label: 'All open' },
         { name: 'logbook', label: 'Logbook' },
-      ].find((view) => view.name === viewName)?.label ?? 'Kata'
+      ].find((view) => view.name === viewName)?.label ?? 'Poomsae'
     )
   }
 
@@ -681,7 +681,7 @@
 </script>
 
 <svelte:head>
-  <title>{tabTitle()} · Kata</title>
+  <title>{tabTitle()} · Poomsae</title>
 </svelte:head>
 
 {#snippet newTaskButton()}
@@ -722,7 +722,7 @@
     {:else}
       {@render createProjectButton()}
     {/if}
-    <p class="no-projects-hint">Or run <code>kata init</code> in a repository.</p>
+    <p class="no-projects-hint">Or run <code>poomsae init</code> in a repository.</p>
   </EmptyState>
 {/snippet}
 
@@ -747,7 +747,7 @@
     {#snippet header()}
       <div class="header-server">
         {#if daemons.length > 0}
-          <KataDaemonSwitcher
+          <PoomsaeDaemonSwitcher
             {daemons}
             account={connectionAccount}
             credential={connectionStatus === 'Connected' ? undefined : connectionStatus}
@@ -759,7 +759,7 @@
             onOpen={onOpenDaemon}
           />
         {:else}
-          <strong>Kata</strong>
+          <strong>Poomsae</strong>
           {#if daemonError || reconnecting}<span class="daemon-fallback-status" role="status"
               >{daemonError ?? 'Reconnecting…'}</span
             >{/if}
@@ -776,7 +776,7 @@
   </Sidebar>
 {/snippet}
 
-<section class="kata-feature" aria-label="Kata workspace">
+<section class="poomsae-feature" aria-label="Poomsae workspace">
   {#if newTaskBlockedReason}
     <span id={newTaskReasonID} class="kit-sr-only">{newTaskBlockedReason}</span>
   {/if}
@@ -794,7 +794,7 @@
     </div>
   {/if}
   <div class="mobile-navigation-trigger">
-    <TopBar ariaLabel="Kata workspace">
+    <TopBar ariaLabel="Poomsae workspace">
       {#snippet left()}
         <IconButton
           ariaLabel="Open navigation"
@@ -815,12 +815,12 @@
       {/snippet}
     </TopBar>
   </div>
-  <div class="kata-layout" aria-busy={loading}>
+  <div class="poomsae-layout" aria-busy={loading}>
     <div class="desktop-navigation">
       {@render navigationSidebar()}
     </div>
 
-    <div class="kata-main">
+    <div class="poomsae-main">
       {#if mutationMessage && !captureOpen && (settingsSection !== 'access' || !daemonRoute || !accessAdministrationAvailable || !onAccessMutation)}
         <p class="mutation-message" role="alert">{mutationMessage}</p>
       {/if}
@@ -873,7 +873,7 @@
           minPrimary={preferences.splitDirection === 'vertical' ? 220 : 320}
           minSecondary={preferences.splitDirection === 'vertical' ? 220 : 360}
           responsiveBreakpoint={700}
-          ariaLabel="Resize Kata panes"
+          ariaLabel="Resize Poomsae panes"
           onResize={resizeSplit}
           bind:secondaryBeside={detailBeside}
           primary={listPane}
@@ -916,7 +916,7 @@
 {/snippet}
 
 {#snippet listPane()}
-  <div class="list-column kata-list">
+  <div class="list-column poomsae-list">
     {#if route.issueUID && route.graph}
       {#if projection.selected_graph && projection.selected_detail}
         {#snippet graphActions()}
@@ -955,7 +955,7 @@
           {#key selectedProject.uid}
             <ProjectRecurrences
               projectID={selectedProject.id}
-              actor={selfActor ?? 'kata-web'}
+              actor={selfActor ?? 'poomsae-web'}
               disabled={!projectWideMutationAllowed || mutationPending}
               {draftFenceGeneration}
               refreshKey={`${recurrenceRevision}:${draftResetGeneration}`}
@@ -1082,7 +1082,7 @@
 />
 
 <style>
-  .kata-feature {
+  .poomsae-feature {
     height: 100%;
     min-height: 0;
     background: var(--bg-primary);
@@ -1111,7 +1111,7 @@
     line-height: 1.5;
   }
 
-  /* The kata init line sits under New project, not beside it. */
+  /* The poomsae init line sits under New project, not beside it. */
   :global(.no-projects .kit-empty-state__actions) {
     flex-direction: column;
     align-items: center;
@@ -1176,7 +1176,7 @@
     cursor: not-allowed;
   }
 
-  .kata-layout {
+  .poomsae-layout {
     min-height: 0;
     flex: 1;
     display: grid;
@@ -1195,13 +1195,13 @@
     --header-height: var(--layout-header-h);
   }
 
-  :global(.kit-detail-drawer:has(.kata-sidebar) > .kit-detail-drawer__header) {
+  :global(.kit-detail-drawer:has(.poomsae-sidebar) > .kit-detail-drawer__header) {
     box-sizing: border-box;
     height: var(--layout-header-h);
     padding-block: 0;
   }
 
-  .kata-main {
+  .poomsae-main {
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -1252,7 +1252,7 @@
   }
 
   @media (max-width: 760px) {
-    .kata-layout {
+    .poomsae-layout {
       grid-template-columns: 1fr;
     }
 

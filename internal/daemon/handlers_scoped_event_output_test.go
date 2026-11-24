@@ -12,10 +12,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func TestIssueScopedRestoredLinkResetsPollAndSSE(t *testing.T) {
@@ -628,8 +628,8 @@ func TestIssueScopedLifecycleAndMoveEventsReachScopedClients(t *testing.T) {
 		"issues/"+child.ShortID+"/actions/delete"),
 		map[string]any{"actor": "coordinator"},
 		map[string]string{
-			"Authorization":  "Bearer coordinator-token",
-			"X-Kata-Confirm": "DELETE example-project#" + child.ShortID,
+			"Authorization":     "Bearer coordinator-token",
+			"X-Poomsae-Confirm": "DELETE example-project#" + child.ShortID,
 		})
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "body: %s", body)
 	resp, body = envDoRaw(t, env, http.MethodPost, scopedProjectPath(project.ID,

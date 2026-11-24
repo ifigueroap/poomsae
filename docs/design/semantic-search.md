@@ -11,7 +11,7 @@ rationale; for current operator-facing behavior see the
 "Storage" section reflects the backend-native indexes: a kit-based SQLite
 sidecar and optional pgvector tables for PostgreSQL.
 
-kata's search is lexical: SQLite FTS5 with BM25 ranking and PostgreSQL tsvector
+poomsae's search is lexical: SQLite FTS5 with BM25 ranking and PostgreSQL tsvector
 ranking over title, body, and comments. Lexical search misses
 issues that describe the same problem in different words, which is the exact
 case that matters for agents running search-before-create. This note describes the
@@ -23,7 +23,7 @@ behavior whenever embeddings cannot help.
 
 Goals:
 
-- `kata search` finds paraphrased and conceptually-related issues, not just
+- `poomsae search` finds paraphrased and conceptually-related issues, not just
   token matches, when an embedding endpoint is configured.
 - No embedding endpoint or network calls for deployments that do not opt in,
   and no behavior change to ranking or scores. PostgreSQL core storage does
@@ -139,7 +139,7 @@ model    = "nomic-embed-text"
 
 ### Text recipe and fingerprint
 
-kata embeds `title + "\n\n" + body` per issue, chunked via kit's
+poomsae embeds `title + "\n\n" + body` per issue, chunked via kit's
 `vector.Split` (2000 runes per chunk, 200-rune overlap) instead of truncated
 to a fixed cap, so long issues get full semantic coverage rather than losing
 everything past the old ~8k-character cutoff. Comments are deliberately not
@@ -291,16 +291,16 @@ semantic recall lags.
 SQLite vectors live in a sidecar the daemon opens (creating it if absent)
 next to the main database the first time `[search.embeddings]` is configured
 (`internal/vector.Open`). Its name is derived from the database filename
-(`kata.db` → `kata.vectors.db`) so two databases in one directory never
+(`poomsae.db` → `poomsae.vectors.db`) so two databases in one directory never
 share sidecar state. It is derived state, rebuildable from
-`kata.db` at any time: a structural mismatch in the mirror schema version
+`poomsae.db` at any time: a structural mismatch in the mirror schema version
 (`vector_meta`) deletes and recreates the file rather than migrating it in
 place, and an operator can delete it outright; the reconciler rebuilds it
 by re-embedding on the next cycle. It is therefore excluded from backup
 guidance and not part of the JSONL export contract (see "JSONL export/import"
 below).
 
-kata owns two tables in the sidecar: `vector_meta` (the schema-version guard
+poomsae owns two tables in the sidecar: `vector_meta` (the schema-version guard
 above) and `issue_mirror(issue_uid TEXT PRIMARY KEY, project_uid TEXT,
 content TEXT, content_revision INTEGER, embed_gen TEXT)`. `content` is the
 rendered recipe (`title + "\n\n" + body`, untruncated), and `embed_gen` is
@@ -309,12 +309,12 @@ rest, prefix-qualified from `vectorsPrefix = "issue_vectors"`:
 `issue_vectors_generations`, `issue_vectors_chunks`, `issue_vectors_stamps`,
 and one `vec0` virtual table per generation (`issue_vectors_v<ordinal>`,
 cosine metric) created via `sqlitevec.New[string, string]`. Doc keys are
-issue UIDs; kata never writes chunk rows directly. `kitvec.Fill` chunks
+issue UIDs; poomsae never writes chunk rows directly. `kitvec.Fill` chunks
 content (`vector.Split`, 2000 runes with 200-rune overlap) and writes chunks,
 stamps, and vec0 rows together.
 
 When pgvector 0.7 or later is available in `public`, PostgreSQL keeps the
-corresponding mirror, generation, stamp, and chunk rows in its selected Kata
+corresponding mirror, generation, stamp, and chunk rows in its selected Poomsae
 schema. The schema-owner ceremony creates these optional derived tables; the
 daemon's runtime role needs DML only. Generations carry `id`, `gen_key`,
 `fingerprint`, `dimension`, and `state`; stamps and chunks use `generation_id`
@@ -358,11 +358,11 @@ never exposes a partially-filled index to queries.
 ### JSONL export/import
 
 Vectors are not exported. JSONL export dropped the `issue_embedding` record
-kind kata's earlier single-table embeddings design used to emit; the
+kind poomsae's earlier single-table embeddings design used to emit; the
 sidecar is treated the same as SQLite's FTS index: cheap, trigger- or
 reconciler-rebuilt derived state that does not earn export cost. Import
 still recognizes the `issue_embedding` kind for archives written by older
-kata versions: it acknowledges and drops each such record without error, and
+poomsae versions: it acknowledges and drops each such record without error, and
 the reconciler re-embeds the affected issues on the next cycle from live
 content. `content_revision` still travels on `IssueExport`
 (`internal/db/export_types.go`) so an imported issue's mirror refresh is
@@ -374,7 +374,7 @@ the archive carried any embedding data.
 Queries run kit's `sqlitevec` `vec0` KNN against the active generation's
 table, not a brute-force scan. `kit/vector/sqlitevec` registers the
 sqlite-vec extension through `modernc.org/sqlite`'s pure-Go `vec_f32(?)`
-literal path, so kata's no-cgo build carries no native extension dependency.
+literal path, so poomsae's no-cgo build carries no native extension dependency.
 `Index.Query` (`internal/vector/query.go`) issues the KNN query, then
 `kitvec.RollupByDocument` collapses per-chunk hits to one score per issue
 (best chunk wins). The search handler (`internal/daemon/hybrid_search.go`)
@@ -483,9 +483,9 @@ unconfigured-default response shape and score semantics.
 The CLI has three output surfaces, each handled to a precise shape:
 
 - `--json`: the response envelope is passed through unchanged
-  (`printSearchResults` JSON branch, `cmd/kata/search.go`), so `mode`,
+  (`printSearchResults` JSON branch, `cmd/poomsae/search.go`), so `mode`,
   `degraded`, and `degraded_reason` appear automatically.
-- Agent mode (`cmd/kata/search.go:116`) is a machine surface governed by
+- Agent mode (`cmd/poomsae/search.go:116`) is a machine surface governed by
   `docs/reference/agent-output.md`, where field order is part of the
   contract and new fields may be *appended* without an `agent_format`
   version bump. So `mode` is appended after the existing header fields, in
@@ -498,7 +498,7 @@ The CLI has three output surfaces, each handled to a precise shape:
   takes the `api_schema_version` bump, since its JSON envelope always carries
   `mode`. The compatibility test pins the appended field order, `mode=lexical`
   on an unconfigured daemon, and unchanged lexical score semantics.
-- Human mode (`%-8s  %.2f  %-8s  %s  (%s)` per row, `cmd/kata/search.go:142`)
+- Human mode (`%-8s  %.2f  %-8s  %s  (%s)` per row, `cmd/poomsae/search.go:142`)
   is an ergonomic surface. The header rule is keyed on whether the output is
   the plain baseline, not on the effective mode alone: a leading
   `# mode=<mode>` line (carrying a `degraded: <reason>` note when present)

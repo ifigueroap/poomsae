@@ -8,11 +8,11 @@ import (
 
 func TestSafeUILaunchURLRejectsUnsafeOrigins(t *testing.T) {
 	for _, origin := range []string{
-		"ftp://kata.example",
-		"https://user@kata.example",
-		"https://kata.example/prefix",
-		"https://kata.example?tenant=alpha",
-		"https://kata.example#fragment",
+		"ftp://poomsae.example",
+		"https://user@poomsae.example",
+		"https://poomsae.example/prefix",
+		"https://poomsae.example?tenant=alpha",
+		"https://poomsae.example#fragment",
 	} {
 		t.Run(origin, func(t *testing.T) {
 			target, ok := safeUILaunchURL(&WebSessionManager{origin: origin}, "01J00000000000000000000001")

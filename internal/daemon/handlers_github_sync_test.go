@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/githubsync"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 func TestGitHubSyncHandlers_EnableValidatesStoresStableSourceAndWakesRunner(t *testing.T) {
@@ -410,7 +410,7 @@ func TestGitHubSyncHandlers_OnceRejectsMissingAndDisabledBindings(t *testing.T) 
 // the fetcher, the wake channel, or the runner.
 func TestGitHubSyncHandlers_MutationsRejectUnattributedTrustedProxy(t *testing.T) {
 	t.Run("enable", func(t *testing.T) {
-		h := newGitHubSyncHandlerHarnessWithOpts(t, gitHubSyncHarnessOpts{trustedActorHeader: "X-Kata-Actor"})
+		h := newGitHubSyncHandlerHarnessWithOpts(t, gitHubSyncHarnessOpts{trustedActorHeader: "X-Poomsae-Actor"})
 		resp, body := postJSON(t, h.server, githubSyncEndpoint(h.project.ID, "enable"), map[string]any{
 			"config": map[string]any{
 				"owner": "example-owner",
@@ -423,7 +423,7 @@ func TestGitHubSyncHandlers_MutationsRejectUnattributedTrustedProxy(t *testing.T
 	})
 
 	t.Run("disable", func(t *testing.T) {
-		h := newGitHubSyncHandlerHarnessWithOpts(t, gitHubSyncHarnessOpts{trustedActorHeader: "X-Kata-Actor"})
+		h := newGitHubSyncHandlerHarnessWithOpts(t, gitHubSyncHarnessOpts{trustedActorHeader: "X-Poomsae-Actor"})
 		binding := h.mustUpsertBinding(t, true)
 
 		resp, body := postJSON(t, h.server, githubSyncEndpoint(h.project.ID, "disable"), map[string]any{})
@@ -438,7 +438,7 @@ func TestGitHubSyncHandlers_MutationsRejectUnattributedTrustedProxy(t *testing.T
 	t.Run("once", func(t *testing.T) {
 		h := newGitHubSyncHandlerHarnessWithOpts(t, gitHubSyncHarnessOpts{
 			fakeRunner:         true,
-			trustedActorHeader: "X-Kata-Actor",
+			trustedActorHeader: "X-Poomsae-Actor",
 		})
 		h.mustUpsertBinding(t, true)
 

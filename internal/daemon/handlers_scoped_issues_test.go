@@ -14,9 +14,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func TestUIIssueReferenceHidesRestrictedProjectName(t *testing.T) {
@@ -46,7 +46,7 @@ func TestUIIssueReferenceHidesRestrictedProjectName(t *testing.T) {
 		headers map[string]string
 	}{
 		"host":          {env: &hostEnv},
-		"project scope": {env: env, headers: map[string]string{"Authorization": "Bearer bootstrap-token", "X-Kata-Project-Scope": `["` + allowed.UID + `"]`}},
+		"project scope": {env: env, headers: map[string]string{"Authorization": "Bearer bootstrap-token", "X-Poomsae-Project-Scope": `["` + allowed.UID + `"]`}},
 		"issue scope":   {env: env, headers: map[string]string{"Authorization": "Bearer worker-token"}},
 	} {
 		t.Run(name, func(t *testing.T) {

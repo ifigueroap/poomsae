@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // Malformed run evidence is refused as invalid input before anything is

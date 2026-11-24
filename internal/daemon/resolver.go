@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // resolveIssueRef parses an URL path component {ref} (short_id, qualified

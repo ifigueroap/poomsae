@@ -2,7 +2,7 @@ import type { UISnapshotResponseBody } from '../api/generated'
 import { readUISnapshot, type ReadUISnapshotParams } from '../api/generated'
 import { AuthenticationRequiredError, isAuthenticationRequiredError } from '../auth/session'
 import { assertValidIssueScopedCapabilities } from '../auth/scopedAuthority'
-import type { KataRoute } from '../router'
+import type { PoomsaeRoute } from '../router'
 
 export interface SnapshotAuthority {
   cursor: number
@@ -243,7 +243,7 @@ export interface UISnapshotIntent {
 }
 
 export function snapshotIntentForRoute(
-  route: Exclude<KataRoute, { kind: 'route-error' }>,
+  route: Exclude<PoomsaeRoute, { kind: 'route-error' }>,
   now: Date = new Date(),
   timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): UISnapshotIntent {

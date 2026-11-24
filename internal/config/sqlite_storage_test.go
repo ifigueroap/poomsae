@@ -24,8 +24,8 @@ func TestSQLiteBusyTimeoutConfig(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", tc.env)
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", tc.env)
 			if tc.file != "" {
 				require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[storage.sqlite]\nbusy_timeout = \""+tc.file+"\"\n"), 0600))
 			}

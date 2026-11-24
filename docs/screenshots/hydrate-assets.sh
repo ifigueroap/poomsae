@@ -5,8 +5,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 docs_root="$(cd "$script_dir/.." && pwd)"
 repo_root="$(cd "$docs_root/.." && pwd)"
-assets_branch="${KATA_DOCS_ASSETS_BRANCH:-docs-assets}"
-pinned_commit="${KATA_DOCS_ASSETS_COMMIT:-}"
+assets_branch="${POOMSAE_DOCS_ASSETS_BRANCH:-docs-assets}"
+pinned_commit="${POOMSAE_DOCS_ASSETS_COMMIT:-}"
 target="$docs_root/assets/screenshots"
 force=false
 case "${1:-}" in
@@ -51,7 +51,7 @@ fetch_remote_assets() {
 if [[ -n "$pinned_commit" ]]; then
   if [[ ! "$pinned_commit" =~ ^[0-9a-f]{40}$ ]] ||
     ! git -C "$repo_root" rev-parse --verify --quiet "$pinned_commit^{commit}" >/dev/null; then
-    printf 'docs screenshots not hydrated: KATA_DOCS_ASSETS_COMMIT must name an available full commit ID\n' >&2
+    printf 'docs screenshots not hydrated: POOMSAE_DOCS_ASSETS_COMMIT must name an available full commit ID\n' >&2
     exit 1
   fi
   asset_ref="$pinned_commit"

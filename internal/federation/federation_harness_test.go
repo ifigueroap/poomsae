@@ -18,12 +18,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 // hubSpokeHarness is a hub daemon reached through a counting proxy and a spoke
@@ -69,7 +69,7 @@ func newHubSpokeHarness(tb testing.TB, oldHub bool) *hubSpokeHarness {
 	tb.Helper()
 	ctx := tb.Context()
 	home := tb.TempDir()
-	tb.Setenv("KATA_HOME", home)
+	tb.Setenv("POOMSAE_HOME", home)
 	h := &hubSpokeHarness{oldHub: oldHub}
 	var err error
 	h.hubDB, err = sqlitestore.Open(ctx, filepath.Join(home, "hub.db"))
@@ -122,9 +122,9 @@ func (h *hubSpokeHarness) newFront(tb testing.TB) *hubFront {
 	f := &hubFront{}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		if h.oldHub {
-			response.Header.Del("X-Kata-Federation-Poll-Wait-Max")
-		} else if seconds := f.holdSeconds.Load(); seconds > 0 && response.Header.Get("X-Kata-Federation-Poll-Wait-Max") != "" {
-			response.Header.Set("X-Kata-Federation-Poll-Wait-Max", strconv.FormatInt(seconds, 10))
+			response.Header.Del("X-Poomsae-Federation-Poll-Wait-Max")
+		} else if seconds := f.holdSeconds.Load(); seconds > 0 && response.Header.Get("X-Poomsae-Federation-Poll-Wait-Max") != "" {
+			response.Header.Set("X-Poomsae-Federation-Poll-Wait-Max", strconv.FormatInt(seconds, 10))
 		}
 		return nil
 	}

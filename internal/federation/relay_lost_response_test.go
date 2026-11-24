@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
 )
 
 // R4/A6: durable native acceptance survives a lost HTTP reply or ACK.

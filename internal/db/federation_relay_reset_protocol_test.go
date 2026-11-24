@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestRelayLocalWorkBlocksReset(t *testing.T) {

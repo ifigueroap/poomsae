@@ -45,7 +45,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kata-docs"
+name = "poomsae-docs"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

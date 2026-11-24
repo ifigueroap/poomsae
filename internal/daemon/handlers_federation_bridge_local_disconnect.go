@@ -5,10 +5,10 @@ import (
 	"errors"
 	"net/http"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 )
 
 const federationBridgeLocalOnlyWarning = "the hub grant was not revoked; ask the hub operator to revoke this bridge's relay enrollment"
@@ -134,7 +134,7 @@ func federationBridgeDownstreamCheck(ctx context.Context, store db.Storage, proj
 
 func federationBridgeLocalDisconnectAPIError(err error) error {
 	if errors.Is(err, db.ErrFederationResetBlockedByDownstream) {
-		return api.NewError(http.StatusConflict, "federation_downstream_enrollments", "downstream relay enrollments still depend on this bridge", "list them with `kata federation enrollments list`, revoke each with `kata federation revoke <id>`, then retry", nil)
+		return api.NewError(http.StatusConflict, "federation_downstream_enrollments", "downstream relay enrollments still depend on this bridge", "list them with `poomsae federation enrollments list`, revoke each with `poomsae federation revoke <id>`, then retry", nil)
 	}
 	return federationBridgeDisconnectAPIError(err)
 }

@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/teammate"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // EventTimestampFormat is the millisecond UTC representation covered by portable event hashes.
@@ -487,7 +487,7 @@ func ValidateUnlinkStorageEndpoints(
 	if !fromOK || !toOK {
 		return fmt.Errorf("%w: issue.unlinked storage endpoints must be strings", ErrFederationIngestValidation)
 	}
-	if !katauid.Valid(linkFromUID) || !katauid.Valid(linkToUID) || linkFromUID == linkToUID {
+	if !poomsaeuid.Valid(linkFromUID) || !poomsaeuid.Valid(linkToUID) || linkFromUID == linkToUID {
 		return fmt.Errorf("%w: issue.unlinked has invalid storage endpoints", ErrFederationIngestValidation)
 	}
 	matchesForward := linkFromUID == fromUID && linkToUID == toUID

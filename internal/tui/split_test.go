@@ -14,7 +14,7 @@ import (
 )
 
 type splitSearchRestoreAPI struct {
-	KataAPI
+	PoomsaeAPI
 	issue        *Issue
 	issueCalls   int
 	lastIssueRef string
@@ -75,12 +75,12 @@ func TestSplit_InboxDetailNavEscPopsNavStack(t *testing.T) {
 // Client so handlers that gate on a non-nil api don't no-op.
 func splitTestSetup(t *testing.T) (Model, func()) {
 	t.Helper()
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	m := initialModel(Options{})
 	m.api = NewClient("http://daemon.example", nil)
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m.list.loading = false
 	m.list.issues = snapListFixture()
 	m, _ = updateModel(m, tea.WindowSizeMsg{Width: 160, Height: 40})
@@ -1493,7 +1493,7 @@ func TestSplit_SearchRetargetMutationDefersReadsUntilRestore(t *testing.T) {
 		Title:     "other row",
 		Status:    "closed",
 	}
-	api := &splitSearchRestoreAPI{KataAPI: m.api, issue: &closed}
+	api := &splitSearchRestoreAPI{PoomsaeAPI: m.api, issue: &closed}
 	m.api = api
 	m.detail.gen = 41
 	m.nextGen = 41
@@ -1679,7 +1679,7 @@ func TestSplit_SearchSnapshotRejectsAllDepartedFetches(t *testing.T) {
 
 func stackedSearchTransitionFixture(t *testing.T) (Model, func()) {
 	t.Helper()
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 
@@ -1767,7 +1767,7 @@ func TestStacked_SearchResizeIntoSplitThenCancelRestoresDetail(t *testing.T) {
 }
 
 func TestStacked_SearchResizeIntoSplitRetargetsInheritedDetail(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	defer applyDefaultColorMode()
@@ -1873,13 +1873,13 @@ func TestSplit_DebounceCoalescesBursts(t *testing.T) {
 // user pressed j/k because scheduleDetailFollow only fires from
 // dispatchListKey on cursor motion.
 func TestSplit_InitialFetchBootstrapsDetailPane(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	defer applyDefaultColorMode()
 	m := initialModel(Options{})
 	m.api = NewClient("http://daemon.example", nil)
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m, _ = updateModel(m, tea.WindowSizeMsg{Width: 160, Height: 40})
 	if m.layout != splitlayout.Split {
 		t.Fatalf("setup: layout=%v want splitlayout.Split", m.layout)
@@ -1911,13 +1911,13 @@ func TestSplit_InitialFetchBootstrapsDetailPane(t *testing.T) {
 // this, an agent who starts narrow then maximizes their terminal would
 // land on an empty right-hand pane.
 func TestSplit_StackedToSplitResizeBootstrapsDetailPane(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	defer applyDefaultColorMode()
 	m := initialModel(Options{})
 	m.api = NewClient("http://daemon.example", nil)
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	// Boot stacked, then deliver the list payload while still stacked.
 	m, _ = updateModel(m, tea.WindowSizeMsg{Width: 100, Height: 40})
 	if m.layout != splitlayout.Stacked {
@@ -1954,13 +1954,13 @@ func TestSplit_StackedToSplitResizeBootstrapsDetailPane(t *testing.T) {
 // detail pane until they explicitly open an issue, so loading detail
 // state on the initial fetch would waste an HTTP round-trip.
 func TestSplit_InitialFetchSkipsBootstrapInStacked(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	defer applyDefaultColorMode()
 	m := initialModel(Options{})
 	m.api = NewClient("http://daemon.example", nil)
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m, _ = updateModel(m, tea.WindowSizeMsg{Width: 100, Height: 40})
 	if m.layout != splitlayout.Stacked {
 		t.Fatalf("setup: layout=%v want splitlayout.Stacked", m.layout)

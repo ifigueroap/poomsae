@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func historicalMutationIssue(t *testing.T, env *testenv.Env) (db.Project, db.Project, db.Issue, string) {
@@ -74,10 +74,10 @@ func TestHistoricalMutationClaimGate(t *testing.T) {
 			}
 			headers := map[string]string{"Authorization": "Bearer tok"}
 			if tc.name == "delete" {
-				headers["X-Kata-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
+				headers["X-Poomsae-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
 			}
 			if tc.name == "purge" {
-				headers["X-Kata-Confirm"] = "PURGE " + target.Name + "#" + issue.ShortID
+				headers["X-Poomsae-Confirm"] = "PURGE " + target.Name + "#" + issue.ShortID
 			}
 			resp, raw := envDoRaw(t, env, method, issuePathRef(source.ID, oldRef, tc.suffix), body, headers)
 			assertAPIError(t, resp.StatusCode, raw, http.StatusConflict, "claim_denied")
@@ -133,10 +133,10 @@ func TestHistoricalMutationPublishesCurrentProject(t *testing.T) {
 				require.NoError(t, err)
 			}
 			if action == "delete" {
-				headers["X-Kata-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
+				headers["X-Poomsae-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
 			}
 			if action == "purge" {
-				headers["X-Kata-Confirm"] = "PURGE " + target.Name + "#" + issue.ShortID
+				headers["X-Poomsae-Confirm"] = "PURGE " + target.Name + "#" + issue.ShortID
 			}
 			if action == "link" || action == "unlink" || action == "replace parent" {
 				peer, _, err := env.DB.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: target.ID, Title: "Peer", Author: "agent"})

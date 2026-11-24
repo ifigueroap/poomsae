@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/pkg/connector"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 // ErrConnectorCall marks a transport or protocol failure at the configured

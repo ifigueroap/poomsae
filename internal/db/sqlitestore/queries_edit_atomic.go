@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // EditIssueAtomic applies field updates, priority change, and link delta in
@@ -68,7 +68,7 @@ func (d *Store) editIssueAtomic(ctx context.Context, p db.EditIssueAtomicParams)
 	// against the loaded row first and skip the UPDATE + issue.updated
 	// event entirely when every requested field already matches reality.
 	// Without this no-op detection, a request like
-	// `kata edit 1 --title "$(current title)" --remove-blocks 2` would
+	// `poomsae edit 1 --title "$(current title)" --remove-blocks 2` would
 	// fire issue.updated and increment hook/digest activity even when
 	// no field actually changed.
 	sets, args, payload, fieldsChanged, err := issueFieldUpdatePlan(issue, p.Title, p.Body, p.Owner, ts)

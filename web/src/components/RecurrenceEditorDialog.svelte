@@ -5,10 +5,10 @@
   import Modal from './Modal.svelte'
   import RecurrenceEditor from './RecurrenceEditor.svelte'
   import type {
-    KataCreateRecurrenceInput,
-    KataPatchRecurrenceInput,
-    KataRecurrence,
-  } from '../lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaePatchRecurrenceInput,
+    PoomsaeRecurrence,
+  } from '../lib/poomsae/types'
 
   type Mode = ComponentProps<typeof RecurrenceEditor>['mode']
 
@@ -18,10 +18,10 @@
     actor: string
     disabled?: boolean | undefined
     onClose: () => void
-    onCreate: (projectID: number, input: KataCreateRecurrenceInput) => Promise<void>
+    onCreate: (projectID: number, input: PoomsaeCreateRecurrenceInput) => Promise<void>
     onPatch: (
-      recurrence: KataRecurrence,
-      input: KataPatchRecurrenceInput,
+      recurrence: PoomsaeRecurrence,
+      input: PoomsaePatchRecurrenceInput,
       etag: string,
     ) => Promise<void>
   }

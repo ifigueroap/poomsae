@@ -4,8 +4,8 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestMultiProjectEventsDeduplicateMovesBeforePagination(t *testing.T) {
@@ -35,7 +35,7 @@ func TestMultiProjectEventsDeduplicateMovesBeforePagination(t *testing.T) {
 
 			page := func(after int64) EventsOutput {
 				t.Helper()
-				result := callWorkflowTool(t, session, "kata.events", map[string]any{
+				result := callWorkflowTool(t, session, "poomsae.events", map[string]any{
 					"mode": mode, "after": after, "limit": 2, "wait_seconds": 1,
 				})
 				var output EventsOutput

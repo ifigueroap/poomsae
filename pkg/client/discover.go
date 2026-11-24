@@ -5,29 +5,29 @@ import (
 	"errors"
 	"fmt"
 
-	internalclient "go.kenn.io/kata/internal/client"
+	internalclient "github.com/ifigueroap/poomsae/internal/client"
 )
 
 // ErrDaemonUnavailable reports that Discover found no configured remote and no
 // reachable local daemon, or could not start a stopped one with StartWith.
-var ErrDaemonUnavailable = errors.New("no reachable kata daemon")
+var ErrDaemonUnavailable = errors.New("no reachable poomsae daemon")
 
 // ErrDaemonNotInCatalog reports that DiscoverOptions.Daemon names no
-// [[daemon]] entry in <KATA_HOME>/config.toml.
+// [[daemon]] entry in <POOMSAE_HOME>/config.toml.
 var ErrDaemonNotInCatalog = internalclient.ErrNamedDaemonNotFound
 
 // DiscoverOptions controls how Discover selects a daemon.
 type DiscoverOptions struct {
-	// Workspace is the directory where the upward .kata.local.toml lookup
+	// Workspace is the directory where the upward .poomsae.local.toml lookup
 	// starts. Empty uses the process working directory.
 	Workspace string
 	// Daemon names a daemon catalog entry, as the CLI's global --daemon flag
 	// does. It replaces every other selection source, so Workspace is ignored.
 	// DaemonCatalog lists the names.
 	Daemon string
-	// StartWith is the path of a kata executable. When it is set and the
-	// selected local daemon has no runtime, Discover runs `kata daemon start`,
-	// or `kata daemon recover` for a pinned local profile, then connects. Empty
+	// StartWith is the path of a poomsae executable. When it is set and the
+	// selected local daemon has no runtime, Discover runs `poomsae daemon start`,
+	// or `poomsae daemon recover` for a pinned local profile, then connects. Empty
 	// never starts a daemon, and a remote is never started. When the selected
 	// home disables autostart, Discover waits for its supervisor instead.
 	StartWith string
@@ -36,29 +36,29 @@ type DiscoverOptions struct {
 // DiscoveredDaemon describes the daemon Discover selected. It carries no
 // credentials or endpoint details.
 type DiscoveredDaemon struct {
-	// Remote reports a configured remote daemon, matching `kata daemon
-	// locate`'s kind=remote. Kata treats such a daemon as unable to read the
+	// Remote reports a configured remote daemon, matching `poomsae daemon
+	// locate`'s kind=remote. Poomsae treats such a daemon as unable to read the
 	// caller's files, even at a loopback address. A pinned local profile is
 	// not remote.
 	Remote bool
 }
 
-// Discover returns a client for the daemon the kata CLI would use: KATA_SERVER,
-// then .kata.local.toml [server].url or [server].daemon, then active_daemon,
+// Discover returns a client for the daemon the poomsae CLI would use: POOMSAE_SERVER,
+// then .poomsae.local.toml [server].url or [server].daemon, then active_daemon,
 // then the running default local daemon. The workspace [server].daemon source
 // selects a pinned local profile. Credentials follow the same source: a
 // configured remote uses its catalog or global token, the default local daemon
-// uses KATA_AUTH_TOKEN or the current home's [auth].token, and a local profile
+// uses POOMSAE_AUTH_TOKEN or the current home's [auth].token, and a local profile
 // uses its own auth configuration and any catalog client credential.
 //
 // DiscoverOptions.Daemon selects one catalog entry instead, as the CLI's
 // global --daemon flag does. The entry resolves token > token_file > token_env,
-// except that KATA_AUTH_TOKEN overrides it for a remote entry. Otherwise a
+// except that POOMSAE_AUTH_TOKEN overrides it for a remote entry. Otherwise a
 // failed selected file or an unset or empty token_env variable is an error.
 // An unknown name returns an error matching ErrDaemonNotInCatalog.
 //
-// Like `kata daemon locate`, Discover never starts the selected daemon unless
-// DiscoverOptions.StartWith is set. Use `kata daemon diagnose` and `kata
+// Like `poomsae daemon locate`, Discover never starts the selected daemon unless
+// DiscoverOptions.StartWith is set. Use `poomsae daemon diagnose` and `poomsae
 // daemon recover` to inspect and recover an eligible stopped local profile
 // yourself. A selected local daemon without a reachable runtime returns an
 // error matching ErrDaemonUnavailable; profile storage and identity validation
@@ -75,7 +75,7 @@ func Discover(ctx context.Context, discover DiscoverOptions, opts ...Option) (*C
 		return nil, fmt.Errorf("%w: %w", ErrDaemonUnavailable, err)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("discover kata daemon: %w", err)
+		return nil, fmt.Errorf("discover poomsae daemon: %w", err)
 	}
 	if !ok {
 		return nil, ErrDaemonUnavailable

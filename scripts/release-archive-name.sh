@@ -14,4 +14,4 @@ if [[ "$goos" == "windows" ]]; then
   ext=".zip"
 fi
 
-printf 'kata_%s_%s_%s%s\n' "$version" "$goos" "$goarch" "$ext"
+printf 'poomsae_%s_%s_%s%s\n' "$version" "$goos" "$goarch" "$ext"

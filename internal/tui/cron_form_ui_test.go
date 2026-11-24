@@ -10,17 +10,17 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	poomsaeapi "github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	kataapi "go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 type cronPut struct {
 	uid   string
-	write kataapi.PutCronJobBody
+	write poomsaeapi.PutCronJobBody
 }
 
 // cronWriteTestAPI doubles the cron write boundary; reads come from the fixture.
@@ -39,23 +39,23 @@ func (a *cronWriteTestAPI) ShowCronJob(context.Context, int64, string) (db.CronJ
 	return a.shown, a.showErr
 }
 
-func (a *cronWriteTestAPI) PutCronJob(_ context.Context, _ int64, uid string, w kataapi.PutCronJobBody) error {
+func (a *cronWriteTestAPI) PutCronJob(_ context.Context, _ int64, uid string, w poomsaeapi.PutCronJobBody) error {
 	a.puts = append(a.puts, cronPut{uid, w})
-	return a.nextPutError(kataapi.CronJobFrom(a.shown))
+	return a.nextPutError(poomsaeapi.CronJobFrom(a.shown))
 }
 
 type workflowPut struct {
 	uid   string
-	write kataapi.PutCronWorkflowBody
+	write poomsaeapi.PutCronWorkflowBody
 }
 
 func (a *cronWriteTestAPI) ShowCronWorkflow(context.Context, int64, string) (db.CronWorkflow, error) {
 	return a.workflowShown, a.showErr
 }
 
-func (a *cronWriteTestAPI) PutCronWorkflow(_ context.Context, _ int64, uid string, w kataapi.PutCronWorkflowBody) error {
+func (a *cronWriteTestAPI) PutCronWorkflow(_ context.Context, _ int64, uid string, w poomsaeapi.PutCronWorkflowBody) error {
 	a.workflowPuts = append(a.workflowPuts, workflowPut{uid, w})
-	return a.nextPutError(kataapi.CronWorkflowFrom(a.workflowShown))
+	return a.nextPutError(poomsaeapi.CronWorkflowFrom(a.workflowShown))
 }
 
 func (a *cronWriteTestAPI) nextPutError(current any) error {
@@ -120,7 +120,7 @@ func TestCronNewJobKeyIsScopedToJobs(t *testing.T) {
 	m, _ := cronWriteFixture(t)
 	m, _ = updateModel(m, keyRune('n'))
 	require.NotNil(t, m.cron.form)
-	require.True(t, katauid.Valid(m.cron.form.uid), "the form mints the job UID")
+	require.True(t, poomsaeuid.Valid(m.cron.form.uid), "the form mints the job UID")
 	require.True(t, m.cron.form.create)
 	minted := m.cron.form.uid
 
@@ -170,7 +170,7 @@ func TestCronCtrlSSavesEditedJob(t *testing.T) {
 	project, err := c.EnsureProject(t.Context(), "cron-save-example", "alice")
 	require.NoError(t, err)
 	rec := executeRecord(`{}`)
-	require.NoError(t, c.PutCronJob(t.Context(), project.ID, rec.UID, kataapi.PutCronJobBody{Name: "Original", Actor: "alice", Definition: kataapi.CronJobDefinitionFrom(rec.Definition)}))
+	require.NoError(t, c.PutCronJob(t.Context(), project.ID, rec.UID, poomsaeapi.PutCronJobBody{Name: "Original", Actor: "alice", Definition: poomsaeapi.CronJobDefinitionFrom(rec.Definition)}))
 	stale := rec.Definition
 	stale.Trigger = cron.Trigger{Kind: "cron", Cron: "0 0 30 2 *"}
 	raw, err := json.Marshal(stale)
@@ -334,7 +334,7 @@ func TestCronEditDefinitionRoundTripsThroughDaemon(t *testing.T) {
 	const jobUID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 	def := manualExecuteJob(options)
 	def.Action.Prompt = "Line one\nLine two"
-	err = c.PutCronJob(t.Context(), project.ID, jobUID, kataapi.PutCronJobBody{Name: "Digest", Actor: "alice", Definition: kataapi.CronJobDefinitionFrom(def)})
+	err = c.PutCronJob(t.Context(), project.ID, jobUID, poomsaeapi.PutCronJobBody{Name: "Digest", Actor: "alice", Definition: poomsaeapi.CronJobDefinitionFrom(def)})
 	require.NoError(t, err)
 
 	m := newTestModel()

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"slices"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // SetRelayBindingConfig installs bounded, pinned topology on a single existing

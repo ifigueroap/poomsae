@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServiceSemanticIndex(t *testing.T) {
@@ -27,7 +27,7 @@ func TestServiceSemanticIndex(t *testing.T) {
 		return []float32{1, 0}
 	})
 	service, err := New(ctx, Config{
-		DSN: dsn, Auth: AuthConfig{TrustCallerAuthentication: true}, Postgres: PostgresConfig{Schema: "kata", SchemaMode: PostgresSchemaBootstrap},
+		DSN: dsn, Auth: AuthConfig{TrustCallerAuthentication: true}, Postgres: PostgresConfig{Schema: "poomsae", SchemaMode: PostgresSchemaBootstrap},
 		Embeddings: EmbeddingsConfig{BaseURL: endpoint.URL, Model: "test", Dims: 2, TrustPrivateNetwork: true},
 	})
 	require.NoError(t, err)
@@ -38,7 +38,7 @@ func TestServiceSemanticIndex(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, inspection.Close()) })
 	released := func() bool {
 		var result bool
-		err := inspection.QueryRowContext(ctx, `SELECT released_at IS NOT NULL FROM kata.issue_claims WHERE issue_uid = $1`, issue.UID).Scan(&result)
+		err := inspection.QueryRowContext(ctx, `SELECT released_at IS NOT NULL FROM poomsae.issue_claims WHERE issue_uid = $1`, issue.UID).Scan(&result)
 		if err != nil {
 			t.Error(err)
 			return true

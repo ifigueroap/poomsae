@@ -13,26 +13,26 @@
   import { markColor } from '../lib/marks'
 
   import type {
-    KataTaskMutationResponse,
-    KataTaskSearchFilters,
-    KataTaskViewName,
-  } from '../lib/kata/types'
-  import type { KataAreaSummary, KataCurrentView } from '../lib/kata/authority'
+    PoomsaeTaskMutationResponse,
+    PoomsaeTaskSearchFilters,
+    PoomsaeTaskViewName,
+  } from '../lib/poomsae/types'
+  import type { PoomsaeAreaSummary, PoomsaeCurrentView } from '../lib/poomsae/authority'
   import type { Snippet } from 'svelte'
 
   interface Props {
-    areas: KataAreaSummary[]
-    currentView: KataCurrentView
-    searchFilters: KataTaskSearchFilters
+    areas: PoomsaeAreaSummary[]
+    currentView: PoomsaeCurrentView
+    searchFilters: PoomsaeTaskSearchFilters
     /** Why project creation is blocked; undefined when it is allowed. */
     projectCreationBlockedReason: string | undefined
     creationIntent?: 'project' | 'task' | null
     draftFenceGeneration?: number | undefined
     settingsActive?: boolean | undefined
     header?: Snippet | undefined
-    onOpenView: (name: KataTaskViewName) => void | Promise<void>
+    onOpenView: (name: PoomsaeTaskViewName) => void | Promise<void>
     onOpenProject: (projectUID: string) => void | Promise<void>
-    onCreateProject: (name: string) => Promise<KataTaskMutationResponse>
+    onCreateProject: (name: string) => Promise<PoomsaeTaskMutationResponse>
     onOpenSettings?: (() => void | Promise<void>) | undefined
   }
 
@@ -55,7 +55,7 @@
   const createReasonID = `${controlID}-create-reason`
 
   const systemViews: Array<{
-    name: KataTaskViewName
+    name: PoomsaeTaskViewName
     label: string
     icon: typeof InboxIcon
   }> = [
@@ -96,7 +96,7 @@
 
   // Counts come from the list the user is looking at, so a badge never
   // disagrees with the rows beneath it (Inbox holds future start dates back).
-  function viewCount(name: KataTaskViewName): number | undefined {
+  function viewCount(name: PoomsaeTaskViewName): number | undefined {
     if (
       (name === 'inbox' || name === 'today') &&
       currentView.name === name &&
@@ -157,10 +157,10 @@
   </button>
 {/snippet}
 
-<div class="kata-sidebar" aria-label="Kata navigation">
+<div class="poomsae-sidebar" aria-label="Poomsae navigation">
   {#if header}<div class="sidebar-header">{@render header()}</div>{/if}
-  <ScrollBox label="Kata navigation">
-    <nav class="kata-nav" aria-label="System views">
+  <ScrollBox label="Poomsae navigation">
+    <nav class="poomsae-nav" aria-label="System views">
       {#each systemViews as view (view.name)}
         {@const Icon = view.icon}
         {@const count = viewCount(view.name)}
@@ -242,7 +242,7 @@
       {/if}
     </div>
   </ScrollBox>
-  <nav class="kata-nav sidebar-footer" aria-label="Settings">
+  <nav class="poomsae-nav sidebar-footer" aria-label="Settings">
     <button type="button" class:active={settingsActive} onclick={() => void onOpenSettings()}>
       <span class="nav-icon"><SettingsIcon size={16} /></span>
       <span class="nav-label">Settings</span>
@@ -251,7 +251,7 @@
 </div>
 
 <style>
-  .kata-sidebar {
+  .poomsae-sidebar {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -261,14 +261,14 @@
     background: var(--bg-primary);
   }
 
-  .kata-nav {
+  .poomsae-nav {
     display: grid;
     gap: var(--space-1);
     padding: var(--space-2) 8px var(--space-2);
   }
 
   /* All open and Logbook start a second group of views. */
-  .kata-nav button.group-start {
+  .poomsae-nav button.group-start {
     margin-top: calc(var(--space-4) - var(--space-1));
   }
 
@@ -286,7 +286,7 @@
     padding-bottom: var(--space-4);
   }
 
-  .kata-nav button,
+  .poomsae-nav button,
   .project-select-button,
   .project-create-button {
     width: 100%;
@@ -306,7 +306,7 @@
     cursor: pointer;
   }
 
-  .kata-nav button:hover,
+  .poomsae-nav button:hover,
   .project-select-button:hover,
   .project-create-button:hover:not([aria-disabled='true']) {
     background: var(--bg-surface-hover);
@@ -318,7 +318,7 @@
     cursor: not-allowed;
   }
 
-  .kata-nav button.active,
+  .poomsae-nav button.active,
   .project-select-button.active {
     background: var(--selected-list-bg);
     color: var(--text-primary);
@@ -332,11 +332,11 @@
   }
 
   .project-select-button.active .project-count,
-  .kata-nav button.active .nav-count {
+  .poomsae-nav button.active .nav-count {
     color: var(--text-primary);
   }
 
-  .kata-nav button.active .nav-icon {
+  .poomsae-nav button.active .nav-icon {
     color: var(--text-primary);
   }
 

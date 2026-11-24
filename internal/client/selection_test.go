@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // An active local catalog entry reports an unset or empty token_env the way
@@ -15,8 +15,8 @@ import (
 // what to export.
 func TestActiveLocalCatalogTokenEnvErrorNamesVariable(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("EXAMPLE_LOCAL_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `active_daemon = "personal"
 
@@ -34,14 +34,14 @@ token_env = "EXAMPLE_LOCAL_TOKEN"
 	assert.Equal(t, config.TokenEnvError{Daemon: "personal", Env: "EXAMPLE_LOCAL_TOKEN"}, *tokenErr)
 }
 
-// Selection defers credential errors, as `kata daemon locate` requires, but
+// Selection defers credential errors, as `poomsae daemon locate` requires, but
 // every path that resolves the selected daemon reports a catalog entry whose
-// token_env variable is unset or empty. KATA_AUTH_TOKEN replaces only a remote
+// token_env variable is unset or empty. POOMSAE_AUTH_TOKEN replaces only a remote
 // entry's credential.
 func TestCatalogCredentialIsReportedByResolutionNotSelection(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("EXAMPLE_HUB_TOKEN", "")
 	t.Setenv("EXAMPLE_LOCAL_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
@@ -66,10 +66,10 @@ token_env = "EXAMPLE_LOCAL_TOKEN"
 		require.EqualError(t, err, want)
 	}
 
-	t.Setenv("KATA_AUTH_TOKEN", "override-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "override-token")
 	resolved, err := PrepareResolvedNamed(t.Context(), "hub")
-	require.NoError(t, err, "KATA_AUTH_TOKEN replaces a remote entry's credential")
+	require.NoError(t, err, "POOMSAE_AUTH_TOKEN replaces a remote entry's credential")
 	assert.Equal(t, "override-token", resolved.Token)
 	_, err = PrepareResolvedNamed(t.Context(), "personal")
-	require.Error(t, err, "KATA_AUTH_TOKEN does not replace a local entry's credential")
+	require.Error(t, err, "POOMSAE_AUTH_TOKEN does not replace a local entry's credential")
 }

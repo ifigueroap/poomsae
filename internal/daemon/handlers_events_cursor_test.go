@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 type blockingResponseWriter struct {
@@ -220,7 +220,7 @@ func (s *issueByIDCountingStorage) IssueByID(ctx context.Context, id int64) (db.
 }
 
 func TestReadVisibleEventsDoesNotHydrateUIDsWithoutCompoundLinkEvents(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -252,7 +252,7 @@ func (s *maxJumpStorage) MaxEventID(_ context.Context) (int64, error) {
 }
 
 func TestReadVisibleEventsNeverJumpsToSeparateMaxRead(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -299,7 +299,7 @@ func (s *purgedWindowStorage) EventsAfter(ctx context.Context, p db.EventsAfterP
 }
 
 func TestReadVisibleEventsScopedEmptyWindowAdvancesCursorToThroughID(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -324,7 +324,7 @@ func TestReadVisibleEventsScopedEmptyWindowAdvancesCursorToThroughID(t *testing.
 }
 
 func TestLivePhaseScopedPurgedWindowTerminatesDrain(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -363,7 +363,7 @@ func TestLivePhaseScopedPurgedWindowTerminatesDrain(t *testing.T) {
 }
 
 func TestScopedEventFrameDoesNotBlockWritesWhileClientStalls(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -400,7 +400,7 @@ func TestScopedEventFrameDoesNotBlockWritesWhileClientStalls(t *testing.T) {
 }
 
 func TestScopedPollBoundsHiddenEventScanAndResumesCursor(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -456,7 +456,7 @@ func (s *reparentBeforeEventsStorage) EventsAfter(ctx context.Context, params db
 }
 
 func TestScopedPollAuthorizesMembershipAfterReadingEvents(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -474,7 +474,7 @@ func TestScopedPollAuthorizesMembershipAfterReadingEvents(t *testing.T) {
 }
 
 func TestReadVisibleEventsBudgetsHiddenRows(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")

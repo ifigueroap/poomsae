@@ -4,14 +4,14 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/importlabels"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/importlabels"
 )
 
 // todoistTitlePrefix marks imported titles when title_prefix is enabled.
 const todoistTitlePrefix = "[Todoist] "
 
-// BuildImportBatch converts tasks into one Kata import batch.
+// BuildImportBatch converts tasks into one Poomsae import batch.
 func BuildImportBatch(c Config, tasks []Task) (db.ImportBatchParams, error) {
 	b := db.ImportBatchParams{Source: c.SourceKey(), Actor: "todoist-sync", ReconcileStatusForUnchanged: true, ReconcileLabelsForUnchanged: map[string][]string{}}
 	for _, t := range tasks {
@@ -26,7 +26,7 @@ func BuildImportBatch(c Config, tasks []Task) (db.ImportBatchParams, error) {
 			Body:       t.Description + "\n\n---\nImported from Todoist: https://app.todoist.com/app/task/" + t.ID,
 			Status:     "open",
 			Author:     "todoist-unknown",
-			// Todoist priority runs from 1 (normal) to 4 (urgent); Kata's 1 is highest.
+			// Todoist priority runs from 1 (normal) to 4 (urgent); Poomsae's 1 is highest.
 			Priority:  new(int64(5 - t.Priority)),
 			Labels:    importlabels.AppendNormalized(nil, seenLabels, t.Labels...),
 			CreatedAt: t.AddedAt.Truncate(time.Millisecond),

@@ -1,33 +1,33 @@
 ---
 name: verify
-description: Build and drive the kata CLI/TUI to verify changes at the real terminal surface
+description: Build and drive the poomsae CLI/TUI to verify changes at the real terminal surface
 ---
 
-# Verifying kata changes
+# Verifying poomsae changes
 
 ## Build
 
 ```bash
-go build -o /tmp/kata-verify ./cmd/kata
+go build -o /tmp/poomsae-verify ./cmd/poomsae
 ```
 
-## CLI surface (cmd/kata)
+## CLI surface (cmd/poomsae)
 
-- Piped (must be ANSI-free): `/tmp/kata-verify list --limit 3 | cat -v`
+- Piped (must be ANSI-free): `/tmp/poomsae-verify list --limit 3 | cat -v`
 - TTY-colored: run inside the tmux session below and capture with `-e`.
 
 ## TUI surface (internal/tui)
 
 The TUI requires a real pty; use an isolated tmux socket. A local
 daemon must be reachable (any workspace-bound directory works; the
-repo itself is bound to the `kata` project).
+repo itself is bound to the `poomsae` project).
 
 ```bash
-tmux -L kataverify new-session -d -s v -x 120 -y 32
-tmux -L kataverify send-keys -t v "cd <repo> && /tmp/kata-verify tui" Enter
+tmux -L poomsaeverify new-session -d -s v -x 120 -y 32
+tmux -L poomsaeverify send-keys -t v "cd <repo> && /tmp/poomsae-verify tui" Enter
 sleep 3
-tmux -L kataverify capture-pane -t v -p        # plain frame
-tmux -L kataverify capture-pane -t v -e -p     # with ANSI, for color checks
+tmux -L poomsaeverify capture-pane -t v -p        # plain frame
+tmux -L poomsaeverify capture-pane -t v -e -p     # with ANSI, for color checks
 ```
 
 Flows worth driving: Enter (detail), Esc (back), L at ≥140 cols
@@ -35,7 +35,7 @@ Flows worth driving: Enter (detail), Esc (back), L at ≥140 cols
 (search bar), q (quit modal) then n, ctrl+c (fast quit — pane must
 return to shell with no leftover alt-screen garbage).
 
-Teardown: `tmux -L kataverify kill-server`
+Teardown: `tmux -L poomsaeverify kill-server`
 
 ## Gotchas
 

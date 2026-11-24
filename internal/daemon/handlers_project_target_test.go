@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestIssueMutationsResolveProjectName(t *testing.T) {
@@ -27,7 +27,7 @@ func TestIssueMutationsResolveProjectName(t *testing.T) {
 					"actor": "user-a", "title": "created title",
 				}, nil)
 				require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-				require.Equal(t, "example-project", resp.Header.Get("X-Kata-Project-Name"))
+				require.Equal(t, "example-project", resp.Header.Get("X-Poomsae-Project-Name"))
 				var created struct{ Issue db.Issue }
 				require.NoError(t, json.Unmarshal(raw, &created))
 				require.Equal(t, project.ID, created.Issue.ProjectID)
@@ -47,7 +47,7 @@ func TestIssueMutationsResolveProjectName(t *testing.T) {
 				t.Run(mutation.method+mutation.suffix, func(t *testing.T) {
 					resp, raw := envDoRaw(t, env, mutation.method, path+mutation.suffix, mutation.body, nil)
 					require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-					require.Equal(t, "example-project", resp.Header.Get("X-Kata-Project-Name"))
+					require.Equal(t, "example-project", resp.Header.Get("X-Poomsae-Project-Name"))
 				})
 			}
 			issue, err := env.DB.IssueByID(t.Context(), fixture.ID)
@@ -70,12 +70,12 @@ func TestIssueMutationAliasResolution(t *testing.T) {
 	project, err := env.DB.CreateProject(t.Context(), "original-project")
 	require.NoError(t, err)
 	headers := map[string]string{
-		"X-Kata-Project-Alias": "example.com/team/example-project", "X-Kata-Project-Alias-Kind": "git",
+		"X-Poomsae-Project-Alias": "example.com/team/example-project", "X-Poomsae-Project-Alias-Kind": "git",
 	}
 	resp, raw := envDoRaw(t, env, http.MethodPost, "/api/v1/projects/name:original-project/issues",
 		map[string]string{"actor": "user-a", "title": "first issue"}, headers)
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-	alias, err := env.DB.AliasByIdentity(t.Context(), headers["X-Kata-Project-Alias"])
+	alias, err := env.DB.AliasByIdentity(t.Context(), headers["X-Poomsae-Project-Alias"])
 	require.NoError(t, err)
 	require.Equal(t, project.ID, alias.ProjectID)
 	_, _, _, err = env.DB.RenameProjectAndEvent(t.Context(), project.ID, "renamed-project", "user-a")
@@ -83,7 +83,7 @@ func TestIssueMutationAliasResolution(t *testing.T) {
 	resp, raw = envDoRaw(t, env, http.MethodPost, "/api/v1/projects/name:original-project/issues",
 		map[string]any{"actor": "user-a", "title": "after rename", "force_new": true}, headers)
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-	require.Equal(t, "renamed-project", resp.Header.Get("X-Kata-Project-Name"))
+	require.Equal(t, "renamed-project", resp.Header.Get("X-Poomsae-Project-Name"))
 	target, err := env.DB.CreateProject(t.Context(), "surviving-project")
 	require.NoError(t, err)
 	_, err = env.DB.MergeProjects(t.Context(), db.MergeProjectsParams{SourceProjectID: project.ID, TargetProjectID: target.ID})
@@ -91,7 +91,7 @@ func TestIssueMutationAliasResolution(t *testing.T) {
 	resp, raw = envDoRaw(t, env, http.MethodPost, "/api/v1/projects/name:/issues",
 		map[string]any{"actor": "user-a", "title": "after merge", "force_new": true}, headers)
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-	require.Equal(t, "surviving-project", resp.Header.Get("X-Kata-Project-Name"))
+	require.Equal(t, "surviving-project", resp.Header.Get("X-Poomsae-Project-Name"))
 	var created struct{ Issue db.Issue }
 	require.NoError(t, json.Unmarshal(raw, &created))
 	require.Equal(t, target.ID, created.Issue.ProjectID)
@@ -112,7 +112,7 @@ func TestIssueMutationRejectsUnresolvedProject(t *testing.T) {
 			resp, raw := envDoRaw(t, env, http.MethodPost, "/api/v1/projects/"+tc.selector+"/issues",
 				map[string]string{"actor": "user-a", "title": "not created"}, nil)
 			require.Equal(t, tc.status, resp.StatusCode, string(raw))
-			require.Empty(t, resp.Header.Get("X-Kata-Project-Name"))
+			require.Empty(t, resp.Header.Get("X-Poomsae-Project-Name"))
 		})
 	}
 }
@@ -136,7 +136,7 @@ func TestIssueMutationRejectsInvalidAliasTarget(t *testing.T) {
 			}
 			resp, raw := envDoRaw(t, env, http.MethodPost, path,
 				map[string]string{"actor": "user-a", "title": "not created"}, map[string]string{
-					"X-Kata-Project-Alias": tc.identity, "X-Kata-Project-Alias-Kind": tc.kind,
+					"X-Poomsae-Project-Alias": tc.identity, "X-Poomsae-Project-Alias-Kind": tc.kind,
 				})
 			assertAPIError(t, resp.StatusCode, raw, http.StatusBadRequest, "validation")
 			aliases, err := env.DB.ProjectAliases(t.Context(), project.ID)
@@ -164,7 +164,7 @@ func TestIssueMutationAliasAttachmentRespectsAuthority(t *testing.T) {
 			}))
 			t.Cleanup(ts.Close)
 			resp := postWithHeader(t, ts, "/api/v1/projects/name:example-project/issues", map[string]string{
-				"X-Kata-Project-Alias": "example.com/team/example-project", "X-Kata-Project-Alias-Kind": "git",
+				"X-Poomsae-Project-Alias": "example.com/team/example-project", "X-Poomsae-Project-Alias-Kind": "git",
 			}, map[string]string{"actor": "user-a", "title": "not created"})
 			want := http.StatusForbidden
 			if principal == daemon.PrincipalHost {

@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // appTestTransport fakes GitHub's token endpoint and API. It counts mints,
@@ -518,7 +518,7 @@ func TestOriginGuardBlocksWrongTargetBeforeNextTransport(t *testing.T) {
 
 func allowGitHubEnterpriseHost(t *testing.T, host string) {
 	t.Helper()
-	t.Setenv("KATA_GITHUB_SYNC_ALLOWED_HOSTS", host)
+	t.Setenv("POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS", host)
 }
 
 func parentGraphQLAuthBody(t testing.TB, owner, repo string) string {

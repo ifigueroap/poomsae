@@ -4,11 +4,11 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	poomsaeapi "github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	kataapi "go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const (
@@ -97,7 +97,7 @@ func TestCronFormExecuteDateTriggerCreatesOnTheDaemon(t *testing.T) {
 	require.False(t, f.shown(cfReport), "the run issue is the trigger's issue, so there is nothing to ask")
 	name, def, err := f.build(cronUIDResolver(nil))
 	require.NoError(t, err)
-	require.NoError(t, c.PutCronJob(t.Context(), project.ID, f.uid, kataapi.PutCronJobBody{Name: name, Definition: kataapi.CronJobDefinitionFrom(def), Actor: "alice"}))
+	require.NoError(t, c.PutCronJob(t.Context(), project.ID, f.uid, poomsaeapi.PutCronJobBody{Name: name, Definition: poomsaeapi.CronJobDefinitionFrom(def), Actor: "alice"}))
 	shown, err := c.ShowCronJob(t.Context(), project.ID, f.uid)
 	require.NoError(t, err)
 	require.Equal(t, issue, shown.Definition.Trigger.IssueUID)

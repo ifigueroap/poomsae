@@ -5,8 +5,8 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R5/A5: corrupt owner backup checkpoints must fail validation before either

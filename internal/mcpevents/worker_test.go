@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 )
 
 // fakeSubscriber stands in for the daemon broadcaster adapter.

@@ -38,8 +38,8 @@ func TestLiveGitHubParentGraphQLMatchesREST(t *testing.T) {
 }
 
 func TestLiveGitHubReparentMutationBehavior(t *testing.T) {
-	if os.Getenv("KATA_GITHUB_LIVE_MUTATE_REPARENT") != "1" {
-		t.Skip("set KATA_GITHUB_LIVE_MUTATE_REPARENT=1 for disposable-repository reparent validation")
+	if os.Getenv("POOMSAE_GITHUB_LIVE_MUTATE_REPARENT") != "1" {
+		t.Skip("set POOMSAE_GITHUB_LIVE_MUTATE_REPARENT=1 for disposable-repository reparent validation")
 	}
 	binding, childNumber, _, targetParentNumber, token := liveGitHubReparentTestConfig(t)
 	fetcher := liveGitHubHTTPFetcher(token)
@@ -52,7 +52,7 @@ func TestLiveGitHubReparentMutationBehavior(t *testing.T) {
 
 	originalParent, hasOriginalParent := liveGitHubOptionalRESTIssue(ctx, t, fetcher, binding, fmt.Sprintf("%s/issues/%d/parent", repositoryEndpoint(binding), childNumber))
 	if hasOriginalParent && originalParent.Number == targetParentNumber {
-		t.Skip("KATA_GITHUB_LIVE_TARGET_PARENT is already the child issue parent; choose a different disposable parent for mutation validation")
+		t.Skip("POOMSAE_GITHUB_LIVE_TARGET_PARENT is already the child issue parent; choose a different disposable parent for mutation validation")
 	}
 	targetParent := liveGitHubRESTIssue(ctx, t, fetcher, binding, fmt.Sprintf("%s/issues/%d", repositoryEndpoint(binding), targetParentNumber))
 	require.NotZero(t, targetParent.ID)
@@ -108,7 +108,7 @@ func liveGitHubParentTestConfig(t *testing.T) (Binding, int, int, string) {
 	t.Helper()
 	cfg, err := parseLiveGitHubTestConfig(liveGitHubTestEnvFromOS(), false)
 	if errors.Is(err, errLiveGitHubMissingConfig) {
-		t.Skip("set KATA_GITHUB_LIVE_REPO, KATA_GITHUB_LIVE_CHILD, KATA_GITHUB_LIVE_PARENT, and KATA_GITHUB_TOKEN or GITHUB_TOKEN for live GitHub validation")
+		t.Skip("set POOMSAE_GITHUB_LIVE_REPO, POOMSAE_GITHUB_LIVE_CHILD, POOMSAE_GITHUB_LIVE_PARENT, and POOMSAE_GITHUB_TOKEN or GITHUB_TOKEN for live GitHub validation")
 	}
 	require.NoError(t, err)
 	return cfg.binding, cfg.childNumber, cfg.parentNumber, cfg.token
@@ -118,7 +118,7 @@ func liveGitHubReparentTestConfig(t *testing.T) (Binding, int, int, int, string)
 	t.Helper()
 	cfg, err := parseLiveGitHubTestConfig(liveGitHubTestEnvFromOS(), true)
 	if errors.Is(err, errLiveGitHubMissingConfig) {
-		t.Skip("set KATA_GITHUB_LIVE_REPO, KATA_GITHUB_LIVE_CHILD, KATA_GITHUB_LIVE_PARENT, KATA_GITHUB_LIVE_TARGET_PARENT, and KATA_GITHUB_TOKEN or GITHUB_TOKEN for live GitHub reparent validation")
+		t.Skip("set POOMSAE_GITHUB_LIVE_REPO, POOMSAE_GITHUB_LIVE_CHILD, POOMSAE_GITHUB_LIVE_PARENT, POOMSAE_GITHUB_LIVE_TARGET_PARENT, and POOMSAE_GITHUB_TOKEN or GITHUB_TOKEN for live GitHub reparent validation")
 	}
 	require.NoError(t, err)
 	return cfg.binding, cfg.childNumber, cfg.parentNumber, cfg.targetParentNumber, cfg.token
@@ -143,15 +143,15 @@ type liveGitHubTestConfig struct {
 }
 
 func liveGitHubTestEnvFromOS() liveGitHubTestEnv {
-	token := strings.TrimSpace(os.Getenv("KATA_GITHUB_TOKEN"))
+	token := strings.TrimSpace(os.Getenv("POOMSAE_GITHUB_TOKEN"))
 	if token == "" {
 		token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
 	}
 	return liveGitHubTestEnv{
-		repo:         strings.TrimSpace(os.Getenv("KATA_GITHUB_LIVE_REPO")),
-		child:        strings.TrimSpace(os.Getenv("KATA_GITHUB_LIVE_CHILD")),
-		parent:       strings.TrimSpace(os.Getenv("KATA_GITHUB_LIVE_PARENT")),
-		targetParent: strings.TrimSpace(os.Getenv("KATA_GITHUB_LIVE_TARGET_PARENT")),
+		repo:         strings.TrimSpace(os.Getenv("POOMSAE_GITHUB_LIVE_REPO")),
+		child:        strings.TrimSpace(os.Getenv("POOMSAE_GITHUB_LIVE_CHILD")),
+		parent:       strings.TrimSpace(os.Getenv("POOMSAE_GITHUB_LIVE_PARENT")),
+		targetParent: strings.TrimSpace(os.Getenv("POOMSAE_GITHUB_LIVE_TARGET_PARENT")),
 		token:        token,
 	}
 }
@@ -170,15 +170,15 @@ func parseLiveGitHubTestConfig(env liveGitHubTestEnv, requireTargetParent bool) 
 	}
 	owner, name, ok := strings.Cut(env.repo, "/")
 	if !ok || strings.TrimSpace(owner) == "" || strings.TrimSpace(name) == "" {
-		return liveGitHubTestConfig{}, fmt.Errorf("KATA_GITHUB_LIVE_REPO must be owner/repo, got %q", env.repo)
+		return liveGitHubTestConfig{}, fmt.Errorf("POOMSAE_GITHUB_LIVE_REPO must be owner/repo, got %q", env.repo)
 	}
 	childNumber, err := strconv.Atoi(env.child)
 	if err != nil {
-		return liveGitHubTestConfig{}, fmt.Errorf("parse KATA_GITHUB_LIVE_CHILD: %w", err)
+		return liveGitHubTestConfig{}, fmt.Errorf("parse POOMSAE_GITHUB_LIVE_CHILD: %w", err)
 	}
 	parentNumber, err := strconv.Atoi(env.parent)
 	if err != nil {
-		return liveGitHubTestConfig{}, fmt.Errorf("parse KATA_GITHUB_LIVE_PARENT: %w", err)
+		return liveGitHubTestConfig{}, fmt.Errorf("parse POOMSAE_GITHUB_LIVE_PARENT: %w", err)
 	}
 	cfg := liveGitHubTestConfig{
 		binding:      Binding{Host: "github.com", Owner: owner, Repo: name},
@@ -189,7 +189,7 @@ func parseLiveGitHubTestConfig(env liveGitHubTestEnv, requireTargetParent bool) 
 	if requireTargetParent {
 		targetParentNumber, err := strconv.Atoi(env.targetParent)
 		if err != nil {
-			return liveGitHubTestConfig{}, fmt.Errorf("parse KATA_GITHUB_LIVE_TARGET_PARENT: %w", err)
+			return liveGitHubTestConfig{}, fmt.Errorf("parse POOMSAE_GITHUB_LIVE_TARGET_PARENT: %w", err)
 		}
 		cfg.targetParentNumber = targetParentNumber
 	}

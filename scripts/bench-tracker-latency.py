@@ -3,10 +3,10 @@
 
 Benchmarks an isolated kata daemon (Unix-socket round trips and end-to-end
 CLI invocations) and prints millisecond percentiles as JSON. Run it against a
-throwaway KATA_HOME, never a live one:
+throwaway POOMSAE_HOME, never a live one:
 
-    export KATA_HOME=$(mktemp -d)/home
-    mkdir -p "$KATA_HOME" /tmp/bench-ws && cd /tmp/bench-ws
+    export POOMSAE_HOME=$(mktemp -d)/home
+    mkdir -p "$POOMSAE_HOME" /tmp/bench-ws && cd /tmp/bench-ws
     kata init --project bench
     export BENCH_WS=$PWD
     export BENCH_SOCK=$(kata daemon status | sed -n 's/.*unix:\\/\\///p')

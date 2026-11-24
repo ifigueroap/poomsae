@@ -9,19 +9,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R9: the selected bridge's retained enrollment state is visible offline,
 // including before project creation, without exposing its narrow credential.
 func TestFederationBridgePendingStatus(t *testing.T) {
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		const rootProjectUID = "00000000000000000000000003"
 		credential := config.FederationCredential{HubURL: "https://hub.example", HubProjectID: 7, Token: "narrow-private-test-token", Capabilities: "claim,pull,push", Actor: "member", HubCatalog: "example-hub", RequestedActor: "local-member", SpokeProjectName: "shared-replica", RelayEnrollmentPending: true}
 		require.NoError(t, config.WriteFederationCredential(rootProjectUID, credential))
@@ -77,7 +77,7 @@ func TestFederationBridgeStatusReportsPendingEnrollmentForPartialProject(t *test
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-				t.Setenv("KATA_HOME", t.TempDir())
+				t.Setenv("POOMSAE_HOME", t.TempDir())
 				const projectUID = "00000000000000000000000006"
 				project, err := store.CreateProjectWithUID(t.Context(), "shared-replica", projectUID)
 				require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestFederationBridgeActiveStatus(t *testing.T) {
 
 func TestFederationStatusCountsRelayDescendants(t *testing.T) {
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		credentials := newReplicaCredentialStore()
 		params := relayReplicaParams(t, store)
 		params.Credential.HubCatalog = "example-hub"

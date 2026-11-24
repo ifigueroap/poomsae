@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sort"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 type statusSchema struct {

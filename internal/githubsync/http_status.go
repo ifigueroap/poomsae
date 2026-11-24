@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 const maxStatusResponseBytes = 8 << 20

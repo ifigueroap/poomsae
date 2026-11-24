@@ -1,4 +1,4 @@
-# kata — agent guidance
+# poomsae — agent guidance
 
 ## Agent rules
 
@@ -160,7 +160,7 @@ release, from a breaking change to `feat` to `fix`.
   to release notes as well as guides. Lead each changelog entry with what the
   reader can do or what now works; preserve version requirements, limits,
   upgrade steps, and contributor credits when rewriting older entries.
-- Write for the person trying to use or maintain Kata. Lead with the outcome,
+- Write for the person trying to use or maintain Poomsae. Lead with the outcome,
   name who does what, use short sentences, and explain unfamiliar terms.
 - Organize around reader questions. Put purpose and current capabilities first;
   separate limitations and future work. Use only the sections the topic needs.
@@ -204,32 +204,32 @@ prior work, or a problem caused by the release tag. Good framing:
 
 ## Project management
 
-This project tracks its own work in **kata**. Run `kata quickstart` at the
+This project tracks its own work in **poomsae**. Run `poomsae quickstart` at the
 start of each session for the agent contract; the short version:
 
-- Author defaults to `$KATA_AUTHOR > $USER > git user.name`; set
-  `KATA_AUTHOR` only if you need a different actor (e.g. an agent
+- Author defaults to `$POOMSAE_AUTHOR > $USER > git user.name`; set
+  `POOMSAE_AUTHOR` only if you need a different actor (e.g. an agent
   handle distinct from your login).
 - Issue refs use short_ids derived from each issue's ULID. In a bound
   workspace the bare form (`abc4`) is enough; cross-project references
-  qualify with the project name (`kata#abc4`). Full 26-char ULIDs are
+  qualify with the project name (`poomsae#abc4`). Full 26-char ULIDs are
   also accepted. Legacy numeric refs (`#12`, `12`) no longer resolve.
-- `kata list --json` to see open work; `kata show <ref> --json` for detail.
-- Search before creating: `kata search "<keywords>" --json`.
-- Update existing issues over creating duplicates (`kata comment`,
-  `kata label add`, `kata edit --blocks/--blocked-by/--related/--parent`).
-- Relationships live on `kata create` and `kata edit` as flags, framed
+- `poomsae list --json` to see open work; `poomsae show <ref> --json` for detail.
+- Search before creating: `poomsae search "<keywords>" --json`.
+- Update existing issues over creating duplicates (`poomsae comment`,
+  `poomsae label add`, `poomsae edit --blocks/--blocked-by/--related/--parent`).
+- Relationships live on `poomsae create` and `poomsae edit` as flags, framed
   from the operating issue's POV. Repeatable except `--parent`. Removes
   are `--remove-parent` (strict; must equal current) plus idempotent
   `--remove-blocks/--remove-blocked-by/--remove-related`.
 - Close only when the work is actually complete:
-  `kata close <ref> --done --message "<scope + verification>" --commit <sha>`.
+  `poomsae close <ref> --done --message "<scope + verification>" --commit <sha>`.
   Use `--duplicate-of <ref>`, `--superseded-by <ref>`, `--audit-no-change`, or
   `--wontfix` when those reasons fit. The daemon refuses parent-close while
   children are open.
-- Never `kata delete` or `kata purge` without explicit user authorization.
+- Never `poomsae delete` or `poomsae purge` without explicit user authorization.
 
-For long-running work, `kata events --tail` streams NDJSON.
+For long-running work, `poomsae events --tail` streams NDJSON.
 
 ## Closing issues
 
@@ -243,28 +243,28 @@ Close each issue as soon as its work is verified, not at the end of a
 batch. By default the daemon allows sibling close bursts when each close
 has valid evidence and a substantive message. Operators can enable stricter
 burst/prose throttling via
-`[close.throttle] enabled = true` in `<KATA_HOME>/config.toml`.
+`[close.throttle] enabled = true` in `<POOMSAE_HOME>/config.toml`.
 
 When the work IS done, close with substantive prose and typed
 `--evidence` so a reviewer can verify the claim later:
 
-    kata close abc4 --done \
+    poomsae close abc4 --done \
       --message "Fixed Safari callback double-submit; verified tests pass." \
       --commit <sha>
 
 Other close forms:
 
-    kata close abc4 --duplicate-of d4ex  --message "Same Safari race condition."
-    kata close abc4 --superseded-by d4ex --message "Replaced by broader scope."
-    kata close abc4 --wontfix --message "<>=60 chars of rationale>"
-    kata close abc4 --audit-no-change \
+    poomsae close abc4 --duplicate-of d4ex  --message "Same Safari race condition."
+    poomsae close abc4 --superseded-by d4ex --message "Replaced by broader scope."
+    poomsae close abc4 --wontfix --message "<>=60 chars of rationale>"
+    poomsae close abc4 --audit-no-change \
                     --message "Reviewed schema and queries; no change needed." \
                     --evidence "no-change-audit:schema unchanged after review" \
                     --reviewed internal/db/schema.sql
 
 The daemon refuses parent-close while open children remain. Reviewers
-can replay activity with `kata audit closes` and undo specific lazy
-closes with `kata reopen <ref>`.
+can replay activity with `poomsae audit closes` and undo specific lazy
+closes with `poomsae reopen <ref>`.
 
 ## CI runners
 
@@ -272,18 +272,14 @@ CI test jobs use GitHub-hosted runners: `ubuntu-latest` for Linux and
 `windows-2025` for Windows. Pull requests call the reusable test workflow from
 the same commit so workflow changes are exercised before merge.
 
-The `CI gate` job in `test-pr.yml` runs on the Namespace profile
-`namespace-profile-linux-1cpu` so it does not wait in the GitHub-hosted queue.
-That profile uses Namespace's
-[Restricted access level](https://namespace.so/docs/solutions/github-actions/runner-controls/access-levels),
-which disables workload access to Namespace features and APIs. GitHub fork
+The `CI gate` job in `test-pr.yml` runs on `ubuntu-latest`. GitHub fork
 approvals, token permissions, and secrets are separate controls.
 
 ## Repository-writer trust/threat model
 
 Repository write access is trusted maintainer authority. A hostile party who
 can push branches or tags, replace generated asset branches, or modify workflow
-definitions is outside Kata's threat model: that authority can already alter
+definitions is outside Poomsae's threat model: that authority can already alter
 the product source, release process, and published artifacts directly. Do not
 add operator ceremony or block normal release and deployment workflows solely
 to defend against a malicious repository writer.
@@ -299,7 +295,7 @@ artifacts, and ignored or private local files entering a public build.
 
 ## Federation trust/threat model (security-review triage)
 
-kata federation is mutual trust between a spoke and each hub it joins;
+poomsae federation is mutual trust between a spoke and each hub it joins;
 there is no multi-tenant authorization model (`docs/design/federation.md`,
 "Tokens And Trust Boundaries" and "No Multi-Tenant Authorization Model").
 Triage security findings against that model:
@@ -320,7 +316,7 @@ Triage security findings against that model:
 
 ## Web UI trust/threat model
 
-The web UI is another client of the Kata daemon, not a separate proxy or
+The web UI is another client of the Poomsae daemon, not a separate proxy or
 authorization service. Review browser changes against these boundaries:
 
 - **Direct local browser authority trusts the loopback host.** On Unix, the daemon normally
@@ -335,15 +331,15 @@ authorization service. Review browser changes against these boundaries:
   DNS-rebinding boundary, and cross-site Fetch Metadata remains forbidden.
   This matches the established keyless local-web convention; processes and
   users able to connect from the same host are inside this browser boundary.
-  `kata ui` and the URL advertised by `kata daemon status` both open this
+  `poomsae ui` and the URL advertised by `poomsae daemon status` both open this
   origin directly; no launch credential or CLI authorization ceremony exists.
   The local-session path grants ordinary UI authority, never token
   administration, and is disabled for non-loopback, proxied, and authenticated
   deployments.
 - **A browser session is split authority.** Every browser data request requires
-  both the HttpOnly instance cookie and `X-Kata-Web-Session`. Neither credential
+  both the HttpOnly instance cookie and `X-Poomsae-Web-Session`. Neither credential
   is sufficient alone. The cookie is ambient and shared by tabs for one daemon
-  instance; the session header and matching `X-Kata-CSRF` value are tab-local.
+  instance; the session header and matching `X-Poomsae-CSRF` value are tab-local.
   Issuing or logging out one tab must not rotate/delete the ambient cookie or
   invalidate another tab. Mutations additionally require the tab's CSRF value
   and same-origin request validation. Database-token-backed
@@ -380,7 +376,7 @@ authorization service. Review browser changes against these boundaries:
   assertions never reach a target. Targets are canonical root HTTP(S) origins,
   bearer credentials are pinned to that origin, and redirects are rejected.
   Identity-bound browser principals remain read-only across a remote gateway
-  hop because Kata has no delegated-identity protocol. Request-actor sources
+  hop because Poomsae has no delegated-identity protocol. Request-actor sources
   remain writable when the target advertises the same actor policy or binds
   its credential to an account; an account-bound target records every write
   as that account, as it does for the CLI with the same catalog token. Before
@@ -428,10 +424,10 @@ authorization service. Review browser changes against these boundaries:
   preserve that origin, streaming, the authenticated-response cache policy,
   and the root-relative SPA/API routes. When the browser listener itself is in
   `trusted_proxy_listeners`, its asserted actor is exchanged for a tab-scoped
-  browser session; Kata must not advertise token login unless a daemon token
+  browser session; Poomsae must not advertise token login unless a daemon token
   can actually satisfy it.
 - **Development runs are isolated production processes.** Web tooling must
-  launch the branch daemon with a temporary Kata home, workspace, and database.
+  launch the branch daemon with a temporary Poomsae home, workspace, and database.
   It must construct child environments from an explicit OS/toolchain allowlist
   before applying those temporary paths; daemon/database/server/config targets,
   credentials, proxies, and hosted `PORT` settings are not inherited.
@@ -440,7 +436,7 @@ authorization service. Review browser changes against these boundaries:
 - **Anonymous mode is strictly read-only.** `--insecure-readonly` may serve the
   shell and read snapshots without a browser session, but it must not mint
   writable authority, accept mutations, or expose session/token administration.
-  `kata ui` opens that validated origin directly. Cookie-only ambient state is ignored; a session header still
+  `poomsae ui` opens that validated origin directly. Cookie-only ambient state is ignored; a session header still
   opts into the cookie-plus-header authentication path.
 - **CSP keeps code strict while allowing required layout state.** Production
   scripts remain same-origin-only, with `script-src 'self' 'wasm-unsafe-eval'`
@@ -480,29 +476,29 @@ authorization service. Review browser changes against these boundaries:
 A daemon can serve clients on other hosts over a private network:
 
 - Server: for mutable remote access, set `[auth].token` plus
-  `[auth].trust_private_network = true` in `<KATA_HOME>/config.toml`, or
-  export `KATA_AUTH_TOKEN` plus `KATA_TRUST_PRIVATE_NETWORK=1`, then run
-  `kata daemon start --foreground --listen 100.64.0.5:7777`. Set
-  `listen = "100.64.0.5:7777"` in `<KATA_HOME>/config.toml` so every
+  `[auth].trust_private_network = true` in `<POOMSAE_HOME>/config.toml`, or
+  export `POOMSAE_AUTH_TOKEN` plus `POOMSAE_TRUST_PRIVATE_NETWORK=1`, then run
+  `poomsae daemon start --foreground --listen 100.64.0.5:7777`. Set
+  `listen = "100.64.0.5:7777"` in `<POOMSAE_HOME>/config.toml` so every
   daemon (including the auto-started one) binds TCP.
-- Client: `export KATA_SERVER=http://100.64.0.5:7777` or commit a
-  gitignored `.kata.local.toml` with `[server] url = "..."` next to
-  `.kata.toml`. `KATA_SERVER` env wins.
+- Client: `export POOMSAE_SERVER=http://100.64.0.5:7777` or commit a
+  gitignored `.poomsae.local.toml` with `[server] url = "..."` next to
+  `.poomsae.toml`. `POOMSAE_SERVER` env wins.
 - Unauthenticated read-only private-network mode is `--insecure-readonly`,
   which permits GET requests only. Mutations and the event stream require
   bearer auth unless the server explicitly sets
   `[auth].allow_unauthenticated_private_network_writes = true` (or
-  `KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1`) on a literal private IP
+  `POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1`) on a literal private IP
   bind. That writable tokenless mode treats the private network as the access
   boundary, uses client-supplied actors, and blocks token administration.
 - Trusted plaintext bearer targets must be literal non-public IPs (loopback,
   RFC1918, CGNAT, link-local, ULA). Public IPs and DNS hostnames require HTTPS
   termination or an SSH tunnel.
 - Init and resolution are both path-free whenever the client can
-  derive the project name locally (existing `.kata.toml`, `--project`, or a
-  git workspace): the client sends `name` and writes `.kata.toml` itself; the
+  derive the project name locally (existing `.poomsae.toml`, `--project`, or a
+  git workspace): the client sends `name` and writes `.poomsae.toml` itself; the
   daemon never stats the client's filesystem.
-  `kata init` falls back to a path-based request only when none of
+  `poomsae init` falls back to a path-based request only when none of
   those sources are available, so the daemon (or its absence) emits
   the existing validation error.
 

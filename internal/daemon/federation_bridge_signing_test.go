@@ -11,13 +11,13 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 const bridgeSigningHubBase = "https://hub.example"
@@ -37,7 +37,7 @@ type signingBridgeFixture struct {
 func newSigningBridgeFixture(t *testing.T) signingBridgeFixture {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("TEST_BRIDGE_SIGNING_KEY", strings.Repeat("b", 64))
 	source := signingpolicy.Source{KeyID: "bridge-key", KeyEnv: "TEST_BRIDGE_SIGNING_KEY"}
 	state := filepath.Join(home, "replay.state")
@@ -100,7 +100,7 @@ func TestFederationBridgeConnectRefusesUnsignedBridgeToSigningHub(t *testing.T) 
 			}
 			require.NoError(t, json.Unmarshal(raw, &failure))
 			require.Equal(t, "hub_signing_required", failure.Error.Code)
-			require.Contains(t, failure.Error.Hint, "kata federation signing configure --project-uid "+f.hubProject.UID)
+			require.Contains(t, failure.Error.Hint, "poomsae federation signing configure --project-uid "+f.hubProject.UID)
 			require.Contains(t, failure.Error.Hint, "--signing-key-id")
 		}
 		_, found, err := config.DefaultFederationCredentialStore().FederationCredential(t.Context(), f.hubProject.UID)

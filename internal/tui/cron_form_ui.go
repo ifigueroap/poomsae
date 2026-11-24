@@ -12,8 +12,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	kataapi "go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	poomsaeapi "github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"go.kenn.io/kit/tui/helplayout"
 	"go.kenn.io/kit/tui/termtext"
 )
@@ -182,7 +182,7 @@ func (m Model) cronSaveCmd(f cronForm) tea.Cmd {
 			}
 			return fail(err)
 		}
-		write := kataapi.PutCronJobBody{Name: name, Definition: kataapi.CronJobDefinitionFrom(def), Actor: actor}
+		write := poomsaeapi.PutCronJobBody{Name: name, Definition: poomsaeapi.CronJobDefinitionFrom(def), Actor: actor}
 		notice := "Created " + name
 		if !f.create {
 			write.ExpectedEventUID, notice = f.expected, "Saved "+name
@@ -442,7 +442,7 @@ func renderCronForm(m Model) string {
 		title = "Edit " + f.noun() + " · " + sanitizeForLine(f.openedName)
 	}
 	body := []string{
-		renderTitleBar(m.width, m.scope, kataVersion, m.chrome().daemon),
+		renderTitleBar(m.width, m.scope, poomsaeVersion, m.chrome().daemon),
 		cronTabs(m.cron.tab),
 		statsLineStyle.Render(padLeftRightInside(title, f.uid, titleBarInnerWidth(m.width))),
 		"",

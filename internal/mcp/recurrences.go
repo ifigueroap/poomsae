@@ -9,7 +9,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // RecurrencesInput lists recurrences or selects one UID.
@@ -60,9 +60,9 @@ type RecurrenceDeleteOutput struct {
 }
 
 func registerRecurrenceTools(server *sdkmcp.Server, handlers toolHandlers) {
-	addTool(server, "kata.recurrences", "Read recurrences", "List recurrences or show one recurrence in an in-scope project.", toolHints(true, false, false), handlers.recurrences)
-	addTool(server, "kata.recurrence_update", "Update recurrence", "Create a recurrence or patch one at its required visible revision.", nonIdempotent(toolHints(false, true, false)), handlers.recurrenceUpdate)
-	addTool(server, "kata.recurrence_delete", "Delete recurrence", "Delete a recurrence at its visible revision.", toolHints(false, true, false), handlers.recurrenceDelete)
+	addTool(server, "poomsae.recurrences", "Read recurrences", "List recurrences or show one recurrence in an in-scope project.", toolHints(true, false, false), handlers.recurrences)
+	addTool(server, "poomsae.recurrence_update", "Update recurrence", "Create a recurrence or patch one at its required visible revision.", nonIdempotent(toolHints(false, true, false)), handlers.recurrenceUpdate)
+	addTool(server, "poomsae.recurrence_delete", "Delete recurrence", "Delete a recurrence at its visible revision.", toolHints(false, true, false), handlers.recurrenceDelete)
 }
 
 func (h toolHandlers) recurrences(ctx context.Context, _ *sdkmcp.CallToolRequest, input RecurrencesInput) (*sdkmcp.CallToolResult, RecurrencesOutput, error) {

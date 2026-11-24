@@ -9,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
 const configCapabilities = "pull,push,lease"
@@ -1001,7 +1001,7 @@ func preflightMapping(
 		return preflight, safeHubError(err)
 	}
 	if hubProject.ID <= 0 ||
-		!katauid.Valid(hubProject.UID) ||
+		!poomsaeuid.Valid(hubProject.UID) ||
 		hubProject.ReplayHorizonEventID <= 0 {
 		return preflight,
 			reconcileError(ErrHubValidation, "federation hub returned invalid project metadata")
@@ -1374,7 +1374,7 @@ func hubProjectNotFound(err error) bool {
 }
 
 func validateResolvedHubProject(project HubProject) error {
-	if project.ID <= 0 || !katauid.Valid(project.UID) || strings.TrimSpace(project.Name) == "" {
+	if project.ID <= 0 || !poomsaeuid.Valid(project.UID) || strings.TrimSpace(project.Name) == "" {
 		return reconcileError(ErrHubValidation, "federation hub returned invalid project metadata")
 	}
 	return nil

@@ -16,21 +16,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // This compatibility gate runs a real pre-cron executable. The optional
 // external binary is test-owned; ordinary package runs need no old toolchain.
 func TestCronSchema30ExecutableCompatibility(t *testing.T) {
-	binary := os.Getenv("KATA_TEST_SCHEMA30_BINARY")
+	binary := os.Getenv("POOMSAE_TEST_SCHEMA30_BINARY")
 	if binary == "" {
-		t.Skip("set KATA_TEST_SCHEMA30_BINARY to the retained schema30 executable")
+		t.Skip("set POOMSAE_TEST_SCHEMA30_BINARY to the retained schema30 executable")
 	}
 	home := t.TempDir()
 	workspace := t.TempDir()
@@ -45,7 +45,7 @@ func TestCronSchema30ExecutableCompatibility(t *testing.T) {
 			env = append(env, key+"="+value)
 		}
 	}
-	env = append(env, "KATA_HOME="+home, "KATA_DB="+filepath.Join(home, "kata.db"), "KATA_AUTHOR=worker", "KATA_FEDERATION_PULL_INTERVAL_MS=100")
+	env = append(env, "POOMSAE_HOME="+home, "POOMSAE_DB="+filepath.Join(home, "poomsae.db"), "POOMSAE_AUTHOR=worker", "POOMSAE_FEDERATION_PULL_INTERVAL_MS=100")
 	//nolint:gosec // Owned test daemon binary, arguments and temporary directory.
 	log, err := os.Create(filepath.Join(home, "daemon.log"))
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestCronSchema30ExecutableCompatibility(t *testing.T) {
 	args := []string{"--workspace", workspace, "--project", "spoke-project", "--json", "federation", "join", "--hub-url", server.URL, "--hub-project-id", fmt.Sprint(project.ID), "--actor", "worker", "--capabilities", "pull", "--token", grant.Token}
 	//nolint:gosec // Owned test daemon binary, arguments and temporary directory.
 	join := exec.CommandContext(t.Context(), binary, args...)
-	join.Env = append(append([]string{}, env...), "KATA_SERVER="+oldURL)
+	join.Env = append(append([]string{}, env...), "POOMSAE_SERVER="+oldURL)
 	join.Dir = workspace
 	output, err := join.CombinedOutput()
 	require.NoError(t, err, string(output))

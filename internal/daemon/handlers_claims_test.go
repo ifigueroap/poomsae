@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const claimTestOtherSpokeUID = "01HZNQ7VFPK1XGD8R5MABCD4EY"
@@ -834,7 +834,7 @@ func TestClaimStatusForwardDoesNotExpireLocallyStaleLeaseBeforeApplyingRenewal(t
 	ctx := t.Context()
 	_, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim")
 	now := time.Now().UTC()
-	claimUID, err := katauid.New()
+	claimUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	oldHubNow := now.Add(-2 * time.Minute)
 	expiredAt := now.Add(-time.Minute)
@@ -895,9 +895,9 @@ func TestClaimStatusForwardDoesNotExpireLocallyStaleLeaseBeforeApplyingRenewal(t
 
 func TestShowIssueClaimRefreshPreservesDownstreamHolder(t *testing.T) {
 	hub, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim")
-	claimUID, err := katauid.New()
+	claimUID, err := poomsaeuid.New()
 	require.NoError(t, err)
-	leafUID, err := katauid.New()
+	leafUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	cachedAt := time.Now().UTC().Add(-time.Minute)
 	cachedExpiresAt := cachedAt.Add(10 * time.Minute)
@@ -946,9 +946,9 @@ func TestShowIssueClaimRefreshPreservesDownstreamHolder(t *testing.T) {
 
 func TestDeniedClaimAcquirePreservesDownstreamHolder(t *testing.T) {
 	hub, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim")
-	claimUID, err := katauid.New()
+	claimUID, err := poomsaeuid.New()
 	require.NoError(t, err)
-	leafUID, err := katauid.New()
+	leafUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	cachedAt := time.Now().UTC().Add(-time.Minute)
 	cachedExpiresAt := cachedAt.Add(10 * time.Minute)
@@ -1120,7 +1120,7 @@ func TestPendingClaimOfflineAcquireEnqueuesAndReleaseDoesNotClearCache(t *testin
 	assert.True(t, pending.Pending)
 	assert.False(t, pending.Granted)
 	assert.NotEmpty(t, pending.RequestUID)
-	assert.True(t, katauid.Valid(pending.RequestUID), "request_uid should be a valid UID")
+	assert.True(t, poomsaeuid.Valid(pending.RequestUID), "request_uid should be a valid UID")
 
 	var n int
 	require.NoError(t, spoke.DB.QueryRowContext(ctx, `
@@ -1172,12 +1172,12 @@ func TestPendingClaimUnixHubOfflineAcquireEnqueues(t *testing.T) {
 	ctx := t.Context()
 	_, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim")
 	require.NoError(t, config.WriteFederationCredential(spokeProject.UID, config.FederationCredential{
-		HubURL:       "http://kata.invalid",
+		HubURL:       "http://poomsae.invalid",
 		HubProjectID: hubProject.ID,
 		Token:        token,
 		Capabilities: "claim",
 	}))
-	setClaimBindingHubURL(t, spoke, spokeProject.ID, "http://kata.invalid")
+	setClaimBindingHubURL(t, spoke, spokeProject.ID, "http://poomsae.invalid")
 
 	var pending claimResponseBody
 	resp := claimPost(t, spoke, spokeProject.ID, issue.ShortID, "claim", map[string]any{
@@ -1333,7 +1333,7 @@ func configureClaimRelayBinding(t *testing.T, hub, spoke *testenv.Env, spokeProj
 		ProjectUID: spokeProject.UID, AuthorityUID: rootUID,
 		KeyID: db.RootPublicKeyID(public), PublicKey: public,
 	}))
-	bindingUID, err := katauid.New()
+	bindingUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	_, err = spoke.DB.SetRelayBindingConfig(t.Context(), spokeProject.ID, db.RelayBindingConfig{
 		ProtocolVersion: db.RelayProtocolVersion, BindingUID: bindingUID,

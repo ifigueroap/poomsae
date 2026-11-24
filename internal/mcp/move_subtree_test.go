@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
-// Contract: kata.move moves the subtree by default and reports every moved
+// Contract: poomsae.move moves the subtree by default and reports every moved
 // issue; single moves only the root and dry_run previews without moving.
 func TestMoveToolSubtreeOptions(t *testing.T) {
 	for _, mode := range []string{"subtree", "single", "dry_run"} {
@@ -21,7 +21,7 @@ func TestMoveToolSubtreeOptions(t *testing.T) {
 			if mode != "subtree" {
 				args[mode] = true
 			}
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: args})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: args})
 			require.NoError(t, err)
 			require.False(t, result.IsError, string(mustJSON(t, result)))
 			var output MoveOutput
@@ -44,7 +44,7 @@ func TestMoveToolSubtreeOptions(t *testing.T) {
 	}
 }
 
-// Contract: kata.move checks the daemon's API version on every move. Before
+// Contract: poomsae.move checks the daemon's API version on every move. Before
 // API 0.35.0 it refuses a default move rather than silently moving only the
 // root; after the same daemon upgrades, single still moves only the root.
 func TestMoveToolFollowsDaemonUpgrade(t *testing.T) {
@@ -60,7 +60,7 @@ func TestMoveToolFollowsDaemonUpgrade(t *testing.T) {
 		t.Helper()
 		args["ref"] = source.Name + "#" + issue.ShortID
 		args["to_project"] = target.Name
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: args})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: args})
 		require.NoError(t, err)
 		return result
 	}
@@ -82,7 +82,7 @@ func TestMoveToolFollowsDaemonUpgrade(t *testing.T) {
 	}
 }
 
-// Contract: a kata.move preview never shows the issue first. Showing an issue
+// Contract: a poomsae.move preview never shows the issue first. Showing an issue
 // on a federation spoke refreshes and persists claim status, so a preview must
 // take the issue identity from the move validation response, as the CLI does.
 func TestMoveToolPreviewDoesNotShowIssue(t *testing.T) {
@@ -90,7 +90,7 @@ func TestMoveToolPreviewDoesNotShowIssue(t *testing.T) {
 	wrapped.requestsMu.Lock()
 	wrapped.requests = nil
 	wrapped.requestsMu.Unlock()
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name, "dry_run": true}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name, "dry_run": true}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, string(mustJSON(t, result)))
 	var output MoveOutput

@@ -16,19 +16,19 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationcoord"
 )
 
 const (
 	rebindSourceURL = "http://192.0.2.10:7777"
-	rebindTargetURL = "https://hub.example/kata"
+	rebindTargetURL = "https://hub.example/poomsae"
 )
 
 type rebindFailingStore struct {
@@ -421,7 +421,7 @@ func TestRebindFederationReplicaDistinguishesReverseProxyPaths(t *testing.T) {
 }
 
 func TestRebindFederationReplicaConvergesCanonicalTargetFromRawDefaultPort(t *testing.T) {
-	const equivalentTargetURL = "https://hub.example:443/kata"
+	const equivalentTargetURL = "https://hub.example:443/poomsae"
 	ctx := t.Context()
 	store, project, binding := prepareFederationRebind(t, rebindTargetURL)
 	binding.HubURL = equivalentTargetURL
@@ -994,7 +994,7 @@ func TestPrepareNativeLeaveFailureReleasesReplicaMutexBeforeGateWait(t *testing.
 }
 
 func TestAbortNativeFederationReplicaLeaveRestoresBindingAfterRestart(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store, project, original := prepareFederationRebind(t, rebindSourceURL)
 	credentials := config.DefaultFederationCredentialStore()
 	require.NoError(t, credentials.StoreFederationCredential(
@@ -1099,7 +1099,7 @@ func TestAbortNativeLeaveDoesNotHoldReplicaMutexWhileWaitingForGate(t *testing.T
 }
 
 func TestNativeFederationReplicaLeavePreparationBlocksRebindAfterRestart(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store, project, _ := prepareFederationRebind(t, rebindSourceURL)
 	credential := rebindCredential(rebindSourceURL, false, false)
 	credentials := config.DefaultFederationCredentialStore()
@@ -1117,7 +1117,7 @@ func TestNativeFederationReplicaLeavePreparationBlocksRebindAfterRestart(t *test
 }
 
 func TestNativeFederationReplicaLeavePreparationBlocksEnsureAfterRestart(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store, project, original := prepareFederationRebind(t, rebindSourceURL)
 	credential := rebindCredential(rebindSourceURL, false, false)
 	credentials := config.DefaultFederationCredentialStore()
@@ -1136,7 +1136,7 @@ func TestNativeFederationReplicaLeavePreparationBlocksEnsureAfterRestart(t *test
 }
 
 func TestAbortNativeFederationReplicaLeaveRetainsOtherPreparationAfterRestart(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store, project, _ := prepareFederationRebind(t, rebindSourceURL)
 	credentials := config.DefaultFederationCredentialStore()
 	require.NoError(t, credentials.StoreFederationCredential(

@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -46,12 +46,12 @@ func (b *safeBuffer) String() string {
 	return b.buf.String()
 }
 
-// TestE2E_Hooks_IssueCreatedTriggersHook spawns a real `kata daemon`
+// TestE2E_Hooks_IssueCreatedTriggersHook spawns a real `poomsae daemon`
 // subprocess, drops a hooks.toml that runs a tiny shell script writing
-// $KATA_EVENT_ID to a marker file, then verifies:
+// $POOMSAE_EVENT_ID to a marker file, then verifies:
 //   - the marker file appears (the hook actually executed)
 //   - runs.jsonl gained a line with result=ok
-//   - `kata daemon logs --hooks` surfaces the same record
+//   - `poomsae daemon logs --hooks` surfaces the same record
 //
 // Unlike TestSmoke_* (which uses an in-process httptest server), this
 // test exercises the real subprocess wiring: signal handling, runtime
@@ -75,7 +75,7 @@ func TestE2E_Hooks_IssueCreatedTriggersHook(t *testing.T) {
 	createIssueE2E(t, client, url, pid, daemonStderr)
 
 	eventID := waitForMarker(t, dirs.marker, daemonStderr)
-	require.NotEmpty(t, eventID, "KATA_EVENT_ID was empty in marker")
+	require.NotEmpty(t, eventID, "POOMSAE_EVENT_ID was empty in marker")
 
 	verifyRunsJSONL(t, dirs)
 	verifyDaemonLogsHooks(t, bin, env)
@@ -99,16 +99,16 @@ func newE2EDirs(t *testing.T) e2eDirs {
 	repoDir := initRepo(t, "https://github.com/example-org/example-workspace.git")
 	// Unix socket paths cap at 104 chars on macOS / 108 on Linux. The
 	// per-test t.TempDir() under macOS's /var/folders blows past that
-	// once /kata/<dbhash>/daemon.sock is appended, so XDG_RUNTIME_DIR
+	// once /poomsae/<dbhash>/daemon.sock is appended, so XDG_RUNTIME_DIR
 	// must be a short path. /tmp is short on both macOS and Linux,
 	// and the cleanup removes the dir when the test ends.
-	xdg, err := os.MkdirTemp("/tmp", "kata-e2e-xdg-")
+	xdg, err := os.MkdirTemp("/tmp", "poomsae-e2e-xdg-")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(xdg) })
 	return e2eDirs{
 		home:    home,
 		repoDir: repoDir,
-		dbPath:  filepath.Join(home, "kata.db"),
+		dbPath:  filepath.Join(home, "poomsae.db"),
 		marker:  filepath.Join(home, "marker.txt"),
 		script:  filepath.Join(home, "hook.sh"),
 		xdgDir:  xdg,
@@ -117,23 +117,23 @@ func newE2EDirs(t *testing.T) e2eDirs {
 
 func (d e2eDirs) env() []string {
 	return append(os.Environ(),
-		"KATA_HOME="+d.home,
-		"KATA_DB="+d.dbPath,
+		"POOMSAE_HOME="+d.home,
+		"POOMSAE_DB="+d.dbPath,
 		"XDG_RUNTIME_DIR="+d.xdgDir,
-		"KATA_AUTH_TOKEN=",
-		"KATA_TRUST_PRIVATE_NETWORK=",
-		"KATA_SERVER=",
+		"POOMSAE_AUTH_TOKEN=",
+		"POOMSAE_TRUST_PRIVATE_NETWORK=",
+		"POOMSAE_SERVER=",
 	)
 }
 
-// writeHookScript drops a tiny shell hook that records $KATA_EVENT_ID
+// writeHookScript drops a tiny shell hook that records $POOMSAE_EVENT_ID
 // to the marker file, plus the hooks.toml that wires the script to
 // issue.created. The script is owner-rwx (0o700) so /bin/sh can run
 // it; gosec's G306 is suppressed because the executable bit is
 // required, not optional.
 func writeHookScript(t *testing.T, d e2eDirs) {
 	t.Helper()
-	body := "#!/bin/sh\nprintf '%s' \"$KATA_EVENT_ID\" > " + shellQuote(d.marker) + "\n"
+	body := "#!/bin/sh\nprintf '%s' \"$POOMSAE_EVENT_ID\" > " + shellQuote(d.marker) + "\n"
 	//nolint:gosec // G306: hook script needs the executable bit set so /bin/sh can run it.
 	require.NoError(t, os.WriteFile(d.script, []byte(body), 0o700))
 
@@ -153,44 +153,44 @@ func shellQuote(s string) string {
 }
 
 var (
-	kataBuildOnce sync.Once
-	kataBuildDir  string
-	kataBuildBin  string
-	kataBuildErr  error
+	poomsaeBuildOnce sync.Once
+	poomsaeBuildDir  string
+	poomsaeBuildBin  string
+	poomsaeBuildErr  error
 )
 
 func TestMain(m *testing.M) {
 	code := m.Run()
-	_ = os.RemoveAll(kataBuildDir)
+	_ = os.RemoveAll(poomsaeBuildDir)
 	os.Exit(code)
 }
 
-// buildKataBinary lazily compiles cmd/kata once for this test process.
+// buildKataBinary lazily compiles cmd/poomsae once for this test process.
 // TestMain removes the build directory after all test cleanups finish.
 func buildKataBinary(t interface {
 	Helper()
 	require.TestingT
 }) string {
 	t.Helper()
-	kataBuildOnce.Do(func() {
-		kataBuildDir, kataBuildErr = os.MkdirTemp("", "kata-e2e-bin-")
-		if kataBuildErr != nil {
+	poomsaeBuildOnce.Do(func() {
+		poomsaeBuildDir, poomsaeBuildErr = os.MkdirTemp("", "poomsae-e2e-bin-")
+		if poomsaeBuildErr != nil {
 			return
 		}
-		kataBuildBin = filepath.Join(kataBuildDir, "kata")
+		poomsaeBuildBin = filepath.Join(poomsaeBuildDir, "poomsae")
 		// Every test in the process shares this build; no single test context owns it.
-		build := exec.CommandContext(context.Background(), "go", "build", "-o", kataBuildBin, "go.kenn.io/kata/cmd/kata") //nolint:gosec // G204: fixed args, test-only
+		build := exec.CommandContext(context.Background(), "go", "build", "-o", poomsaeBuildBin, "github.com/ifigueroap/poomsae/cmd/poomsae") //nolint:gosec // G204: fixed args, test-only
 		var stderr bytes.Buffer
 		build.Stderr = &stderr
 		if err := build.Run(); err != nil {
-			kataBuildErr = fmt.Errorf("go build kata: %w: %s", err, stderr.String())
+			poomsaeBuildErr = fmt.Errorf("go build poomsae: %w: %s", err, stderr.String())
 		}
 	})
-	require.NoError(t, kataBuildErr)
-	return kataBuildBin
+	require.NoError(t, poomsaeBuildErr)
+	return poomsaeBuildBin
 }
 
-// startDaemon spawns `kata daemon start --foreground` in its own process group and
+// startDaemon spawns `poomsae daemon start --foreground` in its own process group and
 // registers a t.Cleanup that SIGTERMs (then SIGKILLs after 2s) so a
 // stuck daemon never leaks across tests. The captured stderr buffer is
 // returned so failure paths can include daemon logs in their messages.
@@ -234,7 +234,7 @@ func stopDaemon(cmd *exec.Cmd) {
 }
 
 // connectDaemon polls the runtime dir for the daemon.<pid>.json file,
-// extracts the unix-socket address, and returns a base URL ("http://kata.invalid")
+// extracts the unix-socket address, and returns a base URL ("http://poomsae.invalid")
 // + a unix-socket-aware HTTP client. Fails the test if the daemon never
 // advertises an address within 10s.
 func connectDaemon(t *testing.T, d e2eDirs, daemonStderr *safeBuffer) (string, *http.Client) {
@@ -249,7 +249,7 @@ func connectDaemon(t *testing.T, d e2eDirs, daemonStderr *safeBuffer) (string, *
 				Timeout:   5 * time.Second,
 			}
 			if pingDaemon(client) {
-				return "http://kata.invalid", client
+				return "http://poomsae.invalid", client
 			}
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -295,7 +295,7 @@ func readDaemonSocketPath(runtimeDir string) (string, bool) {
 // is treated as not-yet-ready.
 func pingDaemon(client *http.Client) bool {
 	req, err := http.NewRequestWithContext(context.Background(),
-		http.MethodGet, "http://kata.invalid/api/v1/ping", nil)
+		http.MethodGet, "http://poomsae.invalid/api/v1/ping", nil)
 	if err != nil {
 		return false
 	}
@@ -308,7 +308,7 @@ func pingDaemon(client *http.Client) bool {
 }
 
 // newUnixTransport builds an *http.Transport whose DialContext targets
-// a Unix socket. Mirrors cmd/kata/client.go's helper of the same name.
+// a Unix socket. Mirrors cmd/poomsae/client.go's helper of the same name.
 func newUnixTransport(path string) *http.Transport {
 	return &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -405,7 +405,7 @@ func verifyRunsJSONL(t *testing.T, d e2eDirs) {
 	require.Equal(t, "ok", rec["result"], "first run record should be result=ok: %v", rec)
 }
 
-// verifyDaemonLogsHooks runs `kata daemon logs --hooks` as a subprocess
+// verifyDaemonLogsHooks runs `poomsae daemon logs --hooks` as a subprocess
 // and checks that it surfaces the run record. This proves the
 // file-direct read path (orderedRunsFiles) works without daemon
 // roundtrips, which is the design intent of `daemon logs --hooks`.

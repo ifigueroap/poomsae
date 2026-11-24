@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { KataTaskDetail } from '../lib/kata/types'
+import type { PoomsaeTaskDetail } from '../lib/poomsae/types'
 
 import IssueProperties from './IssueProperties.svelte'
 
-function makeIssue(overrides: Partial<KataTaskDetail['issue']> = {}): KataTaskDetail {
+function makeIssue(overrides: Partial<PoomsaeTaskDetail['issue']> = {}): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,
@@ -49,7 +49,7 @@ function deferred<T>() {
 
 function renderProperties(
   props: Partial<{
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     ownerOptions: typeof ownerOptions
     actionsDisabled: boolean
     draftResetGeneration: number

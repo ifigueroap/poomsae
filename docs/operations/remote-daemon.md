@@ -1,12 +1,12 @@
 ---
 title: Remote daemon
-description: Serve Kata to trusted private-network clients with explicit authentication and transport settings.
+description: Serve Poomsae to trusted private-network clients with explicit authentication and transport settings.
 last_edited: 2026-11-20
 ---
 
 # Remote daemon
 
-You can run a Kata daemon that serves clients on other hosts over a private
+You can run a Poomsae daemon that serves clients on other hosts over a private
 network. This mode is opt-in and built for trusted environments, not for public
 multi-tenant hosting.
 
@@ -15,11 +15,11 @@ multi-tenant hosting.
 Start the daemon on a literal non-public IP address:
 
 ```sh
-KATA_AUTH_TOKEN=change-me KATA_TRUST_PRIVATE_NETWORK=1 \
-  kata daemon start --foreground --listen 100.64.0.5:7777
+POOMSAE_AUTH_TOKEN=change-me POOMSAE_TRUST_PRIVATE_NETWORK=1 \
+  poomsae daemon start --foreground --listen 100.64.0.5:7777
 ```
 
-Or configure the server persistently in `<KATA_HOME>/config.toml`:
+Or configure the server persistently in `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 listen = "100.64.0.5:7777"
@@ -37,7 +37,7 @@ On the host that owns the SQLite database, run the daemon under a process
 manager such as launchd, systemd, or a container runtime. Set top-level
 `autostart = false` in that home's `config.toml` so CLI commands wait up to 30
 seconds during a restart instead of starting a competing daemon. You can still
-run `kata daemon start` explicitly. During upgrades, restart the daemon through
+run `poomsae daemon start` explicitly. During upgrades, restart the daemon through
 its service manager.
 
 ## Runtime profiling
@@ -50,15 +50,15 @@ its normal bearer token.
 Capture and inspect CPU and heap profiles with standard Go tools:
 
 ```sh
-curl -H "Authorization: Bearer $KATA_AUTH_TOKEN" \
+curl -H "Authorization: Bearer $POOMSAE_AUTH_TOKEN" \
   'http://100.64.0.5:7777/debug/pprof/profile?seconds=30' \
-  -o kata.cpu.pprof
-go tool pprof kata.cpu.pprof
+  -o poomsae.cpu.pprof
+go tool pprof poomsae.cpu.pprof
 
-curl -H "Authorization: Bearer $KATA_AUTH_TOKEN" \
+curl -H "Authorization: Bearer $POOMSAE_AUTH_TOKEN" \
   'http://100.64.0.5:7777/debug/pprof/heap' \
-  -o kata.heap.pprof
-go tool pprof kata.heap.pprof
+  -o poomsae.heap.pprof
+go tool pprof poomsae.heap.pprof
 ```
 
 The index also links to the goroutine, allocation, mutex-contention, blocking,
@@ -71,13 +71,13 @@ an execution trace, capture `/debug/pprof/trace?seconds=5` and open it with
 Point your CLI clients at the remote daemon:
 
 ```sh
-export KATA_SERVER=http://100.64.0.5:7777
-export KATA_AUTH_TOKEN=change-me
-kata list
+export POOMSAE_SERVER=http://100.64.0.5:7777
+export POOMSAE_AUTH_TOKEN=change-me
+poomsae list
 ```
 
 To configure a single workspace instead, put the URL in a gitignored
-`.kata.local.toml`:
+`.poomsae.local.toml`:
 
 ```toml
 version = 1
@@ -86,24 +86,24 @@ version = 1
 url = "http://100.64.0.5:7777"
 ```
 
-`KATA_SERVER` overrides `.kata.local.toml` unless you pass `--daemon <name>`.
+`POOMSAE_SERVER` overrides `.poomsae.local.toml` unless you pass `--daemon <name>`.
 If none of those are set, the client falls back to `active_daemon` in
-`<KATA_HOME>/config.toml`, and then to local daemon discovery or auto-start.
+`<POOMSAE_HOME>/config.toml`, and then to local daemon discovery or auto-start.
 
 For project-scoped commands such as `list`, `search`, and `create`, the client
-resolves `.kata.toml` and Git aliases locally and never asks a remote daemon to
+resolves `.poomsae.toml` and Git aliases locally and never asks a remote daemon to
 search your directories:
 
 - Without either binding, the command fails with `project_not_initialized`
-  (exit code 4) and suggests `kata init` or `--project`.
+  (exit code 4) and suggests `poomsae init` or `--project`.
 - If you pass a `--workspace` path that does not exist on the client, the
   command fails with a validation error (exit code 3) that names the path.
 
 Bind a client directory or select an existing project for a single command:
 
 ```sh
-kata init --project example-project
-kata list --project example-project
+poomsae init --project example-project
+poomsae list --project example-project
 ```
 
 Ordinary remote commands send API requests directly without a preliminary ping,
@@ -119,7 +119,7 @@ mutation. Upgrade the remote daemon alongside the CLI. Older daemons reject
 named project selectors instead of silently performing a different operation.
 
 When a mutation resolves a renamed workspace through its alias, the CLI repairs
-`.kata.toml` from the successful response. If that local repair fails, the CLI
+`.poomsae.toml` from the successful response. If that local repair fails, the CLI
 reports `workspace_repair_failed` and confirms that the mutation succeeded;
 repair the binding without repeating the mutation.
 
@@ -133,7 +133,7 @@ To inspect the endpoint these rules select, along with its transport and
 canonical request URL, run:
 
 ```sh
-kata daemon locate --json
+poomsae daemon locate --json
 ```
 
 This command probes configured remotes without printing or resolving their
@@ -149,15 +149,15 @@ never automatically converted or removed.
 
 ## Browser access
 
-Running `kata ui` with no arguments opens a selected local profile directly;
+Running `poomsae ui` with no arguments opens a selected local profile directly;
 otherwise, it starts or discovers the local browser gateway and does not use
-`KATA_SERVER`. When `active_daemon` is configured, the gateway selects it
+`POOMSAE_SERVER`. When `active_daemon` is configured, the gateway selects it
 initially.
 
 To open a remote daemon directly, add it as a named `[[daemon]]` entry and run
-`kata ui --daemon <name>`. If you configured the remote only through
-`KATA_SERVER`, open its canonical `/kata` route in your browser instead, for
-example `https://daemon.example/kata`. A remote browser route shows an
+`poomsae ui --daemon <name>`. If you configured the remote only through
+`POOMSAE_SERVER`, open its canonical `/poomsae` route in your browser instead, for
+example `https://daemon.example/poomsae`. A remote browser route shows an
 in-document token login, exchanges the token for a browser session in memory,
 and never puts the token in the URL or browser storage. Identity-token mode
 keeps the token actor authoritative, while static-token deployments use the
@@ -167,7 +167,7 @@ Behind an HTTPS reverse proxy, set `[web].public_origin` to the exact browser
 origin and route the UI, assets, `/api/v1/ui/*`, ordinary `/api/v1/*`, and the
 event stream to the same daemon. Do not rewrite the browser application to a
 different API origin, and do not infer the public origin from forwarded headers.
-When that browser listener is also a configured trusted-proxy listener, Kata
+When that browser listener is also a configured trusted-proxy listener, Poomsae
 exchanges the proxy-asserted actor for a browser session automatically instead
 of asking for a daemon token.
 
@@ -190,14 +190,14 @@ Mutable non-loopback HTTP requires one of two configurations:
   IP.
 
 Plain HTTP targets using bearer tokens must be literal non-public IPs: loopback,
-RFC1918, CGNAT, link-local, or ULA. Kata rejects public IPs and DNS hostnames
+RFC1918, CGNAT, link-local, or ULA. Poomsae rejects public IPs and DNS hostnames
 for plaintext bearer auth; use HTTPS through a reverse proxy or an SSH tunnel
 for those addresses.
 
 On private overlay hostnames where you intentionally skip HTTPS, clients can opt
-out per target with `KATA_ALLOW_INSECURE=1` or
+out per target with `POOMSAE_ALLOW_INSECURE=1` or
 `[server].allow_insecure = true`. Federation hub enrollment tokens use their own
-credential store, so spokes opt in with `kata federation join
+credential store, so spokes opt in with `poomsae federation join
 --allow-insecure`.
 
 ```toml
@@ -226,11 +226,11 @@ allow_unauthenticated_private_network_writes = true
 Or start the daemon with the environment variable:
 
 ```sh
-KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1 \
-  kata daemon start --listen 100.64.0.5:7777
+POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1 \
+  poomsae daemon start --listen 100.64.0.5:7777
 ```
 
-This extends Kata's local no-token trust model to the configured private IP. The
+This extends Poomsae's local no-token trust model to the configured private IP. The
 daemon accepts mutations and the event stream without a bearer token and takes
 write actors from the client request body, as it does on loopback and Unix
 sockets. Any device that can reach the bound address can assert any actor
@@ -238,7 +238,7 @@ string, so use this mode only when tailnet or private-network membership is your
 intended trust boundary.
 
 The listener must bind a literal private IP address: RFC1918, CGNAT, link-local,
-or ULA. Kata rejects hostnames, public IPs, and wildcard binds such as
+or ULA. Poomsae rejects hostnames, public IPs, and wildcard binds such as
 `0.0.0.0:7777` or `:7777` in this mode, and you cannot combine it with `token`,
 `require_token_identity = true`, or `--insecure-readonly`.
 
@@ -260,20 +260,20 @@ require_token_identity = true
 Restart the daemon, then use the bootstrap token to mint DB-backed user tokens:
 
 ```sh
-export KATA_AUTH_TOKEN=bootstrap-admin-token
-kata tokens create --actor wesm --name laptop
-kata tokens list
-kata tokens revoke 1
+export POOMSAE_AUTH_TOKEN=bootstrap-admin-token
+poomsae tokens create --actor wesm --name laptop
+poomsae tokens list
+poomsae tokens revoke 1
 ```
 
 For a temporary agent worker, issue a narrower credential instead of copying a
 personal or daemon-wide token onto the worker machine:
 
 ```sh
-install -d -m 700 /run/user/1000/kata-worker
-kata tokens create --actor worker-a --issue example-project#abc4 \
+install -d -m 700 /run/user/1000/poomsae-worker
+poomsae tokens create --actor worker-a --issue example-project#abc4 \
   --expires-in 4h \
-  --token-file /run/user/1000/kata-worker/auth-token
+  --token-file /run/user/1000/poomsae-worker/auth-token
 ```
 
 This grant follows the live issue subtree rooted at `abc4`; see the
@@ -282,9 +282,9 @@ membership changes. Minting a scoped token requires identity mode even when no
 shared token is configured, and a federated project's token must be minted on
 its hub.
 
-Have your launcher read `/run/user/1000/kata-worker/auth-token` and pass its
-value as `KATA_AUTH_TOKEN` only to the worker CLI or MCP process, alongside
-`KATA_SERVER` set to the issuing daemon's exact origin. That file path is
+Have your launcher read `/run/user/1000/poomsae-worker/auth-token` and pass its
+value as `POOMSAE_AUTH_TOKEN` only to the worker CLI or MCP process, alongside
+`POOMSAE_SERVER` set to the issuing daemon's exact origin. That file path is
 issuance output, not an authentication input. If the file is missing or
 unreadable, stop startup without falling back to a coordinator credential.
 Supply a local workspace binding so the worker does not need project
@@ -306,7 +306,7 @@ In identity mode:
   strings for mutations.
 
 If you are an administrator, inspect retained credentials with
-`kata tokens list`, press `C` in the TUI, or open **Credentials** in the Web UI.
+`poomsae tokens list`, press `C` in the TUI, or open **Credentials** in the Web UI.
 See [credential auditing](../guide/web-ui.md#audit-provisioned-credentials) for
 access requirements, lifecycle state, and last-use limitations.
 
@@ -319,15 +319,15 @@ table:
 allow_identity_connector_administration = true
 ```
 
-You can also set `KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION=1`. The
+You can also set `POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION=1`. The
 identity-mode bootstrap token, browser sessions, and trusted-proxy principals
 still cannot administer connectors.
 
-When you run `kata federation enroll`, the CLI authenticates to the hub using
+When you run `poomsae federation enroll`, the CLI authenticates to the hub using
 `--hub-token-env` or a daemon-catalog credential whose URL has the same origin;
 it never sends your local daemon's global token to the hub. On an identity-mode
 hub, first enable the project with an account token by running
-`kata federation enable`, then enroll with the hub's bootstrap token and
+`poomsae federation enable`, then enroll with the hub's bootstrap token and
 `--actor` naming an account with an unscoped API token (which may be expired or
 revoked). The enrollment token printed by that command is separate and used only
 for spoke transport. That enrollment is bound to the owner-selected actor, and
@@ -340,19 +340,19 @@ stay out of ordinary project lists, stats, event feeds, and federation.
 
 ## Web or OAuth frontends
 
-You can put a web app in front of Kata without daemon-side OAuth. Have the web
-app authenticate the browser user, map that identity to a Kata actor handle, and
-call the daemon with a server-side Kata bearer token. Keep the daemon token off
+You can put a web app in front of Poomsae without daemon-side OAuth. Have the web
+app authenticate the browser user, map that identity to a Poomsae actor handle, and
+call the daemon with a server-side Poomsae bearer token. Keep the daemon token off
 the browser; the browser holds only the web app session.
 
 Because the daemon stores only token hashes, your web app cannot retrieve an
-existing plaintext Kata token later. Vault plaintext tokens server-side, or mint
+existing plaintext Poomsae token later. Vault plaintext tokens server-side, or mint
 and revoke tokens as part of your app's own session lifecycle.
 
 ## Trusted-proxy actor header
 
 When a reverse proxy already authenticates your users (through SSO, OAuth, or
-mutual TLS), it can assert the Kata actor on each request in a configured
+mutual TLS), it can assert the Poomsae actor on each request in a configured
 header, and the daemon credits that actor instead of any client-supplied value.
 Alongside identity tokens (where the daemon is the auth boundary for direct
 clients holding personal tokens) and the web-frontend pattern above, this gives
@@ -364,12 +364,12 @@ enable it, name the header and the listeners where the daemon honors it:
 
 ```toml
 [auth.proxy]
-trusted_actor_header = "X-Kata-Actor"
-trusted_proxy_listeners = ["unix:///run/kata/proxy.sock"]
+trusted_actor_header = "X-Poomsae-Actor"
+trusted_proxy_listeners = ["unix:///run/poomsae/proxy.sock"]
 ```
 
-You can override these settings with `KATA_TRUSTED_ACTOR_HEADER` and a
-comma-separated `KATA_TRUSTED_PROXY_LISTENERS`. An empty or unset environment
+You can override these settings with `POOMSAE_TRUSTED_ACTOR_HEADER` and a
+comma-separated `POOMSAE_TRUSTED_PROXY_LISTENERS`. An empty or unset environment
 variable means "no override", so an empty variable cannot silently turn off a
 mode enabled in `config.toml`; to disable it, edit the config file.
 
@@ -386,7 +386,7 @@ After merging environment variables and config:
 ### Listener addresses
 
 Listener entries must be **literal** bind addresses that match the daemon's
-`listen` value, either a Unix socket path (`unix:///run/kata/proxy.sock`) or a
+`listen` value, either a Unix socket path (`unix:///run/poomsae/proxy.sock`) or a
 specific `host:port` (`100.64.0.5:7777`). Wildcard binds (`0.0.0.0:7777`,
 `:7777`) are never valid entries. An accepted connection reports the specific
 interface it arrived on, so a wildcard would never match. Use a Unix socket or a
@@ -430,7 +430,7 @@ authorization.
 To run an unauthenticated read-only experiment on a private network:
 
 ```sh
-kata daemon start --foreground --listen 100.64.0.5:7777 --insecure-readonly
+poomsae daemon start --foreground --listen 100.64.0.5:7777 --insecure-readonly
 ```
 
 This permits GET requests only; mutations and the event stream still require
@@ -441,11 +441,11 @@ Clients of a plaintext private-network daemon must opt into the same trust as
 the server, even when no token is configured:
 
 ```sh
-export KATA_SERVER=http://100.64.0.5:7777
-export KATA_TRUST_PRIVATE_NETWORK=1
+export POOMSAE_SERVER=http://100.64.0.5:7777
+export POOMSAE_TRUST_PRIVATE_NETWORK=1
 ```
 
-Kata validates the bearer target whenever it builds a client, so it refuses a
+Poomsae validates the bearer target whenever it builds a client, so it refuses a
 plaintext non-loopback endpoint up front rather than failing later as an opaque
 error. The opt-in states that the private network is the access boundary;
 without it, use HTTPS, a loopback address, or an SSH tunnel.
@@ -454,7 +454,7 @@ You cannot combine `require_token_identity = true` with `--insecure-readonly`.
 
 ## What this mode does not provide
 
-Kata provides identity tokens and fixed issue-subtree grants, not per-actor
+Poomsae provides identity tokens and fixed issue-subtree grants, not per-actor
 roles, project ACLs, impersonation scopes, or an OAuth provider. A reverse proxy
 can own user authentication and assert the actor (see
 [Trusted-proxy actor header](#trusted-proxy-actor-header)). Repository, machine,

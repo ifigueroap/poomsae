@@ -9,8 +9,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/ifigueroap/poomsae/internal/notification"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/notification"
 )
 
 func TestAttentionClientList(t *testing.T) {
@@ -219,7 +219,7 @@ func TestAttentionUndoClientForwarding(t *testing.T) {
 	require.NoError(t, wrapped.ClearAttentionRequest(t.Context(), 7, "abc4", "key", jsontext.Value(`{}`), "writer"))
 	require.Equal(t, 1, clearRequests, "clear must reach the wrapped client")
 	require.Empty(t, wrapped.pending)
-	unavailable := newUndoClient(&struct{ KataAPI }{})
+	unavailable := newUndoClient(&struct{ PoomsaeAPI }{})
 	_, _, err = unavailable.ListAttentionRequests(t.Context(), nil, "alex")
 	require.Error(t, err)
 	require.Error(t, unavailable.ClearAttentionRequest(t.Context(), 7, "abc4", "key", nil, "writer"))

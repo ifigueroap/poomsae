@@ -9,10 +9,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/version"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/version"
 )
 
 // registerHealthHandlers installs /api/v1/ping and /api/v1/health on humaAPI.
@@ -27,7 +27,7 @@ func registerHealthHandlers(humaAPI huma.API, cfg ServerConfig) {
 		_ = ctx
 		out := &api.PingResponse{}
 		out.Body.OK = true
-		out.Body.Service = "kata"
+		out.Body.Service = "poomsae"
 		out.Body.Version = version.Version
 		out.Body.PID = os.Getpid()
 		return out, nil

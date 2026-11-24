@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // TestV2ToV3CutoverFillsIdentity covers spec §8.4: a curated v2 source DB —
@@ -145,7 +145,7 @@ func TestV1ToV3CutoverDeterministicRowUIDs(t *testing.T) {
 func TestRoundtripV3PreservesInstanceUID(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	_, _, err = src.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: p.ID, Title: "preserve identity", Author: "tester",
@@ -204,7 +204,7 @@ func TestImportRefreshesCachedInstanceUID(t *testing.T) {
 func TestImportNewInstanceRegeneratesIdentity(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	_, _, err = src.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: p.ID, Title: "clone me", Author: "tester",

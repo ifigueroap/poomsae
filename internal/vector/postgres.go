@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"sync"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 type postgresIndex struct {

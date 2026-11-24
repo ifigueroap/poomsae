@@ -25,7 +25,7 @@ func TestClientIssueHistoryRequiresAcknowledgementOnEveryPage(t *testing.T) {
 			c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 				calls++
 				if calls <= len(tc.headers) {
-					w.Header().Set("X-Kata-Events-Issue-UID", tc.headers[calls-1])
+					w.Header().Set("X-Poomsae-Events-Issue-UID", tc.headers[calls-1])
 				}
 				if got := r.URL.Query().Get("issue"); got != tc.ref {
 					t.Errorf("issue query=%q, want %q", got, tc.ref)
@@ -50,7 +50,7 @@ func TestClientIssueHistoryQualifiedAndLowercaseRefs(t *testing.T) {
 		t.Run(ref, func(t *testing.T) {
 			c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, ref, r.URL.Query().Get("issue"))
-				w.Header().Set("X-Kata-Events-Issue-UID", uid)
+				w.Header().Set("X-Poomsae-Events-Issue-UID", uid)
 				respondJSON(t, w, map[string]any{"events": []map[string]any{{"event_id": 1, "issue_uid": uid, "issue_short_id": "abc4", "type": "issue.created", "actor": "reader"}}, "next_after_id": 0, "reset_required": false})
 			})
 			got, err := c.ListEvents(t.Context(), 7, ref)
@@ -65,7 +65,7 @@ func TestClientIssueHistoryRejectsReset(t *testing.T) {
 	calls := 0
 	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		calls++
-		w.Header().Set("X-Kata-Events-Issue-UID", uid)
+		w.Header().Set("X-Poomsae-Events-Issue-UID", uid)
 		respondJSON(t, w, map[string]any{"events": []map[string]any{}, "next_after_id": 9, "reset_required": true, "reset_after_id": 9})
 	})
 	got, err := c.ListEvents(t.Context(), 7, "abc4")

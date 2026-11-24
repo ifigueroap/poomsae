@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayFreshTargetPolicyEpoch exercises relay fresh target policy epoch on the supplied native store.

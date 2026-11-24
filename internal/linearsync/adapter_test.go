@@ -12,9 +12,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 type adapterSource struct {
@@ -100,7 +100,7 @@ func newSource() *adapterSource {
 }
 func adapterStore(t *testing.T) *sqlitestore.Store {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, s.Close()) })
@@ -230,7 +230,7 @@ func TestClientRunnerImportAndStateOnlyWriteback(t *testing.T) {
 		raw, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		r.Body = io.NopCloser(bytes.NewReader(raw))
-		if bytes.Contains(raw, []byte("KataLinearIssues")) {
+		if bytes.Contains(raw, []byte("PoomsaeLinearIssues")) {
 			return dataResponse(map[string]any{"team": map[string]any{"issues": map[string]any{"nodes": []any{issue()}, "pageInfo": map[string]any{"hasNextPage": false}}}}), nil
 		}
 		return statusAPI(r)
@@ -269,9 +269,9 @@ func TestClientRunnerImportsIssueComments(t *testing.T) {
 		require.NoError(t, err)
 		r.Body = io.NopCloser(bytes.NewReader(raw))
 		switch {
-		case bytes.Contains(raw, []byte("KataLinearIssues")):
+		case bytes.Contains(raw, []byte("PoomsaeLinearIssues")):
 			return dataResponse(map[string]any{"team": map[string]any{"issues": map[string]any{"nodes": []any{wireIssue()}, "pageInfo": map[string]any{"hasNextPage": false}}}}), nil
-		case bytes.Contains(raw, []byte("KataLinearComments")):
+		case bytes.Contains(raw, []byte("PoomsaeLinearComments")):
 			_, v := requestBody(t, r)
 			require.Equal(t, map[string]any{"issue": map[string]any{"id": map[string]any{"in": []any{issueID}}}}, v["filter"],
 				"comments are read only for the imported issues")

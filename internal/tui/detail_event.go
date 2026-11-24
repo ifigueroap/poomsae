@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 	"github.com/mattn/go-runewidth"
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/metadata"
 )
 
 // eventDescriber returns the human-readable description for an event of
@@ -86,7 +86,7 @@ func assignmentExpiredDesc(e EventLogEntry) string {
 }
 
 // linksChangedDesc renders the aggregated issue.links_changed event from
-// the PATCH path (`kata edit`) into a one-line summary that surfaces every
+// the PATCH path (`poomsae edit`) into a one-line summary that surfaces every
 // add/remove direction. Each segment reads as "<verb> <type>:#<short_id>",
 // so a single edit that swaps a parent and adds a related might render
 // as "links: parent #abc4→#def4, +related #f00d".
@@ -356,7 +356,7 @@ func formatEvidenceItem(m map[string]any, current map[string]metadata.Attachment
 	return t
 }
 
-// attachmentEvidenceLabel renders a cited attachment as `kata show` does:
+// attachmentEvidenceLabel renders a cited attachment as `poomsae show` does:
 // "attachment <id>: name · N bytes". It appends " (removed)" or " (changed)"
 // when current, the issue's attachment references, no longer matches what the
 // close froze; current is nil while the issue is not loaded, and then no state

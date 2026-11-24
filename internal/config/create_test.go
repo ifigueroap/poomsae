@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestReadCreateConfig(t *testing.T) {
@@ -34,7 +34,7 @@ func TestReadCreateConfig(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			path := filepath.Join(home, "config.toml")
 			if tc.directory {
 				require.NoError(t, os.Mkdir(path, 0o700))

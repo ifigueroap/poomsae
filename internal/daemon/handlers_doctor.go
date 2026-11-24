@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/diagnostics"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/diagnostics"
 )
 
 func registerDoctorHandlers(humaAPI huma.API, cfg ServerConfig) {

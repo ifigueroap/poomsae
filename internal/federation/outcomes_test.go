@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestOutcomesFailingSpoke(t *testing.T) {
@@ -17,7 +17,7 @@ func TestOutcomesFailingSpoke(t *testing.T) {
 	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusUnauthorized) }))
 	t.Cleanup(hub.Close)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	project, err := spoke.DB.CreateProject(t.Context(), "spoke-project")
 	require.NoError(t, err)
 	_, err = spoke.DB.UpsertFederationBinding(t.Context(), db.FederationBinding{

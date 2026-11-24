@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Only new local creation under a negotiated upstream earns pending status.

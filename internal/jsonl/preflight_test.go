@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 // TestPreflightSourceFKs_DeduplicatesPerRow verifies the rowid-set
@@ -18,7 +18,7 @@ func TestPreflightSourceFKs_DeduplicatesPerRow(t *testing.T) {
 	ctx := t.Context()
 
 	t.Run("links both endpoints orphan + events both columns orphan", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		seedV3DBWithOrphans(t, path, orphanSpec{
 			OrphanLinkBothEnds: 1,
 			OrphanEventBoth:    1,
@@ -36,7 +36,7 @@ func TestPreflightSourceFKs_DeduplicatesPerRow(t *testing.T) {
 	})
 
 	t.Run("events related-only orphan goes to scrub bucket", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		seedV3DBWithOrphans(t, path, orphanSpec{
 			OrphanEventRelated: 1,
 		})
@@ -51,7 +51,7 @@ func TestPreflightSourceFKs_DeduplicatesPerRow(t *testing.T) {
 	})
 
 	t.Run("unknown class returns UnknownViolations", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		seedV3DBWithOrphans(t, path, orphanSpec{
 			OrphanProjectAlias: true,
 		})
@@ -65,7 +65,7 @@ func TestPreflightSourceFKs_DeduplicatesPerRow(t *testing.T) {
 	})
 
 	t.Run("clean DB returns empty report", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		seedV3DBWithOrphans(t, path, orphanSpec{})
 
 		report, err := jsonl.PreflightSourceFKs(ctx, path)
@@ -80,7 +80,7 @@ func TestPreflightSourceFKs_DeduplicatesPerRow(t *testing.T) {
 	// violation. Use sql.NullInt64 so the row scans cleanly and the
 	// violation surfaces in UnknownViolations with RowID.Valid=false.
 	t.Run("WITHOUT ROWID source table yields NULL rowid", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		seedV3DBWithOrphans(t, path, orphanSpec{})
 		addWithoutRowidOrphan(t, path)
 

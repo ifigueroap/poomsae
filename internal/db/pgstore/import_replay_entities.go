@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func pgReplayMeta(ctx context.Context, tx *sql.Tx, meta *db.MetaKV, opts db.ImportOptions, targetUID string) error {

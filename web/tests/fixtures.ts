@@ -31,7 +31,7 @@ export interface SeededIssue {
   revision: number
 }
 
-export interface KataFixture {
+export interface PoomsaeFixture {
   origin: string
   projectID: number
   projectUID: string
@@ -64,14 +64,14 @@ export interface KataFixture {
 }
 
 interface RunningFixture {
-  fixture: KataFixture
+  fixture: PoomsaeFixture
   stop(): Promise<void>
 }
 
 const daemonStderr = new WeakMap<ChildProcess, string>()
 
-export const test = base.extend<{ kata: KataFixture; diagnosticKata: KataFixture }>({
-  kata: [
+export const test = base.extend<{ poomsae: PoomsaeFixture; diagnosticKata: PoomsaeFixture }>({
+  poomsae: [
     async ({ browserName, page }, use) => {
       void browserName
       const running = await startProductionFixture()
@@ -103,9 +103,9 @@ export const test = base.extend<{ kata: KataFixture; diagnosticKata: KataFixture
 export { expect }
 
 async function startProductionFixture(): Promise<RunningFixture> {
-  const binary = process.env.KATA_WEB_E2E_BINARY
+  const binary = process.env.POOMSAE_WEB_E2E_BINARY
   if (!binary) throw new Error('shared browser test daemon binary is unavailable')
-  const root = await mkdtemp(join(tmpdir(), 'kata-web-browser-e2e-'))
+  const root = await mkdtemp(join(tmpdir(), 'poomsae-web-browser-e2e-'))
   const home = join(root, 'home')
   const workspace = join(root, 'workspace')
   const remoteHome = join(root, 'remote-home')
@@ -116,10 +116,10 @@ async function startProductionFixture(): Promise<RunningFixture> {
     ...createDevChildEnvironment(process.env, {
       home,
       workspace,
-      database: join(home, 'kata.db'),
+      database: join(home, 'poomsae.db'),
     }),
-    KATA_AUTH_TOKEN: 'example-local-token',
-    KATA_SERVER: '',
+    POOMSAE_AUTH_TOKEN: 'example-local-token',
+    POOMSAE_SERVER: '',
     HOME: home,
     USERPROFILE: home,
   }
@@ -127,10 +127,10 @@ async function startProductionFixture(): Promise<RunningFixture> {
     ...createDevChildEnvironment(process.env, {
       home: remoteHome,
       workspace: remoteWorkspace,
-      database: join(remoteHome, 'kata.db'),
+      database: join(remoteHome, 'poomsae.db'),
     }),
-    KATA_AUTH_TOKEN: 'example-remote-token',
-    KATA_SERVER: '',
+    POOMSAE_AUTH_TOKEN: 'example-remote-token',
+    POOMSAE_SERVER: '',
     HOME: remoteHome,
     USERPROFILE: remoteHome,
   }
@@ -158,7 +158,7 @@ token = "example-remote-token"
   const { daemon: remoteDaemon, origin: remoteOrigin } = remote
   run(binary, ['projects', 'create', 'example-remote-project'], remoteWorkspace, remoteEnvironment)
   await writeFile(
-    join(remoteWorkspace, '.kata.toml'),
+    join(remoteWorkspace, '.poomsae.toml'),
     'version = 1\n\n[project]\nname = "example-remote-project"\n',
   )
   run(binary, ['create', 'Remote daemon task'], remoteWorkspace, remoteEnvironment)
@@ -203,13 +203,13 @@ listen = "127.0.0.1:${port}"
   run(binary, ['projects', 'create', 'example-project'], workspace, environment)
   run(binary, ['projects', 'create', 'example-inbox'], workspace, environment)
   await writeFile(
-    join(workspace, '.kata.toml'),
+    join(workspace, '.poomsae.toml'),
     'version = 1\n\n[project]\nname = "example-project"\n',
   )
 
   const project = await discoverProject(origin, home, 'example-local-token')
 
-  const fixture: KataFixture = {
+  const fixture: PoomsaeFixture = {
     origin,
     projectID: project.id,
     projectUID: project.uid,
@@ -218,7 +218,7 @@ listen = "127.0.0.1:${port}"
       run(binary, ['projects', 'rename', 'example-project', name], workspace, environment)
     },
     recordSyncDiagnosticError() {
-      const database = new DatabaseSync(join(home, 'kata.db'))
+      const database = new DatabaseSync(join(home, 'poomsae.db'))
       try {
         // A spoke awaiting leave can retain its last error while transport is disabled.
         database
@@ -244,7 +244,7 @@ listen = "127.0.0.1:${port}"
       }
     },
     clearSyncDiagnosticError() {
-      const database = new DatabaseSync(join(home, 'kata.db'))
+      const database = new DatabaseSync(join(home, 'poomsae.db'))
       try {
         database
           .prepare('UPDATE federation_sync_status SET last_error = NULL, last_error_at = NULL')
@@ -277,11 +277,11 @@ listen = "127.0.0.1:${port}"
         throw new Error(`${shell} diagnostic failed: ${result.error?.message ?? result.stderr}`)
       return result.stdout
     },
-    async launch(page, route = '/kata?view=all-open') {
+    async launch(page, route = '/poomsae?view=all-open') {
       await page.goto(`${origin}${route}`)
-      await expect(page.getByRole('region', { name: 'Kata workspace' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Poomsae workspace' })).toBeVisible()
       const credentials = await page.evaluate(() => {
-        const value = sessionStorage.getItem('kata.web.session.v1')
+        const value = sessionStorage.getItem('poomsae.web.session.v1')
         if (!value) return null
         const parsed = JSON.parse(value) as { session?: unknown; csrf?: unknown }
         return {
@@ -308,8 +308,8 @@ listen = "127.0.0.1:${port}"
         method,
         headers: {
           Origin: origin,
-          'X-Kata-Web-Session': credentials.session,
-          ...(method === 'GET' || method === 'HEAD' ? {} : { 'X-Kata-CSRF': credentials.csrf }),
+          'X-Poomsae-Web-Session': credentials.session,
+          ...(method === 'GET' || method === 'HEAD' ? {} : { 'X-Poomsae-CSRF': credentials.csrf }),
           ...headers,
         },
         ...(data === undefined ? {} : { data }),
@@ -406,7 +406,7 @@ async function waitForPing(origin: string, daemon: ChildProcess): Promise<void> 
     if (daemon.exitCode !== null) {
       const stderr = daemonStderr.get(daemon)?.trim()
       throw new Error(
-        `Kata daemon exited with status ${daemon.exitCode}${stderr ? `: ${stderr}` : ''}`,
+        `Poomsae daemon exited with status ${daemon.exitCode}${stderr ? `: ${stderr}` : ''}`,
       )
     }
     try {
@@ -416,7 +416,7 @@ async function waitForPing(origin: string, daemon: ChildProcess): Promise<void> 
     }
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
-  throw new Error('Kata browser listener did not become ready')
+  throw new Error('Poomsae browser listener did not become ready')
 }
 
 async function waitForRuntime(home: string, origin: string): Promise<string> {
@@ -432,7 +432,7 @@ async function waitForRuntime(home: string, origin: string): Promise<string> {
     }
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
-  throw new Error('Kata browser runtime record did not become ready')
+  throw new Error('Poomsae browser runtime record did not become ready')
 }
 
 async function runtimeRecords(root: string): Promise<string[]> {
@@ -463,12 +463,12 @@ async function discoverProject(
   const sessionResponse = await fetch(`${origin}/api/v1/ui/session/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: origin },
-    body: JSON.stringify({ token, return_path: '/kata?view=all-open' }),
+    body: JSON.stringify({ token, return_path: '/poomsae?view=all-open' }),
   })
   const cookie = sessionResponse.headers.get('set-cookie')?.split(';', 1)[0]
   const credentials = (await sessionResponse.json()) as { session: string; csrf: string }
   const snapshot = await fetch(`${origin}/api/v1/ui/snapshot?view=all-open`, {
-    headers: { Cookie: cookie ?? '', 'X-Kata-Web-Session': credentials.session },
+    headers: { Cookie: cookie ?? '', 'X-Poomsae-Web-Session': credentials.session },
   })
   const body = (await snapshot.json()) as {
     catalog: Array<{ project: { id: number; uid: string; name: string } }>
@@ -483,14 +483,14 @@ async function discoverProject(
       'Content-Type': 'application/json',
       Cookie: cookie ?? '',
       Origin: origin,
-      'X-Kata-Web-Session': credentials.session,
-      'X-Kata-CSRF': credentials.csrf,
+      'X-Poomsae-Web-Session': credentials.session,
+      'X-Poomsae-CSRF': credentials.csrf,
     },
     body: JSON.stringify({ actor: 'user-a', patch: { role: 'inbox' } }),
   })
   if (!metadata.ok) throw new Error(`failed to designate fixture Inbox: ${metadata.status}`)
   const roster = await fetch(`${origin}/api/v1/ui/daemons`, {
-    headers: { Cookie: cookie ?? '', 'X-Kata-Web-Session': credentials.session },
+    headers: { Cookie: cookie ?? '', 'X-Poomsae-Web-Session': credentials.session },
   })
   if (!roster.ok) throw new Error(`failed to load fixture daemon roster: ${roster.status}`)
   const daemonBody = (await roster.json()) as { daemons?: Array<{ id?: string }> }
@@ -500,8 +500,8 @@ async function discoverProject(
   const remoteSnapshot = await fetch(`${origin}/api/v1/ui/proxy/api/v1/ui/snapshot?view=all-open`, {
     headers: {
       Cookie: cookie ?? '',
-      'X-Kata-Web-Session': credentials.session,
-      'X-Kata-Web-Daemon': 'example-remote',
+      'X-Poomsae-Web-Session': credentials.session,
+      'X-Poomsae-Web-Daemon': 'example-remote',
     },
   })
   if (!remoteSnapshot.ok) {

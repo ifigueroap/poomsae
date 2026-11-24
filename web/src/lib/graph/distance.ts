@@ -1,8 +1,8 @@
-import type { KataReachableGraphEdge } from '../kata/types'
+import type { PoomsaeReachableGraphEdge } from '../poomsae/types'
 
 export function graphDistanceByUID(
   sourceUID: string,
-  edges: readonly KataReachableGraphEdge[],
+  edges: readonly PoomsaeReachableGraphEdge[],
   maxDepth: number,
 ): ReadonlyMap<string, number> {
   const adjacency = new Map<string, string[]>()

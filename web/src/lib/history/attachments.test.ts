@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import type { KataTaskEvent } from '../kata/types'
+import type { PoomsaeTaskEvent } from '../poomsae/types'
 import { closingAttachments } from './attachments'
 
-function closeEvent(evidence: Record<string, unknown>): KataTaskEvent {
+function closeEvent(evidence: Record<string, unknown>): PoomsaeTaskEvent {
   return {
     event_id: 1,
     event_uid: 'event-1',
@@ -51,7 +51,7 @@ describe('closingAttachments', () => {
       { label: 'report.pdf · 5 bytes (changed)' },
     ])
     expect(closingAttachments(legacyEvent, { 'attachment.attachment-1': withoutOrigin })).toEqual([
-      { label: 'report.pdf · 5 bytes', href: '#kata-attachment-attachment-1' },
+      { label: 'report.pdf · 5 bytes', href: '#poomsae-attachment-attachment-1' },
     ])
   })
 

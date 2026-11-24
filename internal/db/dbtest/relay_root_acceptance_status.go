@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayRootAcceptanceStatus exercises relay root acceptance status on the supplied native store.

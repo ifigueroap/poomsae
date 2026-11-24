@@ -8,7 +8,7 @@ import (
 	"iter"
 	"slices"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RootAttributionSigner is owner-local transient signing material. It is never

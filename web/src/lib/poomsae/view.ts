@@ -1,0 +1,311 @@
+import { authorName } from '@ifigueroap/poomsae-ui'
+
+import { localDateString } from './dates'
+import type {
+  PoomsaeProjectSummary,
+  PoomsaeTaskGroup,
+  PoomsaeTaskSummary,
+  PoomsaeTaskViewName,
+  PoomsaeTaskViewResponse,
+} from './types'
+
+interface BuildKataTaskViewOptions {
+  view: PoomsaeTaskViewName
+  issues: PoomsaeTaskSummary[]
+  projects: PoomsaeProjectSummary[]
+  today?: string
+  fetched_at?: string
+}
+
+type ProjectLookup = Map<string, PoomsaeProjectSummary>
+
+export function httpURL(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  try {
+    const url = new URL(value)
+    if ((url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password)
+      return url.href
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+function issueDate(value: string | undefined): string | undefined {
+  return value?.slice(0, 10)
+}
+
+export function agendaDateTitle(date: string, today: string): string {
+  if (date === today) return 'Today'
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number]
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(date.slice(0, 4) !== today.slice(0, 4) ? { year: 'numeric' } : {}),
+  })
+}
+
+export function closedReasonLabel(reason: PoomsaeTaskSummary['closed_reason']): string | undefined {
+  switch (reason) {
+    case 'done':
+      return 'Done'
+    case 'wontfix':
+      return "Won't do"
+    case 'duplicate':
+      return 'Duplicate'
+    case 'superseded':
+      return 'Superseded'
+    case 'audit-no-change':
+      return 'No change needed'
+    default:
+      return undefined
+  }
+}
+
+export function scheduledDate(issue: PoomsaeTaskSummary): string | undefined {
+  return issue.scheduled_on_date ?? issueDate(issue.metadata.scheduled_on)
+}
+
+export function deadlineDate(issue: PoomsaeTaskSummary): string | undefined {
+  return issue.deadline_on_date ?? issueDate(issue.metadata.deadline_on)
+}
+
+/**
+ * Date membership for views assembled from the all-open collection. It
+ * ignores status so explicit status filters still apply to the same set.
+ * Inbox follows Poomsae's tickler rule: a future start date holds an issue back
+ * until that day, while deadlines never hide work.
+ */
+export function poomsaeViewIncludesDates(
+  view: PoomsaeTaskViewName,
+  issue: PoomsaeTaskSummary,
+  today: string,
+): boolean {
+  if (view === 'scheduled') return Boolean(scheduledDate(issue) || deadlineDate(issue))
+  if (view === 'inbox') {
+    const scheduledOn = scheduledDate(issue)
+    return scheduledOn === undefined || scheduledOn <= today
+  }
+  return true
+}
+
+function compareIssues(a: PoomsaeTaskSummary, b: PoomsaeTaskSummary): number {
+  const ap = a.priority ?? Number.MAX_SAFE_INTEGER
+  const bp = b.priority ?? Number.MAX_SAFE_INTEGER
+  if (ap !== bp) return ap - bp
+  const title = a.title.localeCompare(b.title)
+  if (title !== 0) return title
+  return a.uid.localeCompare(b.uid)
+}
+
+// Issues without a deadline sort after those with one.
+function compareByDeadline(a: PoomsaeTaskSummary, b: PoomsaeTaskSummary): number {
+  const ad = deadlineDate(a) ?? '9999-12-31'
+  const bd = deadlineDate(b) ?? '9999-12-31'
+  if (ad !== bd) return ad.localeCompare(bd)
+  return compareIssues(a, b)
+}
+
+function projectLookup(projects: PoomsaeProjectSummary[]): ProjectLookup {
+  return new Map(projects.map((project) => [project.uid, project]))
+}
+
+function projectTitle(issue: PoomsaeTaskSummary, projects: ProjectLookup): string {
+  return projects.get(issue.project_uid)?.name || issue.project_name || issue.project_uid
+}
+
+function groupByProject(issues: PoomsaeTaskSummary[], projects: ProjectLookup): PoomsaeTaskGroup[] {
+  const groups = new Map<string, PoomsaeTaskGroup>()
+  for (const issue of issues) {
+    const group = groups.get(issue.project_uid) ?? {
+      id: issue.project_uid,
+      title: projectTitle(issue, projects),
+      issues: [],
+    }
+    group.issues.push(issue)
+    groups.set(issue.project_uid, group)
+  }
+
+  return [...groups.values()]
+    .map((group) => ({ ...group, issues: [...group.issues].sort(compareIssues) }))
+    .sort((a, b) => {
+      const title = a.title.localeCompare(b.title)
+      if (title !== 0) return title
+      return a.id.localeCompare(b.id)
+    })
+}
+
+function buildToday(issues: PoomsaeTaskSummary[], today: string): PoomsaeTaskGroup[] {
+  const groups: PoomsaeTaskGroup[] = [
+    { id: 'overdue', title: 'Overdue', issues: [] },
+    { id: 'today', title: 'Today', issues: [] },
+    { id: 'evening', title: 'This evening', issues: [] },
+  ]
+
+  for (const issue of issues) {
+    if (issue.status !== 'open') continue
+    const scheduledOn = scheduledDate(issue)
+    const deadlineOn = deadlineDate(issue)
+    const scheduledDue = scheduledOn !== undefined && scheduledOn <= today
+    const deadlineDue = deadlineOn !== undefined && deadlineOn <= today
+    if (!scheduledDue && !deadlineDue) continue
+
+    if (
+      (deadlineOn !== undefined && deadlineOn < today) ||
+      (scheduledOn !== undefined && scheduledOn < today)
+    ) {
+      groups[0]!.issues.push(issue)
+    } else if (issue.metadata.today_bucket === 'evening') {
+      groups[2]!.issues.push(issue)
+    } else {
+      groups[1]!.issues.push(issue)
+    }
+  }
+
+  return groups
+    .map((group) => ({ ...group, issues: [...group.issues].sort(compareIssues) }))
+    .filter((group) => group.issues.length > 0)
+}
+
+function buildInbox(issues: PoomsaeTaskSummary[], today: string): PoomsaeTaskGroup[] {
+  const inboxIssues = issues
+    .filter((issue) => issue.status === 'open' && poomsaeViewIncludesDates('inbox', issue, today))
+    .sort(compareIssues)
+  return inboxIssues.length > 0 ? [{ id: 'inbox', title: 'Inbox', issues: inboxIssues }] : []
+}
+
+const teammateHandlePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
+function buildDelegated(issues: PoomsaeTaskSummary[]): PoomsaeTaskGroup[] {
+  const groups = new Map<string, PoomsaeTaskGroup>()
+  for (const issue of issues) {
+    const teammate = issue.metadata.teammate
+    if (
+      issue.status !== 'open' ||
+      typeof teammate !== 'string' ||
+      !teammateHandlePattern.test(teammate)
+    ) {
+      continue
+    }
+    const attribution = `${authorName(issue.author)}/${teammate}`
+    const group = groups.get(attribution) ?? {
+      id: attribution,
+      title: `${teammate} for ${authorName(issue.author)}`,
+      handoff: { teammate, author: authorName(issue.author) },
+      issues: [],
+    }
+    group.issues.push(issue)
+    groups.set(attribution, group)
+  }
+
+  return [...groups.values()]
+    .map((group) => ({ ...group, issues: [...group.issues].sort(compareIssues) }))
+    .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id))
+}
+
+function buildAll(issues: PoomsaeTaskSummary[], projects: ProjectLookup): PoomsaeTaskGroup[] {
+  return groupByProject(
+    issues.filter((issue) => issue.status === 'open'),
+    projects,
+  )
+}
+
+// Scheduled folds start dates and deadlines into one agenda. A missed deadline
+// is overdue; otherwise an issue sits on its earliest date, and a start date
+// that has already passed means the work is actionable today.
+function buildScheduled(issues: PoomsaeTaskSummary[], today: string): PoomsaeTaskGroup[] {
+  const overdue: PoomsaeTaskGroup = { id: 'overdue', title: 'Overdue', issues: [] }
+  const dueToday: PoomsaeTaskGroup = { id: 'today', title: 'Today', issues: [] }
+  const futureByDate = new Map<string, PoomsaeTaskGroup>()
+
+  for (const issue of issues) {
+    if (issue.status !== 'open') continue
+    const scheduledOn = scheduledDate(issue)
+    const deadlineOn = deadlineDate(issue)
+    if (!poomsaeViewIncludesDates('scheduled', issue, today)) continue
+    const dates = [scheduledOn, deadlineOn].filter((date): date is string => Boolean(date))
+
+    if (deadlineOn !== undefined && deadlineOn < today) {
+      overdue.issues.push(issue)
+      continue
+    }
+    const keyDate = dates.sort()[0]!
+    if (keyDate <= today) {
+      dueToday.issues.push(issue)
+      continue
+    }
+    const group = futureByDate.get(keyDate) ?? {
+      id: keyDate,
+      title: agendaDateTitle(keyDate, today),
+      issues: [],
+    }
+    group.issues.push(issue)
+    futureByDate.set(keyDate, group)
+  }
+
+  const pinned = [overdue, dueToday].map((group) => ({
+    ...group,
+    issues: [...group.issues].sort(compareByDeadline),
+  }))
+  const future = [...futureByDate.values()]
+    .map((group) => ({ ...group, issues: [...group.issues].sort(compareIssues) }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+  return [...pinned, ...future].filter((group) => group.issues.length > 0)
+}
+
+function buildLogbook(issues: PoomsaeTaskSummary[], today: string): PoomsaeTaskGroup[] {
+  const groups = new Map<string, PoomsaeTaskGroup>()
+  for (const issue of issues) {
+    if (issue.status !== 'closed') continue
+    const closedAt = issue.closed_at && new Date(issue.closed_at)
+    const closedOn =
+      closedAt && !Number.isNaN(closedAt.getTime()) ? localDateString(closedAt) : undefined
+    if (!closedOn) continue
+
+    const group = groups.get(closedOn) ?? {
+      id: closedOn,
+      title: agendaDateTitle(closedOn, today),
+      issues: [],
+    }
+    group.issues.push(issue)
+    groups.set(closedOn, group)
+  }
+
+  return [...groups.values()]
+    .map((group) => ({ ...group, issues: [...group.issues].sort(compareIssues) }))
+    .sort((a, b) => b.id.localeCompare(a.id))
+}
+
+export function buildKataTaskView(options: BuildKataTaskViewOptions): PoomsaeTaskViewResponse {
+  const today = options.today ?? localDateString()
+  const projects = projectLookup(options.projects)
+  let groups: PoomsaeTaskGroup[]
+
+  switch (options.view) {
+    case 'today':
+      groups = buildToday(options.issues, today)
+      break
+    case 'inbox':
+      groups = buildInbox(options.issues, today)
+      break
+    case 'delegated':
+      groups = buildDelegated(options.issues)
+      break
+    case 'scheduled':
+      groups = buildScheduled(options.issues, today)
+      break
+    case 'all':
+      groups = buildAll(options.issues, projects)
+      break
+    case 'logbook':
+      groups = buildLogbook(options.issues, today)
+      break
+  }
+
+  return {
+    view: options.view,
+    groups,
+    fetched_at: options.fetched_at ?? new Date().toISOString(),
+  }
+}

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/activity"
 )
 
 type idleTimer interface {

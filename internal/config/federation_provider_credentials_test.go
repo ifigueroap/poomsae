@@ -5,9 +5,9 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func providerReservation() config.FederationManagedCredentialReservation {
@@ -29,7 +29,7 @@ func providerReservation() config.FederationManagedCredentialReservation {
 }
 
 func TestProviderLookupDoesNotFollowAReusedProjectName(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store := config.DefaultFederationCredentialStore()
 	saved := providerReservation()
 	require.NoError(t, store.ReserveManagedFederationCredential(t.Context(), saved))
@@ -54,7 +54,7 @@ func TestProviderLookupDoesNotFollowAReusedProjectName(t *testing.T) {
 }
 
 func TestProviderReservationResumesAcrossCredentialReadsAndRekey(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	initial := providerReservation()
 	require.NoError(t, config.ReserveManagedFederationCredential(initial))
@@ -125,7 +125,7 @@ func TestProviderReservationRejectsChangedExpectedOperation(t *testing.T) {
 	}
 	for name, change := range changes {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			original := providerReservation()
 			require.NoError(t, config.ReserveManagedFederationCredential(original))
 			stale := providerReservation()

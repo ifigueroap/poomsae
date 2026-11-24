@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 )
 
 func TestWireNameHeaderMismatchAndFallback(t *testing.T) {

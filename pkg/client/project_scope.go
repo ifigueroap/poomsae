@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/projectscope"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/projectscope"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // WithProjectScope returns an independent client limited to projectRefs. Use

@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.kenn.io/kit/tui/splitlayout"
 
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/telemetry"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/version"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/version"
 )
 
 type recordingTelemetry struct {
@@ -65,7 +65,7 @@ func TestTaggedGoInstallDoesNotSendTUIUsage(t *testing.T) {
 	version.Version, version.Commit = "v0.23.0", "unknown"
 	t.Cleanup(func() { version.Version, version.Commit = oldVersion, oldCommit })
 	t.Setenv("TELEMETRY_ENABLED", "1")
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	var requests atomic.Int32
 	hc := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		requests.Add(1)
@@ -81,7 +81,7 @@ func TestTaggedGoInstallDoesNotSendTUIUsage(t *testing.T) {
 }
 
 func TestReportAppOpenedReachesDaemonCapture(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	recorder := &recordingTelemetry{finished: make(chan struct{})}
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.Telemetry = recorder })
 
@@ -101,7 +101,7 @@ func TestReportAppOpenedReachesDaemonCapture(t *testing.T) {
 }
 
 func TestReportSessionEndedBoundsDelivery(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	synctest.Test(t, func(t *testing.T) {
 		hc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			<-req.Context().Done()
@@ -129,7 +129,7 @@ func runCmd(cmd tea.Cmd) {
 }
 
 func TestInitReportsAppOpenedOncePerLaunch(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	var reports atomic.Int32
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/ui/telemetry" {
@@ -167,10 +167,10 @@ func TestInitReportsAppOpenedOncePerLaunch(t *testing.T) {
 	assert.Equal(t, int32(1), reports.Load(), "daemon switches and capability refetches must not report again")
 }
 
-type noAppOpenedAPI struct{ KataAPI }
+type noAppOpenedAPI struct{ PoomsaeAPI }
 
 func TestReportAppOpenedFailureIsSilent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	notFound := httptest.NewServer(http.NotFoundHandler())
 	t.Cleanup(notFound.Close)
 	readOnly := testenv.New(t, testenv.WithInsecureReadonly())
@@ -211,7 +211,7 @@ func TestReportAppOpenedFailureIsSilent(t *testing.T) {
 
 func TestScreenViewsThroughModelAndDaemon(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	recorder := &recordingTelemetry{}
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.Telemetry = recorder })
 	m := buildRunModel(Options{}, NewClient(env.URL, env.HTTP), bootInit{view: viewList})
@@ -250,7 +250,7 @@ func TestAttentionScreenViewsThroughModelAndDaemon(t *testing.T) {
 }
 
 func TestScreenViewsLayoutAndDaemonSwitch(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	var screens []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/ui/telemetry" {
@@ -293,7 +293,7 @@ func TestScreenViewsLayoutAndDaemonSwitch(t *testing.T) {
 	require.Equal(t, "empty", screens[len(screens)-1])
 	require.Equal(t, uint64(1), m.connGen)
 	t.Run("model visit rollover", func(t *testing.T) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		synctest.Test(t, func(t *testing.T) {
 			r := &screenVisitRecorder{}
 			m := initialModel(Options{})
@@ -330,7 +330,7 @@ func TestScreenName(t *testing.T) {
 }
 
 type screenVisitRecorder struct {
-	KataAPI
+	PoomsaeAPI
 	screens []string
 }
 
@@ -350,7 +350,7 @@ func (r *recordingTelemetry) SanitizeProperties(event string, properties map[str
 func TestTelemetryDailyScreens(t *testing.T) {
 	for _, event := range []string{"screen_viewed", "app_opened"} {
 		t.Run(event, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			synctest.Test(t, func(t *testing.T) {
 				var requests int
 				hc := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -389,7 +389,7 @@ func TestTelemetryDailyScreens(t *testing.T) {
 }
 
 func TestTelemetryDisabledSerializesConcurrentReports(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	synctest.Test(t, func(t *testing.T) {
 		var requests atomic.Int32
 		first, release := make(chan struct{}), make(chan struct{})
@@ -420,7 +420,7 @@ func TestTelemetryDisabledSerializesConcurrentReports(t *testing.T) {
 }
 
 func TestTelemetryGateAcrossDaemonSwitches(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	requests := map[string]int{}
 	client := func(target string) *Client {
 		return NewClient("http://"+target+".example", &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -449,7 +449,7 @@ func TestTelemetryGateAcrossDaemonSwitches(t *testing.T) {
 }
 
 func TestTelemetryRejectsInvalidReceipts(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	for _, receipt := range []string{`{}`, `{"status":"unexpected"}`} {
 		t.Run(receipt, func(t *testing.T) {
 			c := NewClient("http://daemon.example", &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {

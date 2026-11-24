@@ -374,7 +374,7 @@ func TestClientCancellationDuringPacingWait(t *testing.T) {
 	waiting := make(chan struct{})
 	var calls int
 	c := NewClient(ClientConfig{LookupEnv: func(key string) (string, bool) {
-		require.Equal(t, "KATA_NOTION_TOKEN", key)
+		require.Equal(t, "POOMSAE_NOTION_TOKEN", key)
 		return "test-secret", true
 	}, Transport: notionTransport(func(*http.Request) (*http.Response, error) { calls++; return jsonResponse(t, databaseWire()), nil }), Wait: func(ctx context.Context, d time.Duration) error { close(waiting); return waitForNotion(ctx, d) }})
 	s := session(t, c)

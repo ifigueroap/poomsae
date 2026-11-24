@@ -10,8 +10,8 @@ import (
 
 func TestParseCronExplainsUnsupportedSyntax(t *testing.T) {
 	for _, tc := range []struct{ expression, hint string }{
-		{"0 0 9 * * *", "Kata uses five fields"},
-		{"0 0 9 * * * 2026", "Kata uses five fields"},
+		{"0 0 9 * * *", "Poomsae uses five fields"},
+		{"0 0 9 * * * 2026", "Poomsae uses five fields"},
 		{"@reboot", "@reboot is not supported"},
 		{"@every 1ms", "adapter jobs can use @every 1s or longer; native recurring jobs use an interval trigger"},
 		{"0 9 L JAN *", "L, W, and # syntax is not supported"},
@@ -26,7 +26,7 @@ func TestParseCronExplainsUnsupportedSyntax(t *testing.T) {
 			require.ErrorContains(t, err, tc.hint)
 		})
 	}
-	// The parser describes these as options Kata could enable; Kata never does.
+	// The parser describes these as options Poomsae could enable; Poomsae never does.
 	for _, tc := range []struct{ expression, message string }{
 		{"0 9 L JAN *", "invalid cron document: invalid cron expression: L, W, and # syntax is not supported"},
 		{"0 9 * * 5#2", "invalid cron document: invalid cron expression: L, W, and # syntax is not supported"},
@@ -43,7 +43,7 @@ func TestParseCronExplainsUnsupportedSyntax(t *testing.T) {
 		t.Run(expression, func(t *testing.T) {
 			_, err := ParseCron(expression)
 			require.ErrorContains(t, err, "unrecognized descriptor")
-			require.NotContains(t, err.Error(), "Kata uses five fields")
+			require.NotContains(t, err.Error(), "Poomsae uses five fields")
 			require.NotContains(t, err.Error(), "L, W, and # syntax is not supported")
 		})
 	}

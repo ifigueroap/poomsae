@@ -39,7 +39,7 @@ func TestRun_BuildSourceSnapshotWritesArchiveAndMetadata(t *testing.T) {
 	runReleaseGit(t, repo, "init", "-q")
 	runReleaseGit(t, repo, "config", "user.name", "Example User")
 	runReleaseGit(t, repo, "config", "user.email", "example@example.test")
-	goMod := `module go.kenn.io/kata
+	goMod := `module github.com/ifigueroap/poomsae
 
 go 1.26.3
 
@@ -48,7 +48,7 @@ require example.test/dependency v0.0.0
 replace example.test/dependency => ./third_party/dependency
 `
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(repo, "fixture.go"), []byte("package kata\n\nimport _ \"example.test/dependency\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "fixture.go"), []byte("package poomsae\n\nimport _ \"example.test/dependency\"\n"), 0o600))
 	require.NoError(t, os.MkdirAll(filepath.Join(repo, "third_party", "dependency"), 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "third_party", "dependency", "go.mod"), []byte("module example.test/dependency\n\ngo 1.26.3\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "third_party", "dependency", "dependency.go"), []byte("package dependency\n"), 0o600))

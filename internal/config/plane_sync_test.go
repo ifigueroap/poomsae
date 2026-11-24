@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestPlaneSyncConfig(t *testing.T) {
 	got, err := config.NormalizePlaneSyncConfig(config.PlaneSyncConfig{})
 	require.NoError(t, err)
-	require.Equal(t, "KATA_PLANE_TOKEN", got.TokenEnv)
+	require.Equal(t, "POOMSAE_PLANE_TOKEN", got.TokenEnv)
 	require.Equal(t, "https://api.plane.so", got.APIOrigin)
 	require.Equal(t, "https://app.plane.so", got.WebOrigin)
 	for _, origin := range []string{"https://plane.example", "https://PLANE.example:443/", "http://127.0.0.1:8080", "http://[::1]:8080"} {

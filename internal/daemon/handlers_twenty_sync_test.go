@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/twentysync"
 )
 
 const twentyWorkspaceID = "11111111-1111-4111-8111-111111111111"

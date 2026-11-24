@@ -1,2 +1,2 @@
-// Package importlabels normalizes external labels for kata imports.
+// Package importlabels normalizes external labels for poomsae imports.
 package importlabels

@@ -12,12 +12,12 @@ var (
 	repeatedDash = regexp.MustCompile(`-+`)
 )
 
-// Normalize converts an external label into kata's import label alphabet.
+// Normalize converts an external label into poomsae's import label alphabet.
 func Normalize(s string) string {
 	return NormalizeMax(s, 64)
 }
 
-// NormalizeMax converts an external label into kata's import label alphabet
+// NormalizeMax converts an external label into poomsae's import label alphabet
 // and bounds it to maxLen bytes.
 func NormalizeMax(s string, maxLen int) string {
 	normalized := strings.ToLower(strings.TrimSpace(s))

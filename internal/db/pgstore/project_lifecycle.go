@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // CountOpenIssues returns the number of visible open issues in a project.
@@ -334,7 +334,7 @@ func (s *Store) PurgeProject(ctx context.Context, params db.PurgeProjectParams) 
 func (s *Store) insertProjectPurgeLogTx(ctx context.Context, tx *sql.Tx, project db.Project,
 	counts projectPurgeCounts, resetCursor sql.NullInt64, actor string, reason *string,
 ) (int64, error) {
-	purgeUID, err := katauid.New()
+	purgeUID, err := poomsaeuid.New()
 	if err != nil {
 		return 0, err
 	}
@@ -398,7 +398,7 @@ func (s *Store) insertProjectIssuePurgeLogsTx(ctx context.Context, tx *sql.Tx, p
 		return mapSQLError(err, nil)
 	}
 	for _, snapshot := range snapshots {
-		purgeUID, err := katauid.New()
+		purgeUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate project issue purge uid: %w", err)
 		}

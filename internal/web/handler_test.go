@@ -25,11 +25,11 @@ func TestWebHandlerAssetsAndNavigationFallback(t *testing.T) {
 	t.Run("root redirect", func(t *testing.T) {
 		response := serveWebRequest(t.Context(), handler, http.MethodGet, "/", "text/html", "")
 		assert.Equal(t, http.StatusFound, response.Code)
-		assert.Equal(t, "/kata", response.Header().Get("Location"))
+		assert.Equal(t, "/poomsae", response.Header().Get("Location"))
 	})
 
 	t.Run("deep link", func(t *testing.T) {
-		response := serveWebRequest(t.Context(), handler, http.MethodGet, "/kata?issue=01HZNQ7VFPK1XGD8R5MABCD4EX", "text/html", "")
+		response := serveWebRequest(t.Context(), handler, http.MethodGet, "/poomsae?issue=01HZNQ7VFPK1XGD8R5MABCD4EX", "text/html", "")
 		require.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, string(files["index.html"].Data), response.Body.String())
 		assert.Equal(t, "no-store", response.Header().Get("Cache-Control"))
@@ -65,7 +65,7 @@ func TestWebHandlerAssetsAndNavigationFallback(t *testing.T) {
 		t.Run("owned "+path, func(t *testing.T) {
 			response := serveWebRequest(t.Context(), handler, http.MethodGet, path, "text/html", "")
 			assert.Equal(t, http.StatusNotFound, response.Code)
-			assert.NotContains(t, response.Body.String(), "Kata test shell")
+			assert.NotContains(t, response.Body.String(), "Poomsae test shell")
 		})
 	}
 }
@@ -120,7 +120,7 @@ func TestWebHandlerRejectsUnsafeAndNonNavigationPaths(t *testing.T) {
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)
 			assert.Equal(t, http.StatusNotFound, response.Code)
-			assert.NotContains(t, response.Body.String(), "Kata test shell")
+			assert.NotContains(t, response.Body.String(), "Poomsae test shell")
 		})
 	}
 }
@@ -134,7 +134,7 @@ func TestWebHandlerCompressesStaticTextFormats(t *testing.T) {
 		path string
 		want []byte
 	}{
-		{path: "/kata", want: files["index.html"].Data},
+		{path: "/poomsae", want: files["index.html"].Data},
 		{path: "/assets/app-a1b2c3d4.js", want: files["assets/app-a1b2c3d4.js"].Data},
 		{path: "/assets/app-e5f6a7b8.css", want: files["assets/app-e5f6a7b8.css"].Data},
 		{path: "/assets/icon-aabbccdd.svg", want: files["assets/icon-aabbccdd.svg"].Data},
@@ -181,7 +181,7 @@ func webHandlerTestFS(t *testing.T) fstest.MapFS {
 	})
 	require.NoError(t, err)
 	return fstest.MapFS{
-		"index.html":                   &fstest.MapFile{Data: []byte("<!doctype html><title>Kata test shell</title>" + strings.Repeat(" safe", 80)), Mode: fs.FileMode(0o444)},
+		"index.html":                   &fstest.MapFile{Data: []byte("<!doctype html><title>Poomsae test shell</title>" + strings.Repeat(" safe", 80)), Mode: fs.FileMode(0o444)},
 		".vite/manifest.json":          &fstest.MapFile{Data: manifest, Mode: fs.FileMode(0o444)},
 		"assets/app-a1b2c3d4.js":       &fstest.MapFile{Data: []byte(strings.Repeat("export const ready=true;", 20)), Mode: fs.FileMode(0o444)},
 		"assets/app-e5f6a7b8.css":      &fstest.MapFile{Data: []byte(strings.Repeat("body{color:#123456}", 20)), Mode: fs.FileMode(0o444)},

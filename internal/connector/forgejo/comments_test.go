@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 type nativeComment struct {
@@ -140,7 +140,7 @@ func TestPublicationRetryAfterLostResponseAndScopedStripping(t *testing.T) {
 	}
 	op := sha256.Sum256([]byte(p.OperationID))
 	suffix := ":" + hex.EncodeToString(op[:]) + " -->"
-	if !strings.HasSuffix(comments[0].Body, suffix) || !strings.HasPrefix(comments[0].Body, p.Body+"\n\n<!-- kata-publish:") {
+	if !strings.HasSuffix(comments[0].Body, suffix) || !strings.HasPrefix(comments[0].Body, p.Body+"\n\n<!-- poomsae-publish:") {
 		t.Fatalf("provider body %q", comments[0].Body)
 	}
 	listed := result[connector.ListCommentsResult](t, exchange(t, h, s.URL, "list_comments", connector.ListCommentsParams{RootKey: p.RootKey}))
@@ -236,7 +236,7 @@ func TestPublicationRetryFindsDeliveryAfterUnfinishedMarker(t *testing.T) {
 	rootKey := "23#7@91"
 	scope := (&client{instance: "example-instance"}).scope(rootKey)
 	p := connector.PublishCommentParams{
-		RootKey: rootKey, Body: "Body with unfinished marker: <!-- kata-publish:" + scope + ":unfinished",
+		RootKey: rootKey, Body: "Body with unfinished marker: <!-- poomsae-publish:" + scope + ":unfinished",
 		OperationID: "unfinished-marker-operation",
 	}
 	if response := exchange(t, h, s.URL, "publish_comment", p); response.Error == nil {

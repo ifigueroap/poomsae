@@ -1,6 +1,6 @@
 package db
 
-import "go.kenn.io/kata/internal/metadata"
+import "github.com/ifigueroap/poomsae/internal/metadata"
 
 // planningCalendarDates holds both planning fields' calendar dates. Each field
 // resolves independently, so one unreadable value leaves the other usable.

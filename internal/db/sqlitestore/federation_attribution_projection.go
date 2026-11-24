@@ -1,6 +1,6 @@
 package sqlitestore
 
-import "go.kenn.io/kata/internal/db"
+import "github.com/ifigueroap/poomsae/internal/db"
 
 // Creation proof and its historical pin are read in the entity's own native
 // snapshot. This preserves UI consistency and applies to every scoped selector.

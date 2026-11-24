@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // StatusSession adds optional status-only operations to a read session.

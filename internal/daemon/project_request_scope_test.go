@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
-const requestProjectScopeHeader = "X-Kata-Project-Scope"
+const requestProjectScopeHeader = "X-Poomsae-Project-Scope"
 
 func requestScopeValue(t *testing.T, refs ...string) string {
 	t.Helper()

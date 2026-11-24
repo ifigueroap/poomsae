@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 // Clients label a connection without an account from the authentication
@@ -30,7 +30,7 @@ func TestActorlessConnectionsReportDistinctAuthKind(t *testing.T) {
 		{name: "unauthenticated_private_network", config: daemon.ServerConfig{Auth: config.AuthConfig{AllowUnauthenticatedPrivateNetworkWrites: true}}, want: "unauthenticated_private_network"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, store.Close()) })
 			tc.config.DB = store

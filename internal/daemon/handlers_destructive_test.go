@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type pendingRelayPurgeStore struct{ db.Storage }
@@ -28,13 +28,13 @@ func TestPurge_PendingRelayDeliveryIsConflict(t *testing.T) {
 	})
 	issue, _, err := h.DB().CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: projectID, Title: "Pending delivery", Author: "member"})
 	require.NoError(t, err)
-	response := postWithHeader(t, h.ts.(*httptest.Server), issueURLRef(projectID, issue.ShortID, "actions/purge"), map[string]string{"X-Kata-Confirm": confirmHeader(t, h, projectID, issue.ID, "PURGE")}, map[string]any{"actor": "member"})
+	response := postWithHeader(t, h.ts.(*httptest.Server), issueURLRef(projectID, issue.ShortID, "actions/purge"), map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, projectID, issue.ID, "PURGE")}, map[string]any{"actor": "member"})
 	assertAPIError(t, response.status, response.body, http.StatusConflict, "federation_pending_delivery")
 	_, err = h.DB().IssueByUID(t.Context(), issue.UID, db.IncludeDeletedYes)
 	require.NoError(t, err)
 }
 
-// confirmHeader builds the X-Kata-Confirm value for an issue. After Task 11
+// confirmHeader builds the X-Poomsae-Confirm value for an issue. After Task 11
 // the daemon expects "<verb> <project>#<short_id>" rather than the old
 // "<verb> #N" form.
 func confirmHeader(t *testing.T, h *httptestServerHandle, projectID, issueID int64, verb string) string {
@@ -59,7 +59,7 @@ func TestDelete_RejectsWrongConfirmValue(t *testing.T) {
 	_, ts, pid, num := bootstrapProjectWithIssue(t)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": "DELETE kata#zzzz"}, // wrong short_id
+		map[string]string{"X-Poomsae-Confirm": "DELETE poomsae#zzzz"}, // wrong short_id
 		map[string]any{"actor": "agent"})
 	assertAPIError(t, resp.status, resp.body, 412, "confirm_mismatch")
 }
@@ -68,7 +68,7 @@ func TestDelete_AcceptsCorrectConfirmAndSoftDeletes(t *testing.T) {
 	h, ts, pid, num := bootstrapProjectWithIssue(t)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
 		map[string]any{"actor": "agent"})
 	require.Equal(t, 200, resp.status, string(resp.body))
 	assert.Contains(t, string(resp.body), `"changed":true`)
@@ -92,7 +92,7 @@ func TestDelete_RequiresAdministratorToUnbindExternalRootFirst(t *testing.T) {
 	require.NoError(t, err)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
 		map[string]any{"actor": "agent"})
 
 	assertAPIError(t, resp.status, resp.body, 409, "external_root_content_owned")
@@ -108,11 +108,11 @@ func TestDelete_AlreadyDeletedIsNoOp(t *testing.T) {
 	h, ts, pid, num := bootstrapProjectWithIssue(t)
 	hdr := confirmHeader(t, h, pid, num, "DELETE")
 	requireOK(t, postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": hdr},
+		map[string]string{"X-Poomsae-Confirm": hdr},
 		map[string]any{"actor": "agent"}))
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": hdr},
+		map[string]string{"X-Poomsae-Confirm": hdr},
 		map[string]any{"actor": "agent"})
 	require.Equal(t, 200, resp.status, string(resp.body))
 	assert.Contains(t, string(resp.body), `"changed":false`)
@@ -122,7 +122,7 @@ func TestDelete_AlreadyDeletedIsNoOp(t *testing.T) {
 func TestRestore_ClearsDeletedAt(t *testing.T) {
 	h, ts, pid, num := bootstrapProjectWithIssue(t)
 	requireOK(t, postWithHeader(t, ts, issueURL(pid, num, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "DELETE")},
 		map[string]any{"actor": "agent"}))
 
 	resp, bs := postJSON(t, ts, issueURL(pid, num, "actions/restore"),
@@ -150,13 +150,13 @@ func TestPurge_RequiresConfirmHeaderAndRemovesAllRows(t *testing.T) {
 
 	// Wrong header → 412 confirm_mismatch.
 	resp = postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": "DELETE kata#zzzz"},
+		map[string]string{"X-Poomsae-Confirm": "DELETE poomsae#zzzz"},
 		map[string]any{"actor": "agent"})
 	assertAPIError(t, resp.status, resp.body, 412, "confirm_mismatch")
 
 	// Correct header → 200 with purge_log.
 	resp = postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
 		map[string]any{"actor": "agent"})
 	require.Equal(t, 200, resp.status, string(resp.body))
 	assert.Contains(t, string(resp.body), `"purge_log"`)
@@ -182,7 +182,7 @@ func TestPurge_RequiresAdministratorToUnbindExternalRootFirst(t *testing.T) {
 	require.NoError(t, err)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
 		map[string]any{"actor": "agent"})
 
 	assertAPIError(t, resp.status, resp.body, 409, "external_root_content_owned")
@@ -211,7 +211,7 @@ func TestPurge_FederatedSpokeRequiresHubAdmin(t *testing.T) {
 	require.NoError(t, err)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
 		map[string]any{"actor": "agent"})
 
 	assertAPIError(t, resp.status, resp.body, 409, "federated_admin_required")
@@ -236,12 +236,12 @@ func TestPurge_FederatedHubRequiresIssueClaim(t *testing.T) {
 	require.NoError(t, err)
 
 	resp := postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
 		map[string]any{"actor": "bob"})
 	assertAPIError(t, resp.status, resp.body, 409, "claim_denied")
 
 	resp = postWithHeader(t, ts, issueURL(pid, num, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
+		map[string]string{"X-Poomsae-Confirm": confirmHeader(t, h, pid, num, "PURGE")},
 		map[string]any{"actor": "alice"})
 	require.Equal(t, 200, resp.status, string(resp.body))
 	assert.Contains(t, string(resp.body), `"purge_log"`)
@@ -271,8 +271,8 @@ func TestPurge_FederatedHubUsesResolvedIdentityActorForClaimGate(t *testing.T) {
 
 	resp, raw := envDoRaw(t, env, http.MethodPost, issuePathRef(project.ID, issue.ShortID, "actions/purge"),
 		map[string]any{"actor": ""}, map[string]string{
-			"Authorization":  "Bearer alice-token",
-			"X-Kata-Confirm": "PURGE " + project.Name + "#" + issue.ShortID,
+			"Authorization":     "Bearer alice-token",
+			"X-Poomsae-Confirm": "PURGE " + project.Name + "#" + issue.ShortID,
 		})
 
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
@@ -287,7 +287,7 @@ func TestDelete_UnknownIssueIs404(t *testing.T) {
 	ts := h.ts.(*httptest.Server)
 
 	resp := postWithHeader(t, ts, issueURL(pid, 9999, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": "DELETE #9999"},
+		map[string]string{"X-Poomsae-Confirm": "DELETE #9999"},
 		map[string]any{"actor": "agent"})
 	assertAPIError(t, resp.status, resp.body, 404, "issue_not_found")
 }
@@ -309,7 +309,7 @@ func TestPurge_UnknownIssueIs404(t *testing.T) {
 	ts := h.ts.(*httptest.Server)
 
 	resp := postWithHeader(t, ts, issueURL(pid, 9999, "actions/purge"),
-		map[string]string{"X-Kata-Confirm": "PURGE #9999"},
+		map[string]string{"X-Poomsae-Confirm": "PURGE #9999"},
 		map[string]any{"actor": "agent"})
 	assertAPIError(t, resp.status, resp.body, 404, "issue_not_found")
 }

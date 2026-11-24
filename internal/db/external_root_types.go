@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	katauid "go.kenn.io/kata/internal/uid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ExternalRootClaimStaleAfter is the default freshness window used to fence
@@ -28,7 +28,7 @@ func ExternalRootClaimIsFresh(binding ExternalRootBinding, staleBefore time.Time
 	return binding.ClaimStartedAt == nil || !binding.ClaimStartedAt.Before(staleBefore)
 }
 
-// ExternalRootBinding is the durable association between one Kata issue and
+// ExternalRootBinding is the durable association between one Poomsae issue and
 // one root resolved by a configured connector instance. It contains identity
 // and delivery state only; connector configuration and credentials never
 // belong in this record.
@@ -80,7 +80,7 @@ func ExternalRootLifecycleMappingSource(binding ExternalRootBinding) string {
 }
 
 // ExternalRootPublishedCommentMappingSource scopes comments published from
-// Kata separately from inbound projections. This direction marker prevents a
+// Poomsae separately from inbound projections. This direction marker prevents a
 // later provider edit from rewriting a locally authored comment in place.
 func ExternalRootPublishedCommentMappingSource(binding ExternalRootBinding) string {
 	return ExternalRootCommentMappingSource(binding) + ":published"
@@ -131,7 +131,7 @@ func ExternalRootRevisionMappingExternalID(externalRootKey, revision string) str
 // ValidateExternalRootBindingReplayIdentity checks that a replayed binding's
 // durable root mapping names the same connector root as the binding itself.
 func ValidateExternalRootBindingReplayIdentity(binding ExternalRootBindingExport) error {
-	if !katauid.Valid(binding.UID) {
+	if !poomsaeuid.Valid(binding.UID) {
 		return fmt.Errorf("%w: valid binding UID is required", ErrExternalRootValidation)
 	}
 	if binding.CreatedAt.IsZero() || binding.UpdatedAt.IsZero() {
@@ -153,7 +153,7 @@ func ValidateExternalRootBindingReplayIdentity(binding ExternalRootBindingExport
 type ExternalFieldMapping struct {
 	ID                int64
 	ConnectorInstance string
-	KataField         string
+	PoomsaeField      string
 	ExternalFieldID   string
 	ExternalFieldName string
 	SchemaRevision    string
@@ -348,7 +348,7 @@ type ClearPendingExternalCommentParams struct {
 // ExternalFieldMappingParams defines one validated connector field mapping.
 type ExternalFieldMappingParams struct {
 	ConnectorInstance string
-	KataField         string
+	PoomsaeField      string
 	ExternalFieldID   string
 	ExternalFieldName string
 	AcceptedKinds     []string
@@ -371,14 +371,14 @@ type ExternalFieldStateParams struct {
 }
 
 // ExternalFieldProjectionParams carries the closed native metadata mutation
-// for one mapped planning field. Patch may contain only KataField and the
+// for one mapped planning field. Patch may contain only PoomsaeField and the
 // shared timezone key; connector settings and arbitrary external diagnostics
 // cannot cross this boundary.
 type ExternalFieldProjectionParams struct {
 	BindingID             int64
 	MappingID             int64
 	ClaimToken            string
-	KataField             string
+	PoomsaeField          string
 	Patch                 map[string]jsontext.Value
 	ExpectedIssueRevision int64
 	IntegrationActor      string
@@ -561,7 +561,7 @@ type ExternalRootAuditPayload struct {
 	Active            bool   `json:"active"`
 	Enabled           bool   `json:"enabled"`
 	PendingCommentUID string `json:"pending_comment_uid,omitempty"`
-	KataField         string `json:"kata_field,omitempty"`
+	PoomsaeField      string `json:"kata_field,omitempty"`
 }
 
 // MarshalExternalRootAuditPayload builds the closed bridge audit event payload.
@@ -570,13 +570,13 @@ func MarshalExternalRootAuditPayload(
 	action string,
 	actor string,
 	pendingCommentUID string,
-	kataField string,
+	poomsaeField string,
 ) (string, error) {
 	payload, err := json.Marshal(ExternalRootAuditPayload{
 		BindingUID: binding.UID, ConnectorInstance: binding.ConnectorInstance,
 		ExternalRootKey: binding.ExternalRootKey, Action: action, Actor: actor,
 		Active: binding.Active, Enabled: binding.Enabled,
-		PendingCommentUID: pendingCommentUID, KataField: kataField,
+		PendingCommentUID: pendingCommentUID, PoomsaeField: poomsaeField,
 	})
 	if err != nil {
 		return "", fmt.Errorf("marshal external root audit payload: %w", err)
@@ -655,7 +655,7 @@ func containsNUL(values ...string) bool {
 // mapping and returns a deterministic accepted-kind ordering for comparisons.
 func NormalizeExternalFieldMappingParams(params ExternalFieldMappingParams) (ExternalFieldMappingParams, error) {
 	params.ConnectorInstance = strings.TrimSpace(params.ConnectorInstance)
-	params.KataField = strings.TrimSpace(params.KataField)
+	params.PoomsaeField = strings.TrimSpace(params.PoomsaeField)
 	params.ExternalFieldID = strings.TrimSpace(params.ExternalFieldID)
 	params.ExternalFieldName = strings.TrimSpace(params.ExternalFieldName)
 	params.SchemaRevision = strings.TrimSpace(params.SchemaRevision)
@@ -663,8 +663,8 @@ func NormalizeExternalFieldMappingParams(params ExternalFieldMappingParams) (Ext
 		params.ExternalFieldName == "" || params.SchemaRevision == "" {
 		return ExternalFieldMappingParams{}, fmt.Errorf("%w: mapping identities are required", ErrExternalFieldMappingValidation)
 	}
-	if params.KataField != "scheduled_on" && params.KataField != "deadline_on" {
-		return ExternalFieldMappingParams{}, fmt.Errorf("%w: unsupported Kata field %q", ErrExternalFieldMappingValidation, params.KataField)
+	if params.PoomsaeField != "scheduled_on" && params.PoomsaeField != "deadline_on" {
+		return ExternalFieldMappingParams{}, fmt.Errorf("%w: unsupported Poomsae field %q", ErrExternalFieldMappingValidation, params.PoomsaeField)
 	}
 	if !params.Nullable || !params.Writable {
 		return ExternalFieldMappingParams{}, fmt.Errorf("%w: mapped field must be nullable and writable", ErrExternalFieldMappingValidation)
@@ -702,7 +702,7 @@ func NormalizeExternalFieldMappingExport(mapping ExternalFieldMappingExport) (Ex
 	}
 	normalized, err := NormalizeExternalFieldMappingParams(ExternalFieldMappingParams{
 		ConnectorInstance: mapping.ConnectorInstance,
-		KataField:         mapping.KataField,
+		PoomsaeField:      mapping.PoomsaeField,
 		ExternalFieldID:   mapping.ExternalFieldID,
 		ExternalFieldName: mapping.ExternalFieldName,
 		AcceptedKinds:     mapping.AcceptedKinds,
@@ -714,7 +714,7 @@ func NormalizeExternalFieldMappingExport(mapping ExternalFieldMappingExport) (Ex
 		return ExternalFieldMappingExport{}, err
 	}
 	mapping.ConnectorInstance = normalized.ConnectorInstance
-	mapping.KataField = normalized.KataField
+	mapping.PoomsaeField = normalized.PoomsaeField
 	mapping.ExternalFieldID = normalized.ExternalFieldID
 	mapping.ExternalFieldName = normalized.ExternalFieldName
 	mapping.AcceptedKinds = normalized.AcceptedKinds
@@ -737,7 +737,7 @@ func ValidateExternalFieldStateParams(params ExternalFieldStateParams) error {
 		if len(params.ConflictKata) == 0 || len(params.ConflictExternal) == 0 {
 			return fmt.Errorf("%w: both conflict candidates are required", ErrExternalRootValidation)
 		}
-		if err := validateOptionalJSON("Kata conflict", params.ConflictKata); err != nil {
+		if err := validateOptionalJSON("Poomsae conflict", params.ConflictKata); err != nil {
 			return err
 		}
 		if err := validateOptionalJSON("external conflict", params.ConflictExternal); err != nil {
@@ -768,7 +768,7 @@ func ValidateExternalFieldStateExport(state ExternalFieldStateExport) error {
 			state.ConflictAt == nil || state.ConflictAt.IsZero() {
 			return fmt.Errorf("%w: conflict candidates and timestamp are required", ErrExternalRootValidation)
 		}
-		if err := validateOptionalJSON("Kata conflict", state.ConflictKata); err != nil {
+		if err := validateOptionalJSON("Poomsae conflict", state.ConflictKata); err != nil {
 			return err
 		}
 		if err := validateOptionalJSON("external conflict", state.ConflictExternal); err != nil {
@@ -786,20 +786,20 @@ func ValidateExternalFieldProjectionParams(params ExternalFieldProjectionParams)
 		strings.TrimSpace(params.IntegrationActor) == "" {
 		return fmt.Errorf("%w: binding, mapping, issue revision, claim token, and integration actor are required", ErrExternalRootValidation)
 	}
-	if params.KataField != strings.TrimSpace(params.KataField) {
-		return fmt.Errorf("%w: Kata field must be canonical", ErrExternalRootValidation)
+	if params.PoomsaeField != strings.TrimSpace(params.PoomsaeField) {
+		return fmt.Errorf("%w: Poomsae field must be canonical", ErrExternalRootValidation)
 	}
-	if params.KataField != "scheduled_on" && params.KataField != "deadline_on" {
-		return fmt.Errorf("%w: unsupported Kata field %q", ErrExternalRootValidation, params.KataField)
+	if params.PoomsaeField != "scheduled_on" && params.PoomsaeField != "deadline_on" {
+		return fmt.Errorf("%w: unsupported Poomsae field %q", ErrExternalRootValidation, params.PoomsaeField)
 	}
 	if len(params.Patch) == 0 || len(params.Patch) > 2 {
 		return fmt.Errorf("%w: field projection patch is invalid", ErrExternalRootValidation)
 	}
-	if _, ok := params.Patch[params.KataField]; !ok {
-		return fmt.Errorf("%w: field projection patch must contain %s", ErrExternalRootValidation, params.KataField)
+	if _, ok := params.Patch[params.PoomsaeField]; !ok {
+		return fmt.Errorf("%w: field projection patch must contain %s", ErrExternalRootValidation, params.PoomsaeField)
 	}
 	for key, raw := range params.Patch {
-		if key != params.KataField && key != "timezone" {
+		if key != params.PoomsaeField && key != "timezone" {
 			return fmt.Errorf("%w: field projection patch contains unsupported key %q", ErrExternalRootValidation, key)
 		}
 		if !jsontext.Value(raw).IsValid() {

@@ -1,13 +1,13 @@
-// Package api defines the request/response DTOs for the kata daemon HTTP API.
+// Package api defines the request/response DTOs for the poomsae daemon HTTP API.
 package api //nolint:revive // package name "api" is fixed by Plan 1 §4 wire-types layout.
 
 import (
 	"cmp"
 	"time"
 
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/transcript"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/transcript"
 )
 
 // CloseRetryProtocol marks a close request whose retry headers must be
@@ -157,7 +157,7 @@ type FederationConfigHealth struct {
 	LastErrorStatus   int        `json:"last_error_status,omitempty,omitzero"`
 }
 
-// InstanceResponse mirrors /api/v1/instance. Surfaces the local kata
+// InstanceResponse mirrors /api/v1/instance. Surfaces the local poomsae
 // installation's stable identifier so a future spoke client can discover the
 // peer it is connecting to. Version and SchemaVersion let the spoke decide
 // whether it speaks the same wire and storage contracts before issuing
@@ -338,7 +338,7 @@ type ProjectOut struct {
 //     alias.identity; on miss it falls back to Name (if supplied) and
 //     attaches the alias on first-seen. Resolve is strict — the daemon
 //     never creates a project on alias miss, so a git-only client whose
-//     alias is unregistered gets a 404 (run "kata init").
+//     alias is unregistered gets a 404 (run "poomsae init").
 //  2. Name (without Alias): strict path-free name lookup.
 //  3. StartPath: legacy local-daemon flow that walks the daemon's
 //     filesystem from the client-supplied path. Only useful when the
@@ -377,7 +377,7 @@ type AliasInput struct {
 	Kind     string `json:"kind" doc:"\"git\" or \"local\""`
 }
 
-// InitProjectRequest is POST /api/v1/projects (used by `kata init`).
+// InitProjectRequest is POST /api/v1/projects (used by `poomsae init`).
 //
 // Two modes:
 //
@@ -473,8 +473,8 @@ type MergeProjectResponse struct {
 // Alias headers use the same alias-first resolution as the resolve endpoint.
 type ProjectTarget struct {
 	ProjectSelector  string `path:"project_id" required:"true" doc:"Numeric project ID or name:<project name>; name: alone requires an alias"`
-	ProjectAlias     string `header:"X-Kata-Project-Alias" doc:"Workspace alias identity; requires a name: selector"`
-	ProjectAliasKind string `header:"X-Kata-Project-Alias-Kind" doc:"Workspace alias kind; required with X-Kata-Project-Alias"`
+	ProjectAlias     string `header:"X-Poomsae-Project-Alias" doc:"Workspace alias identity; requires a name: selector"`
+	ProjectAliasKind string `header:"X-Poomsae-Project-Alias-Kind" doc:"Workspace alias kind; required with X-Poomsae-Project-Alias"`
 	ProjectID        int64  `json:"-" hidden:"true"`
 }
 
@@ -483,7 +483,7 @@ func (p *ProjectTarget) Target() *ProjectTarget { return p }
 
 // ProjectNameHeader carries the canonical name selected for a mutation.
 type ProjectNameHeader struct {
-	ProjectName string `header:"X-Kata-Project-Name" doc:"Canonical project name"`
+	ProjectName string `header:"X-Poomsae-Project-Name" doc:"Canonical project name"`
 }
 
 // SetProjectName records the canonical project selected by the daemon.
@@ -495,7 +495,7 @@ func (p *ProjectNameHeader) SetProjectName(name string) { p.ProjectName = name }
 // Body.ForceNew bypasses look-alike soft-block but is overridden by an
 // idempotent match (idempotency wins per spec §3.7).
 type CreateIssueRequest struct {
-	Surface string `header:"X-Kata-Surface" doc:"Client interface for action telemetry (web, tui, or cli); other values are ignored."`
+	Surface string `header:"X-Poomsae-Surface" doc:"Client interface for action telemetry (web, tui, or cli); other values are ignored."`
 	ProjectTarget
 	IdempotencyKey string `header:"Idempotency-Key"`
 	Body           struct {
@@ -518,7 +518,7 @@ type CreateIssueRequest struct {
 
 // CreateInitialLinkBody is one entry in CreateIssueRequest.Body.Links.
 //
-// ToRef is a short_id, qualified short_id ("kata#abc4"), or a 26-char ULID;
+// ToRef is a short_id, qualified short_id ("poomsae#abc4"), or a 26-char ULID;
 // the daemon resolves it to the target issue at request time. Default
 // direction: the new issue is the link's "from" side (e.g. for type=blocks
 // the new issue blocks ToRef). Incoming applies only to type=blocks: when
@@ -601,7 +601,7 @@ type ListAllIssuesRequest struct {
 
 	// Deprecated query params kept on the struct only to surface a 400 if a
 	// stale client still sends them — the daemon used to honor view= /
-	// area= / offset= and the X-Kata-Client-TZ header for server-computed
+	// area= / offset= and the X-Poomsae-Client-TZ header for server-computed
 	// named views (today/upcoming/inbox/someday/anytime/logbook). Views were
 	// removed; consumers now assemble them client-side from the unfiltered
 	// /api/v1/issues + /api/v1/projects responses. Silently ignoring these
@@ -609,7 +609,7 @@ type ListAllIssuesRequest struct {
 	DeprecatedView     string `query:"view,omitempty" hidden:"true" doc:"REMOVED — assemble views client-side"`
 	DeprecatedArea     string `query:"area,omitempty" hidden:"true" doc:"REMOVED — filter by project.metadata.area client-side"`
 	DeprecatedOffset   string `query:"offset,omitempty" hidden:"true" doc:"REMOVED — view pagination is consumer-side"`
-	DeprecatedClientTZ string `header:"X-Kata-Client-TZ" hidden:"true" doc:"REMOVED — compute today_local on the consumer"`
+	DeprecatedClientTZ string `header:"X-Poomsae-Client-TZ" hidden:"true" doc:"REMOVED — compute today_local on the consumer"`
 }
 
 // IssueOut is the wire projection of one row in ListIssuesResponse.
@@ -701,7 +701,7 @@ type IssueRef struct {
 }
 
 // ShowIssueRequest is GET /api/v1/projects/{id}/issues/{ref}. Ref accepts a
-// short_id (e.g. "abc4"), a qualified short_id (e.g. "kata#abc4"), or a
+// short_id (e.g. "abc4"), a qualified short_id (e.g. "poomsae#abc4"), or a
 // 26-char ULID; the daemon's path resolver picks the matching column.
 // IncludeDeleted=true allows fetching soft-deleted issues; default returns 404
 // for them.
@@ -779,7 +779,7 @@ func (e ReachableGraphEdge) Compare(other ReachableGraphEdge) int {
 }
 
 // ReachableGraphUnresolvedRef records a link endpoint that could not be
-// materialized into a node. Normal kata mutations prevent this; the field is
+// materialized into a node. Normal poomsae mutations prevent this; the field is
 // still part of the canonical response so clients can tolerate imported,
 // federated, or manually repaired databases without dropping references.
 type ReachableGraphUnresolvedRef struct {
@@ -1021,7 +1021,7 @@ type ActionRequest struct {
 // CloseActionRequest adds retry and optimistic-concurrency headers to the
 // shared issue action body.
 type CloseActionRequest struct {
-	Surface        string `header:"X-Kata-Surface" doc:"Client interface for action telemetry (web, tui, or cli); other values are ignored."`
+	Surface        string `header:"X-Poomsae-Surface" doc:"Client interface for action telemetry (web, tui, or cli); other values are ignored."`
 	ProjectID      int64  `path:"project_id" required:"true"`
 	Ref            string `path:"ref" required:"true"`
 	IdempotencyKey string `header:"Idempotency-Key"`
@@ -1079,7 +1079,7 @@ type CreateLinkRequest struct {
 // always populated (0.2.0): links may span projects, so a bare short_id
 // is ambiguous without them. ShortID stays bare — it never carries a
 // "project#" prefix. Status carries the peer issue's own status (0.9.0)
-// so clients (e.g. `kata list` human output) can render a blocked glyph
+// so clients (e.g. `poomsae list` human output) can render a blocked glyph
 // without an extra per-peer lookup.
 type LinkPeer struct {
 	UID         string `json:"uid"`
@@ -1139,11 +1139,11 @@ type RemoveProjectResponse struct {
 }
 
 // ProjectPurgeRequest is POST /api/v1/projects/{project_id}/actions/purge.
-// Confirm gates the irreversible removal via the X-Kata-Confirm header
+// Confirm gates the irreversible removal via the X-Poomsae-Confirm header
 // ("PURGE <project_name>"); Reason is an optional audit note.
 type ProjectPurgeRequest struct {
 	ProjectID int64  `path:"project_id" required:"true"`
-	Confirm   string `header:"X-Kata-Confirm"`
+	Confirm   string `header:"X-Poomsae-Confirm"`
 	Body      struct {
 		Actor  string `json:"actor" required:"true"`
 		Reason string `json:"reason,omitempty"`
@@ -1355,13 +1355,13 @@ type LabelsListResponse struct {
 }
 
 // DestructiveActionRequest is POST /api/v1/projects/{id}/issues/{ref}/actions/delete
-// and .../actions/purge. Confirm is read from the X-Kata-Confirm header per
+// and .../actions/purge. Confirm is read from the X-Poomsae-Confirm header per
 // spec §4.4 and must equal the exact strings "DELETE <project>#<short_id>" /
 // "PURGE <project>#<short_id>".
 type DestructiveActionRequest struct {
 	ProjectID int64  `path:"project_id" required:"true"`
 	Ref       string `path:"ref" required:"true"`
-	Confirm   string `header:"X-Kata-Confirm"`
+	Confirm   string `header:"X-Poomsae-Confirm"`
 	Body      struct {
 		Actor  string `json:"actor" required:"true"`
 		Reason string `json:"reason,omitempty"` // purge only; lands in purge_log.reason
@@ -1430,7 +1430,7 @@ type DigestTotals struct {
 // IssueShortID/IssueUID identify the issue (UID is canonical; short_id is a
 // display snapshot). Actions is a stable, ordered list of human-readable
 // action tokens (e.g. "created", "commented:2", "closed:done", "labeled:bug",
-// "unblocks kata#abc4"). The aggregator collapses repeated comments into a
+// "unblocks poomsae#abc4"). The aggregator collapses repeated comments into a
 // count and joins the close reason / label name into the token so the
 // renderer can stay dumb.
 type DigestIssueActions struct {
@@ -1504,7 +1504,7 @@ type SearchHit struct {
 // response is byte-identical to its pre-semantic shape apart from the
 // always-present mode echo.
 type SearchResponse struct {
-	EmbeddingsConfigured string `header:"X-Kata-Embeddings-Configured" doc:"Whether the daemon has an embeddings provider configured."`
+	EmbeddingsConfigured string `header:"X-Poomsae-Embeddings-Configured" doc:"Whether the daemon has an embeddings provider configured."`
 	Body                 struct {
 		PageMetadata
 

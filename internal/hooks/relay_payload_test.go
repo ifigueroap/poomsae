@@ -8,16 +8,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 // The daemon publishes the events relay acceptance returns, unchanged, to the
 // hook dispatcher. A relayed creation's hook payload must carry the issue the
 // relay materialized, as a locally created issue's payload does.
 func TestRelayedIssueCreationHookPayloadCarriesIssue(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	relayed := dbtest.AcceptRelayedIssueCreation(t, store)

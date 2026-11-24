@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/processtree"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/processtree"
 	"go.kenn.io/kit/consolewindow"
 )
 
@@ -272,7 +272,7 @@ func runJob(ctx context.Context, shutdown <-chan struct{}, job HookJob, deps run
 	// risk inconsistent results if the underlying alias mutated.
 	// The frozen wrapper still reports aliasErr so buildAliasBlock can
 	// log it; buildEnv only sees the gated `useAlias` so a resolver
-	// that returns (snap, true, err) doesn't leak KATA_ALIAS_* env
+	// that returns (snap, true, err) doesn't leak POOMSAE_ALIAS_* env
 	// vars while the stdin payload omits the alias block.
 	asnap, hasAlias, aliasErr := deps.Alias(ctx, job.Event)
 	useAlias := hasAlias && aliasErr == nil
@@ -317,11 +317,11 @@ func exitCodeOf(err error) int {
 	return -1
 }
 
-// HookVersionEnv is set on every hook child process; hook config cannot set KATA_ keys.
-const HookVersionEnv = "KATA_HOOK_VERSION"
+// HookVersionEnv is set on every hook child process; hook config cannot set POOMSAE_ keys.
+const HookVersionEnv = "POOMSAE_HOOK_VERSION"
 
 // buildEnv composes the child process's environment from baseEnv ⊕
-// the hook's user-defined env ⊕ the KATA_* contract vars. Alias-related
+// the hook's user-defined env ⊕ the POOMSAE_* contract vars. Alias-related
 // env is fed by the caller (runJob) which resolved it once for both
 // the stdin payload and this env slice.
 func buildEnv(baseEnv, userEnv []string, evt db.Event, asnap AliasSnapshot, hasAlias bool) []string {
@@ -329,19 +329,19 @@ func buildEnv(baseEnv, userEnv []string, evt db.Event, asnap AliasSnapshot, hasA
 	env = append(env, userEnv...)
 	env = append(env,
 		HookVersionEnv+"=1",
-		"KATA_EVENT_ID="+strconv.FormatInt(evt.ID, 10),
-		"KATA_EVENT_TYPE="+evt.Type,
-		"KATA_ACTOR="+evt.Actor,
-		"KATA_CREATED_AT="+evt.CreatedAt.UTC().Format(time.RFC3339Nano),
-		"KATA_PROJECT_ID="+strconv.FormatInt(evt.ProjectID, 10),
-		"KATA_PROJECT_NAME="+evt.ProjectName,
+		"POOMSAE_EVENT_ID="+strconv.FormatInt(evt.ID, 10),
+		"POOMSAE_EVENT_TYPE="+evt.Type,
+		"POOMSAE_ACTOR="+evt.Actor,
+		"POOMSAE_CREATED_AT="+evt.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"POOMSAE_PROJECT_ID="+strconv.FormatInt(evt.ProjectID, 10),
+		"POOMSAE_PROJECT_NAME="+evt.ProjectName,
 	)
 	if evt.IssueUID != nil {
-		env = append(env, "KATA_ISSUE_UID="+*evt.IssueUID)
+		env = append(env, "POOMSAE_ISSUE_UID="+*evt.IssueUID)
 	}
 	if hasAlias {
 		env = append(env,
-			"KATA_ALIAS_IDENTITY="+asnap.Identity,
+			"POOMSAE_ALIAS_IDENTITY="+asnap.Identity,
 		)
 	}
 	return env

@@ -207,7 +207,7 @@ func TestMCPReplyKindSchemasUseCanonicalKinds(t *testing.T) {
 	result, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
 	for _, tool := range result.Tools {
-		if tool.Name != "kata.comment" && tool.Name != "kata.show" {
+		if tool.Name != "poomsae.comment" && tool.Name != "poomsae.show" {
 			continue
 		}
 		properties := schemaObject(t, tool.InputSchema)["properties"].(map[string]any)
@@ -220,23 +220,23 @@ func TestShowFederatedAuthorInbound(t *testing.T) {
 	f := newCronFixture(t)
 	const actor = "Ana [member:11111111-1111-4111-8111-111111111111; enrollment:11111111-1111-4111-8111-111111111111]"
 	s := connectTestServerWithOptions(t, Options{Client: f.client, Scope: NewAllScope(), Actor: actor, Version: "test"})
-	created := callWorkflowTool(t, s, "kata.create", map[string]any{"project": f.project.Name, "title": "Discussion", "idempotency_key": "issue"})
+	created := callWorkflowTool(t, s, "poomsae.create", map[string]any{"project": f.project.Name, "title": "Discussion", "idempotency_key": "issue"})
 	ref := created["issue"].(map[string]any)["qualified_ref"].(string)
-	first := callWorkflowTool(t, s, "kata.comment", map[string]any{"ref": ref, "body": "Question", "idempotency_key": "first"})["comment"].(map[string]any)
+	first := callWorkflowTool(t, s, "poomsae.comment", map[string]any{"ref": ref, "body": "Question", "idempotency_key": "first"})["comment"].(map[string]any)
 	require.Equal(t, actor, first["author_filter"])
-	callWorkflowTool(t, f.session, "kata.comment", map[string]any{"ref": ref, "body": "Answer", "reply_to": first["uid"], "kind": "reply", "idempotency_key": "reply"})
-	shown := callWorkflowTool(t, s, "kata.show", map[string]any{"ref": ref})
+	callWorkflowTool(t, f.session, "poomsae.comment", map[string]any{"ref": ref, "body": "Answer", "reply_to": first["uid"], "kind": "reply", "idempotency_key": "reply"})
+	shown := callWorkflowTool(t, s, "poomsae.show", map[string]any{"ref": ref})
 	comments := shown["issue"].(map[string]any)["comments"].([]any)
 	require.Len(t, comments, 2)
 	root := comments[0].(map[string]any)
 	require.Equal(t, actor, root["author_filter"])
-	thread := callWorkflowTool(t, s, "kata.show", map[string]any{"ref": ref, "thread": first["uid"]})
+	thread := callWorkflowTool(t, s, "poomsae.show", map[string]any{"ref": ref, "thread": first["uid"]})
 	threadComments := thread["issue"].(map[string]any)["comments"].([]any)
 	require.Len(t, threadComments, 2)
 	root = threadComments[0].(map[string]any)
 	backlinks := root["backlinks"].([]any)
 	require.Len(t, backlinks, 1)
-	inbound := callWorkflowTool(t, s, "kata.show", map[string]any{"ref": ref, "inbound": root["author_filter"]})
+	inbound := callWorkflowTool(t, s, "poomsae.show", map[string]any{"ref": ref, "inbound": root["author_filter"]})
 	replies := inbound["issue"].(map[string]any)["comments"].([]any)
 	require.Len(t, replies, 1)
 	require.Equal(t, "Answer", replies[0].(map[string]any)["body"])

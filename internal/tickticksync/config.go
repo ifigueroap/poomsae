@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 var identityPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)

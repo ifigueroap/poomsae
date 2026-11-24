@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type priorityResp struct {

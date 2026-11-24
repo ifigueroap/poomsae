@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 type eventQueryRower interface {

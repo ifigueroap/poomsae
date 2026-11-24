@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"sync"
 
-	"go.kenn.io/kata/internal/client"
+	"github.com/ifigueroap/poomsae/internal/client"
 )
 
 // A profile connection shares its endpoint snapshot across API and SSE. The

@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/vector"
 )
 
 // A producer that reuses retained bytes for content that became current again

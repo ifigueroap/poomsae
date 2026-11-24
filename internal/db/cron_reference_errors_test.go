@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest/faultsql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db/dbtest/faultsql"
 )
 
 func TestCronReferenceOperationalErrorChains(t *testing.T) {

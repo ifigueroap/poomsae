@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func pingingServer(t *testing.T) *httptest.Server {
@@ -28,7 +28,7 @@ func pingingServer(t *testing.T) *httptest.Server {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":      true,
-			"service": "kata",
+			"service": "poomsae",
 			"version": "test",
 		})
 	}))
@@ -49,13 +49,13 @@ func TestCatalogTargetResolutionIgnoresMissingGlobalTokenFile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
 			srv := pingingServer(t)
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_DB", filepath.Join(home, "kata.db"))
-			t.Setenv("KATA_DSN", "")
-			t.Setenv("KATA_SERVER", "")
-			t.Setenv("KATA_AUTH_TOKEN", "")
-			t.Setenv("KATA_AUTH_TOKEN_FILE", "")
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_DB", filepath.Join(home, "poomsae.db"))
+			t.Setenv("POOMSAE_DSN", "")
+			t.Setenv("POOMSAE_SERVER", "")
+			t.Setenv("POOMSAE_AUTH_TOKEN", "")
+			t.Setenv("POOMSAE_AUTH_TOKEN_FILE", "")
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 			t.Chdir(t.TempDir())
 
 			active := ""
@@ -133,7 +133,7 @@ func TestParseHTTPTimeout(t *testing.T) {
 }
 
 func TestResolveRemote_NoEnvNoFile(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 
@@ -145,7 +145,7 @@ func TestResolveRemote_NoEnvNoFile(t *testing.T) {
 
 func TestResolveRemote_EnvWinsAndProbes(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", srv.URL)
+	t.Setenv("POOMSAE_SERVER", srv.URL)
 
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.NoError(t, err)
@@ -162,13 +162,13 @@ func TestResolveRemote_HonorsHTTPTimeoutForSlowPing(t *testing.T) {
 		time.Sleep(1100 * time.Millisecond)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":      true,
-			"service": "kata",
+			"service": "poomsae",
 			"version": "test",
 		})
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("KATA_SERVER", srv.URL)
-	t.Setenv("KATA_HTTP_TIMEOUT", "1500ms")
+	t.Setenv("POOMSAE_SERVER", srv.URL)
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "1500ms")
 
 	url, ok, err := resolveRemote(t.Context(), "")
 
@@ -178,30 +178,30 @@ func TestResolveRemote_HonorsHTTPTimeoutForSlowPing(t *testing.T) {
 }
 
 func TestResolveRemote_EnvUnreachableErrors(t *testing.T) {
-	t.Setenv("KATA_SERVER", "http://127.0.0.1:1") // closed port
+	t.Setenv("POOMSAE_SERVER", "http://127.0.0.1:1") // closed port
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "KATA_SERVER")
+	assert.Contains(t, err.Error(), "POOMSAE_SERVER")
 	assert.Contains(t, err.Error(), "http://127.0.0.1:1")
 	assert.ErrorIs(t, err, ErrRemoteUnavailable)
 }
 
 func TestResolveRemote_EnvMalformedErrors(t *testing.T) {
-	t.Setenv("KATA_SERVER", "::not-a-url::")
+	t.Setenv("POOMSAE_SERVER", "::not-a-url::")
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "KATA_SERVER")
+	assert.Contains(t, err.Error(), "POOMSAE_SERVER")
 }
 
 func TestResolveRemote_FileWhenNoEnv(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -215,11 +215,11 @@ url = "`+srv.URL+`"
 
 func TestResolveRemote_EnvWinsOverFile(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", srv.URL)
+	t.Setenv("POOMSAE_SERVER", srv.URL)
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://10.255.255.1:9"
@@ -232,11 +232,11 @@ url = "http://10.255.255.1:9"
 }
 
 func TestResolveRemote_FileEmptyURLFallsThrough(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = ""
@@ -251,8 +251,8 @@ url = ""
 func TestResolveRemote_ActiveDaemonFromHomeConfigWhenNoEnvOrLocal(t *testing.T) {
 	srv := pingingServer(t)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
@@ -274,10 +274,10 @@ url = "`+srv.URL+`"
 func TestResolveRemote_ActiveDaemonAllowsAuthTokenOverrideForMissingTokenEnv(t *testing.T) {
 	srv := pingingServer(t)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "global-token")
-	t.Setenv("KATA_SHARED_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
+	t.Setenv("POOMSAE_SHARED_TOKEN", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
@@ -287,7 +287,7 @@ active_daemon = "shared"
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 `), 0o600))
 
 	url, ok, err := resolveRemote(t.Context(), "")
@@ -301,8 +301,8 @@ func TestEnsureNamedRunning_RemoteCatalogTargetWinsOverEnv(t *testing.T) {
 	selected := pingingServer(t)
 	env := pingingServer(t)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", env.URL)
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", env.URL)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "shared"
@@ -317,14 +317,14 @@ url = "`+selected.URL+`"
 
 func TestNewHTTPClient_NamedRemoteUsesCatalogToken(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/ping":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":      true,
-				"service": "kata",
+				"service": "poomsae",
 				"version": "test",
 			})
 		case "/protected":
@@ -358,16 +358,16 @@ token = "catalog-token"
 
 func TestNewHTTPClient_NamedRemoteAuthTokenEnvOverridesUnsetCatalogTokenEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "env-token")
-	t.Setenv("KATA_SHARED_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "env-token")
+	t.Setenv("POOMSAE_SHARED_TOKEN", "")
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/ping":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":      true,
-				"service": "kata",
+				"service": "poomsae",
 				"version": "test",
 			})
 		case "/protected":
@@ -382,7 +382,7 @@ func TestNewHTTPClient_NamedRemoteAuthTokenEnvOverridesUnsetCatalogTokenEnv(t *t
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 `), 0o600))
 
 	resolved, err := EnsureResolvedNamed(t.Context(), "shared")
@@ -401,15 +401,15 @@ token_env = "KATA_SHARED_TOKEN"
 
 func TestNewHTTPClient_NamedRemoteAuthTokenEnvSuppliesTokenlessCatalog(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "env-token")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "env-token")
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/ping":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":      true,
-				"service": "kata",
+				"service": "poomsae",
 				"version": "test",
 			})
 		case "/protected":
@@ -442,16 +442,16 @@ url = "`+srv.URL+`"
 
 func TestNewHTTPClient_NamedRemoteAuthTokenEnvWinsInIdentityAutostartMode(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "client-token")
-	t.Setenv("KATA_AUTOSTART", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "client-token")
+	t.Setenv("POOMSAE_AUTOSTART", "1")
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/ping":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":      true,
-				"service": "kata",
+				"service": "poomsae",
 				"version": "test",
 			})
 		case "/protected":
@@ -489,9 +489,9 @@ url = "`+srv.URL+`"
 func TestNewHTTPClient_NamedRemoteAuthTokenEnvHonorsTrustPrivateNetwork(t *testing.T) {
 	stubProbe(t, true)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "env-token")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "env-token")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 	baseURL := "http://100.64.0.5:7373"
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
@@ -510,8 +510,8 @@ url = "`+baseURL+`"
 func TestNewHTTPClient_NamedRemoteCatalogTokenHonorsTrustPrivateNetwork(t *testing.T) {
 	stubProbe(t, true)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 	baseURL := "http://100.64.0.5:7373"
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
@@ -531,9 +531,9 @@ token = "catalog-token"
 func TestNewHTTPClient_ActiveRemoteTokenEnvHonorsTrustPrivateNetwork(t *testing.T) {
 	stubProbe(t, true)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_SHARED_TOKEN", "catalog-env-token")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_SHARED_TOKEN", "catalog-env-token")
 	baseURL := "http://100.64.0.5:7373"
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "shared"
@@ -544,7 +544,7 @@ trust_private_network = true
 [[daemon]]
 name = "shared"
 url = "`+baseURL+`"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 `), 0o600))
 
 	resolved, err := EnsureResolvedInWorkspace(t.Context(), "")
@@ -563,7 +563,7 @@ func TestNewHTTPClient_NamedLocalUsesCatalogToken(t *testing.T) {
 		case "/api/v1/ping":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":      true,
-				"service": "kata",
+				"service": "poomsae",
 				"version": currentVersionForEnsure(),
 				"pid":     os.Getpid(),
 			})
@@ -603,7 +603,7 @@ func TestNewHTTPClient_NamedLocalUsesProvidedBaseURLWithoutStarting(t *testing.T
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"ok": true, "service": "kata", "version": currentVersionForEnsure(), "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": currentVersionForEnsure(), "pid": os.Getpid(),
 			})
 			return
 		}
@@ -639,7 +639,7 @@ func TestNewHTTPClient_NamedLocalBypassesActiveDaemonAuth(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"ok": true, "service": "kata", "version": currentVersionForEnsure(), "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": currentVersionForEnsure(), "pid": os.Getpid(),
 			})
 			return
 		}
@@ -648,7 +648,7 @@ func TestNewHTTPClient_NamedLocalBypassesActiveDaemonAuth(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	require.NoError(t, writeRuntimeRecord(t, home, strings.TrimPrefix(srv.URL, "http://")))
-	t.Setenv("KATA_REMOTE_TOKEN", "")
+	t.Setenv("POOMSAE_REMOTE_TOKEN", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "remote"
 
@@ -662,7 +662,7 @@ local = true
 [[daemon]]
 name = "remote"
 url = "`+srv.URL+`"
-token_env = "KATA_REMOTE_TOKEN"
+token_env = "POOMSAE_REMOTE_TOKEN"
 `), 0o600))
 
 	resolved, err := EnsureResolvedNamed(t.Context(), "local")
@@ -680,11 +680,11 @@ token_env = "KATA_REMOTE_TOKEN"
 }
 
 func TestResolveRemote_FileUnreachableErrors(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://127.0.0.1:1"
@@ -692,18 +692,18 @@ url = "http://127.0.0.1:1"
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), ".kata.local.toml")
+	assert.Contains(t, err.Error(), ".poomsae.local.toml")
 	assert.ErrorIs(t, err, ErrRemoteUnavailable)
 }
 
 func TestResolveRemote_FileFoundInParentDirectory(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	parent := t.TempDir()
 	child := filepath.Join(parent, "subdir")
 	require.NoError(t, os.Mkdir(child, 0o755)) //nolint:gosec // test fixture under TempDir
 	writeWorkspaceMarker(t, parent)
-	require.NoError(t, os.WriteFile(filepath.Join(parent, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(parent, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -717,18 +717,18 @@ url = "`+srv.URL+`"
 }
 
 // TestResolveRemote_WorkspaceAnchorOverridesCwd guards finding #7:
-// when the user runs `kata --workspace /some/repo create` from
-// outside that repo, the .kata.local.toml at the workspace root must
+// when the user runs `poomsae --workspace /some/repo create` from
+// outside that repo, the .poomsae.local.toml at the workspace root must
 // be discovered. Without the workspaceStart argument, the walk would
 // start at CWD and miss it.
 func TestResolveRemote_WorkspaceAnchorOverridesCwd(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	cwd := t.TempDir()
 	workspace := t.TempDir()
 	t.Chdir(cwd)
 	writeWorkspaceMarker(t, workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -745,11 +745,11 @@ url = "`+srv.URL+`"
 // still begins at CWD.
 func TestResolveRemote_EmptyWorkspaceFallsBackToCwd(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -762,20 +762,20 @@ url = "`+srv.URL+`"
 }
 
 // TestResolveRemote_FileIgnoredWithoutWorkspaceMarker covers the
-// security finding from roborev #18-? : a .kata.local.toml in a
+// security finding from roborev #18-? : a .poomsae.local.toml in a
 // shared/world-writable ancestor (e.g. /tmp) must not be honored when
-// the user is running kata outside any workspace. Without the
+// the user is running poomsae outside any workspace. Without the
 // boundary check, an attacker-placed config could route a victim's
 // requests to an arbitrary URL.
 func TestResolveRemote_FileIgnoredWithoutWorkspaceMarker(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
-	// CWD is a fresh tempdir with no .kata.toml / .git anywhere up
-	// the chain we care about. An attacker-style .kata.local.toml
+	t.Setenv("POOMSAE_SERVER", "")
+	// CWD is a fresh tempdir with no .poomsae.toml / .git anywhere up
+	// the chain we care about. An attacker-style .poomsae.local.toml
 	// lives there. With no workspace anchor, it must be ignored.
 	dir := t.TempDir()
 	t.Chdir(dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -783,17 +783,17 @@ url = "`+srv.URL+`"
 
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.NoError(t, err)
-	assert.False(t, ok, ".kata.local.toml without a workspace marker must not be honored")
+	assert.False(t, ok, ".poomsae.local.toml without a workspace marker must not be honored")
 	assert.Empty(t, url)
 }
 
 // TestResolveRemote_FileIgnoredAboveWorkspaceBoundary covers the
-// concrete attack: attacker plants .kata.local.toml in a shared
+// concrete attack: attacker plants .poomsae.local.toml in a shared
 // ancestor; victim's workspace sits below it with its own
-// .kata.toml. The walk must stop at the workspace root and never see
+// .poomsae.toml. The walk must stop at the workspace root and never see
 // the attacker file.
 func TestResolveRemote_FileIgnoredAboveWorkspaceBoundary(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	outer := t.TempDir()
 	workspace := filepath.Join(outer, "workspace")
 	sub := filepath.Join(workspace, "deep", "subdir")
@@ -803,7 +803,7 @@ func TestResolveRemote_FileIgnoredAboveWorkspaceBoundary(t *testing.T) {
 	// Attacker file in the shared ancestor — points at an unreachable
 	// address so that if the test ever started honoring it, we'd see
 	// an ErrRemoteUnavailable rather than a silent pass.
-	require.NoError(t, os.WriteFile(filepath.Join(outer, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(outer, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://127.0.0.1:1"
@@ -812,30 +812,30 @@ url = "http://127.0.0.1:1"
 
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.NoError(t, err)
-	assert.False(t, ok, "walk must stop at the workspace boundary, never reach outer/.kata.local.toml")
+	assert.False(t, ok, "walk must stop at the workspace boundary, never reach outer/.poomsae.local.toml")
 	assert.Empty(t, url)
 }
 
 // TestResolveRemote_FileInsideWorkspaceWinsOverOutsideAncestor
 // confirms the legitimate flow still works: a workspace-local
-// .kata.local.toml is honored even when an unrelated file exists in
+// .poomsae.local.toml is honored even when an unrelated file exists in
 // a higher shared ancestor.
 func TestResolveRemote_FileInsideWorkspaceWinsOverOutsideAncestor(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	outer := t.TempDir()
 	workspace := filepath.Join(outer, "workspace")
 	require.NoError(t, os.MkdirAll(workspace, 0o755)) //nolint:gosec // test fixture under TempDir
 	writeWorkspaceMarker(t, workspace)
 
 	// Attacker file higher up — must be ignored.
-	require.NoError(t, os.WriteFile(filepath.Join(outer, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(outer, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://127.0.0.1:1"
 `), 0o600))
 	// Legitimate file at workspace root — must be honored.
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -849,9 +849,9 @@ url = "`+srv.URL+`"
 }
 
 // TestResolveRemote_GitMarkerCountsAsWorkspace allows pre-init flows:
-// a freshly cloned repo has .git but not yet .kata.toml; a developer
-// can still drop a .kata.local.toml beside .git to point at a remote
-// daemon for the upcoming `kata init`.
+// a freshly cloned repo has .git but not yet .poomsae.toml; a developer
+// can still drop a .poomsae.local.toml beside .git to point at a remote
+// daemon for the upcoming `poomsae init`.
 //
 // Uses a real repo (not a fake empty .git dir): the provenance guard now
 // consults git inside a worktree, and a freshly cloned repo has a valid .git
@@ -859,9 +859,9 @@ url = "`+srv.URL+`"
 // untracked — so it is honored, mirroring the real pre-init flow.
 func TestResolveRemote_GitMarkerCountsAsWorkspace(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := testfix.InitGitRepo(t)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -875,44 +875,44 @@ url = "`+srv.URL+`"
 }
 
 // TestResolveRemote_TrackedFileNotHonored covers the credential-misrouting
-// fix: a .kata.local.toml that a hostile contributor force-committed past
+// fix: a .poomsae.local.toml that a hostile contributor force-committed past
 // the gitignore has attacker-controlled provenance, so its [server].url
 // override must NOT be honored even though the URL is reachable. Without the
 // provenance guard, resolution would return the committed URL and the CLI
 // would attach the victim's global bearer token to it.
 func TestResolveRemote_TrackedFileNotHonored(t *testing.T) {
 	srv := pingingServer(t) // reachable: proves refusal is provenance-based, not a probe failure
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "victim-global-token")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "victim-global-token")
 	dir := testfix.InitGitRepo(t)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
 `), 0o600))
 	// Force-commit past the gitignore, mirroring `git add -f`.
-	testfix.RunGit(t, dir, "add", "-f", ".kata.local.toml")
+	testfix.RunGit(t, dir, "add", "-f", ".poomsae.local.toml")
 	testfix.RunGit(t, dir, "commit", "--quiet", "-m", "plant local config")
 	t.Chdir(dir)
 
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.NoError(t, err)
-	assert.False(t, ok, "a git-tracked .kata.local.toml must not be honored as a server override")
+	assert.False(t, ok, "a git-tracked .poomsae.local.toml must not be honored as a server override")
 	assert.Empty(t, url)
 	assert.NotEqual(t, srv.URL, url)
 }
 
 // TestResolveRemote_UntrackedFileHonoredInGitRepo guards the legitimate
-// developer workflow: a gitignored (untracked) .kata.local.toml inside a real
+// developer workflow: a gitignored (untracked) .poomsae.local.toml inside a real
 // git repo pointing at the developer's own remote daemon must still resolve.
 // The provenance guard only refuses tracked files.
 func TestResolveRemote_UntrackedFileHonoredInGitRepo(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := testfix.InitGitRepo(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".gitignore"),
-		[]byte(".kata.local.toml\n"), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+		[]byte(".poomsae.local.toml\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -921,35 +921,35 @@ url = "`+srv.URL+`"
 
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.NoError(t, err)
-	assert.True(t, ok, "an untracked/gitignored .kata.local.toml must remain honored")
+	assert.True(t, ok, "an untracked/gitignored .poomsae.local.toml must remain honored")
 	assert.Equal(t, srv.URL, url)
 }
 
 // TestRemoteAllowInsecureForBaseURL_TrackedFileDenied covers the plaintext
-// vector: a tracked .kata.local.toml cannot grant allow_insecure for its URL,
+// vector: a tracked .poomsae.local.toml cannot grant allow_insecure for its URL,
 // so the CLI will not downgrade the bearer-token transport to cleartext toward
 // an attacker-chosen host.
 func TestRemoteAllowInsecureForBaseURL_TrackedFileDenied(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := testfix.InitGitRepo(t)
 	const baseURL = "http://198.51.100.1:7777" // TEST-NET-3, never dialed
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+baseURL+`"
 allow_insecure = true
 `), 0o600))
-	testfix.RunGit(t, dir, "add", "-f", ".kata.local.toml")
+	testfix.RunGit(t, dir, "add", "-f", ".poomsae.local.toml")
 	testfix.RunGit(t, dir, "commit", "--quiet", "-m", "plant local config")
 	t.Chdir(dir)
 
 	assert.False(t, remoteAllowInsecureForBaseURL(t.Context(), baseURL, ""),
-		"a tracked .kata.local.toml must not grant allow_insecure for its URL")
+		"a tracked .poomsae.local.toml must not grant allow_insecure for its URL")
 }
 
 // TestLocalConfigTracked_CaseVariantCommittedRefused hardens the provenance
 // guard against a case-insensitive-filesystem bypass. On macOS/APFS a
-// committed `.KATA.LOCAL.TOML` is opened by findLocalConfig's lowercase stat,
+// committed `.POOMSAE.LOCAL.TOML` is opened by findLocalConfig's lowercase stat,
 // so its [server].url would be applied; the guard must therefore recognize it
 // as tracked regardless of case. The check must not lean on git's
 // core.ignorecase, so the repo pins it false and commits the uppercase name:
@@ -963,18 +963,18 @@ allow_insecure = true
 func TestLocalConfigTracked_CaseVariantCommittedRefused(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
 	testfix.RunGit(t, dir, "config", "core.ignorecase", "false")
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".KATA.LOCAL.TOML"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".POOMSAE.LOCAL.TOML"),
 		[]byte(`version = 1
 [server]
 url = "http://198.51.100.1:7777"
 `), 0o600))
-	testfix.RunGit(t, dir, "add", "-f", ".KATA.LOCAL.TOML")
+	testfix.RunGit(t, dir, "add", "-f", ".POOMSAE.LOCAL.TOML")
 	testfix.RunGit(t, dir, "commit", "--quiet", "-m", "plant case-variant config")
 
 	tracked, determined := localConfigTrackState(t.Context(), dir)
 	assert.True(t, determined, "a working git query must yield a determined result")
 	assert.True(t, tracked,
-		"a committed case-variant .kata.local.toml must be treated as tracked")
+		"a committed case-variant .poomsae.local.toml must be treated as tracked")
 }
 
 // TestLocalConfigTracked_UntrackedNotRefused pins the legitimate path at the
@@ -982,7 +982,7 @@ url = "http://198.51.100.1:7777"
 // must report it not-tracked (honored).
 func TestLocalConfigTracked_UntrackedNotRefused(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://198.51.100.1:7777"
@@ -991,23 +991,23 @@ url = "http://198.51.100.1:7777"
 	tracked, determined := localConfigTrackState(t.Context(), dir)
 	assert.True(t, determined, "a working git query must yield a determined result")
 	assert.False(t, tracked,
-		"an untracked .kata.local.toml must not be treated as tracked")
+		"an untracked .poomsae.local.toml must not be treated as tracked")
 }
 
 // TestLocalConfigTracked_SubdirSameNameNotRoot pins the scoping contract of the
-// `:(icase)` pathspec query: a tracked .kata.local.toml committed in a
+// `:(icase)` pathspec query: a tracked .poomsae.local.toml committed in a
 // subdirectory must not make the workspace root look tracked. Root here has
 // only an untracked file, so the guard must report determined + untracked
 // (honored) — not tracked because of the nested committed file.
 func TestLocalConfigTracked_SubdirSameNameNotRoot(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755)) //nolint:gosec // test fixture under TempDir
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", ".poomsae.local.toml"),
 		[]byte("version = 1\n"), 0o600))
-	testfix.RunGit(t, dir, "add", "-f", "sub/.kata.local.toml")
+	testfix.RunGit(t, dir, "add", "-f", "sub/.poomsae.local.toml")
 	testfix.RunGit(t, dir, "commit", "--quiet", "-m", "nested config")
 	// Untracked file at root — the candidate findLocalConfig would honor.
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte("version = 1\n"), 0o600))
 
 	tracked, determined := localConfigTrackState(t.Context(), dir)
@@ -1043,7 +1043,7 @@ func (f fixedGitRunner) Output(_ context.Context, _ string, _ ...string) ([]byte
 
 // TestLocalConfigTrackState_RepoRelativeMatchTracked pins the tracked verdict
 // against git output that reports the matched file as a repo-relative path
-// (e.g. "workspaces/app/.kata.local.toml") rather than cwd-relative. The
+// (e.g. "workspaces/app/.poomsae.local.toml") rather than cwd-relative. The
 // :(icase) pathspec only ever matches the root-level file — never a nested
 // same-named file — so any returned entry is that file regardless of how git
 // prints the path. Comparing the basename (not rejecting any entry containing
@@ -1051,7 +1051,7 @@ func (f fixedGitRunner) Output(_ context.Context, _ string, _ ...string) ([]byte
 // tracked; the slash-rejecting form silently treated it as untracked and
 // honored the redirect.
 func TestLocalConfigTrackState_RepoRelativeMatchTracked(t *testing.T) {
-	stubGitRunner(t, fixedGitRunner{out: "workspaces/app/.kata.local.toml\x00"})
+	stubGitRunner(t, fixedGitRunner{out: "workspaces/app/.poomsae.local.toml\x00"})
 	tracked, determined := localConfigTrackState(t.Context(), "/repo/workspaces/app")
 	assert.True(t, determined, "a successful git query is determined")
 	assert.True(t, tracked,
@@ -1072,15 +1072,15 @@ func TestLocalConfigTrackState_RepoRelativeMatchTracked(t *testing.T) {
 // an active or auto-started local daemon.
 func TestResolveRemote_GitQueryFailureInWorktreeErrors(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "victim-global-token")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "victim-global-token")
 	dir := testfix.InitGitRepo(t)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
 `), 0o600))
-	testfix.RunGit(t, dir, "add", "-f", ".kata.local.toml")
+	testfix.RunGit(t, dir, "add", "-f", ".poomsae.local.toml")
 	testfix.RunGit(t, dir, "commit", "--quiet", "-m", "plant evil override")
 	t.Chdir(dir)
 	stubGitRunner(t, failingGitRunner{err: errors.New("git unavailable")})
@@ -1088,7 +1088,7 @@ url = "`+srv.URL+`"
 	url, ok, err := resolveRemote(t.Context(), "")
 	require.Error(t, err,
 		"unverifiable tracked status inside a git worktree must error, not fall through to another daemon")
-	assert.Contains(t, err.Error(), ".kata.local.toml")
+	assert.Contains(t, err.Error(), ".poomsae.local.toml")
 	assert.False(t, ok)
 	assert.Empty(t, url)
 }
@@ -1102,18 +1102,18 @@ url = "`+srv.URL+`"
 // "no repo → honor" branch and the bearer token is misrouted.
 func TestResolveRemote_SymlinkedWorkspaceGitFailureRefused(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "victim-global-token")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "victim-global-token")
 	repo := testfix.InitGitRepo(t)
 	nested := filepath.Join(repo, "ws")
 	require.NoError(t, os.Mkdir(nested, 0o755)) //nolint:gosec // test fixture under TempDir
 	writeWorkspaceMarker(t, nested)
-	require.NoError(t, os.WriteFile(filepath.Join(nested, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(nested, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
 `), 0o600))
-	testfix.RunGit(t, repo, "add", "-f", "ws/.kata.local.toml")
+	testfix.RunGit(t, repo, "add", "-f", "ws/.poomsae.local.toml")
 	testfix.RunGit(t, repo, "commit", "--quiet", "-m", "plant nested override")
 	link := filepath.Join(t.TempDir(), "link")
 	require.NoError(t, os.Symlink(nested, link))
@@ -1122,7 +1122,7 @@ url = "`+srv.URL+`"
 	url, ok, err := resolveRemote(t.Context(), link)
 	require.Error(t, err,
 		"a symlinked workspace physically inside a git repo must not dodge the fail-closed path")
-	assert.Contains(t, err.Error(), ".kata.local.toml")
+	assert.Contains(t, err.Error(), ".poomsae.local.toml")
 	assert.False(t, ok)
 	assert.Empty(t, url)
 }
@@ -1133,10 +1133,10 @@ url = "`+srv.URL+`"
 // tracking, so its local config must still be honored when git is unavailable.
 func TestResolveRemote_SymlinkedNonRepoWorkspaceGitFailureHonored(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -1152,16 +1152,16 @@ url = "`+srv.URL+`"
 }
 
 // TestResolveRemote_GitQueryFailureNonRepoHonored guards the legitimate
-// non-git workspace: a bare directory anchored only by .kata.toml (no .git
+// non-git workspace: a bare directory anchored only by .poomsae.toml (no .git
 // anywhere up the tree) has no notion of tracking, so an untracked
-// .kata.local.toml must still be honored even though the git query yields no
-// determined answer. This keeps kata usable without git in a non-repo project.
+// .poomsae.local.toml must still be honored even though the git query yields no
+// determined answer. This keeps poomsae usable without git in a non-repo project.
 func TestResolveRemote_GitQueryFailureNonRepoHonored(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
-	writeWorkspaceMarker(t, dir) // .kata.toml boundary, no .git
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	writeWorkspaceMarker(t, dir) // .poomsae.toml boundary, no .git
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -1214,8 +1214,8 @@ func TestNormalizeRemoteURL_SchemeGuard(t *testing.T) {
 		},
 		{
 			name: "http hostname rejected (cannot validate without DNS)",
-			url:  "http://kata.example.com:7777", wantOK: false,
-			wantErrSubstr: "plain http to \"kata.example.com\"",
+			url:  "http://poomsae.example.com:7777", wantOK: false,
+			wantErrSubstr: "plain http to \"poomsae.example.com\"",
 		},
 		{
 			name: "http localhost hostname rejected (use 127.0.0.1)",
@@ -1229,8 +1229,8 @@ func TestNormalizeRemoteURL_SchemeGuard(t *testing.T) {
 		},
 		{
 			name: "http hostname allowed when allow_insecure",
-			url:  "http://kata.example.com:7777", allowInsecure: true, wantOK: true,
-			wantNormalized: "http://kata.example.com:7777",
+			url:  "http://poomsae.example.com:7777", allowInsecure: true, wantOK: true,
+			wantNormalized: "http://poomsae.example.com:7777",
 		},
 	}
 	for _, tc := range cases {
@@ -1268,14 +1268,14 @@ func TestNormalizeRemoteURLCanonicalOrigin(t *testing.T) {
 
 // TestResolveRemote_EnvSchemeGuardRejectsPublicHTTP verifies the guard
 // fires through the env-driven entry point with a clear actionable
-// error mentioning KATA_ALLOW_INSECURE.
+// error mentioning POOMSAE_ALLOW_INSECURE.
 func TestResolveRemote_EnvSchemeGuardRejectsPublicHTTP(t *testing.T) {
-	t.Setenv("KATA_SERVER", "http://8.8.8.8:7777")
-	t.Setenv("KATA_ALLOW_INSECURE", "")
+	t.Setenv("POOMSAE_SERVER", "http://8.8.8.8:7777")
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "")
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "KATA_SERVER")
+	assert.Contains(t, err.Error(), "POOMSAE_SERVER")
 	assert.Contains(t, err.Error(), "allow_insecure")
 }
 
@@ -1285,8 +1285,8 @@ func TestResolveRemote_EnvSchemeGuardRejectsPublicHTTP(t *testing.T) {
 // ErrRemoteUnavailable; this avoids any real outbound dial.
 func TestResolveRemote_EnvAllowInsecureBypassesGuard(t *testing.T) {
 	stubProbe(t, false)
-	t.Setenv("KATA_SERVER", "http://198.51.100.1:7777") // TEST-NET-2, never dialed
-	t.Setenv("KATA_ALLOW_INSECURE", "1")
+	t.Setenv("POOMSAE_SERVER", "http://198.51.100.1:7777") // TEST-NET-2, never dialed
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "1")
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
@@ -1296,14 +1296,14 @@ func TestResolveRemote_EnvAllowInsecureBypassesGuard(t *testing.T) {
 }
 
 // TestResolveRemote_FileSchemeGuardRejectsPublicHTTP exercises the
-// guard via .kata.local.toml. Without allow_insecure the URL is
+// guard via .poomsae.local.toml. Without allow_insecure the URL is
 // rejected before the probe runs.
 func TestResolveRemote_FileSchemeGuardRejectsPublicHTTP(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://8.8.8.8:7777"
@@ -1311,7 +1311,7 @@ url = "http://8.8.8.8:7777"
 
 	_, _, err := resolveRemote(t.Context(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), ".kata.local.toml")
+	assert.Contains(t, err.Error(), ".poomsae.local.toml")
 	assert.Contains(t, err.Error(), "allow_insecure")
 }
 
@@ -1321,11 +1321,11 @@ url = "http://8.8.8.8:7777"
 // ErrRemoteUnavailable; this avoids any real outbound dial.
 func TestResolveRemote_FileAllowInsecureBypassesGuard(t *testing.T) {
 	stubProbe(t, false)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://198.51.100.1:7777"
@@ -1340,7 +1340,7 @@ allow_insecure = true
 }
 
 // TestEnvAllowInsecure_Truthiness covers the case-insensitive parsing
-// of KATA_ALLOW_INSECURE. Empty / "0" / "false" must be false; "1" and
+// of POOMSAE_ALLOW_INSECURE. Empty / "0" / "false" must be false; "1" and
 // "true" in any case must be true; surrounding whitespace is trimmed.
 func TestEnvAllowInsecure_Truthiness(t *testing.T) {
 	cases := []struct {
@@ -1361,7 +1361,7 @@ func TestEnvAllowInsecure_Truthiness(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("val=%q", tc.val), func(t *testing.T) {
-			t.Setenv("KATA_ALLOW_INSECURE", tc.val)
+			t.Setenv("POOMSAE_ALLOW_INSECURE", tc.val)
 			assert.Equal(t, tc.want, envAllowInsecure())
 		})
 	}
@@ -1377,12 +1377,12 @@ func stubProbe(t *testing.T, ok bool) {
 	t.Cleanup(func() { probeRemote = saved })
 }
 
-// writeWorkspaceMarker drops a minimal .kata.toml at dir so the
-// test mimics a real kata workspace, anchoring .kata.local.toml
+// writeWorkspaceMarker drops a minimal .poomsae.toml at dir so the
+// test mimics a real poomsae workspace, anchoring .poomsae.local.toml
 // discovery to a legitimate boundary.
 func writeWorkspaceMarker(t *testing.T, dir string) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.toml"), //nolint:gosec // test fixture mirrors production .kata.toml mode
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), //nolint:gosec // test fixture mirrors production .poomsae.toml mode
 		[]byte("version = 1\n\n[project]\nidentity = \"github.com/wesm/test\"\nname = \"test\"\n"),
 		0o644))
 }

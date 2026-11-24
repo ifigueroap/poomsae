@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/ifigueroap/poomsae/internal/similarity"
 	"github.com/stretchr/testify/assert"
-	"go.kenn.io/kata/internal/similarity"
 )
 
 func TestBodyPrefix(t *testing.T) {

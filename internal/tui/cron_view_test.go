@@ -11,8 +11,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // The fixture contains current definitions and an observation of an older
@@ -148,7 +148,7 @@ func TestCronFreshness(t *testing.T) {
 			useInstantTicks(t)
 			m := cronFixture(t)
 			m.sseCh = nil
-			a := &cronReadTestAPI{KataAPI: &inboxTestAPI{}, data: *m.cron.data}
+			a := &cronReadTestAPI{PoomsaeAPI: &inboxTestAPI{}, data: *m.cron.data}
 			a.data.jobs = slices.Clone(a.data.jobs)
 			a.data.jobs[0].Name = "New title"
 			a.data.workflows = slices.Clone(a.data.workflows)
@@ -359,7 +359,7 @@ func TestCronDocumentContentAndCursor(t *testing.T) {
 
 // Only the read boundary is doubled; assertions exercise Update and rendering.
 type cronReadTestAPI struct {
-	KataAPI
+	PoomsaeAPI
 	data  cronData
 	calls int
 }

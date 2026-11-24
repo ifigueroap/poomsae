@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestLocalProfilePostgresStorageInspectionRetainsUnsupportedSchema(t *testing.T) {
@@ -73,13 +73,13 @@ func TestEnsureRunningKeepsDaemonWhenPostgresValidateModeCannotOpenSchema(t *tes
 				`INSERT INTO ensure_meta.meta VALUES ('schema_version', $1)`, fmt.Sprint(tt.schema))
 			require.NoError(t, err)
 
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			tmp := setupKataEnv(t)
-			t.Setenv("KATA_DSN", dsn)
-			t.Setenv("KATA_POSTGRES_SCHEMA", "ensure_meta")
-			t.Setenv("KATA_POSTGRES_SCHEMA_MODE", tt.mode)
+			t.Setenv("POOMSAE_DSN", dsn)
+			t.Setenv("POOMSAE_POSTGRES_SCHEMA", "ensure_meta")
+			t.Setenv("POOMSAE_POSTGRES_SCHEMA_MODE", tt.mode)
 			_, addr := startMockDaemonPing(t, map[string]any{
-				"ok": true, "service": "kata", "version": "old-build", "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": "old-build", "pid": os.Getpid(),
 			})
 			require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 			state := patchEnsureHooks(t, "new-build", "http://replacement-daemon")
@@ -99,7 +99,7 @@ func TestEnsureRunningKeepsDaemonWhenPostgresValidateModeCannotOpenSchema(t *tes
 				"old-build", "new-build",
 				fmt.Sprintf("schema_version %d", tt.schema),
 				fmt.Sprintf("binary schema %d", db.CurrentSchemaVersion()),
-				"kata storage postgres migrate",
+				"poomsae storage postgres migrate",
 			} {
 				assert.Contains(t, err.Error(), want)
 			}

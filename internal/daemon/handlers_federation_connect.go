@@ -14,13 +14,13 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func registerFederationBridgeConnect(humaAPI huma.API, cfg ServerConfig) {
@@ -346,7 +346,7 @@ func federationBridgeSigningSource(ctx context.Context, cfg ServerConfig, in *ap
 	}
 	switch {
 	case retained != nil && requested != nil && *retained != *requested:
-		return nil, api.NewError(http.StatusConflict, "federation_credential_conflict", "retained bridge credential already selects a different signing source", fmt.Sprintf("change it with `kata federation signing configure --project-uid %s ...` or connect without signing flags to keep it", hubProjectUID), nil)
+		return nil, api.NewError(http.StatusConflict, "federation_credential_conflict", "retained bridge credential already selects a different signing source", fmt.Sprintf("change it with `poomsae federation signing configure --project-uid %s ...` or connect without signing flags to keep it", hubProjectUID), nil)
 	case retained != nil:
 		return retained, nil
 	case requested != nil:
@@ -354,7 +354,7 @@ func federationBridgeSigningSource(ctx context.Context, cfg ServerConfig, in *ap
 	case hubRequiresSigning:
 		return nil, api.NewError(http.StatusConflict, "hub_signing_required",
 			"selected hub requires federation request signing and this bridge has no signing source",
-			fmt.Sprintf("connect with --signing-key-id <key-id> and --signing-key-env <var> or --signing-key-file <absolute-path>, or select a source for a retained bridge credential with `kata federation signing configure --project-uid %s --key-id <key-id> --key-env <var>`; the hub operator registers that key for this bridge's enrollment ID", hubProjectUID), nil)
+			fmt.Sprintf("connect with --signing-key-id <key-id> and --signing-key-env <var> or --signing-key-file <absolute-path>, or select a source for a retained bridge credential with `poomsae federation signing configure --project-uid %s --key-id <key-id> --key-env <var>`; the hub operator registers that key for this bridge's enrollment ID", hubProjectUID), nil)
 	}
 	return nil, nil
 }

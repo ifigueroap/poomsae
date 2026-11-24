@@ -11,7 +11,7 @@ import (
 
 	"github.com/gofrs/flock"
 
-	"go.kenn.io/kata/internal/linkpath"
+	"github.com/ifigueroap/poomsae/internal/linkpath"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -112,7 +112,7 @@ func RefuseForeignStoreOwner(ctx context.Context, dataDir string, ownerLocks []s
 			if !ok {
 				return nil
 			}
-			return fmt.Errorf("a kata daemon in another PID namespace owns this store (pid %d there; runtime record %s); run kata where that daemon runs, or set KATA_SERVER to reach it", owner.PID, owner.SourcePath)
+			return fmt.Errorf("a poomsae daemon in another PID namespace owns this store (pid %d there; runtime record %s); run poomsae where that daemon runs, or set POOMSAE_SERVER to reach it", owner.PID, owner.SourcePath)
 		}
 	}
 	return nil

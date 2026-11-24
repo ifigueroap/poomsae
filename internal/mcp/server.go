@@ -1,4 +1,4 @@
-// Package mcpserver exposes Kata issue operations through MCP.
+// Package mcpserver exposes Poomsae issue operations through MCP.
 package mcpserver
 
 import (
@@ -13,13 +13,13 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/mcpicon"
-	"go.kenn.io/kata/internal/notification"
-	"go.kenn.io/kata/internal/searchhint"
-	"go.kenn.io/kata/internal/storageadmin"
-	"go.kenn.io/kata/internal/teammate"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/mcpicon"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/searchhint"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 const catalogTTL = 5 * time.Minute
@@ -46,7 +46,7 @@ func newToolAdmission(perSecond rate.Limit, burst, concurrency int) *ToolAdmissi
 	return &ToolAdmission{limiter: rate.NewLimiter(perSecond, burst), concurrent: make(chan struct{}, concurrency)}
 }
 
-// Options fixes the Kata daemon scope and actor for one MCP process.
+// Options fixes the Poomsae daemon scope and actor for one MCP process.
 type Options struct {
 	// Events registers the MCP Events methods, which forward to the daemon. Set
 	// it for stdio and the 2026-07-28 HTTP server only; the legacy-session
@@ -56,8 +56,8 @@ type Options struct {
 	Admission *ToolAdmission
 	// LoadedSections shares selected section IDs across servers; nil keeps selections local.
 	LoadedSections    *LoadedSections
-	Client            *kataclient.Client
-	LongRunningClient *kataclient.Client
+	Client            *poomsaeclient.Client
+	LongRunningClient *poomsaeclient.Client
 	Scope             *Scope
 	ProjectID         int64
 	ProjectName       string
@@ -75,7 +75,7 @@ type Options struct {
 // New creates a scoped MCP server with optional native webhook Events.
 func New(options Options) (*sdkmcp.Server, error) {
 	if options.Client == nil {
-		return nil, errors.New("kata API client is required")
+		return nil, errors.New("poomsae API client is required")
 	}
 	if options.LongRunningClient == nil {
 		options.LongRunningClient = options.Client
@@ -119,10 +119,10 @@ func New(options Options) (*sdkmcp.Server, error) {
 		return nil, err
 	}
 	if strings.TrimSpace(options.Actor) == "" {
-		return nil, errors.New("kata actor is required")
+		return nil, errors.New("poomsae actor is required")
 	}
 	if strings.TrimSpace(options.Version) == "" {
-		return nil, errors.New("kata server version is required")
+		return nil, errors.New("poomsae server version is required")
 	}
 
 	scopeDescription := "startup project scope"
@@ -130,16 +130,16 @@ func New(options Options) (*sdkmcp.Server, error) {
 		scopeDescription = "project " + options.ProjectName
 	}
 	server := sdkmcp.NewServer(&sdkmcp.Implementation{
-		Name:        "kata",
-		Title:       "Kata issue tracker",
-		Description: "Scoped Kata data and administration tools for coding agents.",
+		Name:        "poomsae",
+		Title:       "Poomsae issue tracker",
+		Description: "Scoped Poomsae data and administration tools for coding agents.",
 		Version:     options.Version,
-		WebsiteURL:  "https://katatracker.com",
+		WebsiteURL:  "https://github.com/ifigueroap/poomsae",
 		Icons: []sdkmcp.Icon{{
 			Source: mcpicon.Source, MIMEType: "image/png", Sizes: []string{"256x256"},
 		}},
 	}, &sdkmcp.ServerOptions{
-		Instructions: "Use returned web_url values when linking to issues. Use Kata to search before creating work, claim actionable issues with ttl_seconds and renew before expiry by claiming again without if_unowned, comment with findings, and close only with evidence. All tools are fixed to " + scopeDescription + " and actor " + options.Actor + `. Call kata.skills with {"name":"workflow"} before your first write; call it with no arguments to list the other guides.`,
+		Instructions: "Use returned web_url values when linking to issues. Use Poomsae to search before creating work, claim actionable issues with ttl_seconds and renew before expiry by claiming again without if_unowned, comment with findings, and close only with evidence. All tools are fixed to " + scopeDescription + " and actor " + options.Actor + `. Call poomsae.skills with {"name":"workflow"} before your first write; call it with no arguments to list the other guides.`,
 		Capabilities: &sdkmcp.ServerCapabilities{
 			Tools: &sdkmcp.ToolCapabilities{ListChanged: true},
 		},
@@ -210,41 +210,41 @@ func cacheHintsMiddleware(next sdkmcp.MethodHandler) sdkmcp.MethodHandler {
 func registerIssueDiscoveryTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
 	searchRead := toolHints(true, false, true)
-	addTool(server, "kata.graph", "Issue graph", "Read the bounded reachable relationship graph for one issue.", read, handlers.graph)
-	addTool(server, "kata.labels", "List labels", "List labels already used in the selected project scope with issue counts.", read, handlers.labels)
-	addTool(server, "kata.list", "List issues", "List compact issue summaries in the selected project scope with bounded filters.", read, handlers.list)
-	addTool(server, "kata.next", "Next issue", "Select the highest-priority ready issue.", read, handlers.next)
-	addTool(server, "kata.ready", "List ready issues", "List open issues with no open blocking predecessor in the selected project scope.", read, handlers.ready)
-	addTool(server, "kata.search", "Search issues", "Search titles, bodies, and comments before creating duplicate work. Lexical results contain every query word, so use one or two distinctive words.", searchRead, handlers.search)
-	addTool(server, "kata.show", "Show issue", "Read one issue with its body, metadata, relationships, and a bounded comment history.", read, handlers.show)
+	addTool(server, "poomsae.graph", "Issue graph", "Read the bounded reachable relationship graph for one issue.", read, handlers.graph)
+	addTool(server, "poomsae.labels", "List labels", "List labels already used in the selected project scope with issue counts.", read, handlers.labels)
+	addTool(server, "poomsae.list", "List issues", "List compact issue summaries in the selected project scope with bounded filters.", read, handlers.list)
+	addTool(server, "poomsae.next", "Next issue", "Select the highest-priority ready issue.", read, handlers.next)
+	addTool(server, "poomsae.ready", "List ready issues", "List open issues with no open blocking predecessor in the selected project scope.", read, handlers.ready)
+	addTool(server, "poomsae.search", "Search issues", "Search titles, bodies, and comments before creating duplicate work. Lexical results contain every query word, so use one or two distinctive words.", searchRead, handlers.search)
+	addTool(server, "poomsae.show", "Show issue", "Read one issue with its body, metadata, relationships, and a bounded comment history.", read, handlers.show)
 }
 
 func registerIssueMutationTools(server *sdkmcp.Server, handlers toolHandlers) {
 	additive := toolHints(false, false, false)
 	mutating := toolHints(false, true, false)
-	addTool(server, "kata.claim", "Claim issue", "Claim an issue for the bound actor. Without force the call fails when another owner already holds it; force replaces that owner. Pass ttl_seconds to expire the claim, and renew it before expiry by claiming again with ttl_seconds, without if_unowned.", mutating, handlers.claim)
-	addTool(server, "kata.comment", "Add comment", "Append a finding a later reader needs using a required idempotency key. Keep live status in work.attention_msg.", additive, handlers.comment)
-	addTool(server, "kata.create", "Create issue", "Create project work after searching for duplicates. A stable idempotency key is required.", additive, handlers.create)
-	addTool(server, "kata.edit", "Edit issue", "Edit issue fields, ownership, priority, and relationship deltas atomically.", mutating, handlers.edit)
-	addTool(server, "kata.edit_comment", "Edit comment", "Replace one comment body as the startup actor. Use it to correct your own comment.", mutating, handlers.editComment)
-	addTool(server, "kata.move", "Move issue", "Move an issue and its active descendants to another in-scope project while preserving UIDs and relationships. Pass single to move one issue or dry_run to preview.", mutating, handlers.move)
-	addTool(server, "kata.set_deadline", "Set deadline", "Set or clear an issue deadline. Dates and local date-times accept [IANA/Zone]; otherwise Kata uses the issue timezone, daemon timezone, or UTC when resolving it. UTC instants end in Z.", mutating, handlers.setDeadline)
-	addTool(server, "kata.set_label", "Set label presence", "Ensure that a label is present or absent on an issue.", mutating, handlers.setLabel)
-	addTool(server, "kata.set_metadata", "Patch metadata", "Patch issue metadata; JSON null removes a key. An optional revision makes the write conditional.", mutating, handlers.setMetadata)
-	addTool(server, "kata.set_schedule", "Set schedule", "Set or clear an issue schedule gate. Dates and local date-times accept [IANA/Zone]; otherwise Kata uses the issue timezone, daemon timezone, or UTC when resolving it. UTC instants end in Z.", mutating, handlers.setSchedule)
+	addTool(server, "poomsae.claim", "Claim issue", "Claim an issue for the bound actor. Without force the call fails when another owner already holds it; force replaces that owner. Pass ttl_seconds to expire the claim, and renew it before expiry by claiming again with ttl_seconds, without if_unowned.", mutating, handlers.claim)
+	addTool(server, "poomsae.comment", "Add comment", "Append a finding a later reader needs using a required idempotency key. Keep live status in work.attention_msg.", additive, handlers.comment)
+	addTool(server, "poomsae.create", "Create issue", "Create project work after searching for duplicates. A stable idempotency key is required.", additive, handlers.create)
+	addTool(server, "poomsae.edit", "Edit issue", "Edit issue fields, ownership, priority, and relationship deltas atomically.", mutating, handlers.edit)
+	addTool(server, "poomsae.edit_comment", "Edit comment", "Replace one comment body as the startup actor. Use it to correct your own comment.", mutating, handlers.editComment)
+	addTool(server, "poomsae.move", "Move issue", "Move an issue and its active descendants to another in-scope project while preserving UIDs and relationships. Pass single to move one issue or dry_run to preview.", mutating, handlers.move)
+	addTool(server, "poomsae.set_deadline", "Set deadline", "Set or clear an issue deadline. Dates and local date-times accept [IANA/Zone]; otherwise Poomsae uses the issue timezone, daemon timezone, or UTC when resolving it. UTC instants end in Z.", mutating, handlers.setDeadline)
+	addTool(server, "poomsae.set_label", "Set label presence", "Ensure that a label is present or absent on an issue.", mutating, handlers.setLabel)
+	addTool(server, "poomsae.set_metadata", "Patch metadata", "Patch issue metadata; JSON null removes a key. An optional revision makes the write conditional.", mutating, handlers.setMetadata)
+	addTool(server, "poomsae.set_schedule", "Set schedule", "Set or clear an issue schedule gate. Dates and local date-times accept [IANA/Zone]; otherwise Poomsae uses the issue timezone, daemon timezone, or UTC when resolving it. UTC instants end in Z.", mutating, handlers.setSchedule)
 }
 
 func registerIssueLifecycleTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
 	additive := toolHints(false, false, false)
 	mutating := toolHints(false, true, false)
-	addTool(server, "kata.audit_closes", "Audit closes", "List close records with bounded project and time filters.", read, handlers.auditCloses)
-	addTool(server, "kata.close", "Close issue", "Close a completed issue with a reason, substantive message, and typed evidence. Work whose PR is open and not merged is not complete.", mutating, handlers.close)
-	addTool(server, "kata.delete", "Delete issue", "Soft-delete an issue after exact confirmation.", mutating, handlers.deleteIssue)
-	addTool(server, "kata.purge", "Purge issue", "Irreversibly purge a soft-deleted issue after exact confirmation.", mutating, handlers.purgeIssue)
-	addTool(server, "kata.reopen", "Reopen issue", "Reopen a closed issue when new work is required.", mutating, handlers.reopen)
-	addTool(server, "kata.restore", "Restore issue", "Restore a soft-deleted issue.", additive, handlers.restoreIssue)
-	addTool(server, "kata.wait", "Wait for issues", "Wait for issue status conditions with a bounded timeout.", read, handlers.wait)
+	addTool(server, "poomsae.audit_closes", "Audit closes", "List close records with bounded project and time filters.", read, handlers.auditCloses)
+	addTool(server, "poomsae.close", "Close issue", "Close a completed issue with a reason, substantive message, and typed evidence. Work whose PR is open and not merged is not complete.", mutating, handlers.close)
+	addTool(server, "poomsae.delete", "Delete issue", "Soft-delete an issue after exact confirmation.", mutating, handlers.deleteIssue)
+	addTool(server, "poomsae.purge", "Purge issue", "Irreversibly purge a soft-deleted issue after exact confirmation.", mutating, handlers.purgeIssue)
+	addTool(server, "poomsae.reopen", "Reopen issue", "Reopen a closed issue when new work is required.", mutating, handlers.reopen)
+	addTool(server, "poomsae.restore", "Restore issue", "Restore a soft-deleted issue.", additive, handlers.restoreIssue)
+	addTool(server, "poomsae.wait", "Wait for issues", "Wait for issue status conditions with a bounded timeout.", read, handlers.wait)
 }
 
 func addTool[In, Out any](
@@ -318,42 +318,42 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 	}
 
 	switch toolName {
-	case "kata.search_tools":
+	case "poomsae.search_tools":
 		setStringBounds("query", 1, toolSearchQueryBytes)
 		setNumberBounds("limit", 1, toolSearchMaxResults)
 		property("limit").Type = "integer"
 		property("limit").Types = nil
-	case "kata.skills":
+	case "poomsae.skills":
 		setStringBounds("name", 0, 64)
 		property("name").Description = "Guide name: " + strings.Join(SkillGuides(), ", ") + "; omit to list the guides"
-	case "kata.connectors":
+	case "poomsae.connectors":
 		setStringBounds("instance", 1, 128)
-	case "kata.connector_fields":
+	case "poomsae.connector_fields":
 		setStringBounds("instance", 1, 128)
-	case "kata.connector_field_map":
+	case "poomsae.connector_field_map":
 		setStringBounds("instance", 1, 128)
 		setStringBounds("kata_field", 1, 64)
 		setStringBounds("external_field", 1, 256)
 		setEnum("kata_field", "scheduled_on", "deadline_on")
-	case "kata.connector_field_unmap":
+	case "poomsae.connector_field_unmap":
 		setStringBounds("instance", 1, 128)
 		setStringBounds("kata_field", 1, 64)
 		setEnum("kata_field", "scheduled_on", "deadline_on")
-	case "kata.bridge_show", "kata.bridge_reconcile", "kata.bridge_resume", "kata.bridge_unbind":
+	case "poomsae.bridge_show", "poomsae.bridge_reconcile", "poomsae.bridge_resume", "poomsae.bridge_unbind":
 		setStringBounds("ref", 1, 256)
-	case "kata.bridge_bind":
+	case "poomsae.bridge_bind":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("connector", 1, 128)
 		setStringBounds("external", 1, 4096)
-	case "kata.bridge_pause":
+	case "poomsae.bridge_pause":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("reason", 1, 4096)
-	case "kata.bridge_resolve_field":
+	case "poomsae.bridge_resolve_field":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("kata_field", 1, 64)
 		setEnum("kata_field", "scheduled_on", "deadline_on")
-		setEnum("use", "kata", "external")
-	case "kata.bridge_resolve_comment":
+		setEnum("use", "poomsae", "external")
+	case "poomsae.bridge_resolve_comment":
 		setStringBounds("ref", 1, 256)
 		setEnum("action", "adopt", "retry", "skip")
 		setStringBounds("external_comment_id", 1, 4096)
@@ -368,12 +368,12 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			Then: &jsonschema.Schema{Required: []string{"external_comment_id"}},
 			Else: &jsonschema.Schema{Not: &jsonschema.Schema{Required: []string{"external_comment_id"}}},
 		})
-	case "kata.search":
+	case "poomsae.search":
 		setEnum("status", "open", "closed")
 		setStringBounds("query", 1, 4096)
 		setNumberBounds("limit", 1, maximumResultLimit)
 		setEnum("mode", "auto", "lexical", "hybrid", "semantic")
-	case "kata.list":
+	case "poomsae.list":
 		setEnum("sort", "created", "oldest")
 		forbidTrueWith("priority_unset", "priority")
 		forbidTrueWith("priority_unset", "max_priority")
@@ -382,18 +382,18 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 		setNumberBounds("max_priority", 0, 4)
 		setEnum("status", "open", "closed")
 		forbidTrueWith("unowned", "owner")
-	case "kata.ready":
+	case "poomsae.ready":
 		setNumberBounds("limit", 1, maximumResultLimit)
 		forbidTrueWith("unowned", "owner")
-	case "kata.show":
+	case "poomsae.show":
 		setEnum("kind", "reply", "confirm", "refute", "supersede")
 		setStringBounds("ref", 1, 256)
 		setNumberBounds("comment_limit", 1, maximumResultLimit)
-	case "kata.create":
+	case "poomsae.create":
 		setStringBounds("title", 1, 1024)
 		setStringBounds("idempotency_key", 1, 256)
 		setNumberBounds("priority", 0, 4)
-	case "kata.edit":
+	case "poomsae.edit":
 		setStringBounds("ref", 1, 256)
 		setNumberBounds("priority", 0, 4)
 		forbidTrueWith("clear_owner", "owner")
@@ -401,19 +401,19 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 		forbidTrueWith("clear_scheduled_on", "scheduled_on")
 		forbidTrueWith("clear_timezone", "timezone")
 		forbidTogether("parent", "remove_parent")
-	case "kata.comment":
+	case "poomsae.comment":
 		setEnum("kind", "reply", "confirm", "refute", "supersede")
 		setStringBounds("ref", 1, 256)
 		setStringBounds("body", 1, 1<<20)
 		setStringBounds("idempotency_key", 1, 256)
-	case "kata.claim":
+	case "poomsae.claim":
 		setStringBounds("ref", 1, 256)
 		setNumberBounds("ttl_seconds", 60, 86400)
-	case "kata.set_label":
+	case "poomsae.set_label":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("label", 1, 64)
 		property("label").Pattern = `^[a-z0-9._:-]+$`
-	case "kata.set_deadline":
+	case "poomsae.set_deadline":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("deadline", 1, 64)
 		if field := property("revision"); field != nil {
@@ -421,7 +421,7 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			field.Minimum = &minimum
 		}
 		setCondition(planningDateCondition("deadline", "clear_deadline"))
-	case "kata.set_metadata":
+	case "poomsae.set_metadata":
 		setStringBounds("ref", 1, 256)
 		if field := property("revision"); field != nil {
 			minimum := float64(0)
@@ -431,7 +431,7 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			minimum := 1
 			field.MinProperties = &minimum
 		}
-	case "kata.set_schedule":
+	case "poomsae.set_schedule":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("schedule", 1, 64)
 		if field := property("revision"); field != nil {
@@ -439,7 +439,7 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			field.Minimum = &minimum
 		}
 		setCondition(planningDateCondition("schedule", "clear_schedule"))
-	case "kata.recurrence_update":
+	case "poomsae.recurrence_update":
 		setEnum("action", "create", "patch")
 		if field := property("revision"); field != nil {
 			minimum := float64(1)
@@ -455,7 +455,7 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			},
 			Then: &jsonschema.Schema{Required: []string{"uid", "revision"}},
 		})
-	case "kata.federation_leave":
+	case "poomsae.federation_leave":
 		setEnum("phase", "preflight", "prepare", "abort", "commit")
 		setEnum("disposition", "detach", "archive")
 		commit := any("commit")
@@ -468,32 +468,32 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 			},
 			Then: &jsonschema.Schema{Required: []string{"confirm"}},
 		})
-	case "kata.close":
+	case "poomsae.close":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("message", 1, 1<<20)
 		setEnum("reason", "done", "wontfix", "duplicate", "superseded", "audit-no-change")
 		property("evidence").Items = evidenceSchema()
 		setCondition(closeReasonCondition())
-	case "kata.reopen":
+	case "poomsae.reopen":
 		setStringBounds("ref", 1, 256)
-	case "kata.audit_closes":
+	case "poomsae.audit_closes":
 		setNumberBounds("limit", 1, maximumResultLimit)
 		setStringBounds("cursor", 1, 64)
-	case "kata.assign":
+	case "poomsae.assign":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("owner", 1, 0)
-	case "kata.unassign":
+	case "poomsae.unassign":
 		setStringBounds("ref", 1, 256)
 		setStringBounds("expected_owner", 1, 0)
-	case "kata.status":
+	case "poomsae.status":
 		setStringBounds("ref", 1, 256)
-	case "kata.inbox":
+	case "poomsae.inbox":
 		setStringBounds("for", 1, notification.RecipientMaxBytes)
 		setNumberBounds("limit", 1, maximumResultLimit)
-	case "kata.search_docs":
+	case "poomsae.search_docs":
 		setStringBounds("query", 1, maximumQueryBytes)
 		setNumberBounds("limit", 1, maximumResultLimit)
-	case "kata.read_doc":
+	case "poomsae.read_doc":
 		setStringBounds("id", 1, 512)
 	}
 	switch len(forbidden) {
@@ -729,7 +729,7 @@ type CreateInput struct {
 	Metadata       map[string]any `json:"metadata,omitempty" jsonschema:"Initial issue metadata"`
 	ScheduledOn    string         `json:"scheduled_on,omitempty" jsonschema:"Schedule as YYYY-MM-DD or local YYYY-MM-DDTHH:MM[:SS] with optional [IANA/Zone], or an RFC 3339 UTC instant ending in Z"`
 	Timezone       string         `json:"timezone,omitempty" jsonschema:"IANA timezone for scheduled_on values without an explicit zone"`
-	ForceNew       bool           `json:"force_new,omitempty" jsonschema:"Create even when Kata finds a likely duplicate"`
+	ForceNew       bool           `json:"force_new,omitempty" jsonschema:"Create even when Poomsae finds a likely duplicate"`
 	Parent         string         `json:"parent,omitempty" jsonschema:"Parent issue reference"`
 	Blocks         []string       `json:"blocks,omitempty" jsonschema:"Issues this new issue blocks"`
 	BlockedBy      []string       `json:"blocked_by,omitempty" jsonschema:"Issues that block this new issue"`
@@ -810,7 +810,7 @@ type SetMetadataInput struct {
 	Revision *int64         `json:"revision,omitempty" jsonschema:"Required current issue revision for a conditional write"`
 }
 
-// Evidence is a typed completion proof accepted by Kata close.
+// Evidence is a typed completion proof accepted by Poomsae close.
 type Evidence struct {
 	AttachmentID string   `json:"attachment_id,omitempty" jsonschema:"Existing attachment ID for attachment evidence"`
 	Type         string   `json:"type" jsonschema:"Evidence type: attachment, commit, pr, test, reviewed-paths, external, no-change-audit, duplicate-of, or superseded-by"`
@@ -955,7 +955,7 @@ type LinkSummary struct {
 	Status       string `json:"status"`
 }
 
-// IssueDetail is the full bounded result for kata.show.
+// IssueDetail is the full bounded result for poomsae.show.
 type IssueDetail struct {
 	IssueSummary
 	Labels   []string         `json:"labels"`

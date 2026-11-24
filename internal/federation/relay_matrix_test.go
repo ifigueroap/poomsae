@@ -14,18 +14,18 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 type relayMatrixNode struct {
@@ -71,7 +71,7 @@ func openRelayMatrixStore(t *testing.T, backend string, withVectors bool, opts .
 	t.Helper()
 	var store db.Storage
 	if backend == "sqlite" {
-		path := filepath.Join(t.TempDir(), "kata.db")
+		path := filepath.Join(t.TempDir(), "poomsae.db")
 		if len(opts) == 0 {
 			// Most nodes take a copy of a schema-ready database instead of
 			// installing the schema again.

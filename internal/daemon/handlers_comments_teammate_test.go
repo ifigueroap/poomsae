@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
 )
 
 func TestCommentEndpoint_TeammateWire(t *testing.T) {

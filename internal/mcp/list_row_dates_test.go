@@ -5,12 +5,12 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestMCPListRowsCarryPlanningDates(t *testing.T) {
@@ -31,7 +31,7 @@ func TestMCPListRowsCarryPlanningDates(t *testing.T) {
 	_, _, err = env.DB.CreateIssue(ctx, db.CreateIssueParams{ProjectID: project.ID, Title: "undated", Author: "example-agent"})
 	require.NoError(t, err)
 
-	client, err := kataclient.NewWithHTTPClient(env.URL, env.HTTP)
+	client, err := poomsaeclient.NewWithHTTPClient(env.URL, env.HTTP)
 	require.NoError(t, err)
 	bound, err := NewBoundScope(ProjectIdentity{ID: project.ID, UID: project.UID, Name: project.Name})
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestMCPListRowsCarryPlanningDates(t *testing.T) {
 	for name, scope := range map[string]*Scope{"bound project": bound, "every project": NewAllScope()} {
 		t.Run(name, func(t *testing.T) {
 			session := connectTestServerWithOptions(t, Options{Client: client, Scope: scope, Actor: "example-agent", Version: "test"})
-			result, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "kata.list", Arguments: map[string]any{}})
+			result, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: map[string]any{}})
 			require.NoError(t, err)
 			require.False(t, result.IsError, "%s", mustJSON(t, result))
 			var page struct {

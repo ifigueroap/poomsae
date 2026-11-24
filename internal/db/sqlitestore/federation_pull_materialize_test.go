@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // Pulls must repair only their touched issue and agree with a complete fold,

@@ -1,4 +1,4 @@
-export type KataGraphDebugEventKind =
+export type PoomsaeGraphDebugEventKind =
   | 'detail-load-abort'
   | 'detail-load-complete'
   | 'detail-load-stale'
@@ -13,14 +13,14 @@ export type KataGraphDebugEventKind =
   | 'graph-render'
   | 'selection-start'
 
-export interface KataGraphDebugEvent {
+export interface PoomsaeGraphDebugEvent {
   id: number
   at: number
-  kind: KataGraphDebugEventKind
+  kind: PoomsaeGraphDebugEventKind
   detail?: Record<string, unknown> | undefined
 }
 
-export interface KataGraphDebugGraphSnapshot {
+export interface PoomsaeGraphDebugGraphSnapshot {
   sourceUID: string
   hideDone: boolean
   graphLoading?: boolean | undefined
@@ -47,7 +47,7 @@ export interface KataGraphDebugGraphSnapshot {
   layoutBounds: { width: number; height: number; aspectRatio: number }
 }
 
-export interface KataGraphDebugStoreSnapshot {
+export interface PoomsaeGraphDebugStoreSnapshot {
   queueKeys: string[]
   graphLoadActive: boolean
   issueRefreshActive: boolean
@@ -56,22 +56,22 @@ export interface KataGraphDebugStoreSnapshot {
   cachedTaskCount: number
 }
 
-export interface KataGraphDebugSnapshot {
-  events: KataGraphDebugEvent[]
-  latestGraph?: KataGraphDebugGraphSnapshot | undefined
-  store?: KataGraphDebugStoreSnapshot | undefined
+export interface PoomsaeGraphDebugSnapshot {
+  events: PoomsaeGraphDebugEvent[]
+  latestGraph?: PoomsaeGraphDebugGraphSnapshot | undefined
+  store?: PoomsaeGraphDebugStoreSnapshot | undefined
 }
 
-export interface KataGraphDebugAPI {
-  snapshot: () => KataGraphDebugSnapshot
+export interface PoomsaeGraphDebugAPI {
+  snapshot: () => PoomsaeGraphDebugSnapshot
   reset: () => void
 }
 
 const maxEvents = 200
 let nextEventID = 1
-let events: KataGraphDebugEvent[] = []
-let latestGraph: KataGraphDebugGraphSnapshot | undefined
-let store: KataGraphDebugStoreSnapshot | undefined
+let events: PoomsaeGraphDebugEvent[] = []
+let latestGraph: PoomsaeGraphDebugGraphSnapshot | undefined
+let store: PoomsaeGraphDebugStoreSnapshot | undefined
 
 function now(): number {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -80,7 +80,7 @@ function now(): number {
   return Date.now()
 }
 
-function cloneSnapshot(): KataGraphDebugSnapshot {
+function cloneSnapshot(): PoomsaeGraphDebugSnapshot {
   return {
     events: events.map((event) => ({
       ...event,
@@ -103,19 +103,19 @@ function cloneSnapshot(): KataGraphDebugSnapshot {
 
 function installKataGraphDebugHook(): void {
   if (typeof window === 'undefined') return
-  ;(window as Window & { __kata_graph_debug?: KataGraphDebugAPI }).__kata_graph_debug =
-    kataGraphDebug
+  ;(window as Window & { __kata_graph_debug?: PoomsaeGraphDebugAPI }).__kata_graph_debug =
+    poomsaeGraphDebug
 }
 
 export function recordKataGraphDebugEvent(
-  kind: KataGraphDebugEventKind,
+  kind: PoomsaeGraphDebugEventKind,
   detail?: Record<string, unknown>,
 ): void {
   installKataGraphDebugHook()
   events = [...events, { id: nextEventID++, at: now(), kind, detail }].slice(-maxEvents)
 }
 
-export function setKataGraphDebugGraph(snapshot: KataGraphDebugGraphSnapshot): void {
+export function setKataGraphDebugGraph(snapshot: PoomsaeGraphDebugGraphSnapshot): void {
   installKataGraphDebugHook()
   latestGraph = {
     ...snapshot,
@@ -128,12 +128,12 @@ export function setKataGraphDebugGraph(snapshot: KataGraphDebugGraphSnapshot): v
   }
 }
 
-export function setKataGraphDebugStore(snapshot: KataGraphDebugStoreSnapshot): void {
+export function setKataGraphDebugStore(snapshot: PoomsaeGraphDebugStoreSnapshot): void {
   installKataGraphDebugHook()
   store = { ...snapshot, queueKeys: [...snapshot.queueKeys] }
 }
 
-export function getKataGraphDebugSnapshot(): KataGraphDebugSnapshot {
+export function getKataGraphDebugSnapshot(): PoomsaeGraphDebugSnapshot {
   installKataGraphDebugHook()
   return cloneSnapshot()
 }
@@ -146,7 +146,7 @@ export function resetKataGraphDebug(): void {
   store = undefined
 }
 
-export const kataGraphDebug: KataGraphDebugAPI = {
+export const poomsaeGraphDebug: PoomsaeGraphDebugAPI = {
   snapshot: getKataGraphDebugSnapshot,
   reset: resetKataGraphDebug,
 }

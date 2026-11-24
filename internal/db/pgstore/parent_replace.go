@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ReplaceParentAndEvents replaces an expected parent link and emits its events atomically.

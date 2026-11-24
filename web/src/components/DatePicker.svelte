@@ -4,7 +4,7 @@
   import XIcon from '@lucide/svelte/icons/x'
   import { Button, Calendar, IconButton, todayStr } from '@kenn-io/kit-ui'
 
-  import { formatDay, validISODate } from '../lib/kata/dates'
+  import { formatDay, validISODate } from '../lib/poomsae/dates'
 
   interface Props {
     value: string

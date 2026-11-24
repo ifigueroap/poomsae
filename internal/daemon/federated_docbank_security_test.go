@@ -14,14 +14,14 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
 )
 
 type rejectingDocbankFence struct{}
@@ -33,11 +33,11 @@ func (rejectingDocbankFence) AuthorizeFederation(context.Context, daemon.HostFed
 func TestFederatedDocbankContentRejectsRelayLocalOrigin(t *testing.T) {
 	vault := docbanktest.New(t)
 	version := uuid.MustParse(linkVersion)
-	vault.Seed("/kata/relay-local.pdf", docbank.Node{ID: 42, Name: "relay-local.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("relay-local bytes")})
+	vault.Seed("/poomsae/relay-local.pdf", docbank.Node{ID: 42, Name: "relay-local.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("relay-local bytes")})
 	credentials := newReplicaCredentialStore()
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) {
 		cfg.Docbank = docbank.NewClient(vault.Server.URL, func() (string, error) { return "test-key", nil })
-		cfg.DocbankFolder = "/kata"
+		cfg.DocbankFolder = "/poomsae"
 		cfg.FederationCredentials = credentials
 	})
 	project, _ := seedProjectAndIssue(t, env)
@@ -133,7 +133,7 @@ func testDocbankServiceDenial(t *testing.T, operation string, wrongOrigin bool, 
 	vault := docbanktest.New(t)
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) {
 		cfg.Docbank = docbank.NewClient(vault.Server.URL, func() (string, error) { return "test-key", nil })
-		cfg.DocbankFolder = "/kata"
+		cfg.DocbankFolder = "/poomsae"
 		if !wrongOrigin {
 			cfg.HostFederationAccess = rejectingDocbankFence{}
 			if len(access) != 0 {
@@ -147,7 +147,7 @@ func testDocbankServiceDenial(t *testing.T, operation string, wrongOrigin bool, 
 	grant, err := env.DB.CreateFederationEnrollment(t.Context(), db.CreateFederationEnrollmentParams{ProjectID: &project.ID, SpokeInstanceUID: "01ARZ3NDEKTSV4RRFFQ69G5FAV", Token: "service-fixture-token", Capabilities: "pull,push", Actor: "operator"})
 	require.NoError(t, err)
 	version := uuid.MustParse(linkVersion)
-	vault.Seed("/kata/file.pdf", docbank.Node{ID: 42, Name: "file.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("fixture")})
+	vault.Seed("/poomsae/file.pdf", docbank.Node{ID: 42, Name: "file.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("fixture")})
 	origin := env.DB.InstanceUID()
 	want := http.StatusForbidden
 	if len(access) != 0 {
@@ -161,7 +161,7 @@ func testDocbankServiceDenial(t *testing.T, operation string, wrongOrigin bool, 
 	query := url.Values{"project_uid": {project.UID}, "origin": {origin}, "name": {"file.pdf"}}
 	body, mediaType := "fixture", "application/octet-stream"
 	if operation == "links" {
-		body, mediaType = `{"path":"/kata/file.pdf"}`, "application/json"
+		body, mediaType = `{"path":"/poomsae/file.pdf"}`, "application/json"
 	}
 	endpoint := fmt.Sprintf("%s/api/v1/projects/%d/federation/docbank/issues/%s/%s?%s", env.URL, project.ID, issue.UID, operation, query.Encode())
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, endpoint, strings.NewReader(body))

@@ -7,7 +7,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/internal/agentguide"
+	"github.com/ifigueroap/poomsae/internal/agentguide"
 )
 
 type skillGuide struct {
@@ -18,14 +18,14 @@ type skillGuide struct {
 
 var skillGuides = []skillGuide{
 	{name: "setup", title: "Set up MCP-only instructions", summary: "Get exact managed text and a safe edit plan for your own local file editor."},
-	{name: "quickstart", title: "Kata MCP quickstart", summary: "Follow typed tool examples from search through evidence-backed completion."},
-	{name: "workflow", title: "Kata agent workflow", summary: "Search first, reuse or create one issue, claim it and close with evidence.", tools: []string{"kata.search", "kata.create", "kata.show", "kata.comment", "kata.edit", "kata.set_label", "kata.next", "kata.ready", "kata.claim", "kata.unassign", "kata.status", "kata.set_metadata", "kata.set_schedule", "kata.set_deadline", "kata.close", "kata.reopen", "kata.audit_closes", "kata.delete", "kata.purge", "kata.inbox", "kata.wait", "kata.events"}},
-	{name: "issues", title: "Find, create and update issues", summary: "Reuse existing work, create with idempotency and connect related issues.", tools: []string{"kata.search", "kata.create", "kata.show", "kata.comment", "kata.set_label", "kata.edit"}},
-	{name: "claiming", title: "Pick up and own work", summary: "Find available work, claim it and release ownership safely.", tools: []string{"kata.next", "kata.ready", "kata.claim", "kata.unassign", "kata.status", "kata.show"}},
-	{name: "closing", title: "Close with evidence", summary: "Complete work with typed evidence or hand back unfinished work.", tools: []string{"kata.set_label", "kata.close", "kata.audit_closes", "kata.reopen"}},
-	{name: "teammates", title: "Teammates, inbox and attention", summary: "Attribute contributions, coordinate requests and signal attention with work.* metadata.", tools: []string{"kata.comment", "kata.create", "kata.claim", "kata.inbox", "kata.set_metadata", "kata.wait"}},
-	{name: "scheduling", title: "Park, schedule and set deadlines", summary: "Defer work, set deadlines and return deferred issues to the queue.", tools: []string{"kata.set_schedule", "kata.set_deadline", "kata.set_metadata"}},
-	{name: "events", title: "Follow activity with events", summary: "Resume activity from a cursor and recover from resets.", tools: []string{"kata.events"}},
+	{name: "quickstart", title: "Poomsae MCP quickstart", summary: "Follow typed tool examples from search through evidence-backed completion."},
+	{name: "workflow", title: "Poomsae agent workflow", summary: "Search first, reuse or create one issue, claim it and close with evidence.", tools: []string{"poomsae.search", "poomsae.create", "poomsae.show", "poomsae.comment", "poomsae.edit", "poomsae.set_label", "poomsae.next", "poomsae.ready", "poomsae.claim", "poomsae.unassign", "poomsae.status", "poomsae.set_metadata", "poomsae.set_schedule", "poomsae.set_deadline", "poomsae.close", "poomsae.reopen", "poomsae.audit_closes", "poomsae.delete", "poomsae.purge", "poomsae.inbox", "poomsae.wait", "poomsae.events"}},
+	{name: "issues", title: "Find, create and update issues", summary: "Reuse existing work, create with idempotency and connect related issues.", tools: []string{"poomsae.search", "poomsae.create", "poomsae.show", "poomsae.comment", "poomsae.set_label", "poomsae.edit"}},
+	{name: "claiming", title: "Pick up and own work", summary: "Find available work, claim it and release ownership safely.", tools: []string{"poomsae.next", "poomsae.ready", "poomsae.claim", "poomsae.unassign", "poomsae.status", "poomsae.show"}},
+	{name: "closing", title: "Close with evidence", summary: "Complete work with typed evidence or hand back unfinished work.", tools: []string{"poomsae.set_label", "poomsae.close", "poomsae.audit_closes", "poomsae.reopen"}},
+	{name: "teammates", title: "Teammates, inbox and attention", summary: "Attribute contributions, coordinate requests and signal attention with work.* metadata.", tools: []string{"poomsae.comment", "poomsae.create", "poomsae.claim", "poomsae.inbox", "poomsae.set_metadata", "poomsae.wait"}},
+	{name: "scheduling", title: "Park, schedule and set deadlines", summary: "Defer work, set deadlines and return deferred issues to the queue.", tools: []string{"poomsae.set_schedule", "poomsae.set_deadline", "poomsae.set_metadata"}},
+	{name: "events", title: "Follow activity with events", summary: "Resume activity from a cursor and recover from resets.", tools: []string{"poomsae.events"}},
 }
 
 // SkillGuides returns guide names in catalog order.
@@ -61,7 +61,7 @@ type SkillsOutput struct {
 }
 
 func registerSkillsTool(server *sdkmcp.Server) {
-	addTool(server, "kata.skills", "Kata how-to guides", `Native guides for this server's Kata tools. Use name=setup for exact MCP-only managed instructions and a caller-side edit plan (no files are read/written); quickstart for typed examples; workflow before your first write. Other topics: issues, claiming, closing, teammates, scheduling, events. Omit name for the catalog. Fixed content only; no arbitrary files or paths.`, toolHints(true, false, false), toolHandlers{}.skills)
+	addTool(server, "poomsae.skills", "Poomsae how-to guides", `Native guides for this server's Poomsae tools. Use name=setup for exact MCP-only managed instructions and a caller-side edit plan (no files are read/written); quickstart for typed examples; workflow before your first write. Other topics: issues, claiming, closing, teammates, scheduling, events. Omit name for the catalog. Fixed content only; no arbitrary files or paths.`, toolHints(true, false, false), toolHandlers{}.skills)
 }
 
 func (toolHandlers) skills(_ context.Context, _ *sdkmcp.CallToolRequest, input SkillsInput) (*sdkmcp.CallToolResult, SkillsOutput, error) {

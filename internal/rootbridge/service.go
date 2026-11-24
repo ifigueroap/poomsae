@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 var (
@@ -93,7 +93,7 @@ func (s *Service) emitEvents(events ...db.Event) {
 	}
 }
 
-// BindParams selects a Kata issue and external root to bind.
+// BindParams selects a Poomsae issue and external root to bind.
 type BindParams struct {
 	ProjectID         int64
 	IssueID           int64
@@ -141,7 +141,7 @@ func (s *Service) ResolvePendingComment(
 		binding.PendingCommentStartedAt == nil {
 		return resolved, event, ErrPendingCommentResolutionRequired
 	}
-	claimToken, err := katauid.New()
+	claimToken, err := poomsaeuid.New()
 	if err != nil {
 		return resolved, event, fmt.Errorf("generate pending comment claim token: %w", err)
 	}
@@ -309,7 +309,7 @@ func (s *Service) Bind(ctx context.Context, params BindParams) (db.ExternalRootB
 			ExternalID: comment.ID, Revision: comment.Revision,
 		})
 	}
-	claimToken, err := katauid.New()
+	claimToken, err := poomsaeuid.New()
 	if err != nil {
 		return db.ExternalRootBinding{}, nil, fmt.Errorf("generate initial external root claim: %w", err)
 	}
@@ -429,21 +429,21 @@ func (s *Service) Unbind(ctx context.Context, issueID int64, actor string) (db.E
 	return unbound, event, err
 }
 
-// MapFieldParams selects one Kata planning field and one external field.
+// MapFieldParams selects one Poomsae planning field and one external field.
 type MapFieldParams struct {
 	ConnectorInstance string
-	KataField         string
+	PoomsaeField      string
 	ExternalField     string
 }
 
 // MapField validates and persists one connector-level field mapping.
 func (s *Service) MapField(ctx context.Context, params MapFieldParams) (db.ExternalFieldMapping, error) {
 	params.ConnectorInstance = strings.TrimSpace(params.ConnectorInstance)
-	params.KataField = strings.TrimSpace(params.KataField)
+	params.PoomsaeField = strings.TrimSpace(params.PoomsaeField)
 	params.ExternalField = strings.TrimSpace(params.ExternalField)
-	codec, ok := s.fieldCodecs[params.KataField]
+	codec, ok := s.fieldCodecs[params.PoomsaeField]
 	if !ok {
-		return db.ExternalFieldMapping{}, fmt.Errorf("%w: unsupported Kata field", db.ErrExternalFieldMappingValidation)
+		return db.ExternalFieldMapping{}, fmt.Errorf("%w: unsupported Poomsae field", db.ErrExternalFieldMappingValidation)
 	}
 	instance, err := s.requireInstance(params.ConnectorInstance)
 	if err != nil {
@@ -468,7 +468,7 @@ func (s *Service) MapField(ctx context.Context, params MapFieldParams) (db.Exter
 		return db.ExternalFieldMapping{}, fmt.Errorf("%w: validate external field %q: %w", db.ErrExternalFieldMappingValidation, descriptor.ID, err)
 	}
 	return s.store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: params.ConnectorInstance, KataField: params.KataField,
+		ConnectorInstance: params.ConnectorInstance, PoomsaeField: params.PoomsaeField,
 		ExternalFieldID: descriptor.ID, ExternalFieldName: descriptor.DisplayName,
 		AcceptedKinds: append([]string(nil), descriptor.AcceptedKinds...),
 		Nullable:      descriptor.Nullable, Writable: descriptor.Writable,
@@ -477,35 +477,35 @@ func (s *Service) MapField(ctx context.Context, params MapFieldParams) (db.Exter
 }
 
 // UnmapField removes one connector-level field mapping.
-func (s *Service) UnmapField(ctx context.Context, connectorInstance, kataField string) (db.ExternalFieldMapping, error) {
+func (s *Service) UnmapField(ctx context.Context, connectorInstance, poomsaeField string) (db.ExternalFieldMapping, error) {
 	connectorInstance = strings.TrimSpace(connectorInstance)
-	kataField = strings.TrimSpace(kataField)
-	if _, ok := s.fieldCodecs[kataField]; !ok {
-		return db.ExternalFieldMapping{}, fmt.Errorf("%w: unsupported Kata field", db.ErrExternalFieldMappingValidation)
+	poomsaeField = strings.TrimSpace(poomsaeField)
+	if _, ok := s.fieldCodecs[poomsaeField]; !ok {
+		return db.ExternalFieldMapping{}, fmt.Errorf("%w: unsupported Poomsae field", db.ErrExternalFieldMappingValidation)
 	}
 	if _, err := s.requireInstance(connectorInstance); err != nil {
 		return db.ExternalFieldMapping{}, err
 	}
-	return s.store.UnmapExternalField(ctx, connectorInstance, kataField)
+	return s.store.UnmapExternalField(ctx, connectorInstance, poomsaeField)
 }
 
 // ResolveFieldConflict applies one chosen candidate and clears the conflict.
 func (s *Service) ResolveFieldConflict(
 	ctx context.Context,
 	issueID int64,
-	kataField string,
+	poomsaeField string,
 	use string,
 	actor string,
 ) (resolved db.ExternalFieldState, events []db.Event, returnErr error) {
-	kataField = strings.TrimSpace(kataField)
+	poomsaeField = strings.TrimSpace(poomsaeField)
 	use = strings.TrimSpace(use)
 	actor = strings.TrimSpace(actor)
-	codec, ok := s.fieldCodecs[kataField]
+	codec, ok := s.fieldCodecs[poomsaeField]
 	if issueID <= 0 || !ok || actor == "" {
-		return resolved, events, fmt.Errorf("%w: issue, supported Kata field, and actor are required", db.ErrExternalRootValidation)
+		return resolved, events, fmt.Errorf("%w: issue, supported Poomsae field, and actor are required", db.ErrExternalRootValidation)
 	}
-	if use != "kata" && use != "external" {
-		return resolved, events, fmt.Errorf("%w: field conflict resolution must use kata or external", db.ErrExternalRootValidation)
+	if use != "poomsae" && use != "external" {
+		return resolved, events, fmt.Errorf("%w: field conflict resolution must use poomsae or external", db.ErrExternalRootValidation)
 	}
 	binding, err := s.store.ExternalRootBindingByIssue(ctx, issueID)
 	if err != nil {
@@ -520,16 +520,16 @@ func (s *Service) ResolveFieldConflict(
 	}
 	var mapping db.ExternalFieldMapping
 	for _, candidate := range mappings {
-		if !candidate.Active || candidate.KataField != kataField {
+		if !candidate.Active || candidate.PoomsaeField != poomsaeField {
 			continue
 		}
 		if mapping.ID != 0 {
-			return resolved, events, fmt.Errorf("%w: multiple active mappings for %s", db.ErrExternalRootValidation, kataField)
+			return resolved, events, fmt.Errorf("%w: multiple active mappings for %s", db.ErrExternalRootValidation, poomsaeField)
 		}
 		mapping = candidate
 	}
 	if mapping.ID == 0 {
-		return resolved, events, fmt.Errorf("%w: %s", ErrExternalFieldNotFound, kataField)
+		return resolved, events, fmt.Errorf("%w: %s", ErrExternalFieldNotFound, poomsaeField)
 	}
 	states, err := s.store.ExternalFieldStates(ctx, binding.ID)
 	if err != nil {
@@ -546,7 +546,7 @@ func (s *Service) ResolveFieldConflict(
 		return resolved, events, db.ErrExternalFieldNotConflicted
 	}
 
-	claimToken, err := katauid.New()
+	claimToken, err := poomsaeuid.New()
 	if err != nil {
 		return resolved, events, fmt.Errorf("generate field conflict claim token: %w", err)
 	}
@@ -591,7 +591,7 @@ func (s *Service) ResolveFieldConflict(
 	}
 	var claimedMapping db.ExternalFieldMapping
 	for _, candidate := range claimedMappings {
-		if !candidate.Active || candidate.KataField != kataField {
+		if !candidate.Active || candidate.PoomsaeField != poomsaeField {
 			continue
 		}
 		if candidate.ID != mapping.ID || claimedMapping.ID != 0 {
@@ -648,7 +648,7 @@ func (s *Service) ResolveFieldConflict(
 	if err != nil {
 		return resolved, events, err
 	}
-	kataValue, err := readCanonicalKataField(codec, issue, mapping)
+	poomsaeValue, err := readCanonicalKataField(codec, issue, mapping)
 	if err != nil {
 		return resolved, events, ErrFieldConflictChanged
 	}
@@ -672,27 +672,27 @@ func (s *Service) ResolveFieldConflict(
 	if use == "external" {
 		selected = storedExternal
 	}
-	kataCandidateStable := fieldValuesEqual(kataValue, storedKata)
-	if use == "external" && !kataCandidateStable {
-		kataCandidateStable = fieldValuesEqual(kataValue, selected)
+	poomsaeCandidateStable := fieldValuesEqual(poomsaeValue, storedKata)
+	if use == "external" && !poomsaeCandidateStable {
+		poomsaeCandidateStable = fieldValuesEqual(poomsaeValue, selected)
 	}
 	externalCandidateStable := fieldValuesEqual(externalValue, storedExternal)
-	if use == "kata" && !externalCandidateStable {
+	if use == "poomsae" && !externalCandidateStable {
 		externalCandidateStable = fieldValuesEqual(externalValue, selected)
 	}
-	if !kataCandidateStable || !externalCandidateStable {
+	if !poomsaeCandidateStable || !externalCandidateStable {
 		return resolved, events, ErrFieldConflictChanged
 	}
 	projected := issue
-	if !fieldValuesEqual(kataValue, selected) {
-		patch, patchErr := codec.KataPatch(issue, selected)
+	if !fieldValuesEqual(poomsaeValue, selected) {
+		patch, patchErr := codec.PoomsaePatch(issue, selected)
 		if patchErr != nil {
 			return resolved, events, patchErr
 		}
 		var event *db.Event
 		projected, event, _, err = s.store.ApplyExternalFieldProjection(ctx, db.ExternalFieldProjectionParams{
 			BindingID: claimed.ID, MappingID: mapping.ID, ClaimToken: claimToken,
-			KataField: kataField, Patch: patch, ExpectedIssueRevision: issue.Revision,
+			PoomsaeField: poomsaeField, Patch: patch, ExpectedIssueRevision: issue.Revision,
 			IntegrationActor: integrationActor(claimed),
 		})
 		if err != nil {
@@ -703,7 +703,7 @@ func (s *Service) ResolveFieldConflict(
 			events = append(events, *event)
 		}
 	}
-	if use == "kata" && !fieldValuesEqual(externalValue, selected) {
+	if use == "poomsae" && !fieldValuesEqual(externalValue, selected) {
 		if err := renewExternalRootClaimBeforeCall(
 			ctx, s.store, claimed.ID, claimToken, time.Now().UTC().Truncate(time.Millisecond),
 		); err != nil {
@@ -722,14 +722,14 @@ func (s *Service) ResolveFieldConflict(
 	if err != nil {
 		return resolved, events, err
 	}
-	kataReadback, err := readCanonicalKataField(codec, projected, mapping)
+	poomsaeReadback, err := readCanonicalKataField(codec, projected, mapping)
 	if err != nil {
 		return resolved, events, ErrFieldConflictChanged
 	}
-	if !fieldValuesEqual(kataReadback, selected) {
+	if !fieldValuesEqual(poomsaeReadback, selected) {
 		return resolved, events, ErrFieldConflictChanged
 	}
-	if use == "kata" {
+	if use == "poomsae" {
 		externalReadback, err := readMappedExternalField(ctx, &snapshot, mapping)
 		if err != nil {
 			if isInvalidExternalFieldRead(err) {

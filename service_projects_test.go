@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"errors"
@@ -6,20 +6,20 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
 )
 
 func TestServiceEnsureProjectIsIdempotentByStableIdentity(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	spec := kata.ProjectSpec{
+	spec := poomsae.ProjectSpec{
 		UID:  "01HZNQ7VFPK1XGD8R5MABCD4EX",
 		Name: "example-host-project",
 	}
@@ -28,7 +28,7 @@ func TestServiceEnsureProjectIsIdempotentByStableIdentity(t *testing.T) {
 	assert.True(t, first.Created)
 	assert.Equal(t, spec.UID, first.Project.UID)
 	assert.Equal(t, spec.Name, first.Project.Name)
-	assert.Equal(t, kata.ProjectActive, first.Project.State)
+	assert.Equal(t, poomsae.ProjectActive, first.Project.State)
 
 	second, err := service.EnsureProject(t.Context(), spec)
 	require.NoError(t, err)
@@ -37,41 +37,41 @@ func TestServiceEnsureProjectIsIdempotentByStableIdentity(t *testing.T) {
 }
 
 func TestServiceEnsureProjectRejectsIdentityAndNameCollisions(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	_, err = service.EnsureProject(t.Context(), kata.ProjectSpec{
+	_, err = service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-host-project",
 	})
 	require.NoError(t, err)
 
-	_, err = service.EnsureProject(t.Context(), kata.ProjectSpec{
+	_, err = service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "different-project-name",
 	})
-	require.ErrorIs(t, err, kata.ErrProjectConflict)
+	require.ErrorIs(t, err, poomsae.ErrProjectConflict)
 
-	_, err = service.EnsureProject(t.Context(), kata.ProjectSpec{
+	_, err = service.EnsureProject(t.Context(), poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EY", Name: "example-host-project",
 	})
-	require.ErrorIs(t, err, kata.ErrProjectConflict)
+	require.ErrorIs(t, err, poomsae.ErrProjectConflict)
 }
 
 func TestServiceEnsureProjectConvergesConcurrentExactCalls(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	spec := kata.ProjectSpec{
+	spec := poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-host-project",
 	}
-	results := make([]kata.EnsureProjectResult, 2)
+	results := make([]poomsae.EnsureProjectResult, 2)
 	errs := make([]error, 2)
 	var start sync.WaitGroup
 	start.Add(1)
@@ -94,14 +94,14 @@ func TestServiceEnsureProjectConvergesConcurrentExactCalls(t *testing.T) {
 }
 
 func TestServiceArchiveProjectIsIdempotentAndRetainsIdentity(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
-	spec := kata.ProjectSpec{
+	spec := poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-host-project",
 	}
 	ensured, err := service.EnsureProject(t.Context(), spec)
@@ -113,7 +113,7 @@ func TestServiceArchiveProjectIsIdempotentAndRetainsIdentity(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, archived.Changed)
 	assert.Equal(t, ensured.Project.ID, archived.Project.ID)
-	assert.Equal(t, kata.ProjectArchived, archived.Project.State)
+	assert.Equal(t, poomsae.ProjectArchived, archived.Project.State)
 
 	retry, err := service.ArchiveProject(
 		t.Context(), spec.UID, "Example Operator",

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
 	"github.com/mattn/go-runewidth"
-	"go.kenn.io/kata/internal/textsafe"
 )
 
 // suggestMenuMaxRows caps the menu's visible-entry budget. The

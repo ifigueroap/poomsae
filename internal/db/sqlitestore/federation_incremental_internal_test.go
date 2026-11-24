@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 func incrementalTestStore(t testing.TB) (*Store, db.Project, db.Issue) {
@@ -34,7 +34,7 @@ func incrementalTestStore(t testing.TB) (*Store, db.Project, db.Issue) {
 
 func incrementalRemoteEvent(t testing.TB, p db.Project, issueUID, typ, payload string, clock int64) db.RemoteEvent {
 	t.Helper()
-	eventUID, err := katauid.New()
+	eventUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	ev := db.RemoteEvent{EventUID: eventUID, OriginInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EZ", ProjectUID: p.UID, ProjectName: p.Name,
 		Type: typ, Actor: "tester", Payload: []byte(payload), HLCPhysicalMS: clock, CreatedAt: time.Date(2026, 5, 23, 12, 0, 0, 0, time.UTC)}

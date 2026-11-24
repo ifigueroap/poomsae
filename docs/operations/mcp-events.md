@@ -6,7 +6,7 @@ last_edited: 2026-11-20
 
 # MCP Events webhook delivery
 
-With MCP Events, the Kata daemon can deliver signed `kata.inbox.changed`
+With MCP Events, the Poomsae daemon can deliver signed `poomsae.inbox.changed`
 webhooks to your receiver within about a second of a change to a recipient's
 inbox, even when the assistant is not running. Each webhook is a ping that names
 only the recipient. Your receiver maps that recipient to its own worker, reads
@@ -16,7 +16,7 @@ remain replaceable attention signals rather than a lossless message queue.
 
 The daemon owns everything: it stores each subscription in the archive database,
 signs and sends the webhooks, retries failures, and wakes on new events. Both
-the daemon-mounted `/mcp` endpoint and `kata mcp serve` forward `events/list`,
+the daemon-mounted `/mcp` endpoint and `poomsae mcp serve` forward `events/list`,
 `events/subscribe`, and `events/unsubscribe`. You can run any number of
 forwarders to serve Events, and restarting one loses nothing.
 
@@ -36,7 +36,7 @@ max_ttl = "720h"
 
 See the [configuration reference](../reference/configuration.md#mcp-events) for
 all `[mcp_events]` fields, status reasons, and key-file details. You can connect
-assistants through `kata mcp serve`, or enable the daemon's
+assistants through `poomsae mcp serve`, or enable the daemon's
 [`[mcp]` mount](../reference/mcp.md#transport) to serve Events directly at
 `/mcp` with a static MCP token or caller identity tokens. Enable both `[mcp]`
 and `[mcp_events]`, then start or restart the daemon.
@@ -47,8 +47,8 @@ modern HTTP endpoints advertise Events even when the daemon has it turned off.
 While Events is off, `events/list` returns no events, and `events/subscribe` and
 `events/unsubscribe` fail with `Unavailable` (`-32010`) and the status reason.
 
-`kata mcp serve` has no Events flags, and the forwarder writes nothing under
-`KATA_HOME`.
+`poomsae mcp serve` has no Events flags, and the forwarder writes nothing under
+`POOMSAE_HOME`.
 
 ### Deploy a hub
 
@@ -66,7 +66,7 @@ unavailable, the daemon runs normally with Events disabled.
 
 Every daemon process that shares a PostgreSQL database must use identical Events
 key material. Before you start those daemons, copy the same `mcp-events.key`
-into each daemon's `<KATA_HOME>/runtime/<storage-id>/` directory.
+into each daemon's `<POOMSAE_HOME>/runtime/<storage-id>/` directory.
 
 The first Events service to start writes a check value to the database, and each
 later service must match it. A daemon with a different key disables Events with
@@ -86,7 +86,7 @@ too long.
 ## Back up and restore the key
 
 The daemon stores the 32-byte key in
-`<KATA_HOME>/runtime/<storage-id>/mcp-events.key`. It creates this file with
+`<POOMSAE_HOME>/runtime/<storage-id>/mcp-events.key`. It creates this file with
 owner-only permissions the first time Events starts against a database that has
 no Events data.
 
@@ -104,7 +104,7 @@ never follow partial data.
 ## Who owns a subscription
 
 Each subscription is owned by the authenticated daemon principal of the request.
-For a forwarder, that is the backend credential `kata mcp serve` uses to reach
+For a forwarder, that is the backend credential `poomsae mcp serve` uses to reach
 the daemon, not the credential the assistant presents to the standalone
 forwarder. On the daemon mount, static mode uses the daemon's configured REST
 credential, while identity mode forwards the exact verified caller token on
@@ -160,7 +160,7 @@ has no visible project left, the subscription ends with `scope_removed` and send
 a `terminated` notice. A dynamic selection stays active even while its visible
 catalog is empty, and ends only when the principal itself loses authority.
 
-`kata.event_subscriptions` shows only the subscriptions that lie inside a
+`poomsae.event_subscriptions` shows only the subscriptions that lie inside a
 narrowed forwarder's projects and hides dynamic selections from a narrowed
 forwarder. This filter affects the display only.
 
@@ -171,7 +171,7 @@ Send the ordinary MCP protocol metadata and headers with these
 
 ```json
 {
-  "name": "kata.inbox.changed",
+  "name": "poomsae.inbox.changed",
   "arguments": {
     "for": "example-agent/worker",
     "project_uids": ["01ARZ3NDEKTSV4RRFFQ69G5FAV"]
@@ -237,7 +237,7 @@ To resume an ended subscription, subscribe again. A subscription ended by
 
 ### No replay
 
-`kata.inbox.changed` is a non-replay event type, which the MCP Events proposal
+`poomsae.inbox.changed` is a non-replay event type, which the MCP Events proposal
 (SEP-3415) allows. The daemon ignores a supplied `cursor` or `maxAgeMs`, answers
 with a `null` cursor, and never reports `truncated`. The inbox is the state, and
 a ping only tells you it changed. After you subscribe or resubscribe, read the
@@ -305,7 +305,7 @@ only, and a `null` cursor:
 ```json
 {
   "eventId": "evt_…",
-  "name": "kata.inbox.changed",
+  "name": "poomsae.inbox.changed",
   "timestamp": "2026-10-20T12:00:00Z",
   "data": {"recipient": "example-agent/worker"},
   "cursor": null
@@ -352,8 +352,8 @@ lifecycle changes on issues without the recipient's request, comments, and
 activity in projects the owner cannot see send nothing.
 
 A ping carries no identifiers, titles, bodies, comments, or credentials. To read
-the inbox, load `kata.load_coordination`, follow `kata.inbox.next_cursor` until
-it is absent, deduplicate requests by project and issue UID, and use `kata.show`
+the inbox, load `poomsae.load_coordination`, follow `poomsae.inbox.next_cursor` until
+it is absent, deduplicate requests by project and issue UID, and use `poomsae.show`
 for details. See the [native cron MCP example](../reference/cron.md) for
 recurring inbox delivery.
 
@@ -408,7 +408,7 @@ corruption, a secret it cannot decrypt, or unreadable arguments.
 
 ## Check delivery health
 
-Call `kata.event_subscriptions`, loaded through coordination, to list the
+Call `poomsae.event_subscriptions`, loaded through coordination, to list the
 caller's subscriptions. It reports whether Events is enabled, the reason when it
 is not, and each subscription's ID, state, end reason, failure counts, and
 categorized last error. It never returns callback URLs, signing keys, or
@@ -445,7 +445,7 @@ Wire errors:
 | HeaderMismatch | `-32020` |
 
 Codes `-32023` through `-32027` are provisional upstream. Conditions specific to
-Kata, such as a disabled Events service, use `-32010` and a `reason`.
+Poomsae, such as a disabled Events service, use `-32010` and a `reason`.
 
 ## Client behavior
 
@@ -454,7 +454,7 @@ documents from what has been observed.
 
 | Client | Documented | Observed |
 |---|---|---|
-| ChatGPT | Refreshes before `refreshBefore`, reuses its identity and last cursor, which Kata ignores. Its example omits `ttlMs`. | A subscribe and a verification challenge appear in a field report. Actual `ttlMs` traffic and failure recovery have not been observed. |
+| ChatGPT | Refreshes before `refreshBefore`, reuses its identity and last cursor, which Poomsae ignores. Its example omits `ttlMs`. | A subscribe and a verification challenge appear in a field report. Actual `ttlMs` traffic and failure recovery have not been observed. |
 | Mastra (PR) | Refreshes at the lesser of 60 seconds and 20 percent of the grant. May send `ttlMs: null`. | Not observed. |
 | Vercel AI SDK example | `ttlMs` of 1 hour. | Not observed. |
 | Claude Code community channel | Refreshes at 80 percent of the lifetime. | A failed refresh is logged and not retried. |

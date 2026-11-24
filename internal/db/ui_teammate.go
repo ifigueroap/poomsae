@@ -4,7 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"go.kenn.io/kata/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/teammate"
 )
 
 // IssueTeammate returns the valid, non-empty teammate attribution in issue metadata.

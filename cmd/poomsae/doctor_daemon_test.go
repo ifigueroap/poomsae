@@ -1,0 +1,656 @@
+package main
+
+import (
+	"compress/gzip"
+	"context"
+	"fmt"
+	"io"
+	"maps"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/version"
+	"github.com/stretchr/testify/require"
+	kitdaemon "go.kenn.io/kit/daemon"
+	"go.kenn.io/kit/safefileio"
+)
+
+func doctorServerContext(t *testing.T, replies map[string]string, statuses map[string]int) context.Context {
+	ts := doctorTestServer(t, replies, statuses)
+	return context.WithValue(t.Context(), client.BaseURLKey{}, ts.URL)
+}
+
+func doctorTestServer(t *testing.T, replies map[string]string, statuses map[string]int) *httptest.Server {
+	t.Helper()
+	defaults := map[string]string{
+		"/api/v1/ping":     fmt.Sprintf(`{"ok":true,"service":"poomsae","version":%q}`, version.Version),
+		"/api/v1/instance": fmt.Sprintf(`{"instance_uid":"01HZZZZZZZZZZZZZZZZZZZZZ01","version":%q,"auth":{"kind":"none"}}`, version.Version),
+		"/api/v1/health":   fmt.Sprintf(`{"ok":true,"schema_version":28,"api_schema_version":%q,"version":%q}`, daemon.APISchemaVersion, version.Version),
+		"/api/v1/projects": `{"projects":[{"id":1,"name":"example-project"}]}`,
+	}
+	maps.Copy(defaults, replies)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("doctor attempted mutation: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(405)
+			return
+		}
+		if code := statuses[r.URL.Path]; code != 0 {
+			w.WriteHeader(code)
+		}
+		if body, ok := defaults[r.URL.Path]; ok {
+			_, _ = fmt.Fprint(w, body)
+		} else {
+			w.WriteHeader(404)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+func TestDoctorRejectsOversizedResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":"test","padding":%q}`, strings.Repeat("x", (8<<20)+1)); err != nil {
+			t.Errorf("write oversized response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+	apiClient, err := newDoctorAPIClient(server.URL, server.Client())
+	require.NoError(t, err)
+	_, err = apiClient.PingWithResponse(t.Context())
+	require.ErrorIs(t, err, errDoctorResponseTooLarge, "doctor's generated client must preserve the bounded read budget")
+}
+
+func TestDoctorRejectsOversizedDecompressedResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		body := fmt.Sprintf(`{"ok":true,"service":"poomsae","version":"test","padding":%q}`, strings.Repeat("x", doctorResponseLimit+1))
+		compressed := gzip.NewWriter(w)
+		if _, err := io.WriteString(compressed, body); err != nil {
+			t.Errorf("write compressed response: %v", err)
+		}
+		if err := compressed.Close(); err != nil {
+			t.Errorf("close compressed response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableCompression = true
+	t.Cleanup(transport.CloseIdleConnections)
+	apiClient, err := newDoctorAPIClient(server.URL, &http.Client{Transport: transport})
+	require.NoError(t, err)
+	_, err = apiClient.PingWithResponse(t.Context())
+	require.ErrorIs(t, err, errDoctorResponseTooLarge, "doctor must cap the decoded response body")
+}
+
+func TestDoctorDaemonAndProjectChecks(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, body, id, status string
+		code                         int
+	}{
+		{"healthy", "", "", "daemon.health", "ok", 0},
+		{"wrong service", "/api/v1/ping", `{"ok":true,"service":"other"}`, "daemon.connection", "fail", 0},
+		{"unhealthy", "/api/v1/health", `{"ok":false}`, "daemon.health", "fail", 0},
+		{"invalid health", "/api/v1/health", `not-json-secret-token`, "daemon.health", "fail", 0},
+		{"missing schema", "/api/v1/health", `{"ok":true}`, "daemon.health", "fail", 0},
+		{"health unauthorized", "/api/v1/health", `secret-token`, "daemon.health", "fail", 401},
+		{"version skew", "/api/v1/health", `{"ok":true,"schema_version":28,"version":"older","api_schema_version":"old"}`, "daemon.version", "warn", 0},
+		{"project found", "", "", "workspace.project", "ok", 0},
+		{"project missing", "/api/v1/projects", `{"projects":[]}`, "workspace.project", "fail", 0},
+		{"project archived", "/api/v1/projects", `{"projects":[{"id":1,"name":"example-project","deleted_at":"2026-10-02T00:00:00Z"}]}`, "workspace.project", "fail", 0},
+		{"project catalog denied", "/api/v1/projects", `secret-token`, "workspace.project", "warn", 403},
+		{"embeddings disabled", "/api/v1/health", `{"ok":true,"schema_version":28,"embeddings":{"configured":false}}`, "daemon.embeddings", "info", 0},
+		{"embedding error", "/api/v1/health", `{"ok":true,"schema_version":28,"embeddings":{"configured":true,"last_error_status":401,"backlog":5}}`, "daemon.embeddings", "warn", 0},
+		{"embedding transport error", "/api/v1/health", `{"ok":true,"schema_version":28,"embeddings":{"configured":true,"error_present":true}}`, "daemon.embeddings", "warn", 0},
+		{"embedding credential missing", "/api/v1/health", `{"ok":true,"schema_version":28,"embeddings":{"configured":true,"credential":"missing"}}`, "daemon.embeddings", "warn", 0},
+		{"embedding credential rejected", "/api/v1/health", `{"ok":true,"schema_version":28,"embeddings":{"configured":true,"credential":"rejected"}}`, "daemon.embeddings", "warn", 0},
+		{"federation conflict", "/api/v1/health", `{"ok":true,"schema_version":28,"federation_config":{"configured":1,"conflicted":1}}`, "daemon.federation", "warn", 0},
+		{"federation converged", "/api/v1/health", `{"ok":true,"schema_version":28,"federation_config":{"configured":1,"reconciled":1}}`, "daemon.federation", "ok", 0},
+		{"federation incomplete", "/api/v1/health", `{"ok":true,"schema_version":28,"federation_config":{"configured":1,"reconciled":0}}`, "daemon.federation", "warn", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, workspace := doctorTestEnv(t)
+			flags = globalFlags{Workspace: workspace, Project: "example-project"}
+			ctx := doctorServerContext(t, map[string]string{tc.path: tc.body}, map[string]int{tc.path: tc.code})
+			r := collectDoctor(ctx)
+			require.EqualValues(t, tc.status, doctorFinding(t, r, tc.id).Status)
+			for _, check := range r.Checks {
+				require.NotContains(t, fmt.Sprintf("%+v", check), "secret-token")
+			}
+		})
+	}
+}
+
+func TestDoctorWarnsWhenScopedCatalogCannotConfirmProject(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	server := doctorTestServer(t, map[string]string{
+		"/api/v1/instance": fmt.Sprintf(`{"instance_uid":"01HZZZZZZZZZZZZZZZZZZZZZ01","version":%q,"auth":{"kind":"db_token","scope":{"kind":"issue_subtree","project_uid":"01HZZZZZZZZZZZZZZZZZZZZZ02","root_issue_uid":"01HZZZZZZZZZZZZZZZZZZZZZ03"}}}`, version.Version),
+		"/api/v1/projects": `{"projects":[{"id":2,"name":"visible-project"}]}`,
+	}, nil)
+	t.Setenv("POOMSAE_SERVER", server.URL)
+	flags = globalFlags{Workspace: workspace, Project: "example-project"}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status)
+	require.EqualValues(t, "warn", doctorFinding(t, report, "workspace.project").Status,
+		"a scoped catalog cannot prove that an unlisted project is absent")
+}
+
+func TestDoctorDoesNotInferEmbeddingsAreDisabledFromScopedHealth(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	ctx := doctorServerContext(t, map[string]string{
+		"/api/v1/instance": fmt.Sprintf(`{"instance_uid":"01HZZZZZZZZZZZZZZZZZZZZZ01","version":%q,"auth":{"kind":"db_token","scope":{"kind":"issue_subtree","project_uid":"01HZZZZZZZZZZZZZZZZZZZZZ02","root_issue_uid":"01HZZZZZZZZZZZZZZZZZZZZZ03"}}}`, version.Version),
+	}, nil)
+	flags = globalFlags{Workspace: workspace, Project: "example-project"}
+
+	report := collectDoctor(ctx)
+	finding := doctorFinding(t, report, "daemon.embeddings")
+	require.EqualValues(t, "info", finding.Status)
+	require.Equal(t, "Selected daemon did not provide embedding health details; configuration and provider state are unknown", finding.Summary)
+}
+
+func TestDoctorReportsLexicalSearchWhenEmbeddingsAreDisabled(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	env := testenv.New(t)
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, env.URL)
+	flags = globalFlags{Workspace: workspace}
+
+	report := collectDoctor(ctx)
+	finding := doctorFinding(t, report, "daemon.embeddings")
+	require.EqualValues(t, "info", finding.Status)
+	require.Contains(t, finding.Summary, "lexical search remains available")
+}
+
+func TestDoctorReportsUnresolvableDocbankKey(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	keyFile := filepath.Join(t.TempDir(), "missing", "docbank.key")
+	env := testenv.New(t, func(cfg *daemon.ServerConfig) {
+		cfg.Docbank = docbank.NewClient("http://127.0.0.1:9", config.DocbankConfig{APIKeyFile: keyFile}.ResolveKey)
+	})
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, env.URL)
+	flags = globalFlags{Workspace: workspace}
+
+	finding := doctorFinding(t, collectDoctor(ctx), "daemon.docbank")
+
+	require.EqualValues(t, "warn", finding.Status)
+	require.Equal(t, []string{"source: file:" + keyFile, "reason: cannot read credential file"}, finding.Details)
+}
+
+func TestDoctorDocbankCheckFollowsHealth(t *testing.T) {
+	for _, tc := range []struct {
+		name, health, status, summary string
+	}{
+		{"key resolves", `{"ok":true,"schema_version":28,"api_schema_version":"0.44.0","db_path":"/data/poomsae.db","docbank":{"credential":"ok"}}`, "ok", "resolves its Docbank API key"},
+		{"no key source", `{"ok":true,"schema_version":28,"api_schema_version":"0.44.0","db_path":"/data/poomsae.db"}`, "info", "no Docbank key source to check"},
+		{"daemon predates key health", `{"ok":true,"schema_version":28,"api_schema_version":"0.43.0","db_path":"/data/poomsae.db"}`, "info", "Docbank key health requires daemon API 0.44.0 or newer; this daemon reports 0.43.0; upgrade the daemon"},
+		{"daemon reports no API version", `{"ok":true,"schema_version":28,"db_path":"/data/poomsae.db"}`, "info", "this daemon reports no api_schema_version"},
+		{"health without diagnostics", `{"ok":true,"schema_version":28,"api_schema_version":"0.44.0"}`, "info", "did not provide Docbank health details"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, workspace := doctorTestEnv(t)
+			flags = globalFlags{Workspace: workspace, Project: "example-project"}
+			ctx := doctorServerContext(t, map[string]string{"/api/v1/health": tc.health}, nil)
+			finding := doctorFinding(t, collectDoctor(ctx), "daemon.docbank")
+			require.EqualValues(t, tc.status, finding.Status)
+			require.Contains(t, finding.Summary, tc.summary)
+		})
+	}
+}
+
+func TestDoctorDocbankProbeFollowsDaemonReport(t *testing.T) {
+	const prefix = `{"ok":true,"schema_version":28,"db_path":"/data/poomsae.db","docbank":{"credential":"ok"},`
+	const keyUnavailable = `{"status":503,"error":{"code":"docbank_key_unavailable","message":"Docbank API key unavailable","hint":"Run poomsae doctor on the daemon host to see which [docbank] key source failed."}}`
+	const noRoute = "404 page not found\n"
+	for _, tc := range []struct {
+		name, apiVersion, probe string
+		probeStatus             int
+		status, summary, detail string
+	}{
+		{"answered and accepted the key", "0.54.0", `{"reachable":true,"key_accepted":true}`, 0, "ok", "Docbank answered and accepted the daemon's API key", ""},
+		{"rejected the key", "0.54.0", `{"reachable":true,"key_accepted":false,"http_status":401}`, 0, "warn", "Docbank rejected the daemon's API key", "HTTP status: 401"},
+		{"forbade the key", "0.54.0", `{"reachable":true,"key_accepted":false,"http_status":403}`, 0, "warn", "Docbank rejected the daemon's API key", "HTTP status: 403"},
+		{"answered with an error status", "0.54.0", `{"reachable":true,"key_accepted":false,"http_status":500}`, 0, "warn", "Docbank answered the daemon with an error", "HTTP status: 500"},
+		{"answered with a body that is not Docbank's", "0.54.0", `{"reachable":true,"key_accepted":false}`, 0, "warn", "Something answered at the [docbank] url, but not as Docbank", ""},
+		{"not reached", "0.54.0", `{"reachable":false,"key_accepted":false}`, 0, "warn", "Daemon cannot reach Docbank", ""},
+		{"daemon predates the probe route", "0.52.0", noRoute, http.StatusNotFound, "ok", "resolves its Docbank API key", "Docbank probe requires daemon API 0.54.0 or newer; this daemon reports 0.52.0; upgrade the daemon"},
+		{"key stopped resolving after health", "0.54.0", keyUnavailable, http.StatusServiceUnavailable, "warn", "probe did not return a result", "HTTP status: 503"},
+		{"daemon with the route cannot answer it", "0.54.0", `not json`, 0, "warn", "probe did not return a result", "HTTP status: 200"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, workspace := doctorTestEnv(t)
+			flags = globalFlags{Workspace: workspace, Project: "example-project"}
+			replies := map[string]string{
+				"/api/v1/health":        prefix + `"api_schema_version":"` + tc.apiVersion + `"}`,
+				"/api/v1/docbank/probe": tc.probe,
+			}
+			statuses := map[string]int{}
+			if tc.probeStatus != 0 {
+				statuses["/api/v1/docbank/probe"] = tc.probeStatus
+			}
+			ctx := doctorServerContext(t, replies, statuses)
+			finding := doctorFinding(t, collectDoctor(ctx), "daemon.docbank")
+			require.EqualValues(t, tc.status, finding.Status)
+			require.Contains(t, finding.Summary, tc.summary)
+			if tc.detail != "" {
+				require.Contains(t, finding.Details, tc.detail)
+			} else {
+				require.Empty(t, finding.Details)
+			}
+		})
+	}
+}
+
+// A Docbank that withholds headers makes the daemon answer "unreachable" after
+// its own five-second timeout; doctor must still be waiting for that answer.
+func TestDoctorProbeOutlastsDaemonDocbankTimeout(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	flags = globalFlags{Workspace: workspace, Project: "example-project"}
+	health := `{"ok":true,"schema_version":28,"db_path":"/data/poomsae.db","docbank":{"credential":"ok"},"api_schema_version":"0.54.0"}`
+	ts := doctorTestServer(t, map[string]string{"/api/v1/health": health}, nil)
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/docbank/probe" {
+			select {
+			// Longer than the daemon's own five-second Docbank limit.
+			case <-time.After(5500 * time.Millisecond):
+			case <-r.Context().Done():
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"reachable":false,"key_accepted":false}`)
+			return
+		}
+		ts.Config.Handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(slow.Close)
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, slow.URL)
+
+	finding := doctorFinding(t, collectDoctor(ctx), "daemon.docbank")
+
+	require.EqualValues(t, "warn", finding.Status)
+	require.Contains(t, finding.Summary, "Daemon cannot reach Docbank")
+}
+
+// One pass-through case against a real daemon; the daemon tests own the
+// outcomes of the probe.
+func TestDoctorProbesDocbankByDefault(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	fake := docbanktest.New(t)
+	env := testenv.New(t, func(cfg *daemon.ServerConfig) {
+		cfg.Docbank = docbank.NewClient(fake.Server.URL, func() (string, error) { return "other-key", nil })
+	})
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, env.URL)
+	flags = globalFlags{Workspace: workspace}
+
+	finding := doctorFinding(t, collectDoctor(ctx), "daemon.docbank")
+
+	require.EqualValues(t, "warn", finding.Status)
+	require.Contains(t, finding.Summary, "Docbank rejected the daemon's API key")
+}
+
+func TestDoctorStripsTerminalControlsFromReportedAPIVersion(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	flags = globalFlags{Workspace: workspace, Project: "example-project"}
+	health := `{"ok":true,"schema_version":28,"api_schema_version":"0.43.0\u001b[2J\n[ok] daemon.docbank: forged","db_path":"/data/poomsae.db"}`
+	ctx := doctorServerContext(t, map[string]string{"/api/v1/health": health}, nil)
+
+	summary := doctorFinding(t, collectDoctor(ctx), "daemon.docbank").Summary
+
+	require.NotContains(t, summary, "\x1b", "doctor prints summaries unfiltered")
+	require.NotContains(t, summary, "\n")
+}
+
+func TestDoctorProfileIdentityUsesBoundedTimeout(t *testing.T) {
+	instanceCalls := &atomic.Int32{}
+	server := setupDoctorLocalProfileTarget(t, func(uid string, w http.ResponseWriter, _ *http.Request) {
+		instanceCalls.Add(1)
+		_, _ = fmt.Fprintf(w, `{"instance_uid":%q,"version":%q,"auth":{"kind":"none"}}`, uid, version.Version)
+	})
+	t.Cleanup(server.Close)
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "1ns")
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status,
+		"profile identity must use doctor's five-second client budget rather than POOMSAE_HTTP_TIMEOUT")
+	require.EqualValues(t, 1, instanceCalls.Load())
+}
+
+func TestDoctorProfileIdentityRejectsOversizedResponse(t *testing.T) {
+	instanceCalls := &atomic.Int32{}
+	server := setupDoctorLocalProfileTarget(t, func(uid string, w http.ResponseWriter, _ *http.Request) {
+		instanceCalls.Add(1)
+		_, _ = fmt.Fprintf(w, `{"instance_uid":%q,"version":%q,"auth":{"kind":"none"},"padding":%q}`,
+			uid, version.Version, strings.Repeat("x", doctorResponseLimit+1))
+	})
+	t.Cleanup(server.Close)
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "10s")
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "fail", doctorFinding(t, report, "daemon.connection").Status,
+		"the profile identity response must obey doctor's eight-MiB body limit")
+	require.EqualValues(t, 1, instanceCalls.Load())
+}
+
+func setupDoctorLocalProfileTarget(t *testing.T, instanceHandler func(string, http.ResponseWriter, *http.Request)) *httptest.Server {
+	t.Helper()
+	home, workspace := doctorTestEnv(t)
+	profileHome := t.TempDir()
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(profileHome, "poomsae.db"))
+	require.NoError(t, err)
+	uid := store.InstanceUID()
+	require.NoError(t, store.Close())
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("doctor attempted mutation: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/v1/ping":
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q}`, version.Version)
+		case "/api/v1/instance":
+			instanceHandler(uid, w, r)
+		case "/api/v1/health":
+			_, _ = fmt.Fprintf(w, `{"ok":true,"schema_version":28,"api_schema_version":%q,"version":%q}`, daemon.APISchemaVersion, version.Version)
+		case "/api/v1/projects":
+			_, _ = fmt.Fprint(w, `{"projects":[{"id":1,"name":"example-project"}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	profileConfig := fmt.Sprintf("[[daemon]]\nname='example-local'\nlocal=true\nhome=%q\ninstance_uid=%q\n", profileHome, uid)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(profileConfig), 0600))
+	profile, err := config.ResolveLocalProfile(config.CatalogDaemonConfig{Name: "example-local", Local: true, Home: profileHome, InstanceUID: uid})
+	require.NoError(t, err)
+	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
+	require.NoError(t, err)
+	require.NoError(t, ns.EnsureDirs())
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{
+		PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"),
+	})
+	require.NoError(t, err)
+	flags = globalFlags{Workspace: workspace, Daemon: "example-local", Project: "example-project"}
+	return server
+}
+
+func TestDoctorStoppedLocalProfileDoesNotCreateFiles(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	profileHome := filepath.Join(t.TempDir(), "missing-profile-home")
+	config := fmt.Sprintf("[[daemon]]\nname='example-local'\nlocal=true\nhome=%q\ninstance_uid='01HZZZZZZZZZZZZZZZZZZZZZ01'\n", profileHome)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	flags = globalFlags{Workspace: workspace, Daemon: "example-local"}
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "info", doctorFinding(t, report, "daemon.connection").Status)
+	require.False(t, report.Failed(), "a stopped local profile starts on its next command")
+	_, err := os.Stat(profileHome)
+	require.ErrorIs(t, err, os.ErrNotExist, "doctor must not create profile storage or runtime directories")
+}
+
+func TestDoctorChecksExplicitDaemonWhenWorkspaceCannotResolve(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	pinged := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("doctor attempted mutation: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/v1/ping":
+			pinged = true
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q}`, version.Version)
+		case "/api/v1/health":
+			_, _ = fmt.Fprintf(w, `{"ok":true,"schema_version":28,"api_schema_version":%q,"version":%q}`, daemon.APISchemaVersion, version.Version)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+	config := fmt.Sprintf("[[daemon]]\nname = \"example-remote\"\nurl = %q\n", server.URL)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	flags = globalFlags{Workspace: filepath.Join(workspace, "missing"), Daemon: "example-remote"}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status)
+	require.True(t, pinged, "doctor must contact the explicitly selected daemon without a valid workspace")
+	require.EqualValues(t, "fail", doctorFinding(t, report, "config.workspace").Status)
+}
+
+func TestDoctorUsesKataServerWhenWorkspaceCannotResolve(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	server := doctorTestServer(t, nil, nil)
+	t.Setenv("POOMSAE_SERVER", server.URL)
+	flags = globalFlags{Workspace: filepath.Join(workspace, "missing")}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status)
+	require.EqualValues(t, "fail", doctorFinding(t, report, "config.workspace").Status)
+}
+
+func TestDoctorUsesExplicitProjectWhenWorkspaceCannotResolve(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	server := doctorTestServer(t, nil, nil)
+	t.Setenv("POOMSAE_SERVER", server.URL)
+	flags = globalFlags{
+		Workspace: filepath.Join(workspace, "missing"),
+		Project:   "example-project",
+	}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "fail", doctorFinding(t, report, "config.workspace").Status)
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status)
+	require.EqualValues(t, "ok", doctorFinding(t, report, "workspace.project").Status,
+		"an invalid workspace must not discard an explicitly selected project")
+}
+
+func TestDoctorUsesActiveDaemonWhenWorkspaceCannotResolve(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	server := doctorTestServer(t, nil, nil)
+	config := fmt.Sprintf("active_daemon = \"example-remote\"\n[[daemon]]\nname = \"example-remote\"\nurl = %q\n", server.URL) + untrustedWebConfig
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	flags = globalFlags{Workspace: filepath.Join(workspace, "missing")}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, "ok", doctorFinding(t, report, "daemon.connection").Status)
+	require.EqualValues(t, "fail", doctorFinding(t, report, "config.workspace").Status)
+}
+
+func TestDoctorBoundsNamedDaemonResolutionPingResponse(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	var pingRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/ping" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if r.Method != http.MethodGet {
+			t.Errorf("doctor attempted mutation: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if pingRequests.Add(1) == 1 {
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"padding":%q}`, version.Version, strings.Repeat("x", doctorResponseLimit+1))
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q}`, version.Version)
+	}))
+	t.Cleanup(server.Close)
+	config := fmt.Sprintf("[[daemon]]\nname = \"example-remote\"\nurl = %q\n", server.URL)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	flags = globalFlags{Workspace: workspace, Daemon: "example-remote"}
+
+	report := collectDoctor(t.Context())
+	require.EqualValues(t, 1, pingRequests.Load(), "named discovery must not issue an unbounded ping before doctor's capped request")
+	require.EqualValues(t, "fail", doctorFinding(t, report, "daemon.connection").Status)
+}
+
+func TestDoctorNamedLocalDiscoveryDoesNotRepairRuntimePermissions(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	ns, err := daemonruntime.NewNamespace()
+	require.NoError(t, err)
+	assertUnchanged := makeDoctorRuntimeDirectoryInsecureForTest(t, ns.DataDir)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[[daemon]]\nname='example-local'\nlocal=true\n"), 0600))
+	flags = globalFlags{Workspace: workspace, Daemon: "example-local"}
+
+	require.EqualValues(t, "warn", doctorFinding(t, collectDoctor(t.Context()), "daemon.connection").Status)
+	assertUnchanged()
+}
+
+func TestDoctorFailsForLocalProfileDirectoryWithLoosePermissions(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	profileHome := t.TempDir()
+	uid := "01HZZZZZZZZZZZZZZZZZZZZZ01"
+	profileConfig := fmt.Sprintf("[[daemon]]\nname='example-local'\nlocal=true\nhome=%q\ninstance_uid=%q\n", profileHome, uid)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(profileConfig), 0600))
+	profile, err := config.ResolveLocalProfile(config.CatalogDaemonConfig{Name: "example-local", Local: true, Home: profileHome, InstanceUID: uid})
+	require.NoError(t, err)
+	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
+	require.NoError(t, err)
+	assertUnchanged := makeDoctorRuntimeDirectoryInsecureForTest(t, ns.DataDir)
+	flags = globalFlags{Workspace: workspace, Daemon: "example-local"}
+
+	report := collectDoctor(t.Context())
+	check := doctorFinding(t, report, "daemon.connection")
+	require.EqualValues(t, "fail", check.Status,
+		"ordinary commands reject a local profile directory with loose permissions instead of repairing it")
+	require.Contains(t, check.Summary, "profile")
+	require.True(t, report.Failed())
+	assertUnchanged()
+}
+
+func TestDoctorFailsWhenLiveLocalRuntimeIsUnreachable(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	ns, err := daemonruntime.NewNamespace()
+	require.NoError(t, err)
+	require.NoError(t, ns.EnsureDirs())
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{
+		PID: os.Getpid(), Network: "tcp", Address: "127.0.0.1:1",
+	})
+	require.NoError(t, err)
+	flags = globalFlags{Workspace: workspace}
+
+	require.EqualValues(t, "fail", doctorFinding(t, collectDoctor(t.Context()), "daemon.connection").Status,
+		"a live runtime record whose endpoint does not answer is a real failure, not a stopped daemon")
+}
+
+func TestDoctorDiscoveryRejectsRedirects(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	flags = globalFlags{Workspace: workspace}
+	contacted := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		contacted = true
+		if _, err := fmt.Fprint(w, `{"ok":true,"service":"poomsae"}`); err != nil {
+			t.Errorf("write redirect target response: %v", err)
+		}
+	}))
+	t.Cleanup(target.Close)
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint:gosec // The test intentionally redirects to a second origin to verify doctor rejects redirects.
+		http.Redirect(w, r, target.URL+r.URL.Path, http.StatusFound)
+	}))
+	t.Cleanup(source.Close)
+	t.Setenv("POOMSAE_SERVER", source.URL)
+	require.EqualValues(t, "fail", doctorFinding(t, collectDoctor(t.Context()), "daemon.connection").Status)
+	require.False(t, contacted, "discovery must never contact a redirected origin")
+}
+
+func TestDoctorIgnoresRawHTTPTimeoutValue(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	flags = globalFlags{Workspace: workspace}
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "secret-token")
+	previous := os.Stderr
+	f, err := os.CreateTemp(t.TempDir(), "stderr")
+	require.NoError(t, err)
+	os.Stderr = f
+	t.Cleanup(func() {
+		os.Stderr = previous
+		if err := f.Close(); err != nil {
+			t.Errorf("close stderr capture: %v", err)
+		}
+	})
+	collectDoctor(doctorServerContext(t, nil, nil))
+	os.Stderr = previous
+	require.NoError(t, f.Sync())
+	_, err = f.Seek(0, io.SeekStart)
+	require.NoError(t, err)
+	b, err := io.ReadAll(f)
+	require.NoError(t, err)
+	require.NotContains(t, string(b), "secret-token")
+}
+
+func TestDoctorProjectLookupDoesNotRepairRenamedBinding(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	path := filepath.Join(workspace, ".poomsae.toml")
+	body := []byte("version=1\n[project]\nname='renamed-project'\n")
+	require.NoError(t, os.WriteFile(path, body, 0600))
+	flags = globalFlags{Workspace: workspace}
+	ctx := doctorServerContext(t, nil, nil)
+	require.EqualValues(t, "fail", doctorFinding(t, collectDoctor(ctx), "workspace.project").Status)
+	f, err := safefileio.OpenCurrentUserFile(path)
+	require.NoError(t, err)
+	got, readErr := io.ReadAll(f)
+	closeErr := f.Close()
+	require.NoError(t, readErr)
+	require.NoError(t, closeErr)
+	require.Equal(t, body, got)
+}
+
+func TestDoctorUnavailableRemoteDoesNotCreateLocalRuntime(t *testing.T) {
+	home, workspace := doctorTestEnv(t)
+	t.Setenv("POOMSAE_SERVER", "http://127.0.0.1:1")
+	flags = globalFlags{Workspace: workspace}
+	require.EqualValues(t, "fail", doctorFinding(t, collectDoctor(t.Context()), "daemon.connection").Status)
+	entries, err := os.ReadDir(home)
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
+
+func TestDoctorHookFindings(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, id, status string
+		code                   int
+	}{
+		{"unsupported", "", "daemon.hooks", "warn", 404},
+		{"healthy", `{"hooks":{"available":true,"hooks":[]}}`, "daemon.hooks", "info", 0},
+		{"custom sink", `{"hooks":{"available":false}}`, "daemon.hooks", "warn", 0},
+		{"missing executable", `{"hooks":{"available":true,"hooks":[{"index":0,"command":"missing-doctor-hook","executable_available":false,"working_directory_available":true}]}}`, "daemon.hooks", "fail", 0},
+		{"missing directory", `{"hooks":{"available":true,"hooks":[{"index":0,"command":"missing-doctor-hook","executable_available":true,"working_directory_available":false}]}}`, "daemon.hooks", "fail", 0},
+		{"retained failures", `{"hooks":{"available":true,"hooks":[],"recent_runs":3,"recent_failures":2}}`, "daemon.hook_runs", "warn", 0},
+		{"dropped events", `{"hooks":{"available":true,"hooks":[],"dropped":2}}`, "daemon.hook_queue", "warn", 0},
+		{"partial history", `{"hooks":{"available":true,"hooks":[],"history_incomplete":true}}`, "daemon.hook_runs", "warn", 0},
+		{"sampled history", `{"hooks":{"available":true,"hooks":[],"recent_runs":3,"history_truncated":true}}`, "daemon.hook_runs", "info", 0},
+		{"sampled failures", `{"hooks":{"available":true,"hooks":[],"recent_runs":3,"recent_failures":1,"history_truncated":true}}`, "daemon.hook_runs", "warn", 0},
+		{"sampled unreadable history", `{"hooks":{"available":true,"hooks":[],"recent_runs":3,"history_truncated":true,"history_incomplete":true}}`, "daemon.hook_runs", "warn", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, workspace := doctorTestEnv(t)
+			flags = globalFlags{Workspace: workspace, Project: "example-project"}
+			ctx := doctorServerContext(t, map[string]string{"/api/v1/doctor": tc.body}, map[string]int{"/api/v1/doctor": tc.code})
+			require.EqualValues(t, tc.status, doctorFinding(t, collectDoctor(ctx), tc.id).Status)
+		})
+	}
+}
+
+func TestDoctorHookNamesPATHMismatch(t *testing.T) {
+	_, workspace := doctorTestEnv(t)
+	flags = globalFlags{Workspace: workspace, Project: "example-project"}
+	exe, err := os.Executable()
+	require.NoError(t, err)
+	body := fmt.Sprintf(`{"hooks":{"available":true,"hooks":[{"index":0,"command":%q,"executable_available":false,"working_directory_available":true}]}}`, exe)
+	ctx := doctorServerContext(t, map[string]string{"/api/v1/doctor": body}, nil)
+	check := doctorFinding(t, collectDoctor(ctx), "daemon.hooks")
+	require.EqualValues(t, "fail", check.Status)
+	require.Contains(t, fmt.Sprint(check.Details), "PATH")
+}

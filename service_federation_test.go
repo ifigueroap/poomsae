@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"bytes"
@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestServiceRunWakesFederationOnCommittedEvent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	hubService, err := New(ctx, Config{
 		DSN:  filepath.Join(t.TempDir(), "hub.db"),
@@ -265,7 +265,7 @@ func (s *recordingHookSink) snapshot() []db.Event {
 // standalone daemon's federation callback. Before the fix the mounted service
 // only broadcast pulled events over SSE, so webhooks never fired for them.
 func TestServiceRunEnqueuesHooksForFederationPulledEvents(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	hubService, err := New(ctx, Config{
 		DSN:  filepath.Join(t.TempDir(), "hub.db"),

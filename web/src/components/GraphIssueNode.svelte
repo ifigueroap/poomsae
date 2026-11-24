@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Handle, Position, type NodeProps } from '@xyflow/svelte'
 
-  import type { KataGraphNode, KataGraphNodeData } from '../lib/graph/layout'
+  import type { PoomsaeGraphNode, PoomsaeGraphNodeData } from '../lib/graph/layout'
   import { markColor } from '../lib/marks'
 
   let {
@@ -10,7 +10,7 @@
     selected = false,
     sourcePosition,
     targetPosition,
-  }: NodeProps<KataGraphNode> & { data: KataGraphNodeData } = $props()
+  }: NodeProps<PoomsaeGraphNode> & { data: PoomsaeGraphNodeData } = $props()
 
   let resolvedSourcePosition = $derived(
     sourcePosition ?? (data.layoutDirection === 'TB' ? Position.Bottom : Position.Right),

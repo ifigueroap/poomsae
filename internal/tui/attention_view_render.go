@@ -20,7 +20,7 @@ func renderAttention(m Model) string {
 	if s.skipped > 0 {
 		header += fmt.Sprintf(" · %d skipped", s.skipped)
 	}
-	body := []string{titleStyle.Render("kata / attention"), subtleStyle.Render(truncate(header, width)), ""}
+	body := []string{titleStyle.Render("poomsae / attention"), subtleStyle.Render(truncate(header, width)), ""}
 	footer := renderFooterHelpTable(modalFirstHelpRows(m.modal, attentionHelpRows(m)), width)
 	budget := attentionBodyBudget(m)
 	if s.err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/daemon"
 )
 
 // drainBroadcastIDs collects the event ids of every event frame already queued

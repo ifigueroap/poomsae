@@ -11,9 +11,9 @@ import {
 } from '../src/lib/dev-environment'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
-const stateRoot = join(repositoryRoot, '.kata-web-dev')
+const stateRoot = join(repositoryRoot, '.poomsae-web-dev')
 const activeRuntimePath = join(stateRoot, 'active.json')
-const vitePort = parsePort(process.env.KATA_WEB_DEV_PORT ?? '5173', 'KATA_WEB_DEV_PORT')
+const vitePort = parsePort(process.env.POOMSAE_WEB_DEV_PORT ?? '5173', 'POOMSAE_WEB_DEV_PORT')
 const publicOrigin = `http://127.0.0.1:${vitePort}`
 
 await mkdir(stateRoot, { recursive: true })
@@ -22,13 +22,13 @@ const runRoot = await mkdtemp(join(stateRoot, 'run-'))
 const home = join(runRoot, 'home')
 const workspace = join(runRoot, 'workspace')
 const binaryDirectory = join(runRoot, 'bin')
-const binary = join(binaryDirectory, process.platform === 'win32' ? 'kata.exe' : 'kata')
+const binary = join(binaryDirectory, process.platform === 'win32' ? 'poomsae.exe' : 'poomsae')
 await Promise.all([
   mkdir(home, { recursive: true }),
   mkdir(workspace, { recursive: true }),
   mkdir(binaryDirectory, { recursive: true }),
 ])
-await writeFile(join(runRoot, '.kata-web-dev-owned'), `${JSON.stringify({ pid: process.pid })}\n`, {
+await writeFile(join(runRoot, '.poomsae-web-dev-owned'), `${JSON.stringify({ pid: process.pid })}\n`, {
   mode: 0o600,
 })
 
@@ -43,7 +43,7 @@ await writeFile(
 const childEnvironment = createDevChildEnvironment(process.env, {
   home,
   workspace,
-  database: join(home, 'kata.db'),
+  database: join(home, 'poomsae.db'),
 })
 
 await runChecked(['go', ...developmentKataBuildArguments(binary)], repositoryRoot, childEnvironment)
@@ -66,7 +66,7 @@ try {
   await waitForPing(backendOrigin, publicOrigin, daemon)
   await runChecked([binary, 'projects', 'create', 'example-project'], workspace, childEnvironment)
   await writeFile(
-    join(workspace, '.kata.toml'),
+    join(workspace, '.poomsae.toml'),
     'version = 1\n\n[project]\nname = "example-project"\n',
   )
   await writeFile(
@@ -90,9 +90,9 @@ try {
     cwd: join(repositoryRoot, 'web'),
     env: {
       ...childEnvironment,
-      KATA_WEB_DEV_BACKEND: backendOrigin,
-      KATA_WEB_DEV_ORIGIN: publicOrigin,
-      KATA_WEB_DEV_PORT: String(vitePort),
+      POOMSAE_WEB_DEV_BACKEND: backendOrigin,
+      POOMSAE_WEB_DEV_ORIGIN: publicOrigin,
+      POOMSAE_WEB_DEV_PORT: String(vitePort),
     },
     stdin: 'ignore',
     stdout: 'inherit',
@@ -251,7 +251,7 @@ async function cleanupStaleRuns(root: string): Promise<void> {
       if (!entry.isDirectory() || !entry.name.startsWith('run-')) return
       const path = join(root, entry.name)
       try {
-        const marker = JSON.parse(await readFile(join(path, '.kata-web-dev-owned'), 'utf8')) as {
+        const marker = JSON.parse(await readFile(join(path, '.poomsae-web-dev-owned'), 'utf8')) as {
           pid?: number
         }
         if (typeof marker.pid !== 'number' || processIsRunning(marker.pid)) return

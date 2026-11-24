@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Retry and aging values (design spec §9).

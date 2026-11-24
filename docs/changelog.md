@@ -1,10 +1,10 @@
 ---
 title: Changelog
-description: Release history for kata
+description: Release history for poomsae
 last_edited: 2026-11-24
 ---
 
-All notable changes to kata, grouped by release. Versioned releases start with
+All notable changes to poomsae, grouped by release. Versioned releases start with
 0.5.0; earlier entries are a retroactive project history grouped by ISO week.
 
 ## Unreleased
@@ -22,7 +22,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   are released. See
   [change replica intent](operations/federation.md#change-replica-intent).
 - Read an edited issue body from a file or stdin with
-  `kata edit <issue-ref> --body-file <path>` or `--body-stdin`. Empty input is
+  `poomsae edit <issue-ref> --body-file <path>` or `--body-stdin`. Empty input is
   rejected instead of clearing the body; pass `--body ""` to clear it.
 - Redesigned the web UI: navigation, views, projects, and Settings now live in
   the sidebar; the task list stays beside the open task; you can edit a task's
@@ -30,17 +30,17 @@ All notable changes to kata, grouped by release. Versioned releases start with
   dialogs and repeat rules are simpler, with a project picker in New task,
   change previews in Complete, and repeat rules prefilled from the task and
   listed in project headers.
-- Apps that embed Kata can choose which projects send issue text to the
+- Apps that embed Poomsae can choose which projects send issue text to the
   embedding provider by setting `Config.EmbeddingProjectAllowed`. See
   [semantic search](development/embedding.md#semantic-search).
 - Open an issue’s PR from its web page when its URL is recorded in `work.pr_url`. Agent guides explain how to record the URL and attach PR evidence when closing work.
 - Reject `work.attention` values other than `ok`, `needs-human`, and `stuck`.
 - Diagnose reports when SQLite storage is busy with an upgrade or import.
 - Refuse cross-project links when a project has an active relay enrollment without a binding.
-- A spoke can leave a project with `kata federation leave` after a newer hub move overtakes its unsent move; `--delete` is still refused. Edits the hub never received stay local through later resets and send once the spoke rejoins with push. See [leaving a federation](operations/federation.md#leaving-a-federation).
+- A spoke can leave a project with `poomsae federation leave` after a newer hub move overtakes its unsent move; `--delete` is still refused. Edits the hub never received stay local through later resets and send once the spoke rejoins with push. See [leaving a federation](operations/federation.md#leaving-a-federation).
 - Open qualified short issue IDs and project-scoped short IDs in browser links.
 - A federation hub's work to answer a quiet project's poll now grows only with what the hub wrote since the previous poll. An empty poll moves the spoke's cursor to the newest event the hub checked.
-- `kata meta get` on an unset key exits 0 with an empty human value, `count=0` in agent mode, and `value: null` in JSON.
+- `poomsae meta get` on an unset key exits 0 with an empty human value, `count=0` in agent mode, and `value: null` in JSON.
 
 **Before upgrading**
 
@@ -48,7 +48,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   projects that share an audience. Until a peer upgrades, a relay stops it with
   `409 unsupported_event_features` before sending such a link.
 - Update scripts that use exit 4 to detect an unset metadata key.
-  `kata meta get <ref> <key> --json` now exits 0 for an unset key; check for
+  `poomsae meta get <ref> <key> --json` now exits 0 for an unset key; check for
   `value: null` after handling command errors.
 - Keep a [backup](operations/backup-restore.md) from before the upgrade. This
   release upgrades the database from schema 50 through 54, and older
@@ -56,7 +56,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
 - Upgrade federation hubs before their spokes. A schema 54 spoke cannot push
   to an older hub.
 - PostgreSQL: stop daemons and imports, then run
-  `kata storage postgres migrate` with schema-owner credentials. The migration
+  `poomsae storage postgres migrate` with schema-owner credentials. The migration
   rebuilds an index on `events` and blocks event writes, converts existing
   vector rows and rebuilds their index, then adds another index on `events`.
   Allow an offline window for these steps that fits the event log and vector
@@ -79,9 +79,9 @@ All notable changes to kata, grouped by release. Versioned releases start with
   embeds it with the hub's embedding provider. Against an older hub, automatic
   search falls back to word matches. See
   [semantic search on direct spokes](operations/federation.md#semantic-search-on-direct-spokes).
-- Cron: Kata now refuses schedules that never fire, such as `0 0 30 2 *`
+- Cron: Poomsae now refuses schedules that never fire, such as `0 0 30 2 *`
   (February 30), and the `@manual`, `@triggered`, and `@none` descriptors. Open
-  a job saved earlier with such a schedule in `kata cron job edit <job-uid>` to
+  a job saved earlier with such a schedule in `poomsae cron job edit <job-uid>` to
   fix it. Upgrade a federated hub and its spokes in one window: a hub that
   refuses a pushed definition can quarantine that spoke's relay batch.
 - Sync same-project parent replacements through the hub, and remove or replace
@@ -90,25 +90,25 @@ All notable changes to kata, grouped by release. Versioned releases start with
   replacement queued by v0.19.0 through v0.23.0 can sync after the hub upgrade;
   an already-quarantined batch requires an [explicit retry](operations/federation.md#other-validation-quarantines).
 
-- Order an expanded parent's children by priority in `kata tui`: `o` now
+- Order an expanded parent's children by priority in `poomsae tui`: `o` now
   cycles topological, temporal, and priority order. Priority order matches
-  `kata next`: highest priority first, unprioritized last, then most recently
+  `poomsae next`: highest priority first, unprioritized last, then most recently
   updated.
 - Let a service manager own the local daemon. Set top-level `autostart = false`
-  in `config.toml`, and Kata commands, including `kata daemon recover`, wait up
+  in `config.toml`, and Poomsae commands, including `poomsae daemon recover`, wait up
   to 30 seconds for the supervised daemon instead of starting their own. See
   [daemon config](reference/configuration.md#daemon-config).
-- See which daemons a Kata command started on its own: `kata daemon status`
-  shows `started: automatically by a kata command`, and JSON adds
+- See which daemons a Poomsae command started on its own: `poomsae daemon status`
+  shows `started: automatically by a poomsae command`, and JSON adds
   `auto_started: true`.
 - Read a supervised daemon's diagnostics after it hangs. Foreground daemons also
-  write to `<KATA_HOME>/runtime/<storage-hash>/daemon.log`, including fatal
+  write to `<POOMSAE_HOME>/runtime/<storage-hash>/daemon.log`, including fatal
   goroutine dumps, even when the supervisor discards stderr on Linux or macOS.
   See [daemon and diagnostics](reference/cli.md#daemon-and-diagnostics).
 - Search shared projects by meaning from a direct spoke as soon as it joins.
   The hub ranks shared issues, so the spoke embeds only its local projects.
   See [semantic search on direct spokes](operations/federation.md#semantic-search-on-direct-spokes).
-- Catch a cron schedule that never fires when you save it: Kata refuses
+- Catch a cron schedule that never fires when you save it: Poomsae refuses
   `0 0 30 2 *` and the `@manual`, `@triggered`, and `@none` descriptors, and
   still accepts `0 0 29 2 *`. See [cron expressions](reference/cron.md#cron-expressions).
 - See why a cron expression is rejected. The error now includes the parser's
@@ -128,27 +128,27 @@ All notable changes to kata, grouped by release. Versioned releases start with
   sync interval if that is longer. Other projects keep syncing.
 - Find the federation signing keys that share a secret. Startup now fails with
   `federation signing keys share one secret: keys "key-a" and "key-b"` instead
-  of `federation signing key unavailable`, and `kata doctor` fails its new
+  of `federation signing key unavailable`, and `poomsae doctor` fails its new
   `config.federation_signing` check. Give each key its own secret.
-- See why `kata doctor`'s `config.daemon` check fails on a hub that enables
+- See why `poomsae doctor`'s `config.daemon` check fails on a hub that enables
   `[federation.ingress]` without `[federation.signing]`: the details now say so.
-- `kata federation status --project <project>` now shows only that project in
+- `poomsae federation status --project <project>` now shows only that project in
   human, agent, and JSON output, and exits 4 when the project has no federation
   status.
-- Name, rename, or clear an enrolled spoke from `kata tui`: press `F`, then `s`
+- Name, rename, or clear an enrolled spoke from `poomsae tui`: press `F`, then `s`
   for the hub's spoke list, and `N` on a spoke. See the
   [TUI enrollment workflow](operations/federation.md#tui-enrollment-workflow).
-- See how a cron job or workflow has been doing in `kata tui`. Its detail
+- See how a cron job or workflow has been doing in `poomsae tui`. Its detail
   counts outcomes and draws an outcome strip from the project's latest 100
   runs.
-- Sync a Linear issue that was created already closed. Kata now clamps a
+- Sync a Linear issue that was created already closed. Poomsae now clamps a
   closure time a few milliseconds after `updatedAt` to `updatedAt` instead of
   failing the whole import.
 - Federate again from a SQLite hub with many bulk-moved issues. Folding a
   project no longer rechecks every move for every event, so a fold that took
   163 seconds, past the 60-second client timeout, takes about a second.
 - Run only the semantic indexer from a Postgres-backed Go host with
-  `Service.RunSemanticIndex`, without Kata's federation, sync, and cleanup
+  `Service.RunSemanticIndex`, without Poomsae's federation, sync, and cleanup
   workers. See [semantic search](development/embedding.md#semantic-search).
 - Connector calls no longer fail with `external connector process failed` when
   the connector answers and exits but its output pipe closes late, as on a busy
@@ -156,7 +156,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
 - Build from source with Go 1.27.4 or later, which fixes the `net/http`
   vulnerability GO-2026-6859. Release binaries and images use it too.
 - Retry an attachment upload without a duplicate reference:
-  `kata docbank attachments add --reuse-existing` returns the existing
+  `poomsae docbank attachments add --reuse-existing` returns the existing
   attachment when the retry resolves to the same Docbank version. It needs
   daemon API 0.47.0. See [issue attachments](reference/cli.md#issue-attachments).
 - Click a task or project in the web UI and see it at once. The UI draws it
@@ -172,45 +172,45 @@ All notable changes to kata, grouped by release. Versioned releases start with
 - Keep existing PostgreSQL semantic-search vectors when upgrading to schema 52
   without re-embedding; see the [schema 52 guide](development/postgres-migrations.md#schema-52-shared-vector-catalog).
 
-- Identify open Kata browser tabs by their issue, project, or view as you navigate.
+- Identify open Poomsae browser tabs by their issue, project, or view as you navigate.
 
 - Sync a Linear team that every run had refused with `linear issue is outside
   selected scope`. For some teams, Linear's issue filter on the team ID returns
-  issues from the whole workspace. Kata now reads issues through the team
+  issues from the whole workspace. Poomsae now reads issues through the team
   itself, so it receives only that team's issues.
 
 - Set `[close.transcript] enabled = "auto"`, or
-  `KATA_CLOSE_TRANSCRIPT_ENABLED=auto`, to attach the closing session when one
+  `POOMSAE_CLOSE_TRANSCRIPT_ENABLED=auto`, to attach the closing session when one
   is named and close without a warning when none is. `true` still warns. A
   mistyped `enabled` value only warns when you close; it no longer stops the
   daemon. A `[close.transcript.project.<name>]` entry takes the same values, so
   `"auto"` there records when a session is named. A close that names no session
   warns only when some target is `true`.
 
-- See in `kata tui` which issues an agent marked `stuck` or `needs-human`: the list row gets a leading `!`, and the issue detail shows the `work.attention` value with its `work.attention_msg`. See [work conventions](reference/metadata.md#orchestration-conventions-work-keys).
+- See in `poomsae tui` which issues an agent marked `stuck` or `needs-human`: the list row gets a leading `!`, and the issue detail shows the `work.attention` value with its `work.attention_msg`. See [work conventions](reference/metadata.md#orchestration-conventions-work-keys).
 
 - Keep Linear discussion when you sync a Linear team: comments on imported
-  issues now arrive with their Linear author and creation time. Kata copies
+  issues now arrive with their Linear author and creation time. Poomsae copies
   each comment once. See [Linear sync](operations/linear-sync.md).
 
 - External imports into a relayed project on PostgreSQL, such as
-  `kata import --source beads`, now record the import's actor and the source
+  `poomsae import --source beads`, now record the import's actor and the source
   authors, as they do on SQLite. They had recorded the relay connection's bound
   actor on every issue, comment and event; rows imported before this fix keep
   it. A direct federation push connection still records its bound actor on both
   stores.
 
-- Press `V` in `kata tui` to open the close form on any daemon and cite an issue's attachment as `done` evidence, alone or with typed evidence. `x` still closes at once and opens the form only when the daemon requires evidence; other close reasons do not offer the choice. The events tab names the cited file, and marks it removed or changed. See [cite a document when closing work](guide/attachments.md#cite-a-document-when-closing-work).
+- Press `V` in `poomsae tui` to open the close form on any daemon and cite an issue's attachment as `done` evidence, alone or with typed evidence. `x` still closes at once and opens the form only when the daemon requires evidence; other close reasons do not offer the choice. The events tab names the cited file, and marks it removed or changed. See [cite a document when closing work](guide/attachments.md#cite-a-document-when-closing-work).
 - Keep scheduled dates and deadlines in their own timezones when issues move between daemons. Add an explicit zone name to a civil date to keep it portable; future timezone rule updates apply to it. Uploads and event pages check whether the receiving peer supports zoned dates; upgrade older peers to sync those events.
 
 - Learn from the CLI that a project is archived and how to restore it. When a
   project route finds an archived project you could read, its
-  `project_not_found` error now carries a hint to run `kata projects restore
+  `project_not_found` error now carries a hint to run `poomsae projects restore
   <name>`. The [HTTP API reference](reference/http-api.md#errors) explains how
   to tell an archived project from a missing one. Callers who may not read the
   project, and issue-scoped credentials, still get no hint.
 
-- Follow the event stream from Go with [`api.Events`](reference/go-client.md#follow-the-event-stream), which frames events, skips any over 8 MiB as an oversized event, and reports a required reset as a typed value. `kata tui` reads its live updates through it: an event over 8 MiB now refetches the view like a sync reset instead of being parsed, and `id:`, `event:` and `data:` lines with no space after the colon are now accepted.
+- Follow the event stream from Go with [`api.Events`](reference/go-client.md#follow-the-event-stream), which frames events, skips any over 8 MiB as an oversized event, and reports a required reset as a typed value. `poomsae tui` reads its live updates through it: an event over 8 MiB now refetches the view like a sync reset instead of being parsed, and `id:`, `event:` and `data:` lines with no space after the colon are now accepted.
 
 - See which issue is blocking a push when the hub refuses it because the issue
   now belongs to a project the spoke has not joined. Since daemon API 0.56.0 the
@@ -219,13 +219,13 @@ All notable changes to kata, grouped by release. Versioned releases start with
   pulling hub changes while the push waits.
 
 - Start the Windows daemon again after a reboot, even when another account's
-  process now has the old daemon's PID. Kata used to treat that process as the
+  process now has the old daemon's PID. Poomsae used to treat that process as the
   running daemon until you deleted `daemon.*.json` from the runtime directory.
-  Kata now reads the process start time from the Windows process list, so it
+  Poomsae now reads the process start time from the Windows process list, so it
   can tell that the PID belongs to a different process
-  ([#1194](https://github.com/kenn-io/kata/issues/1194)).
+  ([#1194](https://github.com/ifigueroap/poomsae/issues/1194)).
 
-- `kata doctor` now asks Docbank once, with a read-only request, whether it
+- `poomsae doctor` now asks Docbank once, with a read-only request, whether it
   answers and accepts the daemon's API key, and reports the result in its
   `daemon.docbank` check. The request is
   [`GET /api/v1/docbank/probe`](reference/http-api.md#docbank-probe), open to
@@ -233,7 +233,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   `[docbank]` names a key source that resolves. Health never contacts Docbank,
   and `local = true` has no probe.
 
-- Stop `kata tui` from overwriting a body that someone else changed while you
+- Stop `poomsae tui` from overwriting a body that someone else changed while you
   were editing it. Against a daemon on API 0.53.0 or newer, the editor and
   undo of a body edit send the issue's `content_revision` with the save, and
   the daemon refuses a stale save and writes nothing. If the daemon's version
@@ -251,9 +251,9 @@ All notable changes to kata, grouped by release. Versioned releases start with
 - Read the job, workflow and issue of a cron run from the run row itself: it
   carries `job_name`, `workflow_name` and `issue_short_id`, deleted ones
   included, so a client labels a page of runs without listing jobs, workflows
-  and issues. `kata tui` names runs this way.
+  and issues. `poomsae tui` names runs this way.
 
-- Connect Docbank over HTTP on a trusted private network with `[docbank] trust_private_network = true` or `KATA_DOCBANK_TRUST_PRIVATE_NETWORK=true`. HTTP exposes the key and attachment contents to that network.
+- Connect Docbank over HTTP on a trusted private network with `[docbank] trust_private_network = true` or `POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK=true`. HTTP exposes the key and attachment contents to that network.
 
 - Use attachments through project relays with Docbank configured only on the root. Upgrade every daemon on the route. Standalone references continue to use the local vault after sharing. A disabled spoke returns `federation_offline` for uploads and links until it is re-enabled. A hub owner can link new references only to files inside its configured Docbank folder, including when the hub is disabled. See [Issue attachments](guide/attachments.md#use-attachments-through-project-relays).
 
@@ -269,17 +269,17 @@ All notable changes to kata, grouped by release. Versioned releases start with
 
 - Select a closing transcript target per project, including for moved issues.
   See [closing-session transcripts](reference/configuration.md#closing-session-transcripts).
-  This partially addresses [#972](https://github.com/kenn-io/kata/issues/972);
+  This partially addresses [#972](https://github.com/ifigueroap/poomsae/issues/972);
   transcript upload remains outstanding.
 - Upgrade to schema 51, which reads issue history through an index on each
   event's header issue UID instead of one built from event payloads. PostgreSQL
-  needs `kata storage postgres migrate` with the daemon stopped while the index
+  needs `poomsae storage postgres migrate` with the daemon stopped while the index
   builds; SQLite replaces the index in place at startup. See the
   [schema 51 migration requirements](development/postgres-migrations.md#schema-51-issue-history-index-on-the-event-header).
 
-- Install user hooks for Claude Code and Codex with `kata agent setup`, and use `kata doctor` to find hooks that need review. Open Codex and run `/hooks` when prompted. See [agent setup](workflows/agents.md#contract-in-every-session).
+- Install user hooks for Claude Code and Codex with `poomsae agent setup`, and use `poomsae doctor` to find hooks that need review. Open Codex and run `/hooks` when prompted. See [agent setup](workflows/agents.md#contract-in-every-session).
 
-- Restart a local daemon from Settings after turning on search by meaning. Confirm the interruption for every project and client, then reopen `kata ui` if the browser address changes. The API reports the `restart` job state and `restart_in_progress` during the handoff.
+- Restart a local daemon from Settings after turning on search by meaning. Confirm the interruption for every project and client, then reopen `poomsae ui` if the browser address changes. The API reports the `restart` job state and `restart_in_progress` during the handoff.
 
 - A hub that requires signing now answers an enrolled spoke's unsigned request
   with 428 `hub_signing_required`, so it is distinguishable from
@@ -287,7 +287,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   path, including when signing is optional. Relay bridges keep their grant on the
   new response. See [federation signing](operations/federation-signing.md).
 
-- Use `kata daemon status` in scripts to check the selected daemon's readiness.
+- Use `poomsae daemon status` in scripts to check the selected daemon's readiness.
   It exits 0 only for a ready selected daemon. Stopped or unavailable
   selections and the `version_mismatch` state exit 7, an unknown named daemon
   exits 3, and other invalid routing configuration exits 1. Status still prints
@@ -303,7 +303,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   comments by UID with their original author and time. An older or identical
   one is acknowledged and writes nothing. Links are added and never removed.
   The hub records a winning copy as one `issue.restated` event, not as a
-  second snapshot, and the Kata home that pushed it then takes the hub's state. A
+  second snapshot, and the Poomsae home that pushed it then takes the hub's state. A
   push for an issue that another project on the hub holds, including an
   archived one, now returns `400 validation` naming the issue and is
   quarantined on the spoke; before, it returned 404 and the spoke retried
@@ -320,7 +320,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   [embedding](development/embedding.md#host-managed-projects).
 
 - Keep links between projects when you move them one at a time.
-  `kata import --merge` now creates a snapshot's links to issues of other
+  `poomsae import --merge` now creates a snapshot's links to issues of other
   projects that are already in the target. A link appears once both projects
   are merged, in either order, and adopting the projects into a hub then
   carries it there. Before, a merge skipped every such link. See
@@ -337,7 +337,7 @@ All notable changes to kata, grouped by release. Versioned releases start with
   [federation signing](operations/federation-signing.md).
 
 - Use MCP Events through the daemon's `/mcp` endpoint with static or identity tokens.
-- Start search by meaning on the next SQLite daemon start after enabling the built-in server in a supported app on the same computer. PostgreSQL requires explicit setup. If Kata cannot confirm the shared choice was saved, setup succeeds and Kata logs the failure; other apps may miss the choice if it wasn't saved. Existing providers stay configured. See [semantic search](guide/semantic-search.md#enabling-it).
+- Start search by meaning on the next SQLite daemon start after enabling the built-in server in a supported app on the same computer. PostgreSQL requires explicit setup. If Poomsae cannot confirm the shared choice was saved, setup succeeds and Poomsae logs the failure; other apps may miss the choice if it wasn't saved. Existing providers stay configured. See [semantic search](guide/semantic-search.md#enabling-it).
 
 - Upgrade a large PostgreSQL database without the schema migration rolling
   back. A migration statement no longer stops after 30 seconds, so a long index
@@ -365,43 +365,43 @@ All notable changes to kata, grouped by release. Versioned releases start with
   which suggested Docbank had refused a correct key. The message never names
   the key file or variable. For daemon-owner and owner-local callers,
   `/api/v1/health` adds a `docbank` block naming the failing source, and
-  `kata doctor` adds a `daemon.docbank` check that reads it. The block is
+  `poomsae doctor` adds a `daemon.docbank` check that reads it. The block is
   absent for `local = true`, which has no key source of its own. On Windows, the
   reason now says to turn off inheritance, and the
   [key file rules](reference/configuration.md#credentials-and-batching) show
   the `icacls` fix. An unset `api_key_env` for `[docbank]` or
   `[search.embeddings]`, `token_env` for `[auth]` or `[mcp]`, or
-  `--hub-token-env` or `kata mcp --http-token-env` variable now reports
+  `--hub-token-env` or `poomsae mcp --http-token-env` variable now reports
   `env:<NAME>: environment variable is unset or empty`.
 
-- Move up to 5,000 issues at once with `kata move <ref>... <project>` or
+- Move up to 5,000 issues at once with `poomsae move <ref>... <project>` or
   `--refs-from`. Each issue moves alone and gets its own result, so one refusal
   doesn't stop the rest.
 
-- `kata version` reports the release when Kata is installed with `go install` at a tag. A release binary's `kata ui` replaces a same-version local daemon without browser assets; if a service manager runs it, restart the daemon through the service manager.
+- `poomsae version` reports the release when Poomsae is installed with `go install` at a tag. A release binary's `poomsae ui` replaces a same-version local daemon without browser assets; if a service manager runs it, restart the daemon through the service manager.
 
 ## 0.23.0
 <small>2026-11-09</small>
 
-Kata 0.23.0 adds one-command search by meaning, terminal UI controls for moving
+Poomsae 0.23.0 adds one-command search by meaning, terminal UI controls for moving
 issues, repeating schedules, and workflows, and guided Docbank setup. Assistants
 that use MCP can now set up without a shell, find tools by task, and wake when
 their inbox changes. Large stores and federated projects search, create, and
 sync faster.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.23.0)
-· [Changes since 0.22.0](https://github.com/kenn-io/kata/compare/v0.22.0...v0.23.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.23.0)
+· [Changes since 0.22.0](https://github.com/ifigueroap/poomsae/compare/v0.22.0...v0.23.0)
 
 **Before upgrading**
 
-- Keep a [backup](operations/backup-restore.md) from before the upgrade. Kata
+- Keep a [backup](operations/backup-restore.md) from before the upgrade. Poomsae
   0.23.0 upgrades the database from schema 46 to schema 50, and older binaries
   cannot open the result. Rollback requires that backup and its matching binary.
 - SQLite: the upgrade runs in place at startup and does not export and reimport
   the store. See
   [Slow or interrupted upgrade startup](operations/backup-restore.md#slow-or-interrupted-upgrade-startup).
 - PostgreSQL: stop daemons and imports, then run
-  `kata storage postgres migrate` with schema-owner credentials. The migration
+  `poomsae storage postgres migrate` with schema-owner credentials. The migration
   builds indexes on the `issues` and `events` tables, so allow an offline window
   that fits their size. Schema 50 adds a table, so reapply the runtime role
   grants afterward. See the [upgrade procedure](operations/postgres.md#upgrade-ceremony).
@@ -410,52 +410,52 @@ sync faster.
 
 **New features**
 
-- Enable search by meaning with `kata daemon local-embeddings`. A fresh home uses a running Ollama; otherwise, it asks before downloading the shared built-in server. Switching keeps compatible Nomic indexes and warns before changing a federation recipe.
-- Turn on search by meaning from the web's Settings page. Watch the download, then run `kata daemon restart` to finish. Reopen `kata ui` to watch indexing. Other viewers can read the status. Unconfigured `kata search` results point to Settings and the CLI setup command on stderr; `--quiet` and `--agent` suppress the line.
-- Move an issue to another project from `kata tui` with `M` on the selected row
+- Enable search by meaning with `poomsae daemon local-embeddings`. A fresh home uses a running Ollama; otherwise, it asks before downloading the shared built-in server. Switching keeps compatible Nomic indexes and warns before changing a federation recipe.
+- Turn on search by meaning from the web's Settings page. Watch the download, then run `poomsae daemon restart` to finish. Reopen `poomsae ui` to watch indexing. Other viewers can read the status. Unconfigured `poomsae search` results point to Settings and the CLI setup command on stderr; `--quiet` and `--agent` suppress the line.
+- Move an issue to another project from `poomsae tui` with `M` on the selected row
   of the issue list, after a dry-run preview of the subtree that would move.
   Daemon API `0.35.0` or newer is required. See the
   [CLI reference](reference/cli.md#daemon-and-diagnostics).
-- Start, change, or stop an issue's recurrence in `kata tui` with `O` only while the detail is focused.
+- Start, change, or stop an issue's recurrence in `poomsae tui` with `O` only while the detail is focused.
   The form takes an RRULE (outer spaces trimmed), a start date, and an IANA zone, and
   shows the daemon's error with your input kept. Saves are revision-guarded;
   after a conflict, press `Esc`, then `O` once the detail refreshes.
   An issue that parents a recurring cron job is refused on save, as in
-  `kata schedule --repeat`. Clear the rule and save to stop an existing recurrence, keeping its occurrences. A blank rule cannot start a recurrence.
+  `poomsae schedule --repeat`. Clear the rule and save to stop an existing recurrence, keeping its occurrences. A blank rule cannot start a recurrence.
   The detail shows the rule, the next occurrence, and the zone.
   See the [CLI reference](reference/cli.md#daemon-and-diagnostics).
-- Create and edit workflows in the `kata tui` Workflows tab with `n` and `e`. Edit the JSON definition with `Ctrl+e` and save with `Ctrl+o`. The form keeps your draft after errors and shows the current definition after concurrent changes. See [CLI reference](reference/cli.md#daemon-and-diagnostics).
-- Turn on attachments with `kata docbank setup`: without `--url` it writes
+- Create and edit workflows in the `poomsae tui` Workflows tab with `n` and `e`. Edit the JSON definition with `Ctrl+e` and save with `Ctrl+o`. The form keeps your draft after errors and shows the current definition after concurrent changes. See [CLI reference](reference/cli.md#daemon-and-diagnostics).
+- Turn on attachments with `poomsae docbank setup`: without `--url` it writes
   `[docbank] local = true` for the Docbank on this machine; with `--url` and
   `--key-file` it uses one that runs elsewhere. Setup checks the key before
   writing `config.toml`, restarts running daemons, and changes nothing while a
-  `KATA_DOCBANK_*` variable is set or `config.toml` has a different `[docbank]`
+  `POOMSAE_DOCBANK_*` variable is set or `config.toml` has a different `[docbank]`
   section. See [Issue attachments](guide/attachments.md#configure-the-daemon).
 - Attach files through the Docbank on the same machine with
   `[docbank] local = true`, without copying its URL or API key. Docbank restarts
-  and updates need no Kata change, and the daemon runs `docbank daemon start`
+  and updates need no Poomsae change, and the daemon runs `docbank daemon start`
   when none is running, so `docbank` must be on its `PATH`. Needs Docbank 0.16.0
-  or later. A `url` or `KATA_DOCBANK_URL` still selects that Docbank instead. See
+  or later. A `url` or `POOMSAE_DOCBANK_URL` still selects that Docbank instead. See
   [Issue attachments](guide/attachments.md#configure-the-daemon).
-- Find commands by describing a task with `kata cli search "<task>"`, even
+- Find commands by describing a task with `poomsae cli search "<task>"`, even
   offline. It needs no daemon, workspace, or credentials and returns five
   commands unless you set `--limit`. See the
   [CLI reference](reference/cli.md).
-- Find MCP tools for a task with `kata.search_tools`, including tools in
+- Find MCP tools for a task with `poomsae.search_tools`, including tools in
   sections that are not loaded yet. See
   [Find tools for a task](reference/mcp.md#find-tools-for-a-task).
 - Set up assistants that use MCP without a shell. Run
-  `kata init --with-agents --agent-mode=mcp`, or request `setup` through
-  `kata.skills` for instructions to install locally. See
+  `poomsae init --with-agents --agent-mode=mcp`, or request `setup` through
+  `poomsae.skills` for instructions to install locally. See
   [Install MCP-only instructions](reference/mcp.md#install-mcp-only-instructions).
 - Wake an assistant within about a second of a change to its inbox, even when
   it is not running. Turn on `[mcp_events] enabled = true` in the daemon
-  configuration, and MCP clients can subscribe to `kata.inbox.changed` through
-  `kata mcp serve`. The daemon stores each subscription, verifies its HTTPS
+  configuration, and MCP clients can subscribe to `poomsae.inbox.changed` through
+  `poomsae mcp serve`. The daemon stores each subscription, verifies its HTTPS
   callback, and sends a signed webhook ping that names only the recipient; the
-  receiver then reads `kata.inbox`. Subscriptions survive daemon restarts and
+  receiver then reads `poomsae.inbox`. Subscriptions survive daemon restarts and
   need daemon API `0.43.0`. PostgreSQL deployments run
-  `kata storage postgres migrate` to reach schema 50 first. See
+  `poomsae storage postgres migrate` to reach schema 50 first. See
   [MCP Events](operations/mcp-events.md).
 - Connect MCP clients directly to an identity-mode daemon's `/mcp` using each
   caller's identity token. Reads and writes retain that token's actor and
@@ -475,7 +475,7 @@ sync faster.
 - Search faster on large SQLite stores when a query combines rare and common words, preserving results, ranking, and match flags.
 - Create issues faster on large SQLite stores while keeping look-alike warnings for existing titles with rewritten bodies.
 - Create issues faster on large SQLite stores by reading look-alike match flags from the returned page.
-- Fetch cross-project ready lists with a limit quickly as stores grow. SQLite and PostgreSQL use an ordered index for `kata ready --all --limit N`, MCP `kata.ready`, and `GET /api/v1/ready` without changing their filters or order. SQLite adds the index in place on upgrade; PostgreSQL needs the [offline migration](development/postgres-migrations.md#schema-47-cross-project-ready-update-order-index).
+- Fetch cross-project ready lists with a limit quickly as stores grow. SQLite and PostgreSQL use an ordered index for `poomsae ready --all --limit N`, MCP `poomsae.ready`, and `GET /api/v1/ready` without changing their filters or order. SQLite adds the index in place on upgrade; PostgreSQL needs the [offline migration](development/postgres-migrations.md#schema-47-cross-project-ready-update-order-index).
 - Poll and stream one project's events faster on large SQLite stores by skipping unrelated history and earlier departures. SQLite adds the index in place on upgrade; PostgreSQL needs the [offline migration from schema 47](development/postgres-migrations.md#schema-48-project-departure-cursor-index).
 - Keep federation polls fast on busy hubs by skipping other projects' event history.
 - Keep local writes responsive during SQLite cron-only federation pulls by looking up only the runs carried by each page and their complete observation history. Schema 49 adds a cron event index on SQLite and PostgreSQL.
@@ -486,27 +486,27 @@ sync faster.
 - Sync shared cron updates faster on large SQLite hubs and spokes. Pushes and
   pulls replay cron history without reconciling unrelated issues and their
   short IDs, including when the same batch carries issue updates.
-- See why a multi-word `kata search` came back empty. Lexical search returns
+- See why a multi-word `poomsae search` came back empty. Lexical search returns
   only issues that contain every word, so an empty multi-word search now
   prints a hint on stderr to search again with fewer words, instead of letting
   an agent conclude that no related issue exists and file a duplicate.
 - Read empty multi-word search reasons in CLI JSON and MCP, including filtered
   searches. Empty lists report matching issues of the other status and a retry
   that keeps scope and filters, with PowerShell syntax on Windows.
-- Give coding agents a shorter kata contract. The text that hooks inject,
-  `kata init --with-agents` writes, and the MCP `workflow` guide serves now
-  covers one agent's loop in plain prose: skip kata for questions, search with
+- Give coding agents a shorter poomsae contract. The text that hooks inject,
+  `poomsae init --with-agents` writes, and the MCP `workflow` guide serves now
+  covers one agent's loop in plain prose: skip poomsae for questions, search with
   one or two distinctive words, reuse or create one issue, claim it, and close
   it with evidence. Attention signals, branch stamps, fan-out and join, inboxes,
-  and planning dates moved to `kata quickstart` and the MCP `teammates` guide.
+  and planning dates moved to `poomsae quickstart` and the MCP `teammates` guide.
   In Codex runs, agents now reuse an existing issue instead of filing a
   duplicate, and recording a bug no longer sets attention metadata.
-- Agents opening `.kata.toml` learn that the repository tracks work in kata and where to read the agent contract. Rerun `kata init` to add the header to an existing binding.
-- Create unprioritized issues with `kata create --priority none` even when the
+- Agents opening `.poomsae.toml` learn that the repository tracks work in poomsae and where to read the agent contract. Rerun `poomsae init` to add the header to an existing binding.
+- Create unprioritized issues with `poomsae create --priority none` even when the
   invoking client has a default priority. Keyed automation can keep its original
   request stable across changes to that preference.
 - Turn close transcripts on or off for one process with
-  `KATA_CLOSE_TRANSCRIPT_ENABLED`, without editing `<KATA_HOME>/config.toml`.
+  `POOMSAE_CLOSE_TRANSCRIPT_ENABLED`, without editing `<POOMSAE_HOME>/config.toml`.
   An agent integration can attach its own sessions while other agents on the
   machine keep the file's setting. `true` attaches even without a config file
   and still takes `agentsview_url` and `session_id_env` from it; `false`
@@ -526,7 +526,7 @@ sync faster.
 
 - Keep pulling from a federation hub after its event history passes one million
   events. Spokes no longer stall with `after_id: invalid integer`, and other large
-  integer query values such as `kata events --after` cursors go out as plain
+  integer query values such as `poomsae events --after` cursors go out as plain
   numbers.
 - Retry federation history after an enrollment actor change when the hub
   already retains the exact events. Upgrade the hub before retrying an
@@ -535,19 +535,19 @@ sync faster.
 - Let SQLite federation pushes and pulls reach the writer-held fallback after
   slow snapshot preparation instead of exhausting contention retries first.
 - Read spoke issues with cached lease state when a busy local writer or a federation endpoint change prevents the optional lease refresh from finishing.
-- Let autostarted local-profile daemons use `KATA_HTTP_TIMEOUT` for federation
+- Let autostarted local-profile daemons use `POOMSAE_HTTP_TIMEOUT` for federation
   requests, so operators can raise the 60-second budget for a slow hub.
 - Prevent duplicate creates with identical full title text when either issue's
   body has no searchable words. `--force-new` still creates a separate issue.
-- Find matching issues from human-mode `kata create` look-alike refusals, which
+- Find matching issues from human-mode `poomsae create` look-alike refusals, which
   now include the existing issues' qualified refs.
-- Open the web UI manually over SSH or in a container: `kata ui` and `kata ui <issue-ref>` print the browser URL in the selected output format before launching the browser and exit 0 with a manual-open hint if no browser opens. Cancelling the command still returns an error.
+- Open the web UI manually over SSH or in a container: `poomsae ui` and `poomsae ui <issue-ref>` print the browser URL in the selected output format before launching the browser and exit 0 with a manual-open hint if no browser opens. Cancelling the command still returns an error.
 - Keep strict MCP clients from rejecting the tool catalog when scheduled-job tools load.
-- Keep coding agents focused outside kata workspaces. User-scope contract hooks
-  installed by `kata agent-hook install` now inject the contract only when the
-  session starts under a `.kata.toml`; elsewhere they return an empty response
-  instead of telling the agent to search, create, and close kata issues in a
-  repository that does not use kata.
+- Keep coding agents focused outside poomsae workspaces. User-scope contract hooks
+  installed by `poomsae agent-hook install` now inject the contract only when the
+  session starts under a `.poomsae.toml`; elsewhere they return an empty response
+  instead of telling the agent to search, create, and close poomsae issues in a
+  repository that does not use poomsae.
 - Keep the web page from shifting during routine refreshes on a healthy connection.
 - Keep the TUI confirmation for reopening an issue with accumulated recurring
   work readable on short terminals, and prevent delayed confirmations from
@@ -565,16 +565,16 @@ sync faster.
   CLI and web Settings, faster long lists and Inbox in the web UI, faster search,
   issue creation, ready lists, and federation polling, in-place SQLite upgrades,
   empty-result hints, duplicate-title warnings, large federation cursors, first
-  project setup, the printed web URL, the `.kata.toml` agent pointer and shorter
+  project setup, the printed web URL, the `.poomsae.toml` agent pointer and shorter
   agent help, and faster, more reliable CI.
 - Thanks to [Rusty Shackleford](https://github.com/salmonumbrella) for offline
   command and MCP tool discovery, MCP-only setup, identity tokens on the daemon
   MCP mount, work on MCP Events, faster federated issue and cron sync, federation
   recovery after actor changes, strict MCP schemas for cron tools, the cron route
-  table, `--priority none`, responsive `kata show`, CLI crash reporting, the
+  table, `--priority none`, responsive `poomsae show`, CLI crash reporting, the
   federation timeout fix, stable web connection status, and the refreshed README.
 - Thanks to [Dangerboi](https://github.com/Dangerboi) for moving issues,
-  recurrence editing, and workflow editing in the TUI, `kata docbank setup` and
+  recurrence editing, and workflow editing in the TUI, `poomsae docbank setup` and
   local Docbank discovery, per-process close transcripts, and the oh-my-pi
   transcript example.
 - Thanks to [Joi Ito](https://github.com/Joi) for keeping the TUI reopen
@@ -586,36 +586,36 @@ sync faster.
   and the shared release-age policy for dependency updates.
 - Thanks to [Wes McKinney](https://github.com/wesm) for MCP Events inbox wakeups,
   the short agent contract, multi-word search hints, agent hooks that stay quiet
-  outside kata workspaces, and duplicate warnings for stop-word titles.
+  outside poomsae workspaces, and duplicate warnings for stop-word titles.
 
 ## 0.22.0
 <small>2026-11-05</small>
 
-Kata 0.22.0 adds issue deletion in the terminal UI. Large stores get faster
+Poomsae 0.22.0 adds issue deletion in the terminal UI. Large stores get faster
 ready queues, issue creation, label loading, project statistics, and GitHub
 sync.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.22.0)
-· [Changes since 0.21.0](https://github.com/kenn-io/kata/compare/v0.21.0...v0.22.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.22.0)
+· [Changes since 0.21.0](https://github.com/ifigueroap/poomsae/compare/v0.21.0...v0.22.0)
 
 **Before upgrading**
 
-- Keep a [backup](operations/backup-restore.md) from before the upgrade. Kata
+- Keep a [backup](operations/backup-restore.md) from before the upgrade. Poomsae
   0.22.0 upgrades the database from schema 43 to schema 46, and older binaries
   cannot open the result. Rollback requires that backup and its matching binary.
 - PostgreSQL: stop daemons and imports, then run
-  `kata storage postgres migrate` with schema-owner credentials. The migration
+  `poomsae storage postgres migrate` with schema-owner credentials. The migration
   builds indexes on the events and issues tables and blocks their writes, so
   allow an offline window that fits their size. Existing runtime grants remain
   sufficient. See the [upgrade procedure](operations/postgres.md#upgrade-ceremony).
 
 **New features**
 
-- Delete an issue from `kata tui` with `X` from the list or detail, including
+- Delete an issue from `poomsae tui` with `X` from the list or detail, including
   Inbox and a detail opened from Attention. Saved views drop the deleted
   issue. Type `DELETE <project>#<id>` to confirm; the selection moves to the
   neighbouring row and `u` restores the issue, including from Attention, the
-  way `kata restore` does.
+  way `poomsae restore` does.
   Issue-scoped credentials cannot delete, so they are not offered the key. See
   the [CLI reference](reference/cli.md#daemon-and-diagnostics).
 
@@ -623,7 +623,7 @@ sync.
 
 - Load web UI suggestions faster on large SQLite stores with unrestricted local owner access; scoped and account-bound access keep today's speed.
 - Create issues faster on large SQLite stores by scoring look-alike candidates once per issue.
-- Load project stats in milliseconds on large stores in the TUI Projects screen, `kata --agent projects list`, and `?include=stats`. "Updated" follows the newest recorded event, as the web UI does; a reconnecting spoke's older relayed events can show an older time until the next local event.
+- Load project stats in milliseconds on large stores in the TUI Projects screen, `poomsae --agent projects list`, and `?include=stats`. "Updated" follows the newest recorded event, as the web UI does; a reconnecting spoke's older relayed events can show an older time until the next local event.
 - Speed up label loading for list and ready responses and label filters in semantic or hybrid search on large SQLite stores.
 - Resume local writes sooner after spoke rebuilds of large projects by skipping
   issues and comments whose stored values already match the event log.
@@ -634,7 +634,7 @@ sync.
   in every database locale while keeping case-sensitive matching. Existing
   stores upgrade to schema 45 through SQLite's JSONL cutover or the
   [offline PostgreSQL index build](development/postgres-migrations.md#schema-45-issue-uid-prefix-index).
-- Fetch the highest-priority ready issue with flat lookup cost as ready queues grow using `kata next` and MCP `kata.next`. SQLite and PostgreSQL walk priority indexes instead of sorting every ready row; PostgreSQL bounds each request and expands it when scheduled issues fill the batch. Daemons with API `0.41.0` or newer return one priority-ordered row per request; older daemons keep the existing selection behavior. Existing stores upgrade to schema 46 through SQLite's JSONL cutover or the [offline PostgreSQL migration](development/postgres-migrations.md#schema-46-ready-priority-indexes).
+- Fetch the highest-priority ready issue with flat lookup cost as ready queues grow using `poomsae next` and MCP `poomsae.next`. SQLite and PostgreSQL walk priority indexes instead of sorting every ready row; PostgreSQL bounds each request and expands it when scheduled issues fill the batch. Daemons with API `0.41.0` or newer return one priority-ordered row per request; older daemons keep the existing selection behavior. Existing stores upgrade to schema 46 through SQLite's JSONL cutover or the [offline PostgreSQL migration](development/postgres-migrations.md#schema-46-ready-priority-indexes).
 - Search references faster in the web UI on large stores; a `q` search now returns only issue references.
 - Spend 2 REST requests and 1 GraphQL request per 100-issue GitHub status sweep, down from 102 REST requests, while continuing to import upstream closes and reopens. Hosts without the required GraphQL fields keep using REST status reads.
 - Sync GitHub comment history with fewer requests by reading repository-wide comment pages and fetching only recent comments on later polls.
@@ -662,27 +662,27 @@ sync.
 ## 0.21.0
 <small>2026-11-04</small>
 
-Kata 0.21.0 adds file attachments, moves of whole issue subtrees between
+Poomsae 0.21.0 adds file attachments, moves of whole issue subtrees between
 projects, recurrences from the CLI, planning dates and cron management in the
 terminal UI, and a daemon-hosted MCP endpoint for remote gateways. Large stores
 also open, page, and search much faster.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.21.0)
-· [Changes since 0.20.0](https://github.com/kenn-io/kata/compare/v0.20.0...v0.21.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.21.0)
+· [Changes since 0.20.0](https://github.com/ifigueroap/poomsae/compare/v0.20.0...v0.21.0)
 
 **Before upgrading**
 
 For normal federated issue synchronization, upgrade the hub first; spokes can
-upgrade later. See [Updating Kata](get-started/install.md#updating-kata) and
+upgrade later. See [Updating Poomsae](get-started/install.md#updating-poomsae) and
 the [federation procedure](operations/federation.md#compatibility-and-rolling-upgrades).
 
-- Keep a [backup](operations/backup-restore.md) from before the upgrade. Kata
+- Keep a [backup](operations/backup-restore.md) from before the upgrade. Poomsae
   0.21.0 upgrades the database from schema 34 to schema 43, and older binaries
   cannot open the result. Rollback requires that backup and its matching binary.
 - SQLite: stop other processes using the database, then let the new daemon
   migrate it on startup. A symlinked database file stays a symlink.
 - PostgreSQL: stop daemons and imports, then run
-  `kata storage postgres migrate` with schema-owner credentials. The migration
+  `poomsae storage postgres migrate` with schema-owner credentials. The migration
   builds indexes on the events, comments, and issues tables, so allow an offline
   window that fits their size. Existing runtime grants remain sufficient. See
   the [upgrade procedure](operations/postgres.md#upgrade-ceremony).
@@ -691,29 +691,29 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   do not take the store lock.
 - Upgrade the hub and every connected replica before moving federated issues.
   Forwarding native recurring jobs from a spoke also requires an upgraded hub.
-- New client features require their corresponding daemon API. Kata 0.21.0
+- New client features require their corresponding daemon API. Poomsae 0.21.0
   includes API `0.40.0`; release and API versions are separate. See the
   [API version history](reference/http-api.md#version-history).
 - Search ranking can change. Issue text and each comment are now scored as
   separate documents, and SQLite phrases no longer match across two comments.
 - New recurrences need an explicit time zone such as `America/New_York` or
   `UTC`. Existing recurrences that use `Local` keep working.
-- Pi users: run `kata agent-hook install pi`, then restart Pi, to stop child
+- Pi users: run `poomsae agent-hook install pi`, then restart Pi, to stop child
   sessions from taking over the lead session's attention.
 
 **New features**
 
 - Attach screenshots, recordings, and other files to issues from the CLI or the
   web UI. Images preview inline and videos play in the issue. Docbank stores the
-  files; Kata stores and syncs only the references. Configure `[docbank]` with a
-  vault that every issue reader may access. Use `kata docbank attachments link`
+  files; Poomsae stores and syncs only the references. Configure `[docbank]` with a
+  vault that every issue reader may access. Use `poomsae docbank attachments link`
   to attach a file version already in Docbank without uploading it again. See
   [Issue attachments](guide/attachments.md).
 - Cite an exact document version as completion evidence with
-  `kata close --done --docbank` or `--evidence attachment:<full-id>`. CLI and
+  `poomsae close --done --docbank` or `--evidence attachment:<full-id>`. CLI and
   web history keep the document's details after the attachment is removed. See
   [Cite a document when closing work](guide/attachments.md#cite-a-document-when-closing-work).
-- Move an issue and its active descendants to another project with `kata move`.
+- Move an issue and its active descendants to another project with `poomsae move`.
   Moves keep nesting, state, comments, links, and stable IDs. Preview with
   `--dry`, or move only the selected issue with `--single`. Old references keep
   resolving. See [Issue lifecycle](reference/cli.md#issue-lifecycle).
@@ -722,22 +722,22 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   connected through a relay cannot move issues yet. See
   [Moving issues between projects](operations/federation.md#moving-issues-between-projects).
 - Start, change, or stop a recurrence with
-  `kata schedule <ref> <date> --repeat '<rrule>'`. `--repeat -` stops future
-  occurrences and keeps existing ones. `kata show` prints the rule, time zone,
-  and next occurrence, and `kata show --json` returns them under `recurrence`.
+  `poomsae schedule <ref> <date> --repeat '<rrule>'`. `--repeat -` stops future
+  occurrences and keeps existing ones. `poomsae show` prints the rule, time zone,
+  and next occurrence, and `poomsae show --json` returns them under `recurrence`.
   Guarding a start with `--if-match` requires daemon API `0.37.0`. See
   [Repeat an issue](reference/cli.md#repeat-an-issue).
-- Set, change, or clear Scheduled and Deadline dates in `kata tui` with `d`.
-  Fields accept the same values as `kata schedule` and `kata deadline`, plus
+- Set, change, or clear Scheduled and Deadline dates in `poomsae tui` with `d`.
+  Fields accept the same values as `poomsae schedule` and `poomsae deadline`, plus
   `today`, `tomorrow`, `+Nd`, and `+Nw`, and `u` undoes a save. The filter form
   (`f`) adds a **Date** choice for issues due today or scheduled later, and
   issue rows show their dates. The filter requires daemon API `0.36.0`.
-- Browse cron jobs, recorded runs, and workflows in `kata tui` tabs with keys
+- Browse cron jobs, recorded runs, and workflows in `poomsae tui` tabs with keys
   `1` through `4`. Workflows show their job steps, and run details link to their
   definitions. On the Jobs tab, press `n` to create a job, `e` to edit one, and
   `Ctrl+o` to save. Edits keep your draft if someone else changes the job first.
-  See the [`kata tui` keys](reference/cli.md#daemon-and-diagnostics).
-- Read comment discussions as trees in the `kata tui` Comments tab. Confirmations,
+  See the [`poomsae tui` keys](reference/cli.md#daemon-and-diagnostics).
+- Read comment discussions as trees in the `poomsae tui` Comments tab. Confirmations,
   refutations, and superseding replies nest beneath the comments they answer,
   marked `(before edit)` when the evidence predates an edit.
 - Connect a remote MCP gateway directly to the daemon's `/mcp` endpoint. Set
@@ -747,12 +747,12 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   See the [MCP reference](reference/mcp.md) and
   [Startup sections](reference/mcp.md#startup-sections).
 - Manage cron jobs, workflows, and recorded run evidence from MCP with
-  `kata.load_cron`. Execution jobs and workflows still need an external adapter.
-  Read Kata's agent workflow guides through `kata.skills`. See
+  `poomsae.load_cron`. Execution jobs and workflows still need an external adapter.
+  Read Poomsae's agent workflow guides through `poomsae.skills`. See
   [Native cron through MCP](reference/mcp.md#native-cron-through-mcp) and
-  [Agent guides](reference/mcp.md#agent-guides-kataskills).
-- Name federation spokes on the hub with `kata federation enroll --spoke-name`
-  or later with `kata federation enrollments name`. Names appear beside
+  [Agent guides](reference/mcp.md#agent-guides-poomsaeskills).
+- Name federation spokes on the hub with `poomsae federation enroll --spoke-name`
+  or later with `poomsae federation enrollments name`. Names appear beside
   enrollment IDs and in hub event history. See
   [Federation](operations/federation.md#operator-commands).
 - File new CLI issues at a default priority by setting
@@ -766,14 +766,14 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 **Improvements**
 
 - Create, update, archive, and restore native recurring jobs from a direct,
-  push-enabled spoke without a hub token. Kata forwards the write to the owning
+  push-enabled spoke without a hub token. Poomsae forwards the write to the owning
   hub, which validates it and delivers the jobs. Relay and push-disabled
   bindings still refuse, with a hint to run the command against the owning hub.
   See [Cron](reference/cron.md).
-- See the next three run times, with time zone abbreviations, in the `kata tui`
+- See the next three run times, with time zone abbreviations, in the `poomsae tui`
   Jobs detail. Reopening a recurring parent asks for confirmation when more
   than one child issue is due and shows the exact count.
-- Keep the current search visible above `kata tui` issue, Jobs, Runs, and
+- Keep the current search visible above `poomsae tui` issue, Jobs, Runs, and
   Workflows lists, including when nothing matches. Press `/` to edit it.
 - See open blockers in web collection rows with the optional **Blocked by**
   column. Turn it on from the column picker. See the [web UI guide](guide/web-ui.md).
@@ -790,20 +790,20 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   Comment search cost now follows the number of matching comments.
 - Open issues with many children or comments quickly when signed in with an
   identity token. In measured examples that previously timed out after five
-  seconds, `kata show` now returns in 40–200 milliseconds.
+  seconds, `poomsae show` now returns in 40–200 milliseconds.
 - Keep CLI, TUI, and API writes responsive while the daemon checks due dates in
   projects with many future-dated issues.
 - Read `scheduled_on_date` and `deadline_on_date` as `YYYY-MM-DD` dates in
-  `kata list --json`, `kata show --json`, and MCP issue rows. See
+  `poomsae list --json`, `poomsae show --json`, and MCP issue rows. See
   [Calendar dates on issue rows](reference/metadata.md#calendar-dates-on-issue-rows).
-- Read which alias or project Kata looked up from `error.data` when a command
+- Read which alias or project Poomsae looked up from `error.data` when a command
   fails with `project_not_initialized`. See the
   [HTTP API errors table](reference/http-api.md#errors).
 - Build daemon pickers in Go: list the daemon catalog with
   `client.DaemonCatalog()`, connect to an entry by name, and start a stopped
   local daemon. See
   [Go client](reference/go-client.md#connect-to-a-catalog-daemon-by-name).
-- See Kata's icon and website in MCP clients that display server metadata. See
+- See Poomsae's icon and website in MCP clients that display server metadata. See
   [Server identity](reference/mcp.md#server-identity).
 - Generate API clients with typed UUIDs. The OpenAPI document marks UUID fields
   with `format: uuid`, and the Go client uses the standard library `uuid.UUID`.
@@ -816,17 +816,17 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 
 **Bug fixes**
 
-- Restart the daemon in its own environment with `kata daemon restart`,
+- Restart the daemon in its own environment with `poomsae daemon restart`,
   keeping its network access, credentials, startup options, and idle policy.
   Restart waits up to 90 seconds for a replacement, longer while an SQLite
-  migration runs, and `kata update` reports the startup error when the daemon
-  refuses to restart. See [Updating Kata](get-started/install.md#updating-kata).
+  migration runs, and `poomsae update` reports the startup error when the daemon
+  refuses to restart. See [Updating Poomsae](get-started/install.md#updating-poomsae).
 - Stop a second daemon from opening a store that another daemon is serving,
-  including one in a sandbox or container with its own process IDs. Kata now
+  including one in a sandbox or container with its own process IDs. Poomsae now
   refuses with an error that says where the owning daemon runs, instead of
   running two daemons on one database. `stop`, `restart`, `reload`, and
   `update` act only on local daemons and say why they skip the others.
-- Connect to a running daemon whose process identity Kata cannot check, instead
+- Connect to a running daemon whose process identity Poomsae cannot check, instead
   of starting a second daemon beside it.
 - Load the web issue list and graph for stores with tens of thousands of issues
   without SQL variable-limit errors.
@@ -837,15 +837,15 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   batches. SQLite roots also relay accepted legacy-spoke events in ingest order.
 - Keep a symlinked SQLite database a symlink during upgrades, so backups and
   other readers keep reaching the upgraded file.
-- Move between issues in the `kata tui` detail view without stale responses
+- Move between issues in the `poomsae tui` detail view without stale responses
   replacing the current issue. Update remote daemons alongside the client for
   issue-filtered history.
 - Keep web content in place when switching projects or when a scrollbar
   appears. Healthy web and TUI connections no longer show an attention banner.
-- Retry temporary Windows executable locks during `kata update`, keeping
+- Retry temporary Windows executable locks during `poomsae update`, keeping
   rollback available.
 - Keep Pi child sessions from taking over their lead session's attention.
-- Keep bare `kata` and `kata.exe` commands in generated user hooks installed
+- Keep bare `poomsae` and `poomsae.exe` commands in generated user hooks installed
   with `--executable`, so hooks work across machines with different install
   paths. See [Agent workflows](workflows/agents.md).
 - Require an explicit time zone for new recurrence settings instead of the
@@ -865,7 +865,7 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   loading, faster graphs, comment search, creation-order paging, due-date
   checks, identity-token reads, and semantic search refreshes, and for faster,
   more reliable CI.
-- Thanks to [Dangerboi](https://github.com/Dangerboi) for `kata schedule
+- Thanks to [Dangerboi](https://github.com/Dangerboi) for `poomsae schedule
   --repeat`, TUI planning dates, the Date filter, TUI job creation and editing,
   next run times, recurring reopen confirmation, the Blocked by column, calendar
   dates in JSON, structured `project_not_initialized` data, the Go daemon
@@ -885,17 +885,17 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 ## 0.20.0
 <small>2026-10-23</small>
 
-Kata 0.20.0 adds an Attention inbox to the terminal UI, requests for replies to
+Poomsae 0.20.0 adds an Attention inbox to the terminal UI, requests for replies to
 specific comments, participant broadcasts, and events for reached schedules.
 It also improves SQLite upgrades, daemon restarts, and cron scheduling.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.20.0)
-· [Changes since 0.19.0](https://github.com/kenn-io/kata/compare/v0.19.0...v0.20.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.20.0)
+· [Changes since 0.19.0](https://github.com/ifigueroap/poomsae/compare/v0.19.0...v0.20.0)
 
 **Before upgrading**
 
 For normal federated issue synchronization, upgrade the hub first; spokes can
-upgrade later. See [Updating Kata](get-started/install.md#updating-kata) and
+upgrade later. See [Updating Poomsae](get-started/install.md#updating-poomsae) and
 the [federation procedure](operations/federation.md#compatibility-and-rolling-upgrades).
 
 - Stop other processes using the SQLite database before upgrading. The upgrade
@@ -904,7 +904,7 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   [upgrade limits](reference/cron.md#upgrade-limits). Mixed-version cron
   operation across 0.19.0 and 0.20.0 is not fully supported; this does not
   require coordinated upgrades for ordinary issue synchronization.
-- New client features require their corresponding daemon API. Kata 0.20.0
+- New client features require their corresponding daemon API. Poomsae 0.20.0
   includes API `0.31.0`; release and API versions are separate. See the
   [API version history](reference/http-api.md#version-history).
 - Source builds require Go 1.27.3 or later.
@@ -915,21 +915,21 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   Press `T` to view requests, Enter to open an issue, and `c` to acknowledge
   the displayed request. Acknowledgment requires daemon API `0.13.0` or newer.
   See the [CLI reference](reference/cli.md#daemon-and-diagnostics).
-- Request responses to specific comments with `kata notify --re`, and wait for
-  a response with `kata wait --until reply`. Linked replies appear in the inbox,
+- Request responses to specific comments with `poomsae notify --re`, and wait for
+  a response with `poomsae wait --until reply`. Linked replies appear in the inbox,
   and `--reply` clears the matching request. See
   [Reply to a finding](workflows/agents.md#reply-to-a-finding).
 - Notify an issue's participants and its open children's participants with
-  `kata notify --broadcast`. Broadcasts have a 50-recipient limit and rate
+  `poomsae notify --broadcast`. Broadcasts have a 50-recipient limit and rate
   limits. See [Broadcasts](workflows/agents.md#broadcast-only-when-the-group-needs-it).
-- Trigger date-driven work through hooks or `kata events --tail` when an open
+- Trigger date-driven work through hooks or `poomsae events --tail` when an open
   issue reaches its scheduled date. The new `issue.scheduled_reached` event
   records the date, timezone, and UTC instant even when the owner's inbox
   already has a request. It runs within 30 seconds while the daemon is running;
   schedules already overdue at upgrade produce no event. See
   [Reached schedules](reference/cron.md#reached-schedules).
 - Identify whether Go client discovery selected a remote daemon through
-  `Client.Discovered()`, without launching `kata daemon locate`. See
+  `Client.Discovered()`, without launching `poomsae daemon locate`. See
   [Go client](reference/go-client.md#check-which-daemon-discover-selected).
 
 **Improvements**
@@ -952,7 +952,7 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 - Build Go client programs without linking server dependencies. A minimal
   stripped Linux/amd64 discovery program drops from 24.0 MB to 10.5 MB.
   Client-only discovery of a local PostgreSQL daemon whose DSN uses routing
-  options now requires `KATA_SERVER`. See [Go client](reference/go-client.md).
+  options now requires `POOMSAE_SERVER`. See [Go client](reference/go-client.md).
 - Count daily feature use, first-issue setup, issue creates and closes, empty
   searches, refused actions, and sync outages through optional usage reports.
   Reports omit search queries and error text, and report project totals in
@@ -971,7 +971,7 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   For `contract_version` `2`, these counts match the issue-list API's
   `child_counts`, including through the daemon switcher. See
   [Browser UI endpoints](reference/http-api.md#browser-ui-endpoints).
-- Use newly built Kata binaries with Go 1.27.3's certificate distrust updates
+- Use newly built Poomsae binaries with Go 1.27.3's certificate distrust updates
   for the eMudhra incident. Source builds require Go 1.27.3.
 
 **Bug fixes**
@@ -990,10 +990,10 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
   running on a schema mismatch and directs operators to migrate first. See
   [Daemon and diagnostics](reference/cli.md#daemon-and-diagnostics).
 - Retain SQLite writers' queue positions under contention. Set
-  `[storage.sqlite].busy_timeout` or `KATA_SQLITE_BUSY_TIMEOUT` to adjust waits
+  `[storage.sqlite].busy_timeout` or `POOMSAE_SQLITE_BUSY_TIMEOUT` to adjust waits
   on other database users, then restart the daemon. The default remains `5s`.
   See [Configuration](reference/configuration.md).
-- Record every repeated `--pr`, `--commit`, and `--test` value in `kata close`,
+- Record every repeated `--pr`, `--commit`, and `--test` value in `poomsae close`,
   instead of silently keeping only the last. Empty values produce a validation
   error.
 - Reject an explicitly empty `--as ""` with exit code 3 instead of acting as a
@@ -1014,10 +1014,10 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 - Enroll direct devices in identity mode as the hub owner with the bootstrap
   token and `--actor` naming an existing account. Enable the project with an
   account token first. Direct grants remain valid after account tokens expire
-  or are revoked, so revoke them with `kata federation revoke <id>`. Bootstrap
+  or are revoked, so revoke them with `poomsae federation revoke <id>`. Bootstrap
   project resolution reads existing aliases without attaching new ones. See
   [Federation token boundaries](operations/federation.md#token-boundaries).
-- Rejoin or rebind after hub revocation fails during `kata federation leave`,
+- Rejoin or rebind after hub revocation fails during `poomsae federation leave`,
   without restarting the daemon. The project stays bound, and config-managed
   reservations retain their leave marker until leave finishes. MCP agents can
   release a prepared leave with the `abort` phase and their `preparation_id`.
@@ -1057,44 +1057,44 @@ the [federation procedure](operations/federation.md#compatibility-and-rolling-up
 ## 0.19.0
 <small>2026-10-17</small>
 
-Kata 0.19.0 lets you share selected projects between hubs, sync tasks with
+Poomsae 0.19.0 lets you share selected projects between hubs, sync tasks with
 Notion, Plane, Linear, Twenty, Todoist, and TickTick, and share cron jobs
 across devices. Agents can also reply to specific comments, hold timed claims,
-and diagnose their setup with `kata doctor`.
+and diagnose their setup with `poomsae doctor`.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.19.0)
-· [Changes since 0.18.0](https://github.com/kenn-io/kata/compare/v0.18.0...v0.19.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.19.0)
+· [Changes since 0.18.0](https://github.com/ifigueroap/poomsae/compare/v0.18.0...v0.19.0)
 
 **Before upgrading**
 
-See [Updating Kata](get-started/install.md#updating-kata) for the general
+See [Updating Poomsae](get-started/install.md#updating-poomsae) for the general
 procedure. This release also requires these changes:
 
-- Update scripts to use `kata agent-hook` instead of `kata agent-hooks`.
+- Update scripts to use `poomsae agent-hook` instead of `poomsae agent-hooks`.
   Use `--all` instead of `--all-projects` on `digest`, `events`, and `mcp serve`;
   use `--dry` instead of `--dry-run` on `close` and `move`. The old spellings
   are no longer accepted.
-- Reinstall user hooks with `kata agent-hook install`. For workspace hooks,
-  re-run `kata agent-hook install <harness> --local` or the `kata init` hook
+- Reinstall user hooks with `poomsae agent-hook install`. For workspace hooks,
+  re-run `poomsae agent-hook install <harness> --local` or the `poomsae init` hook
   option that installed them. This replaces hooks that still call the plural
   command. See the [agent-hook reference](reference/cli.md#agent-hook).
 - Hook installation now enables available attention hooks by default. Pass
   `--contract-only` to keep contract-only setup.
 - Upgrade federated hubs before their spokes. Project relays need 0.19.0 on
   every participating daemon.
-- External-agent enrollment no longer sends the local `KATA_AUTH_TOKEN` to the
+- External-agent enrollment no longer sends the local `POOMSAE_AUTH_TOKEN` to the
   hub. Pass `--hub-token-env <env-name>` or configure a daemon catalog entry
   matching `--hub-url`.
-- Upgrade remote daemons alongside the CLI and MCP server. Kata 0.19.0 includes
+- Upgrade remote daemons alongside the CLI and MCP server. Poomsae 0.19.0 includes
   daemon API `0.28.0`; timed claims require `0.22.0`, `move --dry` previews
   `0.23.0`, close session references `0.26.0`, paginated lists `0.27.0`, and
   comment replies `0.28.0`. See the
   [API version history](reference/http-api.md#version-history).
 - PostgreSQL operators should stop the daemon and run
-  `kata storage postgres migrate` with schema-owner credentials. Follow the
+  `poomsae storage postgres migrate` with schema-owner credentials. Follow the
   [upgrade procedure](operations/postgres.md#upgrade-ceremony).
-- Go programs that embed Kata and serve the browser application must pass
-  `webui.NewEmbeddedHandler()` in `kata.Config.WebHandler`. See
+- Go programs that embed Poomsae and serve the browser application must pass
+  `webui.NewEmbeddedHandler()` in `poomsae.Config.WebHandler`. See
   [Serve the browser application](development/embedding.md#serve-the-browser-application).
 
 **New features**
@@ -1116,18 +1116,18 @@ procedure. This release also requires these changes:
 - Connect existing Forgejo issues with the built-in
   [Forgejo connector](operations/forgejo-connector.md). It imports the issue and
   comments posted after binding, publishes opted-in comments, and closes the
-  Forgejo issue after verified completion in Kata. Automatic field mappings are
+  Forgejo issue after verified completion in Poomsae. Automatic field mappings are
   not available for Forgejo.
 - Sign federation requests and restrict a separate listener to federation
   operations. Existing deployments stay unsigned by default. See
   [Federation request signing](operations/federation-signing.md).
 - Share cron job definitions, workflows, and attributed run history across
-  devices with `kata cron`. External schedulers run the jobs. See
+  devices with `poomsae cron`. External schedulers run the jobs. See
   [Native cron](reference/cron.md).
 - Create recurring child issues and inbox requests from the owning hub. Each
   occurrence is an independent issue, and you choose how missed occurrences are
   handled. The hub daemon must keep running.
-- Claim work temporarily with `kata claim <ref> --ttl 30m`. Claims last from one
+- Claim work temporarily with `poomsae claim <ref> --ttl 30m`. Claims last from one
   minute to 24 hours, renew when claimed again, and return expired work to
   `ready` and `next`. See [claiming](reference/cli.md#labels-ownership-and-claiming).
 - Reply to a specific comment as a reply, confirmation, refutation, or
@@ -1135,36 +1135,36 @@ procedure. This release also requires these changes:
   to the original. Retry a comment safely with `--idempotency-key`. See
   [Reply to a finding](workflows/agents.md#reply-to-a-finding).
 - Read one recipient's attention requests across projects with
-  `kata inbox --all`. In the terminal UI, press `I` to open tasks from the
+  `poomsae inbox --all`. In the terminal UI, press `I` to open tasks from the
   designated Inbox project.
-- Undo recent issue changes with `u` in the terminal UI. Kata keeps up to 20
+- Undo recent issue changes with `u` in the terminal UI. Poomsae keeps up to 20
   eligible actions per session and refuses an undo that conflicts with newer
   changes.
-- Diagnose setup problems with [`kata doctor`](operations/doctor.md), a
+- Diagnose setup problems with [`poomsae doctor`](operations/doctor.md), a
   read-only report with suggested fixes. [Local daemon profiles](operations/local-daemon-profiles.md)
   add diagnosis and explicit recovery while checking the expected database and
   project identities.
 - Assign work, read attention requests, inspect project details, and search
-  Kata's bundled documentation through new
+  Poomsae's bundled documentation through new
   [MCP tools](reference/mcp.md#progressive-tool-catalog).
 - Retrieve every matching issue through paginated lists and single-project
   lexical searches. Results say whether retrieval is complete and return a
   cursor when more pages remain. Use `--priority-unset` to find issues without a
   priority. See [exhaustive issue discovery](reference/mcp.md#exhaustive-issue-discovery).
-- Copy a hub backup without its access using `kata import --as-standalone`. The
+- Copy a hub backup without its access using `poomsae import --as-standalone`. The
   copy keeps content and historical authors but drops token authority,
   federation credentials, connections, and active claims. See
   [Make an independent copy](operations/backup-restore.md#make-an-independent-copy-of-a-federated-hub).
 - Set separate document and query prefixes for embedding models, with optional
   dimension requests. Changing a prefix rebuilds embeddings while search falls
   back to lexical results. Load embedding API keys from
-  `search.embeddings.api_key_file` and refresh them with `kata daemon reload`.
+  `search.embeddings.api_key_file` and refresh them with `poomsae daemon reload`.
   See [semantic search settings](reference/configuration.md#semantic-search).
 - Attach an optional Codex or Claude Code session reference to a close. The web
   issue history shows the saved reference. This setting is off by default. See
   [Closing-session transcripts](reference/configuration.md#closing-session-transcripts).
 - Install coding-agent instructions and attention hooks with
-  `kata agent-hook install`. Setup finds configured agents, supports
+  `poomsae agent-hook install`. Setup finds configured agents, supports
   project-local installation with `--local`, and covers consumer Muse through an
   instructions installer. OpenClaw inbox sharing requires explicit opt-in. See
   [Agent hook](reference/cli.md#agent-hook).
@@ -1182,8 +1182,8 @@ procedure. This release also requires these changes:
   horizontal scrolling, and issue links open their targets.
 - Move through the terminal UI with Emacs shortcuts, including `C-n`, `C-p`,
   `C-v`, and `M-v`.
-- Find commands through expanded `kata --help` and examples, and use
-  `kata label remove` as an alias for `kata label rm`. Errors include a
+- Find commands through expanded `poomsae --help` and examples, and use
+  `poomsae label remove` as an alias for `poomsae label rm`. Errors include a
   next-step hint in human, agent, and JSON output. Invalid `close` flags exit 2
   and malformed `--evidence` values exit 3, instead of 1.
 - Limit GitHub imports with `--since` and watch live sync progress. Incremental
@@ -1198,7 +1198,7 @@ procedure. This release also requires these changes:
   services can omit browser assets. See the [Go client](reference/go-client.md).
 - Anonymous usage reports now distinguish CLI, browser, and terminal use, and
   count daily agent activity from hooks and MCP together. They include daily
-  screen views and session-duration buckets. `KATA_TELEMETRY_ENABLED=0` on the
+  screen views and session-duration buckets. `POOMSAE_TELEMETRY_ENABLED=0` on the
   daemon turns reporting off. See [Telemetry](reference/configuration.md#telemetry).
 
 **Bug fixes**
@@ -1210,18 +1210,18 @@ procedure. This release also requires these changes:
   reads no longer wait for a write lock to refresh claim status.
 - Avoid federation deadlocks between concurrent authorization checks and
   incoming sync writes.
-- Run Kata in Windows checkouts reached through directory junctions.
+- Run Poomsae in Windows checkouts reached through directory junctions.
 - Keep the terminal UI's split detail aligned with the selected issue after
   closing a filtered result. Failed saves keep your input for retry, and form
   text wraps within modal padding.
-- Read label names consistently from `.issue.labels` in `kata show --json`,
+- Read label names consistently from `.issue.labels` in `poomsae show --json`,
   including an empty array for unlabeled issues.
-- Reject unsupported federated moves during `kata move --dry`, using the same
+- Reject unsupported federated moves during `poomsae move --dry`, using the same
   validation as a real move.
 - Preserve edited-content revision counters during SQLite upgrades. Owner and
   status changes also advance issue revisions, so guarded metadata writes
   detect intervening changes.
-- Keep a destination file that appears during `kata import --target` instead of
+- Keep a destination file that appears during `poomsae import --target` instead of
   overwriting it.
 - See readable embedding credential errors in health checks and explicit
   semantic searches. Keyless providers work without an `Authorization` header,
@@ -1238,7 +1238,7 @@ procedure. This release also requires these changes:
   the Notion, Plane, Linear, Twenty, Todoist, TickTick, and Forgejo
   integrations, two-way status sync, comment replies, timed claims, the global
   inbox, terminal UI undo and Emacs shortcuts, the web Inbox and Scheduled
-  views, `kata doctor`, local daemon profiles, coding-agent hook setup, new MCP
+  views, `poomsae doctor`, local daemon profiles, coding-agent hook setup, new MCP
   tools, pagination, container deployment, embedding prefixes, closing-session
   references, CLI help and hints, and federation reliability fixes.
 - Thanks to [Rod Boev](https://github.com/rodboev) for usage reporting, the
@@ -1251,7 +1251,7 @@ procedure. This release also requires these changes:
   documentation.
 - Thanks to [Marius van Niekerk](https://github.com/mariusvniekerk) for Go
   client improvements, embedding and search updates, fairer SQLite write
-  queuing, and safer `kata import --target`.
+  queuing, and safer `poomsae import --target`.
 - Thanks to [Phillip Cloud](https://github.com/cpcloud) for shell installer
   progress and retries, reliable hook file replacement on Windows, and test
   reliability fixes.
@@ -1265,12 +1265,12 @@ procedure. This release also requires these changes:
 ## 0.18.0
 <small>2026-09-17</small>
 
-Kata 0.18.0 helps you hand work to teammates, request their attention, and
+Poomsae 0.18.0 helps you hand work to teammates, request their attention, and
 limit a worker's access to one issue and its children. You can also find work
 by status or age and receive inbox requests when planning dates arrive.
 
-[Release downloads](https://github.com/kenn-io/kata/releases/tag/v0.18.0)
-· [Changes since 0.17.2](https://github.com/kenn-io/kata/compare/v0.17.2...v0.18.0)
+[Release downloads](https://github.com/ifigueroap/poomsae/releases/tag/v0.18.0)
+· [Changes since 0.17.2](https://github.com/ifigueroap/poomsae/compare/v0.17.2...v0.18.0)
 
 **Before upgrading**
 
@@ -1278,25 +1278,25 @@ by status or age and receive inbox requests when planning dates arrive.
   teammate attribution. See [teammate workflows](workflows/agents.md#teammate-heads-up).
 - Upgrade remote daemons alongside the CLI and MCP server. Status-filtered
   search requires daemon API `0.20.0`; oldest-first lists require `0.21.0`.
-  Kata 0.18.0 includes API `0.21.0`. Release and API versions are separate;
+  Poomsae 0.18.0 includes API `0.21.0`. Release and API versions are separate;
   see the [HTTP API version history](reference/http-api.md#version-history).
 - Issue-scoped credentials require
   [token identity mode](operations/remote-daemon.md#identity-tokens) and must
   be created on the authoritative daemon, not a spoke replica.
-- When updating from before 0.18.0, run `kata daemon restart` with the
+- When updating from before 0.18.0, run `poomsae daemon restart` with the
   original startup options after installing the new binary. The older updater
-  does not restart the daemon automatically. Reopen `kata ui` if its port
+  does not restart the daemon automatically. Reopen `poomsae ui` if its port
   changed.
 
 **New features**
 
-- Request attention with `kata notify <ref> --to <recipient> --message <reason>`
-  and read requests with `kata inbox --for <recipient>`. Clear a request after
+- Request attention with `poomsae notify <ref> --to <recipient> --message <reason>`
+  and read requests with `poomsae inbox --for <recipient>`. Clear a request after
   handling it. Closing an issue hides its requests; reopening restores any
   that were not cleared. See [Teammate requests](reference/cli.md#teammate-requests).
 - Attribute new issues, comments, and attention requests to a teammate: a
   temporary participant working under an existing actor's identity. Set
-  `KATA_TEAMMATE` or pass `--teammate`, and address a request to
+  `POOMSAE_TEAMMATE` or pass `--teammate`, and address a request to
   `actor/teammate`. The accountable actor and issue owner stay separate from
   teammate attribution. See [Agent workflows](workflows/agents.md#teammate-heads-up).
 - Delegate one issue and its current descendants in the same project with an
@@ -1309,15 +1309,15 @@ by status or age and receive inbox requests when planning dates arrive.
   Recorded use is best-effort, not a complete access log.
 - Find open teammate work grouped by author and teammate in the web app's
   [Delegated view](guide/web-ui.md#navigate-projects-and-collections).
-- Receive an inbox request when a schedule or deadline is reached. Kata
+- Receive an inbox request when a schedule or deadline is reached. Poomsae
   addresses the owner, or the author if the issue has no owner. Existing
   requests remain in place until cleared, and acknowledged notices do not
   repeat for the same date and recipient. See
   [Planning dates](reference/metadata.md#reserved-keys-vs-opaque-pass-through).
-- Search only open or closed issues with `kata search --status open` or
+- Search only open or closed issues with `poomsae search --status open` or
   `--status closed`. HTTP and MCP searches accept the same filter. Omitting
   it searches both statuses. See [Search](guide/semantic-search.md).
-- List the oldest matching issues first with `kata list --sort oldest`,
+- List the oldest matching issues first with `poomsae list --sort oldest`,
   including across projects with `--all`. Sorting happens before `--limit`;
   human output uses a flat list to preserve that order. See the
   [CLI reference](reference/cli.md#issue-lifecycle).
@@ -1325,8 +1325,8 @@ by status or age and receive inbox requests when planning dates arrive.
   instead of copying tokens manually. Choose read-only replication,
   collaboration, or explicit migration. Status shows approval and any supplied
   expiry. See [External credential providers](operations/federation.md#external-credential-providers).
-- Discover running HTTP MCP listeners with `kata mcp status --json`, including
-  ports, backend targets, and token-file paths. Use `kata mcp serve --runtime-dir`
+- Discover running HTTP MCP listeners with `poomsae mcp status --json`, including
+  ports, backend targets, and token-file paths. Use `poomsae mcp serve --runtime-dir`
   to select an already running local daemon. See
   [MCP listener discovery](reference/mcp.md#discover-running-http-listeners).
 
@@ -1344,11 +1344,11 @@ by status or age and receive inbox requests when planning dates arrive.
 
 **Bug fixes**
 
-- Keep the local daemon and web UI current after `kata update`. After replacing
+- Keep the local daemon and web UI current after `poomsae update`. After replacing
   the binary, the updater asks a running daemon to restart with its existing
   settings. A stopped daemon stays stopped. Older daemons require a manual
-  `kata daemon restart`; see [upgrade instructions](get-started/install.md#updating-kata).
-- Use Kata's MCP tools with the Anthropic Messages API without tool-schema
+  `poomsae daemon restart`; see [upgrade instructions](get-started/install.md#updating-poomsae).
+- Use Poomsae's MCP tools with the Anthropic Messages API without tool-schema
   rejection. Tool inputs no longer use unsupported top-level `oneOf` or
   `allOf` combinations.
 - Read issue titles while editing in a narrow web pane. Below 640 pixels,
@@ -1356,7 +1356,7 @@ by status or age and receive inbox requests when planning dates arrive.
 - Follow destructive-command confirmation help without a rejected value.
   The help now shows the required project-qualified issue ID.
 - Avoid connector readiness failures caused by temporary Windows file-sharing
-  violations. Kata retries those reads.
+  violations. Poomsae retries those reads.
 
 **Acknowledgements**
 
@@ -1381,7 +1381,7 @@ by status or age and receive inbox requests when planning dates arrive.
 
 **Bug fixes**
 
-- Commands such as `kata tui` no longer fail during daemon upgrades or later
+- Commands such as `poomsae tui` no longer fail during daemon upgrades or later
   startup when the operating system reuses an old daemon's process ID for
   another process.
 
@@ -1392,7 +1392,7 @@ by status or age and receive inbox requests when planning dates arrive.
 
 - Restore the complete release downloads, including Homebrew archives, Debian
   and RPM packages, and a source archive with the dependencies and web assets
-  needed to build Kata offline.
+  needed to build Poomsae offline.
 
 This release contains the same application code as 0.17.0. It repairs release
 packaging and includes the finalized 0.17.0 documentation.
@@ -1400,9 +1400,9 @@ packaging and includes the finalized 0.17.0 documentation.
 ## 0.17.0
 <small>2026-09-08</small>
 
-Kata 0.17.0 helps agents claim work and retry a close when they did not receive
+Poomsae 0.17.0 helps agents claim work and retry a close when they did not receive
 its response. CLI commands start faster, simple remote writes need fewer
-requests, and applications that embed Kata can serve its browser UI below a
+requests, and applications that embed Poomsae can serve its browser UI below a
 URL path.
 
 **Before upgrading**
@@ -1418,23 +1418,23 @@ URL path.
 
 **New features**
 
-- Check issue ownership with [`kata status <ref>`](reference/cli.md#issue-lifecycle).
+- Check issue ownership with [`poomsae status <ref>`](reference/cli.md#issue-lifecycle).
   It reports the issue's status and revision, your effective identity, the
   owner, and whether a federation write lease is active, expired, or pending.
   A lease reserves an issue for a holder while it is live.
 - Extend a timed federation lease without releasing it first with
-  [`kata federation lease renew <issue-ref> --ttl <duration>`](operations/federation.md#leases-and-write-gates).
+  [`poomsae federation lease renew <issue-ref> --ttl <duration>`](operations/federation.md#leases-and-write-gates).
   Renewal accepts durations from 60 seconds to 24 hours.
-- Claim an issue only if nobody owns it with `kata claim --if-unowned`. Use
-  `kata unassign --expect-owner <owner>` to remove an assignment only if the
+- Claim an issue only if nobody owns it with `poomsae claim --if-unowned`. Use
+  `poomsae unassign --expect-owner <owner>` to remove an assignment only if the
   owner still matches. See [Claim work](workflows/agents.md#claim-work).
-- Retry an issue close after a lost response with `kata close --idempotency-key`.
-  The key identifies a request so Kata can recognize a retry. Reusing it for
+- Retry an issue close after a lost response with `poomsae close --idempotency-key`.
+  The key identifies a request so Poomsae can recognize a retry. Reusing it for
   the same request returns the original result and avoids
   duplicate follow-up comments. Add `--if-match` to reject the close if the
   issue has changed. See [Close only when verified](workflows/agents.md#close-only-when-verified).
 - Mount the browser application below a URL path when
-  [embedding Kata](development/embedding.md#mount-below-a-url-path).
+  [embedding Poomsae](development/embedding.md#mount-below-a-url-path).
   Navigation, API requests, sessions, live updates, and assets stay under the
   selected path.
 - Grant database-backed identity tokens permission to administer connectors
@@ -1450,15 +1450,15 @@ URL path.
 - Send simple remote `create`, `edit`, `comment`, and `label add` commands with
   one HTTP request instead of three. Commands involving relationships still
   require a separate project lookup. See [Remote daemon](operations/remote-daemon.md).
-- Read more context in `kata search --agent` results, including owner,
+- Read more context in `poomsae search --agent` results, including owner,
   priority, revision, and a body excerpt. Agent output for `list` and `show`
   also includes the revision needed for `--if-match` writes. See
   [Agent output](reference/agent-output.md#reads).
 - Receive empty JSON arrays and objects instead of `null` collections in API
   responses. Requests now require case-sensitive field names and reject
   `null` for arrays.
-- Follow the new step-by-step [guide](https://katatracker.com/guide/) or browse
-  [reference documentation](https://katatracker.com/docs/). Existing
+- Follow the new step-by-step [guide](https://github.com/ifigueroap/poomsae/guide/) or browse
+  [reference documentation](https://github.com/ifigueroap/poomsae/docs/). Existing
   documentation URLs redirect to their new locations.
 
 **Bug fixes**
@@ -1486,46 +1486,46 @@ URL path.
 ## 0.16.0
 <small>2026-08-27</small>
 
-Kata 0.16.0 connects issues to work in external systems. You can also record
+Poomsae 0.16.0 connects issues to work in external systems. You can also record
 completion evidence for work done outside a repository, import one project
 without replacing the database, and let auto-started daemons stop when idle.
 
 **New features**
 
-- Link a Kata issue to a top-level item in an external system through an
+- Link a Poomsae issue to a top-level item in an external system through an
   [external root bridge](reference/cli.md#external-root-bridges). Configure a
-  connector with `[[connector]]` in `<KATA_HOME>/config.toml`, then use
-  `kata connector`, `kata bridge`, or the MCP `kata.load_external_roots` tools
+  connector with `[[connector]]` in `<POOMSAE_HOME>/config.toml`, then use
+  `poomsae connector`, `poomsae bridge`, or the MCP `poomsae.load_external_roots` tools
   to find items, map fields, and bind, pause, resume, reconcile, or unbind them.
   The external item controls the linked title and body. Incoming comments and
   lifecycle changes sync by default; sending comments back requires opt-in
   for each binding.
-- Build connectors with the versioned `kata.connector.v1` protocol, public Go
+- Build connectors with the versioned `poomsae.connector.v1` protocol, public Go
   SDK, and conformance checks usable from any language. Each connector keeps
   the external service's credentials and API calls inside its own process.
 - Record `external:<account>` evidence when closing `done` work completed by
   email, phone, or another channel with no repository artifact. The audit
   keeps this weaker form of evidence visible. If an evidence type is supplied
-  but disallowed, Kata reports that reason instead of saying evidence is missing.
+  but disallowed, Poomsae reports that reason instead of saying evidence is missing.
 - Import one project's JSONL snapshot into an existing SQLite or PostgreSQL
-  database with `kata import --merge`. Other projects stay unchanged. The
+  database with `poomsae import --merge`. Other projects stay unchanged. The
   import preserves project and issue UIDs, refuses UID collisions, skips
   cross-project links, and leaves imported federation authority disabled.
-- Let a local daemon that Kata started automatically stop when idle. This is
+- Let a local daemon that Poomsae started automatically stop when idle. This is
   opt-in. The daemon waits for active requests and finite background work;
-  running stdio and HTTP MCP servers keep it alive automatically. Kata logs
-  the idle exit. An explicit `kata daemon start` replaces an auto-started
+  running stdio and HTTP MCP servers keep it alive automatically. Poomsae logs
+  the idle exit. An explicit `poomsae daemon start` replaces an auto-started
   daemon eligible for idle shutdown with one that stays running.
 
 **Improvements**
 
 - Limit the total tokens sent to an embedding provider with the optional
-  `model_context_tokens` and `max_batch_tokens` settings. Without them, Kata
+  `model_context_tokens` and `max_batch_tokens` settings. Without them, Poomsae
   continues to batch by item count alone.
 - Reject untrusted plaintext daemon targets before sending a request. An HTTP
   target outside loopback requires private-network trust or an
   `allow_insecure` opt-in.
-- Keep `kata wait` error output in the selected CLI format. Kata resolves the
+- Keep `poomsae wait` error output in the selected CLI format. Poomsae resolves the
   target and output mode once per command.
 - Simplify how API schemas and deprecated federation `claim` fields are
   produced. JSON types define their own OpenAPI shapes, and `claim` values
@@ -1534,12 +1534,12 @@ without replacing the database, and let auto-started daemons stop when idle.
 - Read disabled web controls more easily in dark mode. The remaining actions
   use shared Kit buttons and theme settings.
 - Finish accepted hook jobs during daemon shutdown instead of dropping them.
-  Kata cancels running hooks in time to meet the 25-second shutdown limit.
-  `kata daemon restart` waits up to 30 seconds for the old process to exit.
+  Poomsae cancels running hooks in time to meet the 25-second shutdown limit.
+  `poomsae daemon restart` waits up to 30 seconds for the old process to exit.
 
 **Bug fixes**
 
-- Open local `kata ui` tabs without a token login when the daemon has a static
+- Open local `poomsae ui` tabs without a token login when the daemon has a static
   API token. Direct loopback sessions use the existing local browser authority.
 - Load the initial web snapshot in Firefox. The browser's daemon gateway no
   longer adds a body to GET and HEAD requests.
@@ -1563,7 +1563,7 @@ without replacing the database, and let auto-started daemons stop when idle.
 ## 0.15.1
 <small>2026-08-20</small>
 
-Kata 0.15.1 lets MCP clients connect over HTTP, reports which daemon a client
+Poomsae 0.15.1 lets MCP clients connect over HTTP, reports which daemon a client
 will use, and gives clearer errors when a local daemon cannot start. Remote
 TUI users must supply the same close evidence as other remote clients.
 
@@ -1576,7 +1576,7 @@ TUI users must supply the same close evidence as other remote clients.
 
 **Improvements**
 
-- Discover the selected daemon with `kata daemon locate`. It reports whether
+- Discover the selected daemon with `poomsae daemon locate`. It reports whether
   the daemon is local or remote, its transport, URL scheme, and request base
   URL without exposing credentials.
 - Explain permission failures in the daemon's runtime directory before trying
@@ -1603,7 +1603,7 @@ TUI users must supply the same close evidence as other remote clients.
 ## 0.15.0
 <small>2026-08-16</small>
 
-Kata 0.15.0 lets agents manage more of their work through Model Context
+Poomsae 0.15.0 lets agents manage more of their work through Model Context
 Protocol (MCP) tools. It adds scheduling, deadlines, and agent guidance that
 refreshes during a session, plus clearer errors for local daemon connections.
 
@@ -1613,15 +1613,15 @@ refreshes during a session, plus clearer errors for local daemon connections.
   imports, tokens, and storage through MCP. Thirteen section loaders make up
   to 55 typed tools available as needed, so an agent does not have to load the
   entire catalog at startup. Tools remain limited to the server's project scope.
-- Set planning dates with `kata schedule` and `kata deadline`, or the
-  `kata.set_schedule` and `kata.set_deadline` MCP tools. A future schedule
+- Set planning dates with `poomsae schedule` and `poomsae deadline`, or the
+  `poomsae.set_schedule` and `poomsae.set_deadline` MCP tools. A future schedule
   keeps an issue out of ready work until that date; a deadline does not.
-- Read the agent briefing with `kata quickstart --format contract`. It prints
-  the same instructions as `kata init --with-agents`, without file markers
-  or file changes. `kata init --with-codex-hooks` supplies those instructions
+- Read the agent briefing with `poomsae quickstart --format contract`. It prints
+  the same instructions as `poomsae init --with-agents`, without file markers
+  or file changes. `poomsae init --with-codex-hooks` supplies those instructions
   on session startup, resume, clear, and compaction.
-- Check the version with `kata --version`. It supports the same human, JSON,
-  and agent output as `kata version`.
+- Check the version with `poomsae --version`. It supports the same human, JSON,
+  and agent output as `poomsae version`.
 
 **Improvements**
 
@@ -1633,13 +1633,13 @@ refreshes during a session, plus clearer errors for local daemon connections.
   `allow_insecure` opt-in was saved only with the same-endpoint credential.
   These bindings predate storing that setting on the binding itself.
 - Speed up tests by skipping durability flushes in both SQLite stores when
-  the test-only `KATA_TEST_FAST_SQLITE` mode is enabled. Production durability
+  the test-only `POOMSAE_TEST_FAST_SQLITE` mode is enabled. Production durability
   is unchanged.
 
 **Bug fixes**
 
 - Report the recorded process ID, endpoint, and connection error when a
-  running local daemon cannot be reached. Kata no longer treats it as stopped
+  running local daemon cannot be reached. Poomsae no longer treats it as stopped
   and tries to start another daemon.
 
 **Acknowledgements**
@@ -1661,7 +1661,7 @@ refreshes during a session, plus clearer errors for local daemon connections.
 
 **New features**
 
-- Let Forge reuse Kata's issue details, including properties, checklists,
+- Let Forge reuse Poomsae's issue details, including properties, checklists,
   links, and comments, through a network-free shared presentation package and
   bounded daemon reads.
 
@@ -1680,13 +1680,13 @@ refreshes during a session, plus clearer errors for local daemon connections.
 
 **New features**
 
-- Added the official `kenn-io/tap/kata` Homebrew installation path for macOS
+- Added the official `kenn-io/tap/poomsae` Homebrew installation path for macOS
   and Linux.
 - Added import support for SQLite-era Beads databases through the existing
-  `kata import --source-format beads` workflow.
+  `poomsae import --source-format beads` workflow.
 - Added a build-time distribution marker so Homebrew, `.deb`, `.rpm`, and
   third-party packages retain ownership of their installed binary while
-  `kata update --check` remains available.
+  `poomsae update --check` remains available.
 - Added a checksummed release source archive with production browser assets and
   vendored Go dependencies for reproducible, network-free Homebrew Core builds.
 
@@ -1708,7 +1708,7 @@ refreshes during a session, plus clearer errors for local daemon connections.
 ## 0.14.1
 <small>2026-08-08</small>
 
-kata 0.14.1 adds a first-class browser workspace and native MCP integration,
+poomsae 0.14.1 adds a first-class browser workspace and native MCP integration,
 expands cross-project and label-filtered discovery, and makes release,
 federation, and daemon operations safer and more observable.
 
@@ -1719,12 +1719,12 @@ federation, and daemon operations safer and more observable.
   configured daemons.
 - Added a native, project-bound stdio MCP server with 13 structured issue
   tools, protocol negotiation, fixed actor attribution, and bounded results.
-- Added `kata list --all`, with status, priority, owner, label, exclusion, and
+- Added `poomsae list --all`, with status, priority, owner, label, exclusion, and
   metadata filters that compose across all non-archived projects.
 - Added repeatable `--label` and `--no-label` filters to project-scoped
-  `kata search`, applied before lexical limits and during vector-result
+  `poomsae search`, applied before lexical limits and during vector-result
   hydration.
-- Allowed `kata tui <issue-ref>` to resolve and open an issue's detail view
+- Allowed `poomsae tui <issue-ref>` to resolve and open an issue's detail view
   directly.
 - Exposed the standard Go profiling handlers under `/debug/pprof/` on the
   daemon's existing authenticated listener.
@@ -1735,14 +1735,14 @@ federation, and daemon operations safer and more observable.
   agent-hook manager while preserving the existing init flags, lifecycle
   matchers, attention behavior, unrelated configuration, and workspace
   symlink boundary.
-- Added field-scoped Markdown rendering to `kata show --render` for issue
+- Added field-scoped Markdown rendering to `poomsae show --render` for issue
   descriptions and comments while preserving literal record structure and
   machine-readable output.
 - Made `ready --all` and `next --all` compose with owner and label filters.
 - Excluded issues parked with `someday=true` or a future `scheduled_on` date
   from scoped, global, and browser ready queues.
 - Limited workspace binding discovery to the current Git root, preventing an
-  ancestor repository's `.kata.toml` from capturing a nested repository.
+  ancestor repository's `.poomsae.toml` from capturing a nested repository.
 - Avoided federation-wide link reconciliation for batches that cannot affect
   links and gave synchronization requests their own bounded timeout.
 - Kept the release installers compatible with releases that predate embedded
@@ -1766,7 +1766,7 @@ federation, and daemon operations safer and more observable.
   federation work, Git-root workspace discovery, legacy installer support,
   and clean GoReleaser validation.
 - Thanks to [Matthew Jacobs](https://github.com/mjacobs) for Markdown rendering
-  in `kata show`.
+  in `poomsae show`.
 - Thanks to [Joi Ito](https://github.com/Joi) for composing `ready --all` and
   `next --all` with scoped filters.
 - Thanks to [Marius van Niekerk](https://github.com/mariusvniekerk) for the
@@ -1775,12 +1775,12 @@ federation, and daemon operations safer and more observable.
 ## 0.13.0
 <small>2026-07-31</small>
 
-kata 0.13.0 makes federation endpoint changes safer, automates enrollment,
+poomsae 0.13.0 makes federation endpoint changes safer, automates enrollment,
 and improves agent and embedded-service integrations.
 
 **New features**
 
-- Added explicit, retry-safe `kata federation rebind` endpoint migration for
+- Added explicit, retry-safe `poomsae federation rebind` endpoint migration for
   moving one spoke or every local spoke to a named HTTPS hub catalog entry.
   The daemon validates the unchanged hub project identity with the existing
   enrollment and drains old-endpoint sync work before preserving tokens,
@@ -1788,11 +1788,11 @@ and improves agent and embedded-service integrations.
 - Added startup-configured spoke-to-hub project mappings that create or adopt
   local projects, enroll them idempotently, retry hub failures without
   affecting daemon readiness, and expose sanitized aggregate progress in
-  `/health`. Federation teardown remains an explicit `kata federation leave`.
+  `/health`. Federation teardown remains an explicit `poomsae federation leave`.
 - Added project-scoped federation enrollment creation, history, and revocation
   methods to the mountable Go service for hosts that use the restricted
   embedding profile.
-- Added `kata init --with-codex-hooks` to install the `work.attention` harness
+- Added `poomsae init --with-codex-hooks` to install the `work.attention` harness
   into a Codex CLI workspace's `.codex/hooks.json`. Only the `SessionStart`
   half is wired, since Codex has no stable session-end hook event yet; cover
   the end half with a launcher wrapper until upstream ships one.
@@ -1806,7 +1806,7 @@ and improves agent and embedded-service integrations.
   embedding host is saturated.
 - Added federation credential host validation and optional host-side access
   revalidation so credentials remain bound to their configured origin and
-  embedded hosts can deny revoked outside authority without replacing Kata
+  embedded hosts can deny revoked outside authority without replacing Poomsae
   authentication.
 
 **Acknowledgements**
@@ -1821,20 +1821,20 @@ and improves agent and embedded-service integrations.
 ## 0.12.1
 <small>2026-07-21</small>
 
-kata 0.12.1 hardens daemon credential routing, embedded-service boundaries, and
+poomsae 0.12.1 hardens daemon credential routing, embedded-service boundaries, and
 repeatable query filters.
 
 **Improvements**
 
 - Added restricted embedding policies and transaction fences so host-owned
-  authorization is enforced at the same boundary as Kata writes and worker
+  authorization is enforced at the same boundary as Poomsae writes and worker
   operations.
 - Preserved repeated values in query filters, including label, exclusion,
   metadata, actor, and digest filters.
 
 **Bug fixes**
 
-- Refused Git-tracked `.kata.local.toml` files so a committed daemon redirect
+- Refused Git-tracked `.poomsae.local.toml` files so a committed daemon redirect
   cannot route a global bearer token to an untrusted origin.
 
 **Acknowledgements**
@@ -1847,14 +1847,14 @@ repeatable query filters.
 ## 0.12.0
 <small>2026-07-20</small>
 
-kata 0.12.0 gives embedded integrations host-controlled access policies and
+poomsae 0.12.0 gives embedded integrations host-controlled access policies and
 project lifecycle APIs, and makes TUI input safer and easier to navigate.
 
 **New features**
 
 - Added host-controlled authentication and per-operation authorization for
   mounted Go services through `Config.Access`. Embedding hosts supply the
-  authenticated principal; kata exposes the matched operation and project
+  authenticated principal; poomsae exposes the matched operation and project
   scope to their controller, records the host-supplied actor, hides denied
   resources, and revalidates access during long-lived event streams.
 - Added retry-safe `Service.EnsureProject` and `Service.ArchiveProject` methods
@@ -1879,13 +1879,13 @@ project lifecycle APIs, and makes TUI input safer and easier to navigate.
 ## 0.11.1
 <small>2026-07-19</small>
 
-kata 0.11.1 makes pgvector optional for PostgreSQL deployments that do not use
+poomsae 0.11.1 makes pgvector optional for PostgreSQL deployments that do not use
 semantic search.
 
 **Improvements**
 
 - Allowed core PostgreSQL task, federation, and lexical-search storage to start
-  without pgvector. Kata creates vector tables only when pgvector 0.7 or later
+  without pgvector. Poomsae creates vector tables only when pgvector 0.7 or later
   is already installed in `public`; configuring semantic search without it
   reports the feature as unavailable without affecting core storage.
 
@@ -1897,7 +1897,7 @@ semantic search.
 ## 0.11.0
 <small>2026-07-18</small>
 
-kata 0.11.0 completes PostgreSQL support across kata's storage and sharing
+poomsae 0.11.0 completes PostgreSQL support across poomsae's storage and sharing
 workflows and exposes the application as a listener-free Go service. It also
 strengthens machine-readable identity and semantic-search input validation.
 
@@ -1906,19 +1906,19 @@ strengthens machine-readable identity and semantic-search input validation.
 - Added complete PostgreSQL support for the storage contract, daemon operation,
   federation, claims, external and JSONL import, export and atomic snapshot
   restore, lexical search, and pgvector-backed semantic search. Configure it
-  with `KATA_DSN`, `[storage].dsn`, or a `postgres://` / `postgresql://` URL.
-- Added `kata storage postgres migrate` and `status`, validation-only runtime
+  with `POOMSAE_DSN`, `[storage].dsn`, or a `postgres://` / `postgresql://` URL.
+- Added `poomsae storage postgres migrate` and `status`, validation-only runtime
   configuration, server-identity-verified TLS requirements, and separate
   schema-owner and serving roles for production PostgreSQL deployments.
-- Exposed the module root at `go.kenn.io/kata` as a mountable Go service.
-  Applications construct a service with `kata.New`, mount its HTTP `Handler`,
+- Exposed the module root at `github.com/ifigueroap/poomsae` as a mountable Go service.
+  Applications construct a service with `poomsae.New`, mount its HTTP `Handler`,
   run federation, GitHub sync, and timed-claim workers with `Run`, and release
-  owned storage and workers with `Close`; kata does not take over the listener,
+  owned storage and workers with `Close`; poomsae does not take over the listener,
   signals, or host process lifecycle.
 
 **Improvements**
 
-- Added the stable canonical identity `"name": "kata"` to `kata version
+- Added the stable canonical identity `"name": "poomsae"` to `poomsae version
   --json`, alongside the existing version and build fields, so automation can
   identify the binary without parsing human-readable output or contacting a
   daemon.
@@ -1929,7 +1929,7 @@ strengthens machine-readable identity and semantic-search input validation.
 
 **Bug fixes**
 
-- Honored `KATA_HTTP_TIMEOUT` for probes of explicitly configured remote
+- Honored `POOMSAE_HTTP_TIMEOUT` for probes of explicitly configured remote
   servers, while keeping the separate one-second local runtime-discovery probe.
   Slow healthy WAN and reverse-proxied daemons now get the same request budget
   as the command that follows the probe.
@@ -1944,28 +1944,28 @@ strengthens machine-readable identity and semantic-search input validation.
 ## 0.10.0
 <small>2026-07-11</small>
 
-kata 0.10.0 makes ready-work selection priority-aware, carries cross-project
+poomsae 0.10.0 makes ready-work selection priority-aware, carries cross-project
 relationships through federation, and improves daemon and agent-workflow
 operations.
 
 **New features**
 
-- Added `kata next`, which deterministically selects one ready issue. Explicit
+- Added `poomsae next`, which deterministically selects one ready issue. Explicit
   priorities beat unprioritized work, lower numeric priorities win, and ties
   retain the ready API's order. It supports the scoped `ready` filters,
   cross-project `--all` selection, compact human/agent/JSON output, and
   `--full` issue detail.
-- Rendered parent/child trees in human `kata list` output with box-drawing
+- Rendered parent/child trees in human `poomsae list` output with box-drawing
   connectors while preserving server order in JSON and agent output. Children
   whose parent is outside the fetched result remain visible at the top level.
-- Added `kata daemon restart`. It validates replacement settings before
+- Added `poomsae daemon restart`. It validates replacement settings before
   stopping the current local daemon, waits for graceful shutdown, and starts a
   replacement with configured or explicitly repeated listener settings.
 - Synchronized cross-project links across federated projects. Link events are
   retained when a peer has not arrived yet, then materialize after both
   endpoint projects join the same hub federation group regardless of project
   enrollment or synchronization order.
-- Added `kata federation quarantine list` and `show` so operators can inspect
+- Added `poomsae federation quarantine list` and `show` so operators can inspect
   project ownership, event ranges and UIDs, timestamps, and retained errors
   before retrying or skipping. Federation project detail in the TUI now shows
   the same retained quarantine errors.
@@ -1975,17 +1975,17 @@ operations.
 - Reported live semantic-search backfill progress through the `/health`
   `embeddings` object, including start and last-progress timestamps plus a
   smoothed processing rate and ETA once enough progress samples exist.
-- Improved human `kata daemon status` output with the daemon address, PID,
+- Improved human `poomsae daemon status` output with the daemon address, PID,
   binary version, and uptime. JSON status includes the database path and start
   time for programmatic diagnostics.
-- Added `kata init --with-hooks` for Claude Code workspaces and moved the
-  attention lifecycle logic into the installed `kata` binary. The generated
+- Added `poomsae init --with-hooks` for Claude Code workspaces and moved the
+  attention lifecycle logic into the installed `poomsae` binary. The generated
   exec-form hooks no longer depend on a repository script whose contents could
   change behind an already approved command.
-- Extended the managed block written by `kata init --with-agents` with the
+- Extended the managed block written by `poomsae init --with-agents` with the
   `work.branch`, `work.attention`, and `work.attention_msg` conventions.
   Re-running the command refreshes an older managed block in place.
-- Improved `kata wait --timeout` and `--poll-interval` validation: a bare
+- Improved `poomsae wait --timeout` and `--poll-interval` validation: a bare
   number remains rejected as ambiguous, but the error now suggests the
   seconds-qualified spelling and lists supported duration units.
 
@@ -1996,10 +1996,10 @@ operations.
   quarantined. Compatible spokes also resend older push quarantines created by
   the former missing-peer validator without advancing the cursor; unrelated
   validation failures remain quarantined.
-- Preserved labels in project-scoped and cross-project `kata ready` results by
+- Preserved labels in project-scoped and cross-project `poomsae ready` results by
   returning the same hydrated issue projection used elsewhere in the API.
 - Fixed GitHub issue and comment pagination when a `Link` header uses GitHub's
-  numeric `/repositories/{id}/...` URL form. kata rewrites that form to the
+  numeric `/repositories/{id}/...` URL form. poomsae rewrites that form to the
   bound owner/repository path before applying its credential egress guard.
 
 **Acknowledgements**
@@ -2011,26 +2011,26 @@ operations.
   federated cross-project link convergence, quarantine recovery and discovery,
   and live embedding progress reporting.
 - Thanks to [Wes McKinney](https://github.com/wesm) for priority-aware
-  `kata next`, daemon restart, and daemon status improvements.
+  `poomsae next`, daemon restart, and daemon status improvements.
 - Thanks to [Barret Schloerke](https://github.com/schloerke) for numeric GitHub
   pagination URL support.
 
 ## 0.9.0
 <small>2026-07-09</small>
 
-kata 0.9.0 adds coordination primitives for agent launchers and dashboards,
+poomsae 0.9.0 adds coordination primitives for agent launchers and dashboards,
 improves scriptable metadata handling, and refreshes semantic search storage and
 terminal rendering.
 
 **New features**
 
-- Added `kata wait`, a read-only fan-out/join command for scripts that need to
+- Added `poomsae wait`, a read-only fan-out/join command for scripts that need to
   block until one or more issues close or report attention through
   `work.attention`. It supports `--until closed|attention|needs-human|stuck`,
   `--any`/`--all`, polling control, timeouts with a dedicated exit code, and
   JSON output for wrappers.
-- Added first-class issue metadata commands and API support. `kata meta set`,
-  `kata meta unset`, and `kata meta get` read and patch issue metadata, support
+- Added first-class issue metadata commands and API support. `poomsae meta set`,
+  `poomsae meta unset`, and `poomsae meta get` read and patch issue metadata, support
   raw JSON values where needed, and expose optimistic concurrency through
   `--if-match` / `If-Match` revisions.
 - Added documented `work.*` metadata conventions for branch orchestration
@@ -2040,15 +2040,15 @@ terminal rendering.
 
 **Improvements**
 
-- Polished human-readable `kata list` and `kata ready` output with clearer
+- Polished human-readable `poomsae list` and `poomsae ready` output with clearer
   status glyphs, priority chips, label chips, owner display, and summary
   footers while preserving machine-readable `--json` and `--agent` output.
 - Improved daemon HTTP API performance by gzip-compressing eligible JSON
   responses when clients send `Accept-Encoding: gzip`; server-sent event
   streams stay uncompressed so they keep streaming normally.
-- Moved semantic search storage from a single embeddings table in `kata.db`
+- Moved semantic search storage from a single embeddings table in `poomsae.db`
   to a sidecar vector index built on the shared `kit` vector layer, named
-  after the database file (`kata.vectors.db` for the default `kata.db`),
+  after the database file (`poomsae.vectors.db` for the default `poomsae.db`),
   with chunked embeddings instead of a fixed truncation cap and
   generation-based model swaps: changing `model`, `dims`, or
   `fingerprint_salt` fills a new generation in the background and cuts over
@@ -2073,7 +2073,7 @@ terminal rendering.
 
 **Acknowledgements**
 
-- Thanks to [Matthew Jacobs](https://github.com/mjacobs) for `kata wait`, issue
+- Thanks to [Matthew Jacobs](https://github.com/mjacobs) for `poomsae wait`, issue
   metadata commands, `work.*` orchestration conventions, and human-readable
   `list` / `ready` polish.
 - Thanks to [Wes McKinney](https://github.com/wesm) for gzip API compression,
@@ -2082,7 +2082,7 @@ terminal rendering.
 ## 0.8.0
 <small>2026-07-04</small>
 
-kata 0.8.0 adds a graph-shaped issue API for clients that need to visualize or
+poomsae 0.8.0 adds a graph-shaped issue API for clients that need to visualize or
 analyze connected work, makes daemon projects easier to create without a local
 workspace, and records testing guidance for behavior-based validation.
 
@@ -2094,8 +2094,8 @@ workspace, and records testing guidance for behavior-based validation.
   closed non-source issues with `hide_done=true`, includes cross-project
   `qualified_id` values, and reports unresolved link endpoints without dropping
   the rest of the graph.
-- Added `kata projects create <name>` for creating or returning an active
-  daemon project by name without writing `.kata.toml`, `.gitignore`, or agent
+- Added `poomsae projects create <name>` for creating or returning an active
+  daemon project by name without writing `.poomsae.toml`, `.gitignore`, or agent
   guidance files and without attaching a workspace alias.
 - Added testing guidance that discourages tautological content assertions,
   especially shell tests that grep scripts or config for implementation text,
@@ -2118,7 +2118,7 @@ workspace, and records testing guidance for behavior-based validation.
 ## 0.7.0
 <small>2026-06-29</small>
 
-kata 0.7.0 improves discovery, sharing, and release operations. Search can now
+poomsae 0.7.0 improves discovery, sharing, and release operations. Search can now
 use opt-in embeddings for semantic recall while preserving lexical behavior by
 default, GitHub sync gains safer daemon-side credentials and parent-link
 reconciliation, and federation handles larger adoption and push workloads more
@@ -2128,7 +2128,7 @@ reliably.
 
 - Added opt-in semantic search for SQLite-backed projects. Configure an
   OpenAI-compatible `/embeddings` endpoint under `[search.embeddings]` to make
-  default `kata search` run hybrid lexical/vector search; use `--lexical`,
+  default `poomsae search` run hybrid lexical/vector search; use `--lexical`,
   `--hybrid`, or `--semantic` to force a mode. Search remains lexical with no
   embedding config, and automatic fallback reports degraded mode instead of
   silently hiding vector failures.
@@ -2137,17 +2137,17 @@ reliably.
   env-token fallback is host-scoped with `[github_sync].token_host`, and GitHub
   Enterprise hosts must be explicitly allow-listed.
 - Added GitHub sub-issue parent-link synchronization. GitHub-sourced parent
-  links are imported and reconciled as source-managed kata parent links, while
+  links are imported and reconciled as source-managed poomsae parent links, while
   unsupported Enterprise schemas preserve existing source-managed parent links
   instead of deleting them.
-- Added `kata projects rewrite-author` and the matching HTTP action for
+- Added `poomsae projects rewrite-author` and the matching HTTP action for
   project-scoped current-state identity hygiene. It rewrites exact matches in
   issue authors, issue owners, comment authors, and link authors before export,
   sharing, or federation enrollment.
-- Added `kata comment edit` and the matching HTTP route. Comment edits preserve
+- Added `poomsae comment edit` and the matching HTTP route. Comment edits preserve
   the comment UID, author, creation time, and thread position, which makes them
   useful for pre-federation content redaction.
-- Added `kata projects purge` for permanently deleting archived projects and
+- Added `poomsae projects purge` for permanently deleting archived projects and
   freeing their names, with force/confirmation guards, audit tombstones, JSON
   output, and federation-binding refusal.
 
@@ -2158,7 +2158,7 @@ reliably.
 - Improved federation push reliability by splitting oversized outbound batches
   and retrying them as smaller batches instead of quarantining only because a
   request was too large.
-- Improved `kata update` behavior for development builds. Update checks fetch
+- Improved `poomsae update` behavior for development builds. Update checks fetch
   fresh release data, show the latest official release and artifact metadata,
   and require `--force` before replacing a dev build.
 - Published release artifacts automatically from tag pushes through the
@@ -2176,14 +2176,14 @@ reliably.
 ## 0.6.0
 <small>2026-06-24</small>
 
-kata 0.6.0 expands kata's release and sharing surface: GitHub Issues can now
-feed a kata project, private-network daemon deployments have an explicit
+poomsae 0.6.0 expands poomsae's release and sharing surface: GitHub Issues can now
+feed a poomsae project, private-network daemon deployments have an explicit
 tokenless write mode for trusted single-user networks, and Windows users have a
 hosted release installer.
 
 **New features**
 
-- Added one-way GitHub issue sync with `kata sync github`, backed by
+- Added one-way GitHub issue sync with `poomsae sync github`, backed by
   daemon-owned bindings, cursors, import mappings, status, and a poller. The
   first provider imports GitHub issues and issue comments through daemon-side
   GitHub credentials, skips pull requests, prefixes imported titles by
@@ -2193,15 +2193,15 @@ hosted release installer.
   flows. Restored sync bindings come back disabled until explicitly re-enabled
   on the new host.
 - Added support for running GitHub sync on federation hubs, so GitHub-origin
-  kata events can replicate to spokes while direct GitHub sync on spokes stays
+  poomsae events can replicate to spokes while direct GitHub sync on spokes stays
   rejected.
 - Added explicitly enabled tokenless writes and event streams for daemons bound
   to literal private IP addresses. Operators can opt in with
   `[auth].allow_unauthenticated_private_network_writes = true` or
-  `KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1`; token administration
+  `POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1`; token administration
   remains blocked without authentication.
 - Added a hosted Windows PowerShell release installer at
-  `https://katatracker.com/install.ps1`, including release-asset selection,
+  `https://github.com/ifigueroap/poomsae/install.ps1`, including release-asset selection,
   checksum verification, user-local install, and user `Path` updates.
 
 **Improvements**
@@ -2212,8 +2212,8 @@ hosted release installer.
   event, later missing-issue responses remain visible errors.
 - Tightened the pending-push federation exception to `issue_not_found` errors
   so broader hub route or project misconfiguration is not hidden.
-- Changed explicit `kata daemon start` to start a background daemon by default
-  and return after startup is confirmed; `kata daemon start --foreground`
+- Changed explicit `poomsae daemon start` to start a background daemon by default
+  and return after startup is confirmed; `poomsae daemon start --foreground`
   remains the service-manager and hosted-deployment mode.
 - Sped up Windows development and release validation by moving broad CLI and
   daemon handler fixtures off slower git/init paths when tests only need a
@@ -2235,7 +2235,7 @@ hosted release installer.
 ## 0.5.0
 <small>2026-06-22</small>
 
-kata 0.5.0 is the first versioned public preview release. It includes the core
+poomsae 0.5.0 is the first versioned public preview release. It includes the core
 local-first issue tracker, a full terminal UI, agent-oriented workflows,
 hub-and-spoke federation, portable backup/import paths, and the first release
 automation for binary distribution.
@@ -2252,17 +2252,17 @@ automation for binary distribution.
   ready views.
 - BM25-ranked issue search, look-alike duplicate protection, create
   idempotency keys, and safe retry behavior for automation.
-- Interactive `kata tui` with project switching, nested and flat issue lists,
+- Interactive `poomsae tui` with project switching, nested and flat issue lists,
   issue detail pages, filters, search, inline issue creation, editor-backed
   body/comment editing, mutations, help, split-pane layout, and realtime event
   refresh.
-- Durable event polling and SSE streams, including `kata events --tail` for
+- Durable event polling and SSE streams, including `poomsae events --tail` for
   NDJSON consumers and reset handling after destructive history changes.
 - Daemon hooks with TOML configuration, bounded queues, worker pools, timeouts,
   output capture, log rotation, pruning, and reload support.
 - JSONL export/import for backup, migration, schema cutovers, and project
   restore workflows, plus importer support for Beads projects.
-- Hub-and-spoke federation for shared kata projects, including enrollment,
+- Hub-and-spoke federation for shared poomsae projects, including enrollment,
   actor attribution, shared daemon catalogs, TUI daemon switching, and
   reversible spoke leave/rejoin.
 - Remote-client mode with trusted private-network bearer auth, token-based
@@ -2271,21 +2271,21 @@ automation for binary distribution.
   including Cloud Run, Render, Fly.io, Railway, App Engine, and similar hosts.
 - Windows daemon support alongside Unix socket operation, with runtime addresses
   published as URLs for clients.
-- OpenAPI support with `kata openapi`, a committed schema, generated client
+- OpenAPI support with `poomsae openapi`, a committed schema, generated client
   artifacts, and API schema version reporting in `/health`.
 - Release tooling for annotated tags, tag verification, GitHub release
-  artifacts, self-update discovery through `kata update --check`, and
+  artifacts, self-update discovery through `poomsae update --check`, and
   installable release packages.
 
 **Improvements**
 
-- CLI ergonomics now include `kata version`, `kata whoami`, `kata health`,
+- CLI ergonomics now include `poomsae version`, `poomsae whoami`, `poomsae health`,
   project list/show/rename/merge/restore commands, daemon
   start/status/stop/log/reload commands, and `--comment` support on mutation
   commands.
 - Agent-facing output gained a stable text format, better close-justification
-  safeguards, claim-oriented ready filters, and `kata init --with-agents` for
-  writing kata guidance into `AGENTS.md` or `CLAUDE.md`.
+  safeguards, claim-oriented ready filters, and `poomsae init --with-agents` for
+  writing poomsae guidance into `AGENTS.md` or `CLAUDE.md`.
 - TUI rendering gained hierarchy controls, labels in list/detail views,
   responsive narrow layouts, strict status filters, ANSI-safe text handling,
   no-color support, bracketed paste, opt-in mouse support, and cleaner
@@ -2324,21 +2324,21 @@ automation for binary distribution.
   consolidation, hosted-mode `$PORT` binding and docs, trusted-proxy actor
   headers, active-daemon client handling, Unix runtime URL publication, and the
   storage abstraction/Postgres schema shell.
-- Thanks to [Matthew Jacobs](https://github.com/mjacobs) for `kata init
-  --with-agents`, `kata openapi`, the committed OpenAPI schema, `/health`
+- Thanks to [Matthew Jacobs](https://github.com/mjacobs) for `poomsae init
+  --with-agents`, `poomsae openapi`, the committed OpenAPI schema, `/health`
   API schema version reporting, and API compatibility documentation.
 - Thanks to [Andy Hadjigeorgiou](https://github.com/andyxhadji) for ready
-  filters, claim workflows, and the cross-project `kata ready --all` view.
+  filters, claim workflows, and the cross-project `poomsae ready --all` view.
 - Thanks to [Nat Torkington](https://github.com/njt) for Windows daemon support
   and percent-encoded git remote URL handling during init.
 - Thanks to [Jesse Vincent](https://github.com/obra) for consolidating
   relationship editing into create/edit flags and adding `--comment` support to
   mutation commands.
 - Thanks to [Chris K Wensel](https://github.com/cwensel) for the
-  `KATA_HTTP_TIMEOUT` environment setting, project reset-counter support, and
+  `POOMSAE_HTTP_TIMEOUT` environment setting, project reset-counter support, and
   early opt-in remote-client mode.
 - Thanks to [Hugh Brown](https://github.com/hughdbrown) for the per-actor
-  activity digest over kata's event stream.
+  activity digest over poomsae's event stream.
 
 ---
 
@@ -2365,14 +2365,14 @@ automation for binary distribution.
 - Added generated API artifact drift checks before push.
 - Fixed optional generated-client response objects and SQLite transient write
   contention handling.
-- Improved `kata init --with-agents` handling for `CLAUDE.md`.
+- Improved `poomsae init --with-agents` handling for `CLAUDE.md`.
 
 ### 2026-W23 (Jun 1 - Jun 7, 2026)
 
 - Added private-network remote-client mode, bearer-token safeguards, trusted
   proxy actor headers, simple token identity, and hosted daemon support.
 - Added federation enrollment UX with actor-bound hub support.
-- Added `kata init --with-agents`, flat TUI issue lists, OpenAPI schema
+- Added `poomsae init --with-agents`, flat TUI issue lists, OpenAPI schema
   generation, API docs, and docs screenshot hydration.
 - Added docs infrastructure, SaaS tracker comparison material, Vercel deployment
   helpers, and curated design documentation.
@@ -2397,7 +2397,7 @@ automation for binary distribution.
 
 ### 2026-W21 (May 18 - May 24, 2026)
 
-- Switched the Go module path to `go.kenn.io/kata`.
+- Switched the Go module path to `github.com/ifigueroap/poomsae`.
 - Continued TUI hierarchy, split-detail, and navigation polish.
 - Prepared project restore, remote, hosted, and federation work that landed in
   the following week.
@@ -2406,7 +2406,7 @@ automation for binary distribution.
 
 - Added short issue refs derived from ULIDs in place of per-project numbers.
 - Added close justification safeguards, anti-abuse guardrails, `--comment` on
-  mutation commands, `kata version`, install docs, and backup/restore docs.
+  mutation commands, `poomsae version`, install docs, and backup/restore docs.
 - Added daemon metadata, recurrence, auth, and issue move foundations.
 - Fixed remote-client resolution and schema cutover behavior for pre-existing
   foreign-key orphans.
@@ -2426,13 +2426,13 @@ automation for binary distribution.
 
 ### 2026-W18 (Apr 27 - May 3, 2026)
 
-- Bootstrapped kata's local-first architecture: project binding, SQLite
+- Bootstrapped poomsae's local-first architecture: project binding, SQLite
   storage, daemon API, runtime discovery, Cobra CLI root, and test tooling.
 - Added issue/comment lifecycle storage, events, project initialization,
   health checks, lifecycle smoke tests, and daemon handler coverage.
 - Added relationships, labels, ownership, ready queries, search, idempotency,
   soft delete, restore, purge, and purge auditing.
-- Added polling and SSE events, `kata events --tail`, reset handling, and hook
+- Added polling and SSE events, `poomsae events --tail`, reset handling, and hook
   execution with queues, worker pools, captured output, rotation, pruning, and
   reload.
 - Built the first full TUI, then expanded it with filters, search, editor

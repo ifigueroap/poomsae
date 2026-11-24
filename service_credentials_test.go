@@ -1,12 +1,12 @@
-package kata
+package poomsae
 
 import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 const (

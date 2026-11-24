@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func (d *Store) activateRelayCheckpointTx(ctx context.Context, tx *sql.Tx, grant db.FederationEnrollment) (db.FederationEnrollment, error) {

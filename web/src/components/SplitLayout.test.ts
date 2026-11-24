@@ -40,7 +40,7 @@ describe('SplitLayout', () => {
     const onResize = vi.fn()
     render(SplitLayoutTestHarness, { props: { onResize } })
 
-    const handle = screen.getByRole('separator', { name: 'Resize Kata panes' })
+    const handle = screen.getByRole('separator', { name: 'Resize Poomsae panes' })
     expect(handle.getAttribute('aria-orientation')).toBe('vertical')
     expect(handle.getAttribute('aria-valuemin')).toBe('200')
     expect(handle.getAttribute('aria-valuemax')).toBe('600')
@@ -65,7 +65,7 @@ describe('SplitLayout', () => {
       props: { orientation: 'vertical', primarySize: 210, onResize },
     })
 
-    const handle = screen.getByRole('separator', { name: 'Resize Kata panes' })
+    const handle = screen.getByRole('separator', { name: 'Resize Poomsae panes' })
     expect(handle.getAttribute('aria-orientation')).toBe('horizontal')
     expect(handle.getAttribute('aria-valuemax')).toBe('400')
     expect(handle.getAttribute('aria-valuenow')).toBe('210')
@@ -96,7 +96,7 @@ describe('SplitLayout', () => {
       props: { orientation: 'horizontal', responsiveBreakpoint: 700 },
     })
     await waitFor(() => {
-      expect(stacked.container.querySelector('.kata-sash')?.getAttribute('data-orientation')).toBe(
+      expect(stacked.container.querySelector('.poomsae-sash')?.getAttribute('data-orientation')).toBe(
         'vertical',
       )
       expect(screen.getByTestId('secondary-beside').textContent).toBe('false')
@@ -119,7 +119,7 @@ describe('SplitLayout', () => {
     const onResize = vi.fn()
     render(SplitLayoutTestHarness, { props: { primarySize: null, defaultShare: 2 / 3, onResize } })
 
-    const handle = screen.getByRole('separator', { name: 'Resize Kata panes' })
+    const handle = screen.getByRole('separator', { name: 'Resize Poomsae panes' })
     expect(handle.getAttribute('aria-valuenow')).toBe('800')
     expect(onResize).not.toHaveBeenCalled()
     await fireEvent.keyDown(handle, { key: 'ArrowRight' })

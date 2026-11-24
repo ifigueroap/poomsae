@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
 )
 
 const foldCronUID = "01ARZ3NDEKTSV4RRFFQ69G5FAA"

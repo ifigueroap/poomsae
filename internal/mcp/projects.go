@@ -9,7 +9,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // ProjectsInput selects project records in the startup scope.
@@ -139,19 +139,19 @@ func registerProjectTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
 	mutating := toolHints(false, true, false)
 	additive := toolHints(false, false, false)
-	addTool(server, "kata.project_create", "Create project", "Create a path-free project in daemon-wide mode.", additive, handlers.projectCreate)
-	addTool(server, "kata.project_merge", "Merge projects", "Merge one in-scope project into another.", mutating, handlers.projectMerge)
-	addTool(server, "kata.project_purge", "Purge project", "Irreversibly purge an archived project after exact confirmation.", mutating, handlers.projectPurge)
-	addTool(server, "kata.project_remove", "Archive project", "Archive an in-scope project.", mutating, handlers.projectRemove)
-	addTool(server, "kata.project_restore", "Restore project", "Restore an archived in-scope project.", additive, handlers.projectRestore)
-	addTool(server, "kata.project_show", "Show project", "Read one project with its metadata and workspace aliases.", read, handlers.projectShow)
-	addTool(server, "kata.project_update", "Update project", "Rename, patch metadata, rewrite authors, or detach an alias.", mutating, handlers.projectUpdate)
-	addTool(server, "kata.projects", "List projects", "List or select projects inside the startup scope.", read, handlers.projects)
+	addTool(server, "poomsae.project_create", "Create project", "Create a path-free project in daemon-wide mode.", additive, handlers.projectCreate)
+	addTool(server, "poomsae.project_merge", "Merge projects", "Merge one in-scope project into another.", mutating, handlers.projectMerge)
+	addTool(server, "poomsae.project_purge", "Purge project", "Irreversibly purge an archived project after exact confirmation.", mutating, handlers.projectPurge)
+	addTool(server, "poomsae.project_remove", "Archive project", "Archive an in-scope project.", mutating, handlers.projectRemove)
+	addTool(server, "poomsae.project_restore", "Restore project", "Restore an archived in-scope project.", additive, handlers.projectRestore)
+	addTool(server, "poomsae.project_show", "Show project", "Read one project with its metadata and workspace aliases.", read, handlers.projectShow)
+	addTool(server, "poomsae.project_update", "Update project", "Rename, patch metadata, rewrite authors, or detach an alias.", mutating, handlers.projectUpdate)
+	addTool(server, "poomsae.projects", "List projects", "List or select projects inside the startup scope.", read, handlers.projects)
 }
 
 func registerSystemTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
-	addTool(server, "kata.system", "System information", "Read redacted daemon instance and version information.", read, handlers.system)
+	addTool(server, "poomsae.system", "System information", "Read redacted daemon instance and version information.", read, handlers.system)
 }
 
 func (h toolHandlers) projects(ctx context.Context, _ *sdkmcp.CallToolRequest, input ProjectsInput) (*sdkmcp.CallToolResult, ProjectsOutput, error) {
@@ -392,7 +392,7 @@ func (h toolHandlers) projectPurge(ctx context.Context, _ *sdkmcp.CallToolReques
 	response, err := h.options.Client.PurgeProject(ctx, &generated.PurgeProjectRequestOptions{
 		PathParams: &generated.PurgeProjectPath{ProjectID: project.ID},
 		Body:       &generated.PurgeProjectBody{Actor: h.options.Actor, Reason: optionalString(input.Reason)},
-		Header:     &generated.PurgeProjectHeaders{XKataConfirm: &expected},
+		Header:     &generated.PurgeProjectHeaders{XPoomsaeConfirm: &expected},
 	})
 	if err != nil {
 		return nil, ProjectPurgeOutput{}, err

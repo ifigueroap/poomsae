@@ -1,4 +1,4 @@
-const repoApi = "https://api.github.com/repos/kenn-io/kata";
+const repoApi = "https://api.github.com/repos/ifigueroap/poomsae";
 const cacheMaxAgeMs = 60 * 60 * 1000;
 
 function installLightboxes() {
@@ -113,8 +113,8 @@ function formatCount(count) {
 async function installRepoFacts() {
   if (!document.querySelector("[data-facts]")) return;
   const [repo, release] = await Promise.all([
-    cachedJson("kata:repo", repoApi),
-    cachedJson("kata:release", `${repoApi}/releases/latest`),
+    cachedJson("poomsae:repo", repoApi),
+    cachedJson("poomsae:release", `${repoApi}/releases/latest`),
   ]);
   if (repo) {
     setFact("stars", formatCount(repo.stargazers_count));

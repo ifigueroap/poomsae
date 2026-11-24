@@ -13,7 +13,7 @@
   } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
 
-  import type { KataReachableGraphResponse, KataTaskSummary } from '../lib/kata/types'
+  import type { PoomsaeReachableGraphResponse, PoomsaeTaskSummary } from '../lib/poomsae/types'
   import {
     recordKataGraphDebugEvent,
     resetKataGraphDebug,
@@ -25,20 +25,20 @@
   import GraphMiniMap from './GraphMiniMap.svelte'
   import {
     buildKataReachableGraph,
-    type KataGraphContextDepth,
-    type KataGraphDepthLimit,
-    type KataGraphEdge,
-    type KataGraphLayoutDirection,
-    type KataGraphNode,
+    type PoomsaeGraphContextDepth,
+    type PoomsaeGraphDepthLimit,
+    type PoomsaeGraphEdge,
+    type PoomsaeGraphLayoutDirection,
+    type PoomsaeGraphNode,
   } from '../lib/graph/layout'
 
-  type KataGraphLayoutMode = 'compact' | 'elk'
-  type KataGraphDirectionChoice = 'follow' | KataGraphLayoutDirection
-  interface KataGraphPreferences {
-    contextDepth: KataGraphContextDepth
-    depthLimit: KataGraphDepthLimit
-    layoutMode: KataGraphLayoutMode
-    layoutDirection: KataGraphLayoutDirection | null
+  type PoomsaeGraphLayoutMode = 'compact' | 'elk'
+  type PoomsaeGraphDirectionChoice = 'follow' | PoomsaeGraphLayoutDirection
+  interface PoomsaeGraphPreferences {
+    contextDepth: PoomsaeGraphContextDepth
+    depthLimit: PoomsaeGraphDepthLimit
+    layoutMode: PoomsaeGraphLayoutMode
+    layoutDirection: PoomsaeGraphLayoutDirection | null
   }
 
   interface LayoutPosition {
@@ -54,9 +54,9 @@
 
   interface Props {
     headerActions?: Snippet | undefined
-    graph: KataReachableGraphResponse
-    sourceIssue: KataTaskSummary
-    layoutDirection?: KataGraphLayoutDirection | undefined
+    graph: PoomsaeReachableGraphResponse
+    sourceIssue: PoomsaeTaskSummary
+    layoutDirection?: PoomsaeGraphLayoutDirection | undefined
     onBack: () => void
     onSelectIssue: (uid: string) => void
   }
@@ -70,8 +70,8 @@
     onSelectIssue,
   }: Props = $props()
 
-  const graphPreferencesStorageKey = 'kata.graph.preferences.v1'
-  const defaultGraphPreferences: KataGraphPreferences = {
+  const graphPreferencesStorageKey = 'poomsae.graph.preferences.v1'
+  const defaultGraphPreferences: PoomsaeGraphPreferences = {
     contextDepth: 'all',
     depthLimit: 'full',
     layoutMode: 'compact',
@@ -80,10 +80,10 @@
   const initialGraphPreferences = readGraphPreferences()
 
   let hideDone = $state(false)
-  let contextDepth = $state<KataGraphContextDepth>(initialGraphPreferences.contextDepth)
-  let depthLimit = $state<KataGraphDepthLimit>(initialGraphPreferences.depthLimit)
-  let layoutMode = $state<KataGraphLayoutMode>(initialGraphPreferences.layoutMode)
-  let graphDirectionOverride = $state<KataGraphLayoutDirection | null>(
+  let contextDepth = $state<PoomsaeGraphContextDepth>(initialGraphPreferences.contextDepth)
+  let depthLimit = $state<PoomsaeGraphDepthLimit>(initialGraphPreferences.depthLimit)
+  let layoutMode = $state<PoomsaeGraphLayoutMode>(initialGraphPreferences.layoutMode)
+  let graphDirectionOverride = $state<PoomsaeGraphLayoutDirection | null>(
     initialGraphPreferences.layoutDirection,
   )
   let effectiveLayoutDirection = $derived(graphDirectionOverride ?? layoutDirection)
@@ -139,29 +139,29 @@
     defaultLayoutOptions: elkDefaultLayoutOptions,
   })
   const nodeTypes: NodeTypes = {
-    kataTask: GraphIssueNode,
+    poomsaeTask: GraphIssueNode,
   }
   const depthOptions = [
     { value: 'full', label: 'All' },
     { value: '1', label: 'Up to 1 link away' },
     { value: '2', label: 'Up to 2 links away' },
     { value: '3', label: 'Up to 3 links away' },
-  ] as const satisfies readonly { value: KataGraphDepthLimit; label: string }[]
+  ] as const satisfies readonly { value: PoomsaeGraphDepthLimit; label: string }[]
   const contextOptions = [
     { value: 'all', label: 'All' },
     { value: '1', label: 'Within 1 link' },
     { value: '2', label: 'Within 2 links' },
     { value: '3', label: 'Within 3 links' },
-  ] as const satisfies readonly { value: KataGraphContextDepth; label: string }[]
+  ] as const satisfies readonly { value: PoomsaeGraphContextDepth; label: string }[]
   const layoutOptions = [
     { value: 'compact', label: 'Compact' },
     { value: 'elk', label: 'Layered' },
-  ] as const satisfies readonly { value: KataGraphLayoutMode; label: string }[]
+  ] as const satisfies readonly { value: PoomsaeGraphLayoutMode; label: string }[]
   const graphDirectionOptions = [
     { value: 'follow', label: 'Auto' },
     { value: 'LR', label: 'Left to right' },
     { value: 'TB', label: 'Top to bottom' },
-  ] as const satisfies readonly { value: KataGraphDirectionChoice; label: string }[]
+  ] as const satisfies readonly { value: PoomsaeGraphDirectionChoice; label: string }[]
   // The trigger names only the settings that differ from the defaults, so it
   // reads just "Graph filters" until one changes.
   let graphFilterDetail = $derived.by(() => {
@@ -245,25 +245,25 @@
     maxZoom: 1.25,
   }
 
-  function isContextDepth(value: unknown): value is KataGraphContextDepth {
+  function isContextDepth(value: unknown): value is PoomsaeGraphContextDepth {
     return value === 'all' || value === '1' || value === '2' || value === '3'
   }
 
-  function isDepthLimit(value: unknown): value is KataGraphDepthLimit {
+  function isDepthLimit(value: unknown): value is PoomsaeGraphDepthLimit {
     return value === 'full' || value === '1' || value === '2' || value === '3'
   }
 
-  function isLayoutMode(value: unknown): value is KataGraphLayoutMode {
+  function isLayoutMode(value: unknown): value is PoomsaeGraphLayoutMode {
     return value === 'compact' || value === 'elk'
   }
 
-  function isLayoutDirection(value: unknown): value is KataGraphLayoutDirection {
+  function isLayoutDirection(value: unknown): value is PoomsaeGraphLayoutDirection {
     return value === 'LR' || value === 'TB'
   }
 
-  function normalizeGraphPreferences(value: unknown): KataGraphPreferences {
+  function normalizeGraphPreferences(value: unknown): PoomsaeGraphPreferences {
     if (!value || typeof value !== 'object') return defaultGraphPreferences
-    const candidate = value as Partial<KataGraphPreferences>
+    const candidate = value as Partial<PoomsaeGraphPreferences>
     return {
       contextDepth: isContextDepth(candidate.contextDepth)
         ? candidate.contextDepth
@@ -291,7 +291,7 @@
     }
   }
 
-  function readGraphPreferences(): KataGraphPreferences {
+  function readGraphPreferences(): PoomsaeGraphPreferences {
     try {
       const storage = graphPreferenceStorage()
       if (!storage) return defaultGraphPreferences
@@ -303,7 +303,7 @@
     }
   }
 
-  function writeGraphPreferences(preferences: KataGraphPreferences): void {
+  function writeGraphPreferences(preferences: PoomsaeGraphPreferences): void {
     try {
       const storage = graphPreferenceStorage()
       if (!storage) return
@@ -329,12 +329,12 @@
     return `${ref.side}:${ref.kind}:${ref.uid}:${ref.otherUID}`
   }
 
-  function selectNode(node: KataGraphNode): void {
+  function selectNode(node: PoomsaeGraphNode): void {
     if (!node.data.selectable) return
     onSelectIssue(node.id)
   }
 
-  function withNodeActivation(node: KataGraphNode): KataGraphNode {
+  function withNodeActivation(node: PoomsaeGraphNode): PoomsaeGraphNode {
     return {
       ...node,
       data: {
@@ -345,24 +345,24 @@
   }
 
   function setDepthLimit(value: string): void {
-    depthLimit = value as KataGraphDepthLimit
+    depthLimit = value as PoomsaeGraphDepthLimit
   }
 
   function setContextDepth(value: string): void {
-    contextDepth = value as KataGraphContextDepth
+    contextDepth = value as PoomsaeGraphContextDepth
   }
 
   function setLayoutMode(value: string): void {
-    layoutMode = value as KataGraphLayoutMode
+    layoutMode = value as PoomsaeGraphLayoutMode
   }
 
-  function setGraphDirection(direction: KataGraphDirectionChoice): void {
+  function setGraphDirection(direction: PoomsaeGraphDirectionChoice): void {
     graphDirectionOverride = direction === 'follow' ? null : direction
   }
 
   function graphLayoutSignature(
-    nodes: readonly KataGraphNode[],
-    edges: readonly KataGraphEdge[],
+    nodes: readonly PoomsaeGraphNode[],
+    edges: readonly PoomsaeGraphEdge[],
   ): string {
     return JSON.stringify({
       nodes: nodes.map((node) => node.id),
@@ -370,18 +370,18 @@
     })
   }
 
-  function elkDirection(direction: KataGraphLayoutDirection): 'RIGHT' | 'DOWN' {
+  function elkDirection(direction: PoomsaeGraphLayoutDirection): 'RIGHT' | 'DOWN' {
     return direction === 'TB' ? 'DOWN' : 'RIGHT'
   }
 
   function elkGraph(
-    nodes: readonly KataGraphNode[],
-    edges: readonly KataGraphEdge[],
-    direction: KataGraphLayoutDirection,
+    nodes: readonly PoomsaeGraphNode[],
+    edges: readonly PoomsaeGraphEdge[],
+    direction: PoomsaeGraphLayoutDirection,
   ): ElkNode {
     const nodeIDs = new Set(nodes.map((node) => node.id))
     return {
-      id: 'kata-reachable-graph',
+      id: 'poomsae-reachable-graph',
       layoutOptions: {
         'elk.direction': elkDirection(direction),
       },
@@ -407,9 +407,9 @@
   }
 
   function applyLayoutPositions(
-    nodes: readonly KataGraphNode[],
+    nodes: readonly PoomsaeGraphNode[],
     positions: ReadonlyMap<string, LayoutPosition>,
-  ): KataGraphNode[] {
+  ): PoomsaeGraphNode[] {
     if (positions.size === 0) return [...nodes]
     return nodes.map((node) => ({
       ...node,
@@ -417,7 +417,7 @@
     }))
   }
 
-  function layoutBounds(nodes: readonly KataGraphNode[]): LayoutBounds {
+  function layoutBounds(nodes: readonly PoomsaeGraphNode[]): LayoutBounds {
     if (nodes.length === 0) return { width: 0, height: 0, aspectRatio: 1 }
     const minX = Math.min(...nodes.map((node) => node.position.x))
     const minY = Math.min(...nodes.map((node) => node.position.y))
@@ -432,8 +432,8 @@
     }
   }
 
-  function minimapData(node: SvelteFlowNode): Partial<KataGraphNode['data']> {
-    return node.data as Partial<KataGraphNode['data']>
+  function minimapData(node: SvelteFlowNode): Partial<PoomsaeGraphNode['data']> {
+    return node.data as Partial<PoomsaeGraphNode['data']>
   }
 
   function minimapNodeColor(node: SvelteFlowNode): string {
@@ -543,7 +543,7 @@
 </script>
 
 <section
-  class="kata-graph-pane"
+  class="poomsae-graph-pane"
   aria-label="Reachable task graph"
   data-layout-direction={effectiveLayoutDirection}
 >
@@ -593,7 +593,7 @@
         elementsSelectable={true}
         edgesFocusable={false}
         elevateEdgesOnSelect={false}
-        onnodeclick={({ node }) => selectNode(node as KataGraphNode)}
+        onnodeclick={({ node }) => selectNode(node as PoomsaeGraphNode)}
       >
         <Controls {fitViewOptions} orientation="horizontal" />
         {#if layoutReady}
@@ -629,13 +629,13 @@
 </section>
 
 <style>
-  .kata-graph-pane {
-    --kata-graph-edge-ambient: color-mix(in srgb, var(--text-muted) 58%, var(--bg-primary));
-    --kata-graph-edge-context: color-mix(in srgb, var(--border-default) 76%, var(--bg-primary));
-    --kata-graph-edge-related: color-mix(in srgb, var(--text-muted) 46%, var(--bg-primary));
-    --kata-graph-edge-selected: color-mix(in srgb, var(--text-secondary) 82%, var(--text-primary));
-    --kata-graph-edge-blocks: color-mix(in srgb, var(--accent-amber) 75%, var(--bg-primary));
-    --kata-graph-edge-selected-blocks: color-mix(
+  .poomsae-graph-pane {
+    --poomsae-graph-edge-ambient: color-mix(in srgb, var(--text-muted) 58%, var(--bg-primary));
+    --poomsae-graph-edge-context: color-mix(in srgb, var(--border-default) 76%, var(--bg-primary));
+    --poomsae-graph-edge-related: color-mix(in srgb, var(--text-muted) 46%, var(--bg-primary));
+    --poomsae-graph-edge-selected: color-mix(in srgb, var(--text-secondary) 82%, var(--text-primary));
+    --poomsae-graph-edge-blocks: color-mix(in srgb, var(--accent-amber) 75%, var(--bg-primary));
+    --poomsae-graph-edge-selected-blocks: color-mix(
       in srgb,
       var(--accent-amber) 90%,
       var(--text-primary)
@@ -650,13 +650,13 @@
     background: var(--bg-primary);
   }
 
-  :global(:root.dark) .kata-graph-pane {
-    --kata-graph-edge-ambient: color-mix(in srgb, var(--text-secondary) 88%, var(--bg-primary));
-    --kata-graph-edge-context: color-mix(in srgb, var(--text-muted) 45%, var(--bg-primary));
-    --kata-graph-edge-related: color-mix(in srgb, var(--text-muted) 74%, var(--bg-primary));
-    --kata-graph-edge-selected: var(--text-primary);
-    --kata-graph-edge-blocks: color-mix(in srgb, var(--accent-amber) 85%, var(--bg-primary));
-    --kata-graph-edge-selected-blocks: var(--accent-amber);
+  :global(:root.dark) .poomsae-graph-pane {
+    --poomsae-graph-edge-ambient: color-mix(in srgb, var(--text-secondary) 88%, var(--bg-primary));
+    --poomsae-graph-edge-context: color-mix(in srgb, var(--text-muted) 45%, var(--bg-primary));
+    --poomsae-graph-edge-related: color-mix(in srgb, var(--text-muted) 74%, var(--bg-primary));
+    --poomsae-graph-edge-selected: var(--text-primary);
+    --poomsae-graph-edge-blocks: color-mix(in srgb, var(--accent-amber) 85%, var(--bg-primary));
+    --poomsae-graph-edge-selected-blocks: var(--accent-amber);
   }
 
   /* One header band: Tasks and the title, then the pane actions and Graph
@@ -838,117 +838,117 @@
   }
 
   .graph-key-line--blocks {
-    stroke: var(--kata-graph-edge-selected-blocks);
-    fill: var(--kata-graph-edge-selected-blocks);
+    stroke: var(--poomsae-graph-edge-selected-blocks);
+    fill: var(--poomsae-graph-edge-selected-blocks);
   }
 
   .graph-key-line--parent {
-    stroke: var(--kata-graph-edge-selected);
-    fill: var(--kata-graph-edge-selected);
+    stroke: var(--poomsae-graph-edge-selected);
+    fill: var(--poomsae-graph-edge-selected);
   }
 
   .graph-key-line--related {
-    stroke: var(--kata-graph-edge-related);
+    stroke: var(--poomsae-graph-edge-related);
     stroke-dasharray: 6 4;
   }
 
-  :global(.kata-graph-pane .svelte-flow__controls) {
+  :global(.poomsae-graph-pane .svelte-flow__controls) {
     border: 1px solid var(--border-default);
     border-radius: 6px;
     box-shadow: var(--shadow-sm);
     overflow: hidden;
   }
 
-  :global(.kata-graph-pane .svelte-flow__controls-button) {
+  :global(.poomsae-graph-pane .svelte-flow__controls-button) {
     border: 1px solid var(--border-default);
     border-width: 0 0 1px;
     background: var(--bg-surface-hover);
     color: var(--text-primary);
   }
 
-  :global(.kata-graph-pane .svelte-flow__controls-button:last-child) {
+  :global(.poomsae-graph-pane .svelte-flow__controls-button:last-child) {
     border-bottom: 0;
   }
 
-  :global(.kata-graph-pane .svelte-flow__controls-button:hover) {
+  :global(.poomsae-graph-pane .svelte-flow__controls-button:hover) {
     background: var(--bg-surface-hover);
   }
 
-  :global(.kata-graph-pane .svelte-flow__controls-button svg) {
+  :global(.poomsae-graph-pane .svelte-flow__controls-button svg) {
     fill: currentColor;
   }
 
-  :global(.kata-graph-pane .svelte-flow__minimap) {
+  :global(.poomsae-graph-pane .svelte-flow__minimap) {
     border: 1px solid var(--border-default);
     border-radius: 6px;
     background: var(--bg-primary);
     box-shadow: var(--shadow-sm);
   }
 
-  :global(.kata-graph-pane .svelte-flow__minimap-mask) {
+  :global(.poomsae-graph-pane .svelte-flow__minimap-mask) {
     fill: color-mix(in srgb, var(--bg-primary) 68%, transparent);
     stroke: var(--accent-blue);
   }
 
-  :global(.kata-graph-pane .svelte-flow__minimap-node) {
+  :global(.poomsae-graph-pane .svelte-flow__minimap-node) {
     fill: var(--bg-surface-hover);
     stroke: var(--border-default);
   }
 
-  :global(.kata-graph-node .svelte-flow__handle) {
+  :global(.poomsae-graph-node .svelte-flow__handle) {
     opacity: 0;
     pointer-events: none;
   }
 
-  :global(.kata-graph-pane .svelte-flow__edges) {
+  :global(.poomsae-graph-pane .svelte-flow__edges) {
     z-index: 1;
   }
 
-  :global(.kata-graph-pane .svelte-flow__nodes) {
+  :global(.poomsae-graph-pane .svelte-flow__nodes) {
     position: relative;
     z-index: 2;
   }
 
-  :global(.kata-graph-edge .svelte-flow__edge-path) {
+  :global(.poomsae-graph-edge .svelte-flow__edge-path) {
     stroke-width: 1.8;
   }
 
-  :global(.kata-graph-edge--parent .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-ambient);
+  :global(.poomsae-graph-edge--parent .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-ambient);
   }
 
-  :global(.kata-graph-edge--blocks .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-blocks);
+  :global(.poomsae-graph-edge--blocks .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-blocks);
   }
 
-  :global(.kata-graph-edge--related .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-related);
+  :global(.poomsae-graph-edge--related .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-related);
     stroke-dasharray: 6 4;
   }
 
-  :global(.kata-graph-edge--ambient .svelte-flow__edge-path) {
+  :global(.poomsae-graph-edge--ambient .svelte-flow__edge-path) {
     stroke-width: 1.4;
   }
 
-  :global(.kata-graph-edge--depth-context) {
+  :global(.poomsae-graph-edge--depth-context) {
     z-index: 0;
   }
 
-  :global(.kata-graph-edge--depth-context .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-context);
+  :global(.poomsae-graph-edge--depth-context .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-context);
     stroke-width: 1.2;
   }
 
-  :global(.kata-graph-edge--selected-adjacent .svelte-flow__edge-path) {
+  :global(.poomsae-graph-edge--selected-adjacent .svelte-flow__edge-path) {
     stroke-width: 2.2;
   }
 
-  :global(.kata-graph-edge--selected-adjacent.kata-graph-edge--blocks .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-selected-blocks);
+  :global(.poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--blocks .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-selected-blocks);
   }
 
-  :global(.kata-graph-edge--selected-adjacent.kata-graph-edge--parent .svelte-flow__edge-path) {
-    stroke: var(--kata-graph-edge-selected);
+  :global(.poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--parent .svelte-flow__edge-path) {
+    stroke: var(--poomsae-graph-edge-selected);
   }
 
   .graph-empty {

@@ -8,8 +8,8 @@ package vector
 // cannot land in one encoding and not the other.
 
 // reconcilerLockName is the advisory-lock key prefix. current_schema() is
-// appended so two kata schemas in one database elect independent reconcilers.
-const reconcilerLockName = "kata:vector:reconciler:"
+// appended so two poomsae schemas in one database elect independent reconcilers.
+const reconcilerLockName = "poomsae:vector:reconciler:"
 
 // reconcilerLockArgs is the (classid, objid) argument pair passed to
 // pg_try_advisory_lock and pg_advisory_unlock.

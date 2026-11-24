@@ -1,0 +1,65 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"runtime"
+
+	"github.com/ifigueroap/poomsae/internal/version"
+
+	"github.com/spf13/cobra"
+)
+
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "version",
+		Short:   "print version information",
+		Long:    `Print the CLI build identity. --json and --agent provide structured output; poomsae --version is the root shortcut.`,
+		Example: `  poomsae version --json`,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return writeVersion(cmd.OutOrStdout(), currentOutputMode())
+		},
+	}
+}
+
+// writeVersion renders the build identity for the given output mode. It backs
+// both `poomsae version` and the conventional root `--version` flag so the two
+// spellings can never drift.
+func writeVersion(out io.Writer, mode outputMode) error {
+	switch mode {
+	case outputAgent:
+		_, err := fmt.Fprintf(out, "OK version version=%s agent_format=%d\n",
+			agentValue(version.Version), agentFormatVersion)
+		return err
+	case outputJSON:
+		var buf bytes.Buffer
+		payload := map[string]any{
+			"name":         "poomsae",
+			"version":      version.Version,
+			"commit":       version.Commit,
+			"built":        version.BuildDate,
+			"distribution": version.Distribution,
+			"go":           runtime.Version(),
+			"os":           runtime.GOOS,
+			"arch":         runtime.GOARCH,
+			"agent_format": agentFormatVersion,
+		}
+		if err := emitJSON(&buf, payload); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(out, buf.String())
+		return err
+	}
+	_, err := fmt.Fprintf(out,
+		"poomsae %s\n"+
+			"  commit:  %s\n"+
+			"  built:   %s\n"+
+			"  go:      %s\n"+
+			"  os/arch: %s/%s\n",
+		version.Version, version.Commit, version.BuildDate,
+		runtime.Version(), runtime.GOOS, runtime.GOARCH,
+	)
+	return err
+}

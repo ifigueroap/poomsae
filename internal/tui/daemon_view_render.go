@@ -24,7 +24,7 @@ func renderDaemons(m Model) string {
 	}
 	visible := clipDaemonRows(rows, cursor, rowBudget)
 	body := []string{
-		titleStyle.Render("kata / daemons"),
+		titleStyle.Render("poomsae / daemons"),
 		subtleStyle.Render(fmt.Sprintf("%d daemons", len(rows))),
 		"",
 		renderDaemonHeader(m.width),

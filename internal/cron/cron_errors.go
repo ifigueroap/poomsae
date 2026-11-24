@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/textsafe"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
 )
 
 var hashExtension = regexp.MustCompile(`(?i)(^|,)H($|[(/,])`)
 
 // explainCron adds hints to parser errors without interpreting its error text.
 // For L, W, #, and H the parser says which option would enable the syntax;
-// Kata never enables them, so the hint replaces that text.
+// Poomsae never enables them, so the hint replaces that text.
 func explainCron(expression string, err error) error {
 	_, spec, _, _ := splitCronDirective(expression)
 	fields := strings.Fields(spec)
@@ -21,7 +21,7 @@ func explainCron(expression string, err error) error {
 	detail := safeCronDetail(err.Error())
 	switch {
 	case (len(fields) == 6 || len(fields) == 7) && !strings.HasPrefix(spec, "@"):
-		detail += "; Kata uses five fields: minute, hour, day of month, month, and day of week"
+		detail += "; Poomsae uses five fields: minute, hour, day of month, month, and day of week"
 	case spec == "@reboot":
 		detail += "; @reboot is not supported; use a schedule or interval trigger"
 	case spec == "@every" || strings.HasPrefix(spec, "@every "):

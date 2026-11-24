@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func requireWire(t *testing.T, err error, code int, reason string) *mcpevents.Error {
@@ -90,7 +90,7 @@ func TestSubscribeValidation(t *testing.T) {
 		code   int
 		reason string
 	}{
-		{"unknown event", func(r *mcpevents.SubscribeRequest) { r.Name = "kata.other" }, mcpevents.CodeNotFound, "event"},
+		{"unknown event", func(r *mcpevents.SubscribeRequest) { r.Name = "poomsae.other" }, mcpevents.CodeNotFound, "event"},
 		{"unsupported mode", func(r *mcpevents.SubscribeRequest) { r.Delivery.Mode = "poll" }, mcpevents.CodeUnsupported, "deliveryMode"},
 		{"bad secret", func(r *mcpevents.SubscribeRequest) { r.Delivery.Secret = "whsec_short" }, mcpevents.CodeInvalidParams, "invalid_secret"},
 		{"missing secret", func(r *mcpevents.SubscribeRequest) { r.Delivery.Secret = "" }, mcpevents.CodeInvalidParams, "invalid_secret"},

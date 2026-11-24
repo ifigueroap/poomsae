@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // commentReplyTargetUIDExpr must match the expression in idx_events_reply_to.

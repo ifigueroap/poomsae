@@ -16,7 +16,7 @@ describe('web daemon transport', () => {
     const request = new Request(input, init)
     expect(new URL(request.url).pathname).toBe('/api/v1/ui/proxy/api/v1/ui/snapshot')
     expect(new URL(request.url).search).toBe('?view=all-open')
-    expect(request.headers.get('X-Kata-Web-Daemon')).toBe('example-remote')
+    expect(request.headers.get('X-Poomsae-Web-Daemon')).toBe('example-remote')
     expect(request.headers.get('If-None-Match')).toBe('"snapshot-1"')
   })
 
@@ -33,7 +33,7 @@ describe('web daemon transport', () => {
     const [input, init] = upstream.mock.calls[0]!
     const request = new Request(input, init)
     expect(request.method).toBe('POST')
-    expect(request.headers.get('X-Kata-Web-Daemon')).toBe('example-local')
+    expect(request.headers.get('X-Poomsae-Web-Daemon')).toBe('example-local')
     await expect(request.json()).resolves.toEqual({ name: 'example-project' })
   })
 
@@ -64,7 +64,7 @@ describe('web daemon transport', () => {
 
     const [input, init] = upstream.mock.calls[0]!
     expect(new URL(String(input), window.location.origin).pathname).toBe('/api/v1/ui/telemetry')
-    expect(new Headers(init?.headers).get('X-Kata-Web-Daemon')).toBeNull()
+    expect(new Headers(init?.headers).get('X-Poomsae-Web-Daemon')).toBeNull()
   })
 
   test('keeps credential audit on the source daemon', async () => {
@@ -76,7 +76,7 @@ describe('web daemon transport', () => {
     const [input, init] = upstream.mock.calls[0]!
     const request = new Request(new URL(String(input), window.location.origin), init)
     expect(new URL(request.url).pathname).toBe('/api/v1/tokens')
-    expect(request.headers.has('X-Kata-Web-Daemon')).toBe(false)
+    expect(request.headers.has('X-Poomsae-Web-Daemon')).toBe(false)
   })
 
   test('keeps team and visibility administration on the browser origin with a daemon selected', async () => {
@@ -91,7 +91,7 @@ describe('web daemon transport', () => {
     expect(
       upstream.mock.calls.map(([input, init]) => {
         const request = new Request(new URL(String(input), window.location.origin), init)
-        expect(request.headers.has('X-Kata-Web-Daemon')).toBe(false)
+        expect(request.headers.has('X-Poomsae-Web-Daemon')).toBe(false)
         return new URL(request.url).pathname
       }),
     ).toEqual(paths)
@@ -104,7 +104,7 @@ describe('web daemon transport', () => {
     const [input, init] = upstream.mock.calls[0]!
     const request = new Request(new URL(String(input), window.location.origin), init)
     expect(new URL(request.url).pathname).toBe('/api/v1/projects/7/federation/status')
-    expect(request.headers.has('X-Kata-Web-Daemon')).toBe(false)
+    expect(request.headers.has('X-Poomsae-Web-Daemon')).toBe(false)
   })
 
   test('accepts only a sanitized daemon roster', async () => {
@@ -132,7 +132,7 @@ describe('web daemon transport', () => {
             default: false,
             auth: 'none',
             health: 'upgrade_required',
-            hint: 'daemon does not support the Kata web UI',
+            hint: 'daemon does not support the Poomsae web UI',
           },
         ],
       }),
@@ -152,7 +152,7 @@ describe('web daemon transport', () => {
       }),
     )
     await fetchWebDaemons(fetcher, new AbortController().signal, 'hub')
-    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('X-Kata-Web-Daemon')).toBe('hub')
+    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('X-Poomsae-Web-Daemon')).toBe('hub')
   })
 
   test('retains explicit native local authority and treats absent local metadata as remote', async () => {

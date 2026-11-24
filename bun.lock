@@ -3,13 +3,13 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@kenn-io/kata-web",
+      "name": "@ifigueroap/poomsae-web",
       "devDependencies": {
         "vite-plus": "1.4.0",
       },
     },
-    "packages/kata-ui": {
-      "name": "@kenn-io/kata-ui",
+    "packages/poomsae-ui": {
+      "name": "@ifigueroap/poomsae-ui",
       "version": "0.1.0",
       "dependencies": {
         "@kenn-io/kit-ui": "github:kenn-io/kit-ui#6cf4bd7242470636c0f1d69ec5241b966747ec87",
@@ -31,10 +31,10 @@
       },
     },
     "web": {
-      "name": "@kenn-io/kata-web",
+      "name": "@ifigueroap/poomsae-web",
       "version": "0.0.0",
       "dependencies": {
-        "@kenn-io/kata-ui": "workspace:*",
+        "@ifigueroap/poomsae-ui": "workspace:*",
         "@kenn-io/kit-ui": "github:kenn-io/kit-ui#6cf4bd7242470636c0f1d69ec5241b966747ec87",
         "@lucide/svelte": "1.21.0",
         "@xyflow/svelte": "1.6.1",
@@ -215,9 +215,9 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@kenn-io/kata-ui": ["@kenn-io/kata-ui@workspace:packages/kata-ui"],
+    "@ifigueroap/poomsae-ui": ["@ifigueroap/poomsae-ui@workspace:packages/poomsae-ui"],
 
-    "@kenn-io/kata-web": ["@kenn-io/kata-web@workspace:web"],
+    "@ifigueroap/poomsae-web": ["@ifigueroap/poomsae-web@workspace:web"],
 
     "@kenn-io/kit-ui": ["@kenn-io/kit-ui@github:kenn-io/kit-ui#6cf4bd7", { "peerDependencies": { "@lucide/svelte": ">=1.0.0", "@videojs/html": "^10.1.0", "dompurify": "^3.2.0", "marked": "^18.0.0", "mermaid": "12.2.0", "shiki": "^4.0.0", "svelte": "^5.29.0" }, "optionalPeers": ["mermaid"], "bin": { "kit-ui-check": "./bin/kit-ui-check.mjs" } }, "kenn-io-kit-ui-6cf4bd7", "sha512-Vwrk0/RqIVf4tiO32OD+ot9OlphXjpGZlEWwXgLowVTCH1x0HUwIWLRMhYjACv5OG+OvmZFd/9NXQg4+qQ6v/A=="],
 

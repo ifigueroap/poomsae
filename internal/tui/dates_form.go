@@ -10,7 +10,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // DatesInput is one dates save: the keys to write and the revision the form

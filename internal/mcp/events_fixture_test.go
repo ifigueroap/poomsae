@@ -15,12 +15,12 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 const (
 	testProjectUID = "01ARZ3NDEKTSV4RRFFQ69G5FAA"
-	testEventName  = "kata.inbox.changed"
+	testEventName  = "poomsae.inbox.changed"
 	testCallback   = "https://receiver.example/inbox"
 	testSecret     = "whsec_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 )
@@ -55,7 +55,7 @@ func (d *recordingDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.URL.Path {
 	case "/api/v1/mcp-events/list":
-		_, _ = io.WriteString(w, `{"events":[{"name":"kata.inbox.changed","description":"d","delivery":["webhook"],"input_schema":{"type":"object"},"payload_schema":{"type":"object"}}]}`)
+		_, _ = io.WriteString(w, `{"events":[{"name":"poomsae.inbox.changed","description":"d","delivery":["webhook"],"input_schema":{"type":"object"},"payload_schema":{"type":"object"}}]}`)
 	case "/api/v1/mcp-events/subscribe":
 		_, _ = io.WriteString(w, `{"id":"sub_fixture","refresh_before":null,"delivery_status":{"active":true}}`)
 	case "/api/v1/mcp-events/unsubscribe":
@@ -83,19 +83,19 @@ func (d *recordingDaemon) eventCalls() int {
 	return count
 }
 
-func newRecordingDaemon(t *testing.T) (*recordingDaemon, *kataclient.Client) {
+func newRecordingDaemon(t *testing.T) (*recordingDaemon, *poomsaeclient.Client) {
 	t.Helper()
 	daemon := &recordingDaemon{}
 	server := httptest.NewServer(daemon)
 	t.Cleanup(server.Close)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	return daemon, client
 }
 
 // newTestHTTPHandler builds the production two-server handler: the legacy
 // session server never serves Events, the stateless one does.
-func newTestHTTPHandler(t *testing.T, client *kataclient.Client, scope *Scope) http.Handler {
+func newTestHTTPHandler(t *testing.T, client *poomsaeclient.Client, scope *Scope) http.Handler {
 	t.Helper()
 	options := Options{
 		Client: client, Scope: scope, Actor: "example-agent", Version: "test-version",
@@ -118,7 +118,7 @@ func boundTestScope(t *testing.T) *Scope {
 const currentMetaJSON = `"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}`
 
 func eventsParams(extra string) string {
-	body := `"name":"kata.inbox.changed","arguments":{"for":"example-agent/worker"},"delivery":{"mode":"webhook","url":"` + testCallback + `","secret":"` + testSecret + `"}`
+	body := `"name":"poomsae.inbox.changed","arguments":{"for":"example-agent/worker"},"delivery":{"mode":"webhook","url":"` + testCallback + `","secret":"` + testSecret + `"}`
 	if extra != "" {
 		body += "," + extra
 	}

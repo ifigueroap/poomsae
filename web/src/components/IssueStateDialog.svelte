@@ -2,13 +2,13 @@
   import { Button, Card, RadioGroup } from '@kenn-io/kit-ui'
   import CheckIcon from '@lucide/svelte/icons/check'
   import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw'
-  import type { KataTaskCloseRequest, KataTaskDetail } from '../lib/kata/types'
+  import type { PoomsaeTaskCloseRequest, PoomsaeTaskDetail } from '../lib/poomsae/types'
   import Modal from './Modal.svelte'
 
   interface Props {
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     disabled?: boolean | undefined
-    onCloseIssue: (request: KataTaskCloseRequest) => boolean | Promise<boolean>
+    onCloseIssue: (request: PoomsaeTaskCloseRequest) => boolean | Promise<boolean>
     onReopenIssue: () => void | Promise<void>
   }
 
@@ -134,7 +134,7 @@
     return true
   }
 
-  function closeRequest(): KataTaskCloseRequest {
+  function closeRequest(): PoomsaeTaskCloseRequest {
     const message = completeMessage.trim()
     if (completeReason === 'duplicate' || completeReason === 'superseded') {
       return {

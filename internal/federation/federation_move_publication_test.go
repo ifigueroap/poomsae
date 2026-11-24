@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestSyncFederationMoveHistoryPublishesOnce(t *testing.T) {
@@ -55,15 +55,15 @@ func TestSyncFederationMoveHistoryPublishesOnce(t *testing.T) {
 			_, err = hub.DB.MoveIssueProject(ctx, db.MoveIssueProjectIn{IssueID: issue.ID, FromProjectID: projects[0].ID, ToProjectID: projects[1].ID, IfMatchRev: issue.Revision, Actor: "worker"})
 			require.NoError(t, err)
 			if scenario == "failed-destination-pull" {
-				t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+				t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 				require.Error(t, sync(1))
-				t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+				t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 			}
 			require.NoError(t, sync(1))
 			if scenario == "failed-source-overlap" {
-				t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+				t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 				require.Error(t, sync(0))
-				t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+				t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 			}
 			if scenario != "readonly-chain-overlap" {
 				require.NoError(t, sync(0), "overlapping source poll must not republish destination-backfilled history")
@@ -120,10 +120,10 @@ func TestSyncFederationMovedIssueRecoversRetainedEditPublication(t *testing.T) {
 			}
 		}, spoke.credentials)
 	}
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 	require.Error(t, sync())
 	require.Empty(t, delivered)
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	require.NoError(t, sync())
 	require.Contains(t, delivered, edit.UID)
 	got, err := spoke.env.DB.IssueByUID(ctx, issue.UID, db.IncludeDeletedNo)
@@ -207,10 +207,10 @@ func TestSyncFederationMovedIssueRecoversAcrossProjectStreams(t *testing.T) {
 				require.Equal(t, 1, count)
 				return
 			}
-			t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+			t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 			require.Error(t, sync(0))
 			require.Empty(t, delivered)
-			t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+			t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 			before, err := receiver.env.DB.MaxEventID(ctx)
 			require.NoError(t, err)
 			require.NoError(t, sync(1), "normal destination polling must recover retained source work")
@@ -259,10 +259,10 @@ func TestSyncFederationMoveRecoversOnDestinationAfterSourcePullFailure(t *testin
 			func(_ int64, events []db.Event) { delivered = append(delivered, events...) }, receiver.credentials,
 		)
 	}
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=move-recovery")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=move-recovery")
 	require.Error(t, sync(0), "the source stream fails after retaining the move")
 	require.Empty(t, delivered)
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	require.NoError(t, sync(1), "the destination stream should recover the retained move hook")
 	require.NoError(t, sync(0), "the source stream can retry after the destination cursor advances")
 

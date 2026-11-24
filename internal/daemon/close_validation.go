@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // isHexSHA reports whether s is 7-40 lowercase or uppercase hex characters,

@@ -1,4 +1,4 @@
-// Command release_artifacts assembles and verifies Kata release-only artifacts.
+// Command release_artifacts assembles and verifies Poomsae release-only artifacts.
 package main
 
 import (
@@ -9,7 +9,7 @@ import (
 	"io"
 	"os"
 
-	releasepkg "go.kenn.io/kata/internal/release"
+	releasepkg "github.com/ifigueroap/poomsae/internal/release"
 )
 
 const releaseArtifactsUsage = "usage: release_artifacts <build-source|verify-source|render-homebrew-core> [flags]"

@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // TestInstance_ReturnsLocalUID covers spec §8.8: GET /api/v1/instance returns
@@ -41,7 +41,7 @@ func TestInstance_ReturnsLocalUID(t *testing.T) {
 // skips the seed step and yields a *DB with empty cached value.
 func TestInstance_503WhenUIDUnset(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 
 	// Materialize a real DB file so OpenReadOnly has something to attach to.
 	primary, err := sqlitestore.Open(ctx, path)

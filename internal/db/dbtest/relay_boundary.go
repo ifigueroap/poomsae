@@ -5,8 +5,8 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayCrossProjectBoundary exercises relay cross project boundary on the supplied native store.

@@ -9,10 +9,10 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
-	kataapi "go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
+	poomsaeapi "github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func (f *cronForm) noun() string {
@@ -149,7 +149,7 @@ func (m Model) cronSaveWorkflowCmd(f cronForm) tea.Cmd {
 		if err != nil {
 			return fail(err)
 		}
-		write := kataapi.PutCronWorkflowBody{Name: name, Definition: kataapi.CronWorkflowDefinitionFrom(def), Actor: actor}
+		write := poomsaeapi.PutCronWorkflowBody{Name: name, Definition: poomsaeapi.CronWorkflowDefinitionFrom(def), Actor: actor}
 		notice := "Created " + name
 		if !f.create {
 			write.ExpectedEventUID, notice = f.expected, "Saved "+name

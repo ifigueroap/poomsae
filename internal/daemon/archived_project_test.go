@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 type denyProjectHost struct{ deniedID int64 }
@@ -24,7 +24,7 @@ func (h denyProjectHost) Authorize(_ context.Context, request HostAccessRequest)
 }
 
 func TestActiveProjectByIDHintsRestoreOnlyForCallersWhoMayReadIt(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	archived, err := store.CreateProject(t.Context(), "retired-project")
@@ -67,7 +67,7 @@ func TestActiveProjectByIDHintsRestoreOnlyForCallersWhoMayReadIt(t *testing.T) {
 			assert.Equal(t, 404, apiErr.Status)
 			assert.Equal(t, "project_not_found", apiErr.Code)
 			if tc.archived {
-				assert.Equal(t, "project retired-project is archived; run 'kata projects restore retired-project' to bring it back", apiErr.Hint)
+				assert.Equal(t, "project retired-project is archived; run 'poomsae projects restore retired-project' to bring it back", apiErr.Hint)
 				return
 			}
 			assert.Empty(t, apiErr.Hint)

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" role="img" aria-label="An orchestrator fans work out into the kata ledger, worker agents claim and close issues against it, the event stream joins results back, and a human supervises the same ledger from the TUI and browser">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" role="img" aria-label="An orchestrator fans work out into the poomsae ledger, worker agents claim and close issues against it, the event stream joins results back, and a human supervises the same ledger from the TUI and browser">
   <style>
     text { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
     .t { fill: #e8e8e8; font-size: 16px; }
@@ -25,7 +25,7 @@
 
   <!-- ledger core -->
   <rect class="core" x="380" y="130" width="220" height="116"/>
-  <text class="t" x="404" y="168">kata daemon</text>
+  <text class="t" x="404" y="168">poomsae daemon</text>
   <text class="m" x="404" y="192">one ledger · SQLite</text>
   <text class="d" x="404" y="214">local, milliseconds</text>
 
@@ -39,7 +39,7 @@
 
   <!-- human -->
   <rect class="box" x="380" y="340" width="220" height="56"/>
-  <text class="t" x="404" y="374">kata tui · kata ui</text>
+  <text class="t" x="404" y="374">poomsae tui · poomsae ui</text>
 
   <!-- edges -->
   <line class="edge" x1="240" y1="172" x2="374" y2="172" marker-end="url(#arr)"/>

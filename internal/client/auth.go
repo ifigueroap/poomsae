@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // resolveAuthToken returns the auth token a client should attach to
 // outgoing requests. Resolution mirrors the daemon side:
 //
-//  1. KATA_AUTH_TOKEN env (highest priority).
-//  2. [auth].token > token_file > token_env in <KATA_HOME>/config.toml.
+//  1. POOMSAE_AUTH_TOKEN env (highest priority).
+//  2. [auth].token > token_file > token_env in <POOMSAE_HOME>/config.toml.
 //  3. Empty (no header injected).
 //
 // Unrelated TOML errors retain the legacy environment-only fallback. Selected
@@ -24,7 +24,7 @@ func resolveAuthToken() string {
 
 func resolveAuthConfig() config.AuthConfig {
 	envToken := authTokenEnvOverride()
-	envTrust := config.EnvTruthy("KATA_TRUST_PRIVATE_NETWORK")
+	envTrust := config.EnvTruthy("POOMSAE_TRUST_PRIVATE_NETWORK")
 	auth, err := config.ReadAuthConfig()
 	if err != nil {
 		if errors.Is(err, config.ErrCredentialSource) {
@@ -33,14 +33,14 @@ func resolveAuthConfig() config.AuthConfig {
 		}
 		// A malformed TOML file must not erase an independently selected
 		// environment file source. Keep the legacy environment-only fallback.
-		token, _, credentialErr := config.ResolveSecret(envToken, os.Getenv("KATA_AUTH_TOKEN_FILE"), "")
+		token, _, credentialErr := config.ResolveSecret(envToken, os.Getenv("POOMSAE_AUTH_TOKEN_FILE"), "")
 		return config.AuthConfig{Token: token, TrustPrivateNetwork: envTrust, CredentialError: credentialErr}
 	}
 	return auth
 }
 
 func authTokenEnvOverride() string {
-	return strings.TrimSpace(os.Getenv("KATA_AUTH_TOKEN"))
+	return strings.TrimSpace(os.Getenv("POOMSAE_AUTH_TOKEN"))
 }
 
 // bearerPolicyFor builds the target-validation policy for a client.

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // StatusSession supports independent reads and state-only admitted writes.
@@ -18,8 +18,8 @@ type StatusSession interface {
 	WriteStatus(context.Context, Config, string, string, func() error) (issuesync.StatusObservation, error)
 }
 
-const statusQuery = `query KataLinearStatus($id: String!) { issue(id: $id) { id updatedAt archivedAt trashed completedAt canceledAt team { id } project { id } state { id } } }`
-const updateQuery = `mutation KataLinearUpdate($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id } } }`
+const statusQuery = `query PoomsaeLinearStatus($id: String!) { issue(id: $id) { id updatedAt archivedAt trashed completedAt canceledAt team { id } project { id } state { id } } }`
+const updateQuery = `mutation PoomsaeLinearUpdate($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id } } }`
 
 func (s *clientSession) statusSchema(ctx context.Context, c Config) (statusSchema, error) {
 	if _, err := s.Scope(ctx, c); err != nil {

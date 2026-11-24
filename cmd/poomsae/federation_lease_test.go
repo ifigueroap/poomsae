@@ -1,0 +1,522 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// TestClaimMutationBodyPrefersLeaseOverDeprecatedClaim pins that the CLI reads
+// the canonical lease field. It used to decode only "claim", so it and
+// poomsae show — same binary, same daemon — disagreed about which spelling was
+// authoritative, and the CLI would have broken on the day the deprecated
+// alias is retired.
+func TestClaimMutationBodyPrefersLeaseOverDeprecatedClaim(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		payload    string
+		wantHolder string
+	}{
+		{
+			name:       "both spellings present",
+			payload:    `{"granted":true,"holder":{"holder":"principal"},"lease":{"holder":"alice"},"claim":{"holder":"deprecated"}}`,
+			wantHolder: "alice",
+		},
+		{
+			name:       "only the deprecated alias",
+			payload:    `{"granted":true,"holder":{"holder":"principal"},"claim":{"holder":"bob"}}`,
+			wantHolder: "bob",
+		},
+		{
+			name:       "no lease at all falls back to the principal",
+			payload:    `{"granted":false,"holder":{"holder":"carol"}}`,
+			wantHolder: "carol",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := decodeClaimMutation([]byte(tc.payload))
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantHolder, holderFromClaimMutation(body))
+		})
+	}
+}
+
+func TestClaim_DefaultsToHardClaimPostsActor(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "claim target")
+
+	out := runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+	assert.Equal(t, "acquired lease on "+ref+" as alice", out)
+
+	status := fetchClaimStatus(t, env, pid, ref)
+	require.NotNil(t, status.Claim)
+	assert.True(t, status.Held)
+	assert.Equal(t, "alice", status.Holder.Holder)
+	assert.Equal(t, "alice", status.Claim.Holder)
+	assert.Equal(t, "hard", status.Claim.ClaimKind)
+	assert.Nil(t, status.Claim.ExpiresAt)
+}
+
+func TestClaim_TTLPostsTimedClaim(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "timed target")
+
+	out := runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref, "--ttl", "30m")
+	assert.Equal(t, "acquired lease on "+ref+" as alice", out)
+
+	status := fetchClaimStatus(t, env, pid, ref)
+	require.NotNil(t, status.Claim)
+	require.NotNil(t, status.Claim.ExpiresAt)
+	assert.Equal(t, "timed", status.Claim.ClaimKind)
+	left := status.Claim.ExpiresAt.Sub(status.Claim.AcquiredAt)
+	assert.GreaterOrEqual(t, left, 29*time.Minute)
+	assert.LessOrEqual(t, left, 31*time.Minute)
+}
+
+func TestLeaseRenew_ExtendsTimedLease(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "renew target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref, "--ttl", "5m")
+	before := fetchClaimStatus(t, env, pid, ref)
+	require.NotNil(t, before.Claim)
+	require.NotNil(t, before.Claim.ExpiresAt)
+
+	out := runCLIAs(t, env, dir, "alice", "federation", "lease", "renew", ref, "--ttl", "30m")
+	assert.Equal(t, "renewed lease on "+ref+" as alice", out)
+
+	after := fetchClaimStatus(t, env, pid, ref)
+	require.NotNil(t, after.Claim)
+	require.NotNil(t, after.Claim.ExpiresAt)
+	assert.Equal(t, before.Claim.ClaimUID, after.Claim.ClaimUID)
+	assert.Greater(t, after.Claim.Revision, before.Claim.Revision)
+	assert.Greater(t, after.Claim.ExpiresAt.Sub(*before.Claim.ExpiresAt), 20*time.Minute)
+}
+
+func TestLeaseRenew_RejectsHardLease(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "renew hard lease")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	_, err := runCLICapture(t, env, dir, "--as", "alice", "federation", "lease", "renew", ref, "--ttl", "30m")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "hard claims cannot be renewed")
+}
+
+func TestLeaseRenew_RequiresTTL(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "renew without ttl")
+
+	_, err := runCLICapture(t, env, dir, "federation", "lease", "renew", ref)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--ttl is required")
+}
+
+func TestClaim_RejectsBareNumericTTL(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "bad ttl")
+
+	_, err := runCLICapture(t, env, dir, "federation", "lease", "acquire", ref, "--ttl", "30")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "duration unit")
+}
+
+func TestClaim_RejectsTTLBounds(t *testing.T) {
+	for _, ttl := range []string{"30s", "25h", "36028797018964028s"} {
+		t.Run(ttl, func(t *testing.T) {
+			env, dir, _, ref := setupFederatedHubIssue(t, "bad ttl "+ttl)
+
+			_, err := runCLICapture(t, env, dir, "federation", "lease", "acquire", ref, "--ttl", ttl)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "timed lease TTL must be between 60s and 24h")
+		})
+	}
+}
+
+func TestClaim_RejectsUnsupportedTTLUnitsAndFractions(t *testing.T) {
+	for _, ttl := range []string{"60000000000ns", "60000ms", "60.5s"} {
+		t.Run(ttl, func(t *testing.T) {
+			env, dir, _, ref := setupFederatedHubIssue(t, "bad ttl "+ttl)
+
+			_, err := runCLICapture(t, env, dir, "federation", "lease", "acquire", ref, "--ttl", ttl)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "ttl must be a whole number followed by s, m, or h")
+		})
+	}
+}
+
+func TestRelease_PostsRelease(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "release target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	out := runCLIAs(t, env, dir, "alice", "federation", "lease", "release", ref)
+	assert.Equal(t, "released lease on "+ref, out)
+
+	status := fetchClaimStatus(t, env, pid, ref)
+	assert.False(t, status.Held)
+	assert.Nil(t, status.Claim)
+}
+
+func TestClaimForceRelease_PostsAdminForceRelease(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "force release target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	out := runCLIAs(t, env, dir, "admin", "federation", "lease", "force-release", ref, "--reason", "stale holder")
+	assert.Equal(t, "force-released lease on "+ref+" from alice", out)
+
+	status := fetchClaimStatus(t, env, pid, ref)
+	assert.False(t, status.Held)
+	assert.Nil(t, status.Claim)
+}
+
+func TestClaimForceRelease_RequiresExplicitActorAndReason(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "force release validation")
+
+	_, err := runCLICapture(t, env, dir, "federation", "lease", "force-release", ref, "--reason", "stale holder")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--as is required")
+
+	_, err = runCLICapture(t, env, dir, "--as", "admin", "federation", "lease", "force-release", ref)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--reason is required")
+}
+
+func TestClaimForceRelease_EnrollmentBearerCannotForceRelease(t *testing.T) {
+	resetFlags(t)
+	env := testenv.New(t, testenv.WithAuthToken("admin-token"))
+	dir := t.TempDir()
+	project, err := env.DB.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	require.NoError(t, config.WriteProjectConfig(dir, project.Name))
+	enableHubClaims(t, env, project.ID)
+	issue, _, err := env.DB.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: project.ID,
+		Title:     "force release auth",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	ref := issue.ShortID
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	created, err := env.DB.CreateFederationEnrollment(t.Context(), db.CreateFederationEnrollmentParams{ //nolint:gosec // test-only bearer token
+		Token:            "enrollment-token",
+		SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4AB",
+		ProjectID:        &project.ID,
+		Capabilities:     "claim",
+		Actor:            "tester",
+	})
+	require.NoError(t, err)
+	t.Setenv("POOMSAE_AUTH_TOKEN", created.Token)
+
+	_, err = runCLICapture(t, env, dir, "--as", "admin", "federation", "lease", "force-release", ref, "--reason", "stale holder")
+	require.Error(t, err)
+	var cli *cliError
+	require.True(t, errors.As(err, &cli))
+	assert.Equal(t, ExitInternal, cli.ExitCode)
+	assert.Contains(t, strings.ToLower(cli.Error()), "token")
+}
+
+func TestClaimSteal_ReleasesExistingClaimThenClaimsAsActor(t *testing.T) {
+	env, dir, pid, ref := setupFederatedHubIssue(t, "steal target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	out := runCLIAs(t, env, dir, "bob", "federation", "lease", "steal", ref, "--reason", "handoff")
+	assert.Equal(t, "stole lease on "+ref+" from alice as bob", out)
+
+	status := fetchClaimStatus(t, env, pid, ref)
+	require.NotNil(t, status.Claim)
+	assert.True(t, status.Held)
+	assert.Equal(t, "bob", status.Holder.Holder)
+	assert.Equal(t, "bob", status.Claim.Holder)
+}
+
+func TestClaimSteal_JSONIncludesReleasedAndNewHolders(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "json steal target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	out := runCLIAs(t, env, dir, "bob", "--json", "federation", "lease", "steal", ref, "--reason", "handoff")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(out), &body))
+	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, "alice", body["released_holder"])
+	assert.Equal(t, "bob", body["new_holder"])
+	released, ok := body["released"].(map[string]any)
+	require.True(t, ok)
+	releasedClaim, ok := released["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", releasedClaim["holder"])
+	claimed, ok := body["claimed"].(map[string]any)
+	require.True(t, ok)
+	claimedClaim, ok := claimed["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "bob", claimedClaim["holder"])
+}
+
+func TestClaimSteal_JSONPartialSuccessIncludesReleasedClaim(t *testing.T) {
+	resetFlags(t)
+	dir := t.TempDir()
+	var forceReleaseCalled bool
+	var claimCalled bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/projects/resolve":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"project": map[string]any{"id": 99, "name": "hub"},
+			})
+		case "/api/v1/projects/99/issues/abcd/lease/actions/force_release":
+			forceReleaseCalled = true
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"granted": true,
+				"holder":  map[string]any{"holder": "alice", "client_kind": "cli"},
+				"claim":   map[string]any{"holder": "alice", "claim_kind": "hard", "released_at": time.Now().UTC()},
+			})
+		case "/api/v1/projects/99/issues/abcd/lease/actions/acquire":
+			claimCalled = true
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": http.StatusConflict,
+				"error": map[string]any{
+					"code": "claim_denied", "message": "charlie already holds abcd",
+					"hint": "run poomsae federation lease acquire abcd",
+				},
+			})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	cmd := newRootCmd()
+	var stdout, stderr strings.Builder
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"--workspace", dir, "--project", "hub", "--as", "bob", "--json", "federation", "lease", "steal", "abcd", "--reason", "handoff"})
+	cmd.SetContext(contextWithBaseURL(t.Context(), server.URL))
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.True(t, forceReleaseCalled)
+	assert.True(t, claimCalled)
+	assert.Contains(t, err.Error(), "force-release succeeded but lease failed")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout.String()), &body))
+	assert.Equal(t, true, body["partial_success"])
+	assert.Equal(t, "alice", body["released_holder"])
+	claimErr, ok := body["claim_error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "run poomsae federation lease acquire abcd", claimErr["hint"])
+	released, ok := body["released"].(map[string]any)
+	require.True(t, ok)
+	releasedClaim, ok := released["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", releasedClaim["holder"])
+}
+
+func TestClaimSteal_JSONPartialSuccessWhenSecondClaimDeniedWithOK(t *testing.T) {
+	resetFlags(t)
+	dir := t.TempDir()
+	var forceReleaseCalled bool
+	var claimCalled bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/projects/resolve":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"project": map[string]any{"id": 99, "name": "hub"},
+			})
+		case "/api/v1/projects/99/issues/abcd/lease/actions/force_release":
+			forceReleaseCalled = true
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"granted": true,
+				"holder":  map[string]any{"holder": "alice", "client_kind": "cli"},
+				"claim":   map[string]any{"holder": "alice", "claim_kind": "hard", "released_at": time.Now().UTC()},
+			})
+		case "/api/v1/projects/99/issues/abcd/lease/actions/acquire":
+			claimCalled = true
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"granted": false,
+				"pending": false,
+				"claim":   map[string]any{"holder": "charlie", "claim_kind": "hard"},
+			})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	cmd := newRootCmd()
+	var stdout, stderr strings.Builder
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"--workspace", dir, "--project", "hub", "--as", "bob", "--json", "federation", "lease", "steal", "abcd", "--reason", "handoff"})
+	cmd.SetContext(contextWithBaseURL(t.Context(), server.URL))
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.True(t, forceReleaseCalled)
+	assert.True(t, claimCalled)
+	assert.Contains(t, err.Error(), "force-release succeeded but lease failed")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout.String()), &body))
+	assert.Equal(t, true, body["partial_success"])
+	assert.Equal(t, "alice", body["released_holder"])
+	assert.Equal(t, "bob", body["new_holder"])
+	claimErr, ok := body["claim_error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "claim_denied", claimErr["code"])
+	assert.Contains(t, claimErr["message"], "charlie")
+	claimed, ok := body["claimed"].(map[string]any)
+	require.True(t, ok)
+	claimedClaim, ok := claimed["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "charlie", claimedClaim["holder"])
+}
+
+func TestClaim_JSONPreservesDaemonResponse(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "json target")
+
+	out := runCLIAs(t, env, dir, "alice", "--json", "federation", "lease", "acquire", ref)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(out), &body))
+	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, true, body["granted"])
+	holder, ok := body["holder"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", holder["holder"])
+	claim, ok := body["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", claim["holder"])
+	assert.Equal(t, "hard", claim["claim_kind"])
+}
+
+func TestClaim_HumanPendingLineConcise(t *testing.T) {
+	env, dir, _, ref := setupFederatedSpokeIssue(t, "pending target")
+
+	out := runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+	assert.Equal(t, "lease pending for "+ref+" as alice", out)
+}
+
+func TestClaim_DenialExitsNonZeroWithClaimDenied(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "denied target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	_, err := runCLICapture(t, env, dir, "--as", "bob", "federation", "lease", "acquire", ref)
+	require.Error(t, err)
+	var cli *cliError
+	require.True(t, errors.As(err, &cli))
+	assert.Equal(t, "claim_denied", cli.Code)
+	assert.Equal(t, ExitConflict, cli.ExitCode)
+	assert.True(t, strings.Contains(cli.Error(), "lease denied") ||
+		strings.Contains(cli.Error(), "already leased"))
+}
+
+func TestClaim_JSONDenialPreservesDaemonResponse(t *testing.T) {
+	env, dir, _, ref := setupFederatedHubIssue(t, "json denied target")
+	runCLIAs(t, env, dir, "alice", "federation", "lease", "acquire", ref)
+
+	out, err := runCLICapture(t, env, dir, "--as", "bob", "--json", "federation", "lease", "acquire", ref)
+	require.Error(t, err)
+	var cli *cliError
+	require.True(t, errors.As(err, &cli))
+	assert.Equal(t, "claim_denied", cli.Code)
+	assert.Equal(t, ExitConflict, cli.ExitCode)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal([]byte(out), &body))
+	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, false, body["granted"])
+	holder, ok := body["holder"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", holder["holder"])
+	claim, ok := body["claim"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "alice", claim["holder"])
+	assert.Equal(t, "hard", claim["claim_kind"])
+}
+
+func setupFederatedHubIssue(t *testing.T, title string) (*testenv.Env, string, int64, string) {
+	t.Helper()
+	env, dir, pid := setupCLIWorkspace(t)
+	enableHubClaims(t, env, pid)
+	ref := createIssue(t, env, pid, title)
+	return env, dir, pid, ref
+}
+
+func setupFederatedSpokeIssue(t *testing.T, title string) (*testenv.Env, string, int64, string) {
+	t.Helper()
+	env, dir, pid := setupCLIWorkspace(t)
+	ref := createIssue(t, env, pid, title)
+	enableSpokeClaims(t, env, pid)
+	return env, dir, pid, ref
+}
+
+func enableHubClaims(t *testing.T, env *testenv.Env, pid int64) {
+	t.Helper()
+	ctx := t.Context()
+	project, err := env.DB.ProjectByID(ctx, pid)
+	require.NoError(t, err)
+	_, err = env.DB.UpsertFederationBinding(ctx, db.FederationBinding{
+		ProjectID:     pid,
+		Role:          db.FederationRoleHub,
+		HubProjectUID: project.UID,
+		Enabled:       true,
+	})
+	require.NoError(t, err)
+}
+
+func enableSpokeClaims(t *testing.T, env *testenv.Env, pid int64) {
+	t.Helper()
+	enableSpokeClaimsTo(t, env, pid, fastFailCLIHubURL(t), 42)
+}
+
+func enableSpokeClaimsTo(t *testing.T, env *testenv.Env, pid int64, hubURL string, hubProjectID int64) {
+	t.Helper()
+	ctx := t.Context()
+	project, err := env.DB.ProjectByID(ctx, pid)
+	require.NoError(t, err)
+	_, err = env.DB.UpsertFederationBinding(ctx, db.FederationBinding{
+		ProjectID:     pid,
+		Role:          db.FederationRoleSpoke,
+		HubURL:        hubURL,
+		HubProjectID:  hubProjectID,
+		HubProjectUID: "01HZNQ7VFPK1XGD8R5MABCD4AA",
+		Enabled:       true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, config.WriteFederationCredential(project.UID, config.FederationCredential{
+		HubURL:       hubURL,
+		HubProjectID: hubProjectID,
+		Token:        "claim-token",
+		Capabilities: "claim",
+	}))
+}
+
+func fastFailCLIHubURL(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "hijacking unsupported", http.StatusInternalServerError)
+			return
+		}
+		conn, _, err := hijacker.Hijack()
+		if err != nil {
+			return
+		}
+		_ = conn.Close()
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+func fetchClaimStatus(t *testing.T, env *testenv.Env, pid int64, ref string) api.ClaimStatusBody {
+	t.Helper()
+	return getJSON[api.ClaimStatusBody](t, env.URL+"/api/v1/projects/"+itoa(pid)+"/issues/"+ref+"/lease")
+}

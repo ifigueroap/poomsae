@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/teammate"
-	"go.kenn.io/kata/internal/transcript"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/transcript"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // composeCreateMetadata validates the initial metadata map against
@@ -59,7 +59,7 @@ func (d *Store) CreateProjectAndEvent(ctx context.Context, name, actor string) (
 	if name == db.SystemProjectName {
 		return db.Project{}, db.Event{}, fmt.Errorf("create project: reserved project name %q", name)
 	}
-	projectUID, err := katauid.New()
+	projectUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Project{}, db.Event{}, fmt.Errorf("generate project uid: %w", err)
 	}
@@ -90,7 +90,7 @@ func (d *Store) createProjectWithUID(ctx context.Context, name, projectUID, acto
 	if projectUID == db.SystemProjectUID {
 		return db.Project{}, db.Event{}, fmt.Errorf("create project: reserved project uid %q", projectUID)
 	}
-	if !katauid.Valid(projectUID) {
+	if !poomsaeuid.Valid(projectUID) {
 		return db.Project{}, db.Event{}, fmt.Errorf("invalid project uid %q", projectUID)
 	}
 	tx, err := d.BeginTx(ctx, nil)
@@ -611,11 +611,11 @@ func (d *Store) createIssueTx(ctx context.Context, tx *sql.Tx, p db.CreateIssueP
 
 	issueUID := p.UID
 	if issueUID == "" {
-		issueUID, err = katauid.New()
+		issueUID, err = poomsaeuid.New()
 		if err != nil {
 			return 0, db.Event{}, fmt.Errorf("generate issue uid: %w", err)
 		}
-	} else if !katauid.Valid(issueUID) {
+	} else if !poomsaeuid.Valid(issueUID) {
 		return 0, db.Event{}, fmt.Errorf("invalid issue uid %q", issueUID)
 	}
 
@@ -1352,7 +1352,7 @@ func (d *Store) createComment(ctx context.Context, p db.CreateCommentParams) (db
 		return db.Comment{}, db.Event{}, err
 	}
 
-	commentUID, err := katauid.New()
+	commentUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Comment{}, db.Event{}, fmt.Errorf("generate comment uid: %w", err)
 	}
@@ -2665,7 +2665,7 @@ func (d *Store) insertEventTx(ctx context.Context, tx *sql.Tx, in eventInsert) (
 	eventUID := in.UID
 	var err error
 	if eventUID == "" {
-		eventUID, err = katauid.New()
+		eventUID, err = poomsaeuid.New()
 		if err != nil {
 			return db.Event{}, fmt.Errorf("generate event uid: %w", err)
 		}

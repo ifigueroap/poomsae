@@ -48,7 +48,7 @@ The docs directory also carries its own uv project metadata in
 
 ```toml
 [project]
-name = "kata-docs"
+name = "poomsae-docs"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [

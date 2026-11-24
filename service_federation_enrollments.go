@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -8,17 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ErrFederationEnrollmentNotFound reports that an enrollment does not belong
 // to the requested project or does not exist.
-var ErrFederationEnrollmentNotFound = errors.New("kata: federation enrollment not found")
+var ErrFederationEnrollmentNotFound = errors.New("poomsae: federation enrollment not found")
 
 // ErrFederationEnrollmentTokenConflict reports that a supplied token already
 // belongs to a different enrollment scope or has been revoked.
-var ErrFederationEnrollmentTokenConflict = errors.New("kata: federation enrollment token conflict")
+var ErrFederationEnrollmentTokenConflict = errors.New("poomsae: federation enrollment token conflict")
 
 // FederationEnrollmentSpec describes a project-scoped transport credential.
 // CreateFederationEnrollment generates a token; EnsureFederationEnrollment
@@ -77,7 +77,7 @@ func (s *Service) EnsureFederationEnrollment(
 ) (FederationEnrollment, error) {
 	secret, err := base64.RawURLEncoding.Strict().DecodeString(token)
 	if err != nil || len(secret) != 32 || base64.RawURLEncoding.EncodeToString(secret) != token {
-		return FederationEnrollment{}, errors.New("kata: invalid federation token")
+		return FederationEnrollment{}, errors.New("poomsae: invalid federation token")
 	}
 	created, err := s.createFederationEnrollment(ctx, spec, token)
 	return created.Enrollment, err
@@ -120,7 +120,7 @@ func (s *Service) createFederationEnrollment(
 		return CreatedFederationEnrollment{}, ErrFederationEnrollmentTokenConflict
 	}
 	if err != nil {
-		return CreatedFederationEnrollment{}, fmt.Errorf("kata: create federation enrollment: %w", err)
+		return CreatedFederationEnrollment{}, fmt.Errorf("poomsae: create federation enrollment: %w", err)
 	}
 	return CreatedFederationEnrollment{
 		Enrollment: publicFederationEnrollment(created.Enrollment, project.UID),
@@ -152,7 +152,7 @@ func (s *Service) ListFederationEnrollments(
 	}
 	enrollments, err := s.store.ListProjectFederationEnrollments(callCtx, project.ID)
 	if err != nil {
-		return nil, fmt.Errorf("kata: list federation enrollments: %w", err)
+		return nil, fmt.Errorf("poomsae: list federation enrollments: %w", err)
 	}
 	result := make([]FederationEnrollment, 0, len(enrollments))
 	for _, enrollment := range enrollments {
@@ -200,7 +200,7 @@ func (s *Service) FindActiveFederationEnrollment(
 	}
 	if err != nil {
 		return FederationEnrollment{}, false, fmt.Errorf(
-			"kata: find active federation enrollment: %w",
+			"poomsae: find active federation enrollment: %w",
 			err,
 		)
 	}
@@ -232,7 +232,7 @@ func (s *Service) RevokeFederationEnrollment(
 	}
 	enrollment, found, err := s.projectFederationEnrollment(callCtx, project.ID, enrollmentID)
 	if err != nil {
-		return fmt.Errorf("kata: find federation enrollment: %w", err)
+		return fmt.Errorf("poomsae: find federation enrollment: %w", err)
 	}
 	if !found {
 		// Absent, or owned by a different project: the same answer either
@@ -246,7 +246,7 @@ func (s *Service) RevokeFederationEnrollment(
 		if errors.Is(err, db.ErrNotFound) {
 			return ErrFederationEnrollmentNotFound
 		}
-		return fmt.Errorf("kata: revoke federation enrollment: %w", err)
+		return fmt.Errorf("poomsae: revoke federation enrollment: %w", err)
 	}
 	return nil
 }
@@ -255,22 +255,22 @@ func validateFederationEnrollmentSpec(spec FederationEnrollmentSpec) (string, st
 	if !validHostProjectUID(spec.ProjectUID) {
 		return "", "", ErrProjectNotFound
 	}
-	if !katauid.Valid(spec.SpokeInstanceUID) {
-		return "", "", errors.New("kata: invalid spoke instance UID")
+	if !poomsaeuid.Valid(spec.SpokeInstanceUID) {
+		return "", "", errors.New("poomsae: invalid spoke instance UID")
 	}
 	capabilities, err := db.CanonicalFederationCapabilities(spec.Capabilities)
 	if err != nil {
-		return "", "", fmt.Errorf("kata: invalid federation capabilities: %w", err)
+		return "", "", fmt.Errorf("poomsae: invalid federation capabilities: %w", err)
 	}
 	actor := strings.TrimSpace(spec.Actor)
 	if err := db.ValidateTokenActor(actor); err != nil {
-		return "", "", fmt.Errorf("kata: invalid federation enrollment actor: %w", err)
+		return "", "", fmt.Errorf("poomsae: invalid federation enrollment actor: %w", err)
 	}
 	return capabilities, actor, nil
 }
 
 func validHostProjectUID(projectUID string) bool {
-	return katauid.Valid(projectUID) && projectUID != db.SystemProjectUID
+	return poomsaeuid.Valid(projectUID) && projectUID != db.SystemProjectUID
 }
 
 // projectFederationEnrollment finds one enrollment inside a project's own

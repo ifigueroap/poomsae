@@ -7,16 +7,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestProjectAccessMCPScopeRefresh(t *testing.T) {
@@ -24,7 +24,7 @@ func TestProjectAccessMCPScopeRefresh(t *testing.T) {
 		t.Run(backend, func(t *testing.T) {
 			var store db.Storage
 			if backend == "sqlite" {
-				s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+				s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 				require.NoError(t, err)
 				store = s
 			} else {
@@ -55,7 +55,7 @@ func TestProjectAccessMCPScopeRefresh(t *testing.T) {
 			t.Cleanup(func() { require.NoError(t, server.Close()) })
 			httpServer := httptest.NewServer(server.Handler())
 			t.Cleanup(httpServer.Close)
-			client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client(), kataclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
+			client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client(), poomsaeclient.WithRequestEditor(func(_ context.Context, r *http.Request) error {
 				r.Header.Set("Authorization", "Bearer member-test-token")
 				return nil
 			}))
@@ -68,15 +68,15 @@ func TestProjectAccessMCPScopeRefresh(t *testing.T) {
 				require.False(t, result.IsError, string(mustJSON(t, result)))
 				return string(mustJSON(t, result))
 			}
-			require.Contains(t, call("kata.projects"), private.UID)
-			require.Contains(t, call("kata.list"), "mcp-private-canary")
+			require.Contains(t, call("poomsae.projects"), private.UID)
+			require.Contains(t, call("poomsae.list"), "mcp-private-canary")
 			_, err = store.SetTeamMembership(t.Context(), team.UID, "member", false, "admin")
 			require.NoError(t, err)
-			require.NotContains(t, call("kata.projects"), private.UID)
-			list := call("kata.list")
+			require.NotContains(t, call("poomsae.projects"), private.UID)
+			list := call("poomsae.list")
 			require.NotContains(t, list, "mcp-private-canary")
 			require.Contains(t, list, "Visible task")
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.list", Arguments: map[string]any{"project": private.Name}})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: map[string]any{"project": private.Name}})
 			require.NoError(t, err)
 			require.True(t, result.IsError)
 			require.NotContains(t, string(mustJSON(t, result)), private.UID)

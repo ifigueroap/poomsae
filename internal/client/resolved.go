@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -168,7 +168,7 @@ func (d ResolvedDaemon) withPersistedAuth() ResolvedDaemon {
 	if d.LocalProfile != nil {
 		home = d.LocalProfile.Home
 	} else if d.Source == DaemonSourceLocalRuntime || (d.Source == DaemonSourceNamedCatalog && !d.namedRemote) {
-		home, err = config.KataHome()
+		home, err = config.PoomsaeHome()
 	} else {
 		return d
 	}

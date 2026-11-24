@@ -1,24 +1,24 @@
 ---
 title: HTTP API schema
-description: Generate clients and inspect Kata's versioned OpenAPI schema, compatibility rules, and authentication.
+description: Generate clients and inspect Poomsae's versioned OpenAPI schema, compatibility rules, and authentication.
 last_edited: 2026-11-23
 ---
 
 # HTTP API schema
 
-The daemon exposes an HTTP API that the CLI, TUI, and remote clients use. Kata
+The daemon exposes an HTTP API that the CLI, TUI, and remote clients use. Poomsae
 publishes its shape as an OpenAPI 3.1 document so out-of-process clients can
 generate typed clients instead of copying wire structs by hand.
 
 To find the endpoint and transport with the same selection rules as the CLI, use
-[`kata daemon locate`](daemon-discovery.md). If you write in Go, you can use the
+[`poomsae daemon locate`](daemon-discovery.md). If you write in Go, you can use the
 generated [Go client](go-client.md), which includes discovery. For job and
 workflow resources, see [Cron](cron.md).
 
 ## Search configuration header
 
 When the answering daemon has an embeddings provider, search responses include
-`X-Kata-Embeddings-Configured: true`, even if the index is empty or read-only
+`X-Poomsae-Embeddings-Configured: true`, even if the index is empty or read-only
 mode forces lexical search. When no provider is configured, the header is
 `false`. The response body does not change.
 
@@ -48,8 +48,8 @@ body, keeps the job state at `restart`, sets `restart_in_progress`, disables
 `404` if setup is unavailable, `403` if the caller lacks daemon administration,
 and `409` if restart is unavailable or setup is not ready. You cannot trigger a
 restart through the daemon switcher. For other daemons, run
-`kata daemon restart` on the host or use your service manager. Afterward, if the
-address changed, reopen `kata ui`, or sign in again to check indexing progress.
+`poomsae daemon restart` on the host or use your service manager. Afterward, if the
+address changed, reopen `poomsae ui`, or sign in again to check indexing progress.
 
 Setup is available only when no embeddings provider is configured and no setup
 job is active. You need a local owner browser session, a bootstrap token, or a
@@ -61,13 +61,13 @@ already running. Status reads are allowed through the switcher proxy.
 ## Getting the schema
 
 The schema is committed at `api/openapi.yaml`, and you can regenerate it with
-the `kata` binary:
+the `poomsae` binary:
 
 ```sh
-kata openapi > openapi.yaml
+poomsae openapi > openapi.yaml
 ```
 
-`kata openapi` builds the document in-process from the daemon's route
+`poomsae openapi` builds the document in-process from the daemon's route
 definitions, so you do not need a running daemon or a database. The runtime
 `/openapi.json` route stays disabled; the committed file and this command are
 the supported ways to get the schema.
@@ -76,13 +76,13 @@ the supported ways to get the schema.
 
 Daemon API errors return an `error` object with a stable `code` and a readable
 `message`. An optional `hint` suggests a next step, and optional `data` holds
-structured details. When a `kata` command can trigger the error, the hint names
+structured details. When a `poomsae` command can trigger the error, the hint names
 CLI commands and flags, such as `--force`, rather than request fields. Hints for
 errors that only direct API calls can trigger may name request fields. In
 scripts, branch on `code` instead of matching `message` or `hint`.
 
 ```json
-{"error":{"code":"project_not_initialized","message":"no .kata.toml ancestor and no git ancestor","hint":"run \"kata init --project <name>\" in the workspace root, or pass --project <name>"}}
+{"error":{"code":"project_not_initialized","message":"no .poomsae.toml ancestor and no git ancestor","hint":"run \"poomsae init --project <name>\" in the workspace root, or pass --project <name>"}}
 ```
 
 `project_not_initialized` includes the looked-up name in `data`, only when the
@@ -91,17 +91,17 @@ message names it:
 | Request | `data` |
 | --- | --- |
 | An alias that points at an archived project | `alias` |
-| Only an alias, not registered (the CLI in a git workspace without `.kata.toml`) | `alias` |
-| A project name that is not registered, from `--project`, `.kata.toml`, or a `name:` project selector, with or without an alias | `project` |
-| A `start_path` whose `.kata.toml` names an unregistered project | `project` |
+| Only an alias, not registered (the CLI in a git workspace without `.poomsae.toml`) | `alias` |
+| A project name that is not registered, from `--project`, `.poomsae.toml`, or a `name:` project selector, with or without an alias | `project` |
+| A `start_path` whose `.poomsae.toml` names an unregistered project | `project` |
 | A `start_path` in a git workspace whose alias is not registered | none |
-| No `.kata.toml` and no git ancestor | none |
+| No `.poomsae.toml` and no git ancestor | none |
 
 An unregistered Git alias whose derived project name is invalid returns HTTP
 400 with error code `validation`.
 
 ```json
-{"error":{"code":"project_not_initialized","message":"alias github.com/example/spoke-project is not registered","hint":"run \"kata init\": it attaches this workspace to the active project \"spoke-project\", or creates it if none exists","data":{"alias":"github.com/example/spoke-project"}}}
+{"error":{"code":"project_not_initialized","message":"alias github.com/example/spoke-project is not registered","hint":"run \"poomsae init\": it attaches this workspace to the active project \"spoke-project\", or creates it if none exists","data":{"alias":"github.com/example/spoke-project"}}}
 ```
 
 The CLI keeps the hint in human, agent, and JSON errors. See
@@ -110,12 +110,12 @@ The CLI keeps the hint in human, agent, and JSON errors. See
 On routes that take `{project_id}` in the path or as a `project_id` query
 parameter, a missing ID returns `404 not_found`. An archived project that the
 caller may read returns `404 project_not_found` with a hint naming
-`kata projects restore <name>`. A `project_not_found` response with a hint means
+`poomsae projects restore <name>`. A `project_not_found` response with a hint means
 the project is archived; check whether a hint is present rather than parsing its
 text.
 
 ```json
-{"error":{"code":"project_not_found","message":"project not found","hint":"project docs is archived; run 'kata projects restore docs' to bring it back"}}
+{"error":{"code":"project_not_found","message":"project not found","hint":"project docs is archived; run 'poomsae projects restore docs' to bring it back"}}
 ```
 
 You also get `project_not_found` without a hint in two cases:
@@ -243,11 +243,11 @@ older daemon could ignore a filter and return unfiltered rows. Status-filtered
 `search` requires API `0.20.0`, label-filtered `search` and filtered
 `ready --all` require API `0.8.0`, and filtered `list --all` requires API
 `0.9.0`. If the daemon is too old, the CLI stops before running the filtered
-query and tells the operator to upgrade. `kata mcp serve` runs the same check
+query and tells the operator to upgrade. `poomsae mcp serve` runs the same check
 once at startup and requires API `0.11.0`, because its relationship tools always
 send the pinned-target fields and its close-audit paging relies on `event_id`.
-Status-filtered `kata.search` calls also check for API `0.20.0` before project
-fanout. Paginated `kata.list` and explicit single-project lexical `kata.search`
+Status-filtered `poomsae.search` calls also check for API `0.20.0` before project
+fanout. Paginated `poomsae.list` and explicit single-project lexical `poomsae.search`
 require API `0.27.0`, and the CLI checks that same version before using new list
 options or explicit lexical pagination.
 
@@ -303,27 +303,27 @@ always send it. A version-detection field has to survive version skew, so a
 client generated from a newer schema can still parse responses from an older
 daemon that predates the field. Treat an **absent or empty**
 `api_schema_version` as a daemon older than this field, not as a parse error.
-Embedding hosts using `@kenn-io/kata-ui` must treat that state as incompatible
+Embedding hosts using `@ifigueroap/poomsae-ui` must treat that state as incompatible
 and refuse to render issue detail.
 
-API contract versions advance independently of Kata release versions:
+API contract versions advance independently of Poomsae release versions:
 
-- Kata 0.23.0 includes API `0.43.0`. Local embeddings setup requires `0.42.0`,
+- Poomsae 0.23.0 includes API `0.43.0`. Local embeddings setup requires `0.42.0`,
   and MCP Events require `0.43.0`.
-- Kata 0.22.0 includes API `0.41.0`, and Kata 0.21.0 includes API `0.40.0` (the
+- Poomsae 0.22.0 includes API `0.41.0`, and Poomsae 0.21.0 includes API `0.40.0` (the
   changes from `0.32.0` through `0.40.0` below).
-- Kata 0.20.0 includes API `0.31.0`. Bridge preflight checks for cross-project
+- Poomsae 0.20.0 includes API `0.31.0`. Bridge preflight checks for cross-project
   issue links require hub API `0.31.0`, and acknowledging a request in the TUI
   Attention inbox requires `0.13.0`.
-- Kata 0.19.0 includes API `0.28.0` (the changes from `0.22.0` through `0.28.0`
+- Poomsae 0.19.0 includes API `0.28.0` (the changes from `0.22.0` through `0.28.0`
   below). Timed claims require API `0.22.0`, move previews require `0.23.0`,
   close session references require `0.26.0`, paginated issue lists require
   `0.27.0`, and comment replies require `0.28.0`.
-- Kata 0.18.0 includes the changes from `0.18.0` through `0.21.0`. Teammate
+- Poomsae 0.18.0 includes the changes from `0.18.0` through `0.21.0`. Teammate
   comments require API `0.18.0`, issue-scoped credentials use `0.19.0`,
   status-filtered search requires `0.20.0`, and oldest-first lists require
   `0.21.0`.
-- Kata 0.17.0 includes API changes `0.15.0` through `0.17.0`. Custom clients
+- Poomsae 0.17.0 includes API changes `0.15.0` through `0.17.0`. Custom clients
   upgrading from earlier releases must send array fields as `[]` (or omit
   optional fields), use exact request field names, and accept empty response
   collections as `[]` or `{}`.
@@ -362,7 +362,7 @@ not need the redacted origin identity or status transitions to pick evidence. If
 no visible effective close exists, the field is omitted.
 
 Every successful filtered response, including empty pages, returns the resolved
-issue UID in `X-Kata-Events-Issue-UID`. Require this header on every page: older
+issue UID in `X-Poomsae-Events-Issue-UID`. Require this header on every page: older
 daemons can ignore the `issue` query and return unfiltered project events. When
 the header is missing or changes between pages, the TUI stops pagination and
 prompts you to upgrade the daemon.
@@ -374,11 +374,11 @@ This table highlights notable changes. Marker history starts at `0.44.0`.
 | Version | Change |
 | --- | --- |
 | `0.69.0` | Close responses can include a `parent_ready` issue reference. |
-| `0.67.0` | Federation event polls accept `wait` and advertise `X-Kata-Federation-Poll-Wait-Max`. |
+| `0.67.0` | Federation event polls accept `wait` and advertise `X-Poomsae-Federation-Poll-Wait-Max`. |
 | `0.66.0` | Federation search accepts `auto` and reports its effective mode, matched fields, and any fallback reason. |
 | `0.64.0` | Routes shared-project attachments to their Docbank origin. Attachment references can include `origin`; the UI attachment capability is enabled when the daemon has a local Docbank or any enabled spoke binding. A disabled spoke rejects uploads and links with `503 federation_offline`, even when it has a local vault. Federation peers advertise `docbank_origin_v1` before receiving origin references. |
 | `0.63.0` | Browser issue reference resolution accepts a project name or UID and qualified references without a project ID. |
-| `0.62.0` | Federation peers advertise `relay_cross_links_v1` in `X-Kata-Event-Features`. A common root can link issues across projects with a shared relay audience. Relays check access to each referenced project they can resolve before releasing events or checkpoints, and pause for older peers with `409 unsupported_event_features` at crossing links or links with unresolved endpoints. An unresolved endpoint may belong to another project. |
+| `0.62.0` | Federation peers advertise `relay_cross_links_v1` in `X-Poomsae-Event-Features`. A common root can link issues across projects with a shared relay audience. Relays check access to each referenced project they can resolve before releasing events or checkpoints, and pause for older peers with `409 unsupported_event_features` at crossing links or links with unresolved endpoints. An unresolved endpoint may belong to another project. |
 | `0.60.0` | Enrollment join instructions use the signing hub's external URL and include signing key placeholders. |
 | `0.59.0` | Schedule and deadline civil dates and times accept an explicit `[Zone]` suffix. |
 | `0.58.0` | `GET /api/v1/projects/{project_id}/events` accepts `actor` so callers who may restore a soft-deleted issue can read its history. |
@@ -397,17 +397,17 @@ This table highlights notable changes. Marker history starts at `0.44.0`.
 | `0.45.0` | Adds `POST /api/v1/embeddings/local/restart` to restart the daemon after local embeddings setup. Older daemons do not serve this route. |
 | `0.44.0` | Attachment routes return `503 docbank_key_unavailable` instead of `502 docbank_unauthorized` when the daemon cannot resolve its own Docbank key. Health diagnostics add a `docbank` block. |
 | `0.43.0` | Adds the daemon-owned MCP Events routes `POST /api/v1/mcp-events/list`, `POST /api/v1/mcp-events/subscribe`, `POST /api/v1/mcp-events/unsubscribe`, and `GET /api/v1/mcp-events/subscriptions` (status). Subscribe and unsubscribe arguments name either a non-empty `project_uids` list or `all_projects: true`. Failures return an `mcp_events` error whose `data` carries `mcp_code` and `mcp_data`. Older daemons do not serve these routes. Both issue list routes accept `compact=true`. |
-| `0.42.0` | Adds daemon-wide local embeddings setup and status at `GET` and `POST /embeddings/local`, and the `X-Kata-Embeddings-Configured` search response header. |
-| `0.41.0` | Adds `sort=priority` to both ready routes. `kata next` and MCP `kata.next` request one priority-ordered row; older daemons retain the full-queue fetch and client-side selection. |
+| `0.42.0` | Adds daemon-wide local embeddings setup and status at `GET` and `POST /embeddings/local`, and the `X-Poomsae-Embeddings-Configured` search response header. |
+| `0.41.0` | Adds `sort=priority` to both ready routes. `poomsae next` and MCP `poomsae.next` request one priority-ordered row; older daemons retain the full-queue fetch and client-side selection. |
 | `0.40.0` | Issue history accepts `include_effective_close_event_uid=true` and returns the visible native close event that currently supplies the issue's closed status. |
 | `0.39.0` | `POST /projects/{project_id}/issues/{ref}/attachments/links` accepts `reuse_existing=true` to reuse the smallest existing attachment reference for the resolved Docbank version, creating one if none exists. Omission keeps creating a new reference. |
-| `0.38.0` | Publishes `POST /projects/{project_id}/issues/{ref}/attachments/links`, which saves a reference to an existing Docbank file version without uploading its bytes. `kata docbank attachments link` refuses older daemons. |
+| `0.38.0` | Publishes `POST /projects/{project_id}/issues/{ref}/attachments/links`, which saves a reference to an existing Docbank file version without uploading its bytes. `poomsae docbank attachments link` refuses older daemons. |
 | `0.37.0` | `POST /projects/{project_id}/recurrences` accepts `If-Match: "rev-N"` with `initial_issue_ref`; a different issue revision returns 412 `revision_conflict` and writes nothing. An empty `If-Match` returns 400. Older daemons ignore the header. |
 | `0.36.0` | Issue list rows, show output and ready rows carry `scheduled_on_date` and `deadline_on_date`, the `scheduled_on` and `deadline_on` metadata as `YYYY-MM-DD` calendar dates, each omitted when its key is absent or its value cannot be read. Older daemons omit both fields. |
-| `0.35.0` | Moves include the issue subtree by default; `single` keeps the move to one issue. `X-Kata-Project-Scope` narrows requests to fixed projects and is enforced in the transaction, including historical issue references. Older daemons do not enforce this header. |
+| `0.35.0` | Moves include the issue subtree by default; `single` keeps the move to one issue. `X-Poomsae-Project-Scope` narrows requests to fixed projects and is enforced in the transaction, including historical issue references. Older daemons do not enforce this header. |
 | `0.34.0` | Close transcripts accept agent names beyond Claude Code and Codex, with non-UUID session IDs for those agents. Claude Code and Codex session IDs remain UUIDs. |
 | `0.33.0` | Publishes the issue attachment upload and content routes, and UI capabilities include `attachments` when the daemon has Docbank configured. Older daemons omit the field. |
-| `0.32.0` | Project event polling accepts an `issue` filter and acknowledges the resolved subject in `X-Kata-Events-Issue-UID`. |
+| `0.32.0` | Project event polling accepts an `issue` filter and acknowledges the resolved subject in `X-Poomsae-Events-Issue-UID`. |
 | `0.31.0` | Project federation metadata accepts optional `relay_protocol_version=1` to check existing cross-project issue links before relay enrollment. It returns `409 relay_cross_project_links` with a remedy, or sets `relay_links_checked` when the check passes. Bridge connect returns `hub_links_checked` and preserves this conflict. Older daemons ignore the parameter. |
 | `0.28.0` | Comments accept typed replies through `reply_to`, `kind`, and `force`. Issue detail supports `thread`, `inbound`, `kind`, and `since` selectors and includes comment handles, reply targets, backlinks, and edit timestamps. |
 | `0.27.0` | Adds filter-bound creation cursors, `complete`, optional filtered `total`, `priority=none`, and repeatable `project_ids` to issue listing. Explicit lexical search with `sort=oldest` supports continuation beyond the ranked candidate cap. |
@@ -418,7 +418,7 @@ This table highlights notable changes. Marker history starts at `0.44.0`.
 | `0.20.0` | Added optional `status=open` or `status=closed` to project search. Omission searches both statuses; explicit empty values are invalid. The predicate applies to lexical candidates and canonical semantic hits before result limits. |
 | `0.19.0` | Added issue-subtree token scope and expiration, capability discovery, and redacted credential lifecycle state with a server observation time. Health storage, embedding, and federation diagnostics are optional and depend on caller authority. |
 | `0.18.0` | Comments accept optional `teammate` attribution and preserve it in responses and retry fingerprints. |
-| `0.17.0` | Create issue, edit issue, create comment, and add label accept a numeric project ID or `name:<project>` in the project path. Optional alias headers use alias-first resolution. Successful responses include `X-Kata-Project-Name`. Generated clients represent these four path parameters as strings. |
+| `0.17.0` | Create issue, edit issue, create comment, and add label accept a numeric project ID or `name:<project>` in the project path. Optional alias headers use alias-first resolution. Successful responses include `X-Poomsae-Project-Name`. Generated clients represent these four path parameters as strings. |
 | `0.16.0` | Ordinary API array fields are non-null. Empty and nil Go slices serialize as `[]`, generated clients omit `null` from ordinary array types, and requests reject `null` for those arrays. JSON object member names are case-sensitive. |
 | `0.15.0` | Added close idempotency and revision headers, the `close-v1` request marker, and retry receipt fields. |
 | `0.14.0` | Added `external` close evidence with its required `account` field. |
@@ -524,7 +524,7 @@ times out after five seconds, and the result is advisory:
 
 ## Project access
 
-Team visibility and credential-bound relay enrollment require Kata 0.19.0 or
+Team visibility and credential-bound relay enrollment require Poomsae 0.19.0 or
 later.
 
 ### Project visibility
@@ -757,10 +757,10 @@ These operations accept either a numeric project ID or a `name:` selector:
 URL-encode the project selector as a single path segment. Numeric paths such as
 `/api/v1/projects/42/issues` remain valid, and the issue ref and mutation body
 keep their existing meanings. Successful responses return the canonical project
-name in `X-Kata-Project-Name`.
+name in `X-Poomsae-Project-Name`.
 
-A `name:` request can also send `X-Kata-Project-Alias` (the workspace alias
-identity) and `X-Kata-Project-Alias-Kind` (`git` or `local`). The alias takes
+A `name:` request can also send `X-Poomsae-Project-Alias` (the workspace alias
+identity) and `X-Poomsae-Project-Alias-Kind` (`git` or `local`). The alias takes
 precedence over the name, preserving rename and merge resolution. If the alias
 is unknown, the daemon uses the existing named project and attaches the alias.
 Sending `name:` with no name requires a registered alias. Resolution does not
@@ -839,7 +839,7 @@ These are the current intentions, not a contractual guarantee:
   `additionalProperties: true`, so older clients accept unknown optional
   response fields. Request schemas stay strict by default and reject unknown
   fields unless a type explicitly opts in. The OpenAPI 3.0 flavor
-  (`kata openapi --version 3.0`) leaves `additionalProperties` unset on
+  (`poomsae openapi --version 3.0`) leaves `additionalProperties` unset on
   response schemas so generators model optional object-valued response fields
   as pointers.
 - **Breaking changes bump `api_schema_version`.** Removing or renaming a field,
@@ -861,7 +861,7 @@ compatibility guarantees go.
 ## Operator diagnostics
 
 `GET /api/v1/doctor` supplies the daemon-side hook findings that
-[`kata doctor`](../operations/doctor.md) displays. Its `hooks` block reports
+[`poomsae doctor`](../operations/doctor.md) displays. Its `hooks` block reports
 current executable and working-directory availability, queue capacity and
 occupancy, process-lifetime dropped events, and counts of runs and failures
 from the last seven days found in scanned history. `history_truncated` marks a
@@ -906,7 +906,7 @@ endpoint there:
   returns a safe absolute route into the standalone browser application:
 
   ```json
-  {"available": true, "url": "https://kata.example/kata?issue=<uid>#direct=1"}
+  {"available": true, "url": "https://poomsae.example/poomsae?issue=<uid>#direct=1"}
   ```
 
   If no credential-safe browser origin is configured, it returns HTTP 200 with
@@ -953,10 +953,10 @@ Origin; an embedded owner-local browser may omit or send an empty Origin only
 on this endpoint, while cross-site Fetch Metadata remains forbidden. Exact Host
 validation runs first and remains the DNS-rebinding boundary.
 
-Both the URL from `kata daemon status` and local `kata ui` open that loopback
+Both the URL from `poomsae daemon status` and local `poomsae ui` open that loopback
 origin directly. Configured origins exchange a bearer or identity token at
 `POST /api/v1/ui/session/login`. To log out, call `DELETE /api/v1/ui/session`
-with the issued cookie, `X-Kata-Web-Session`, `X-Kata-CSRF`, and the exact
+with the issued cookie, `X-Poomsae-Web-Session`, `X-Poomsae-CSRF`, and the exact
 configured `Origin`. A successful logout returns 204 and revokes that tab's
 session immediately, including its event stream, while other tabs stay valid.
 `/api/v1/ui/session/logout` does not exist, and there is no browser-session
@@ -970,8 +970,8 @@ Ordinary API requests without browser credentials use daemon bearer
 authentication on both browser and shared TCP listeners. Host validation still
 applies, and requests carrying browser credentials or Fetch Metadata go through
 browser session and Origin checks. On session-authentication errors, the daemon
-returns the canonical browser origin in `X-Kata-Web-Origin` and its `loopback`
-or `login` mode in `X-Kata-Web-Authentication`, so `kata ui` can tell a
+returns the canonical browser origin in `X-Poomsae-Web-Origin` and its `loopback`
+or `login` mode in `X-Poomsae-Web-Authentication`, so `poomsae ui` can tell a
 configured direct loopback URL apart from a login-only deployment without
 carrying a launch credential.
 
@@ -981,8 +981,8 @@ authority, and origins with credentials, path prefixes, query strings, or
 fragments are treated as unavailable rather than rewritten.
 
 After creating a session, send both the instance cookie and
-`X-Kata-Web-Session` on every browser data request. For browser data mutations,
-also send the exact `Origin` and `X-Kata-CSRF`. The protected event stream
+`X-Poomsae-Web-Session` on every browser data request. For browser data mutations,
+also send the exact `Origin` and `X-Poomsae-CSRF`. The protected event stream
 sends the session header and `Last-Event-ID` through `fetch`. In
 unauthenticated `--insecure-readonly` mode, the UI advertises read-only
 authority and polls snapshots because the event stream remains protected.
@@ -992,7 +992,7 @@ authority and polls snapshots because the event stream remains protected.
 `GET /api/v1/projects/{project_id}/federation/events` accepts an optional
 `wait` in seconds. A caught-up poll may wait up to 45 seconds for new events;
 a zero or omitted wait answers at once. Successful responses advertise the
-maximum wait in seconds in `X-Kata-Federation-Poll-Wait-Max`.
+maximum wait in seconds in `X-Poomsae-Federation-Poll-Wait-Max`.
 
 `POST /api/v1/projects/{project_id}/federation/events:ingest` returns
 `400 validation` when a fresh event references a stored sibling-project issue
@@ -1203,7 +1203,7 @@ The response returns a canonical graph payload:
 
 The daemon normalizes edge direction for clients: parent edges point from
 parent to child, `blocks` edges point from blocker to blocked, and related
-edges use Kata's canonical related-link ordering. `layout=false` keeps an edge
+edges use Poomsae's canonical related-link ordering. `layout=false` keeps an edge
 in the graph while telling layout engines they can omit it from force or layout
 calculations; current daemons set that hint on transitive `blocks` edges.
 
@@ -1216,18 +1216,18 @@ discarding the reachable graph.
 ## Issue Sync Endpoints
 
 Issue sync endpoints are project-scoped and provider-qualified, configuring
-one-way external issue sync into a Kata project. The `github` and `notion`
-providers back the `kata sync github ...` and `kata sync notion ...` commands.
+one-way external issue sync into a Poomsae project. The `github` and `notion`
+providers back the `poomsae sync github ...` and `poomsae sync notion ...` commands.
 Each project can have only one external issue-sync binding.
 
 The daemon handles all GitHub access itself. For the `github` provider, v1
 accepts `github.com` and exact GitHub Enterprise hostnames listed in
-`KATA_GITHUB_SYNC_ALLOWED_HOSTS`. The daemon looks up credentials in this
+`POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS`. The daemon looks up credentials in this
 order:
 
 1. A matching `[[github_sync.app]]` entry.
 2. The explicit token environment variable named by `[github_sync].token_env`
-   (default `KATA_GITHUB_TOKEN`), only when `[github_sync].token_host` matches
+   (default `POOMSAE_GITHUB_TOKEN`), only when `[github_sync].token_host` matches
    the binding host.
 3. `gh auth token --hostname <host>` as a local fallback.
 
@@ -1278,7 +1278,7 @@ status.
 
 For Notion, use `/api/v1/projects/{project_id}/issue-sync/notion/enable`. All
 Notion reads use the daemon's token environment variable selected by
-`[notion_sync].token_env` (default `KATA_NOTION_TOKEN`). The enable request
+`[notion_sync].token_env` (default `POOMSAE_NOTION_TOKEN`). The enable request
 accepts:
 
 | Notion `config` key | Meaning |
@@ -1352,7 +1352,7 @@ The shared response body contains:
 | `import` | Present only on `once`; reports created, updated, unchanged, comment, and link counts from the import run. |
 
 GitHub owns the title, body, state, labels, owner, and imported GitHub comments
-on synced issues. Treat those fields as read-mostly in Kata: newer GitHub
+on synced issues. Treat those fields as read-mostly in Poomsae: newer GitHub
 updates can overwrite local edits to them. Explicit close and reopen
 write back when `status_sync` is `two-way`; other fields stay incoming-only.
 

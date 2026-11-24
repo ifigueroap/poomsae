@@ -3,14 +3,14 @@ import { expect, test } from './fixtures'
 
 test('fenced code highlights in the read-only issue description under the production CSP', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Code example task',
     body: ['```ts', 'const answer = 42', '```'].join('\n'),
   })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   const detail = page.getByRole('region', { name: 'Task detail', exact: true })
   const code = detail.locator('.kit-markdown').first().locator('pre code')
@@ -24,20 +24,20 @@ test('fenced code highlights in the read-only issue description under the produc
     .toBeGreaterThan(1)
 })
 
-test('Kenn links in issue bodies and comments work in the task view', async ({ page, kata }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, {
+test('Kenn links in issue bodies and comments work in the task view', async ({ page, poomsae }) => {
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Links to Kenn',
     body: '[note](kenn://example/note)',
   })
-  await kata.request(
+  await poomsae.request(
     page,
     credentials,
     'POST',
-    `/api/v1/projects/${kata.projectID}/issues/${issue.uid}/comments`,
+    `/api/v1/projects/${poomsae.projectID}/issues/${issue.uid}/comments`,
     { actor: 'example-worker', body: 'See kenn://example/comment' },
   )
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   async function expectLinks(scope: Locator) {
     for (const [name, href] of [

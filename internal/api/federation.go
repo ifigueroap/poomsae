@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // FederationSearchRequest searches a shared project on its hub.
@@ -88,7 +88,7 @@ type ProjectFederationStatusRequest struct {
 type SkipFederationQuarantineRequest struct {
 	ProjectID    int64  `path:"project_id"`
 	QuarantineID int64  `path:"quarantine_id"`
-	Confirm      string `header:"X-Kata-Confirm"`
+	Confirm      string `header:"X-Poomsae-Confirm"`
 	Body         struct {
 		Actor  string `json:"actor"`
 		Reason string `json:"reason,omitempty"`
@@ -101,7 +101,7 @@ type SkipFederationQuarantineRequest struct {
 type RetryFederationQuarantineRequest struct {
 	ProjectID    int64  `path:"project_id"`
 	QuarantineID int64  `path:"quarantine_id"`
-	Confirm      string `header:"X-Kata-Confirm"`
+	Confirm      string `header:"X-Poomsae-Confirm"`
 	Body         struct {
 		Actor  string `json:"actor"`
 		Reason string `json:"reason,omitempty"`
@@ -111,7 +111,7 @@ type RetryFederationQuarantineRequest struct {
 // FederationProjectMetadataRequest reads federation metadata through the
 // enrollment-authenticated transport surface.
 type FederationProjectMetadataRequest struct {
-	EventFeatures string `header:"X-Kata-Event-Features"`
+	EventFeatures string `header:"X-Poomsae-Event-Features"`
 	ProjectID     int64  `path:"project_id"`
 	Authorization string `header:"Authorization"`
 }
@@ -131,8 +131,8 @@ type ProjectFederationBody struct {
 
 // ProjectFederationResponse wraps ProjectFederationBody.
 type ProjectFederationResponse struct {
-	EventFeatures         string `header:"X-Kata-Event-Features"`
-	RequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	EventFeatures         string `header:"X-Poomsae-Event-Features"`
+	RequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 	Body                  ProjectFederationBody
 }
 
@@ -291,7 +291,7 @@ type RelayHandshake struct {
 
 // RelayOfferRequest selects an authenticated stream prefix or exact offered artifact misses.
 type RelayOfferRequest struct {
-	EventFeatures   string   `header:"X-Kata-Event-Features"`
+	EventFeatures   string   `header:"X-Poomsae-Event-Features"`
 	ProjectID       int64    `path:"project_id"`
 	Authorization   string   `header:"Authorization"`
 	Stream          string   `query:"stream" enum:"events,receipts,artifacts"`
@@ -302,22 +302,22 @@ type RelayOfferRequest struct {
 
 // RelayResetRequest requests a checkpoint for the presented project transport grant.
 type RelayResetRequest struct {
-	EventFeatures string `header:"X-Kata-Event-Features"`
+	EventFeatures string `header:"X-Poomsae-Event-Features"`
 	ProjectID     int64  `path:"project_id"`
 	Authorization string `header:"Authorization"`
 }
 
 // RelayResetResponse returns the retained signed checkpoint and its hop translation.
 type RelayResetResponse struct {
-	EventFeatures         string `header:"X-Kata-Event-Features"`
-	RequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	EventFeatures         string `header:"X-Poomsae-Event-Features"`
+	RequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 	Body                  db.RelayResetCheckpoint
 }
 
 // RelayOfferResponse returns the emitted prefix retained for retry.
 type RelayOfferResponse struct {
-	EventFeatures         string `header:"X-Kata-Event-Features"`
-	RequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	EventFeatures         string `header:"X-Poomsae-Event-Features"`
+	RequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 	Body                  db.RelayBatch
 }
 
@@ -517,29 +517,29 @@ type RebindFederationReplicaResponse struct {
 // transport poll route. It mirrors PollEventsRequest but carries its own bearer
 // header because the route bypasses daemon admin bearer auth.
 type FederationPollEventsRequest struct {
-	EventFeatures string      `header:"X-Kata-Event-Features"`
+	EventFeatures string      `header:"X-Poomsae-Event-Features"`
 	ProjectID     int64       `path:"project_id"`
 	Authorization string      `header:"Authorization"`
 	AfterID       int64       `query:"after_id,omitempty"`
 	IssueUID      string      `query:"issue_uid,omitempty" doc:"Read retained history only for an issue currently owned by this project, independently of the project cursor."`
 	Limit         OptionalInt `query:"limit,omitempty"`
-	Wait          OptionalInt `query:"wait,omitempty" doc:"Seconds the hub may hold a caught-up project poll until an event commits. The hub caps it at the value in X-Kata-Federation-Poll-Wait-Max and answers at once when it cannot hold the request."`
+	Wait          OptionalInt `query:"wait,omitempty" doc:"Seconds the hub may hold a caught-up project poll until an event commits. The hub caps it at the value in X-Poomsae-Federation-Poll-Wait-Max and answers at once when it cannot hold the request."`
 }
 
 // FederationPollEventsResponse is a project event page. It advertises how long
 // the hub may hold a caught-up poll.
 type FederationPollEventsResponse struct {
-	IssueUID              string `header:"X-Kata-Events-Issue-UID" doc:"Resolved subject UID when the issue filter is applied, including empty pages."`
-	EventFeatures         string `header:"X-Kata-Event-Features"`
-	RequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
-	PollWaitMax           int    `header:"X-Kata-Federation-Poll-Wait-Max" doc:"Longest wait, in seconds, this hub accepts on a project event poll."`
+	IssueUID              string `header:"X-Poomsae-Events-Issue-UID" doc:"Resolved subject UID when the issue filter is applied, including empty pages."`
+	EventFeatures         string `header:"X-Poomsae-Event-Features"`
+	RequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
+	PollWaitMax           int    `header:"X-Poomsae-Federation-Poll-Wait-Max" doc:"Longest wait, in seconds, this hub accepts on a project event poll."`
 	Body                  PollEventsBody
 }
 
 // FederationIngestEventsRequest is the enrollment-authenticated push transport
 // route.
 type FederationIngestEventsRequest struct {
-	EventFeatures string `header:"X-Kata-Event-Features"`
+	EventFeatures string `header:"X-Poomsae-Event-Features"`
 	ProjectID     int64  `path:"project_id"`
 	Authorization string `header:"Authorization"`
 	Body          FederationIngestEventsRequestBody
@@ -600,8 +600,8 @@ type FederationIngestEventsBody struct {
 
 // FederationIngestEventsResponse wraps FederationIngestEventsBody.
 type FederationIngestEventsResponse struct {
-	EventFeatures         string `header:"X-Kata-Event-Features"`
-	RequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	EventFeatures         string `header:"X-Poomsae-Event-Features"`
+	RequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 	Body                  FederationIngestEventsBody
 }
 
@@ -706,7 +706,7 @@ type FederationBindingOut struct {
 // refusal. Confirm reserves room for a future "purge" disposition.
 type LeaveFederationReplicaRequest struct {
 	ProjectID int64  `path:"project_id"`
-	Confirm   string `header:"X-Kata-Confirm"`
+	Confirm   string `header:"X-Poomsae-Confirm"`
 	Body      LeaveFederationReplicaRequestBody
 }
 

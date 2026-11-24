@@ -354,7 +354,7 @@ func (s *queueBuildState) sortChildKeys(children []issueKey) []issueKey {
 	}
 }
 
-// priorityChildKeys orders children the way `kata next` and the ready list's
+// priorityChildKeys orders children the way `poomsae next` and the ready list's
 // priority sort do: priority ascending with unprioritized issues last, then
 // most recently updated first. Remaining ties keep list order.
 func (s *queueBuildState) priorityChildKeys(children []issueKey) []issueKey {

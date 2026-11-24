@@ -1,5 +1,5 @@
 // Package pgstoretest gives tests PostgreSQL databases that already hold the
-// Kata schema. Installing the schema costs more than the rest of most small
+// Poomsae schema. Installing the schema costs more than the rest of most small
 // storage tests, so each database is a clone of a template that installs it
 // once per server.
 //
@@ -13,10 +13,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/jackc/pgx/v5"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 var standard = NewTemplate(pgstore.DefaultSchema)

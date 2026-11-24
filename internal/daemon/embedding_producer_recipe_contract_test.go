@@ -4,10 +4,10 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // The daemon serializes this domain value directly in handshake/status. The

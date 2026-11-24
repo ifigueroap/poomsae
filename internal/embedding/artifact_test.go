@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"

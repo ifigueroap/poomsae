@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // ApplyMetadataPatch merges patch keys into an existing metadata object.

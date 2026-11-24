@@ -135,12 +135,12 @@ func validateTimeout(d time.Duration) error {
 	return nil
 }
 
-// validateUserEnv: keys must not match ^KATA_. Returns sorted KEY=VAL slice.
+// validateUserEnv: keys must not match ^POOMSAE_. Returns sorted KEY=VAL slice.
 func validateUserEnv(m map[string]string) ([]string, error) {
 	keys := make([]string, 0, len(m))
 	for k := range m {
-		if strings.HasPrefix(k, "KATA_") {
-			return nil, fmt.Errorf("env key %q is reserved (^KATA_ keys are set by the dispatcher)", k)
+		if strings.HasPrefix(k, "POOMSAE_") {
+			return nil, fmt.Errorf("env key %q is reserved (^POOMSAE_ keys are set by the dispatcher)", k)
 		}
 		keys = append(keys, k)
 	}

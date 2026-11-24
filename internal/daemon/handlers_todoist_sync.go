@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/todoistsync"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
 )
 
 const issueSyncProviderTodoist = "todoist"
@@ -150,7 +150,7 @@ func todoistSyncConfig(origin string, r todoistSyncRequest, previous *todoistsyn
 	}
 	c.HistorySince = cutoff.Format(time.RFC3339)
 	if previous != nil && (c.APIOrigin != previous.APIOrigin || c.ProjectID != previous.ProjectID || c.HistorySince != previous.HistorySince) {
-		return c, todoistSyncValidation("Todoist source identity and history floor are immutable; use another Kata project")
+		return c, todoistSyncValidation("Todoist source identity and history floor are immutable; use another Poomsae project")
 	}
 	if err := todoistsync.ValidateID(c.ProjectID); err != nil {
 		return c, todoistSyncValidation(err.Error())

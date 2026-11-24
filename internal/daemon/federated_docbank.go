@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/metadata"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const federatedDocbankPath = "/api/v1/projects/{project_id}/federation/docbank"
@@ -117,7 +117,7 @@ func docbankOriginCapabilities(ctx context.Context, cfg ServerConfig, project db
 	}
 	defer func() { _ = resp.Body.Close() }()
 	var caps api.DocbankServiceCapabilities
-	if json.UnmarshalRead(io.LimitReader(resp.Body, 64<<10), &caps) != nil || caps.Version != 1 || caps.ProjectUID != project.UID || !katauid.Valid(caps.Origin) {
+	if json.UnmarshalRead(io.LimitReader(resp.Body, 64<<10), &caps) != nil || caps.Version != 1 || caps.ProjectUID != project.UID || !poomsaeuid.Valid(caps.Origin) {
 		return caps, attachmentError(503, "docbank_forward_unsupported")
 	}
 	if binding.RelayConfig != nil && caps.Origin != binding.RelayConfig.AuthorityUID {
@@ -189,7 +189,7 @@ func docbankForwardRequest(ctx context.Context, cfg ServerConfig, binding db.Fed
 	case "attachment_issue_not_synced":
 		return nil, api.NewError(resp.StatusCode, code, "issue is not available at the upstream yet", "sync the project and retry", nil)
 	case "claim_denied":
-		return nil, api.NewError(resp.StatusCode, code, "lease denied for federated issue mutation", "run kata federation lease acquire <ref>", nil)
+		return nil, api.NewError(resp.StatusCode, code, "lease denied for federated issue mutation", "run poomsae federation lease acquire <ref>", nil)
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return nil, federationBridgeHubRejection(resp.StatusCode)

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 const maxQueryPages = 1000

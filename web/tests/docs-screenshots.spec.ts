@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { expect, test } from './fixtures'
 
-const outputRoot = process.env.KATA_DOCS_SCREENSHOT_DIR
+const outputRoot = process.env.POOMSAE_DOCS_SCREENSHOT_DIR
 
 test.skip(!outputRoot, 'documentation screenshots run only through the screenshot generator')
 
@@ -16,15 +16,15 @@ test.use({
 
 test('captures stable Web UI documentation states from synthetic issues', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   test.setTimeout(60_000)
-  if (!outputRoot) throw new Error('KATA_DOCS_SCREENSHOT_DIR is required')
+  if (!outputRoot) throw new Error('POOMSAE_DOCS_SCREENSHOT_DIR is required')
   const outputDir = join(outputRoot, 'web-ui')
   await mkdir(outputDir, { recursive: true })
 
-  const credentials = await kata.launch(page)
-  const parent = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const parent = await poomsae.seedIssue(page, credentials, {
     title: 'Prepare example release',
     body: [
       '## Release checklist',
@@ -39,29 +39,29 @@ test('captures stable Web UI documentation states from synthetic issues', async 
     priority: 1,
     metadata: { checklist: [] },
   })
-  const child = await kata.seedIssue(page, credentials, {
+  const child = await poomsae.seedIssue(page, credentials, {
     title: 'Document browser workflows',
     owner: 'user-b',
     labels: ['docs'],
     priority: 2,
     links: [{ type: 'parent', to_ref: parent.uid }],
   })
-  const blocker = await kata.seedIssue(page, credentials, {
+  const blocker = await poomsae.seedIssue(page, credentials, {
     title: 'Verify example packages',
     labels: ['release'],
     links: [{ type: 'blocks', to_ref: parent.uid }],
   })
-  const related = await kata.seedIssue(page, credentials, {
+  const related = await poomsae.seedIssue(page, credentials, {
     title: 'Coordinate example announcement',
     labels: ['communication'],
     links: [{ type: 'related', to_ref: parent.uid }],
   })
 
-  const recurrence = await kata.request(
+  const recurrence = await poomsae.request(
     page,
     credentials,
     'POST',
-    `/api/v1/projects/${kata.projectID}/recurrences`,
+    `/api/v1/projects/${poomsae.projectID}/recurrences`,
     {
       actor: 'user-a',
       rrule: 'FREQ=WEEKLY;COUNT=4',
@@ -82,21 +82,21 @@ test('captures stable Web UI documentation states from synthetic issues', async 
     issueReplacements(child, 'docs', '01K0000000000000000000002'),
     issueReplacements(blocker, 'pkgs', '01K0000000000000000000003'),
     issueReplacements(related, 'news', '01K0000000000000000000004'),
-    [{ generated: kata.projectUID, stable: '01K0000000000000000000000' }],
+    [{ generated: poomsae.projectUID, stable: '01K0000000000000000000000' }],
   ].flat()
 
-  await page.goto(`${kata.origin}/kata?scope=${kata.projectUID}`)
+  await page.goto(`${poomsae.origin}/poomsae?scope=${poomsae.projectUID}`)
   await expect(page.getByRole('button', { name: /Prepare example release/ })).toBeVisible()
   await page.getByRole('button', { name: /Prepare example release/ }).press('ArrowRight')
   await expect(page.getByRole('button', { name: /Document browser workflows/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^example-project \d+$/ })).toBeVisible()
   await capture(page, join(outputDir, 'workspace.png'), replacements)
 
-  await page.goto(`${kata.origin}/kata?issue=${parent.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${parent.uid}`)
   await page.getByRole('button', { name: 'Display' }).click()
   await page.getByRole('radio', { name: 'Beside list' }).click()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('separator', { name: 'Resize Kata panes' })).toBeVisible()
+  await expect(page.getByRole('separator', { name: 'Resize Poomsae panes' })).toBeVisible()
   await page.evaluate(() => {
     document.documentElement.style.zoom = '0.875'
   })
@@ -119,11 +119,11 @@ test('captures stable Web UI documentation states from synthetic issues', async 
   await expect(page.getByLabel('Properties')).toContainText('Repeats')
   await capture(page, join(outputDir, 'issue-detail.png'), replacements)
 
-  const unlink = await kata.request(
+  const unlink = await poomsae.request(
     page,
     credentials,
     'PATCH',
-    `/api/v1/projects/${kata.projectID}/issues/${parent.uid}`,
+    `/api/v1/projects/${poomsae.projectID}/issues/${parent.uid}`,
     { actor: 'user-a', links_delta: { remove_related: [related.uid] } },
   )
   expect(unlink.ok()).toBe(true)
@@ -134,7 +134,7 @@ test('captures stable Web UI documentation states from synthetic issues', async 
   await page.getByRole('button', { name: 'Display' }).click()
   await page.getByRole('radio', { name: 'Beside list' }).click()
   await page.keyboard.press('Escape')
-  await page.goto(`${kata.origin}/kata?issue=${parent.uid}&graph=1`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${parent.uid}&graph=1`)
   const graph = page.getByRole('region', { name: 'Reachable task graph' })
   await expect(graph).toBeVisible()
   await expect(graph.getByRole('button', { name: /Prepare example release/ })).toBeVisible()
@@ -142,8 +142,8 @@ test('captures stable Web UI documentation states from synthetic issues', async 
   await expect(graph.getByRole('button', { name: /Verify example packages/ })).toBeVisible()
   await capture(page, join(outputDir, 'relationships.png'), replacements)
 
-  await page.goto(`${kata.origin}/kata?scope=${kata.projectUID}`)
-  await page.getByRole('button', { name: 'Switch Kata daemon: example-local' }).click()
+  await page.goto(`${poomsae.origin}/poomsae?scope=${poomsae.projectUID}`)
+  await page.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }).click()
   await expect(page.getByRole('menuitemradio', { name: /example-local/ })).toBeVisible()
   await expect(page.getByRole('menuitemradio', { name: /example-remote/ })).toBeVisible()
   await capture(page, join(outputDir, 'daemon-switcher.png'), replacements)

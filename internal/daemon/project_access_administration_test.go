@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R9: administrative team/policy APIs use the existing owner capability;
@@ -184,7 +184,7 @@ func TestMemberCanArchiveFederatedProjectThroughLeaveWithoutHostController(t *te
 // no binding, which is the resume case, and the stale credential is removed.
 func TestMemberCanResumeArchiveLeaveAfterPartialTeardown(t *testing.T) {
 	projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		f := newProjectAccessFixture(t, store)
 		_, _, err := store.RemoveProject(t.Context(), db.RemoveProjectParams{ProjectID: f.private.ID, Actor: "admin", Force: true})
 		require.NoError(t, err)

@@ -20,11 +20,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/jsonutil"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/jsonutil"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
-const protocolTranscriptSchema = "kata.connector.conformance/v1"
+const protocolTranscriptSchema = "poomsae.connector.conformance/v1"
 
 //go:embed testdata/protocol-v1/*.json
 var protocolV1TranscriptFiles embed.FS

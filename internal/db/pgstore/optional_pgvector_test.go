@@ -7,12 +7,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestPostgresBootstrapDoesNotInstallAvailablePgvector(t *testing.T) {
@@ -148,7 +148,7 @@ func TestPostgresBootstrapDoesNotRequireHalfvec(t *testing.T) {
 		SELECT count(*)
 		  FROM pg_catalog.pg_class relation
 		  JOIN pg_catalog.pg_namespace namespace ON namespace.oid=relation.relnamespace
-		 WHERE namespace.nspname='kata'
+		 WHERE namespace.nspname='poomsae'
 		   AND relation.relname IN ('vector_generations', 'issue_vector_mirror', 'vector_chunks')
 	`).Scan(&vectorTables))
 	assert.Zero(t, vectorTables, "bootstrap must leave semantic storage unavailable without halfvec")

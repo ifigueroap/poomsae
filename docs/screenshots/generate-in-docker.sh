@@ -6,7 +6,7 @@ set -euo pipefail
 output="${1:?usage: generate-in-docker.sh OUTPUT_DIR}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
-image=kata-docs-screenshots
+image=poomsae-docs-screenshots
 
 mkdir -p "$output"
 output="$(cd "$output" && pwd -P)"

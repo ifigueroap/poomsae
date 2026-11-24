@@ -4,8 +4,8 @@ test.use({ trace: 'off' })
 
 test('token-configured direct loopback tab loads the workspace snapshot', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   await expect(page.getByRole('button', { name: 'New task' })).toBeVisible()
 })

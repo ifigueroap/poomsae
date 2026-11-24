@@ -1,10 +1,10 @@
-// Package kata exposes Kata as a listener-free application service.
+// Package poomsae exposes Poomsae as a listener-free application service.
 //
 // A Service owns its configured storage handle and core background workers.
 // Callers mount Handler in their own HTTP server, run background work with Run,
 // and release owned resources with Close. The package does not open a network
 // listener, install signal handlers, or manage its caller's process lifecycle.
-package kata
+package poomsae
 
 import (
 	"context"
@@ -19,26 +19,26 @@ import (
 	"sync"
 	"time"
 
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/storeopen"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/githubsync"
-	"go.kenn.io/kata/internal/hooks"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/linearsync"
-	"go.kenn.io/kata/internal/mcpevents"
-	"go.kenn.io/kata/internal/notionsync"
-	"go.kenn.io/kata/internal/planesync"
-	"go.kenn.io/kata/internal/tickticksync"
-	"go.kenn.io/kata/internal/todoistsync"
-	"go.kenn.io/kata/internal/twentysync"
-	"go.kenn.io/kata/internal/vector"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
+	"github.com/ifigueroap/poomsae/internal/planesync"
+	"github.com/ifigueroap/poomsae/internal/tickticksync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"go.kenn.io/kit/embedlocal"
 )
 
@@ -47,7 +47,7 @@ import (
 type PostgresSchemaMode string
 
 const (
-	// PostgresSchemaBootstrap installs missing Kata migrations before serving.
+	// PostgresSchemaBootstrap installs missing Poomsae migrations before serving.
 	PostgresSchemaBootstrap PostgresSchemaMode = "bootstrap"
 	// PostgresSchemaValidate requires an already-installed, compatible schema
 	// and performs no schema installation.
@@ -72,7 +72,7 @@ const (
 )
 
 // PostgresConfig selects an isolated PostgreSQL schema and startup policy.
-// Empty fields use Kata's standalone defaults.
+// Empty fields use Poomsae's standalone defaults.
 type PostgresConfig struct {
 	Schema                 string
 	SchemaMode             PostgresSchemaMode
@@ -80,13 +80,13 @@ type PostgresConfig struct {
 	AllowInsecureTransport bool
 }
 
-// AuthConfig defines Kata-owned authentication for a mounted Service. Select
+// AuthConfig defines Poomsae-owned authentication for a mounted Service. Select
 // exactly one of Token, TrustCallerAuthentication, or Config.Access.
 type AuthConfig struct {
-	// Token protects Kata's ordinary HTTP surface. Federation transport and
+	// Token protects Poomsae's ordinary HTTP surface. Federation transport and
 	// claim actions retain their own scoped credential checks.
 	Token string
-	// TrustCallerAuthentication disables Kata's bearer check because the
+	// TrustCallerAuthentication disables Poomsae's bearer check because the
 	// caller guarantees that Handler is mounted behind its own authentication
 	// boundary. Never mount that handler directly on an untrusted listener.
 	TrustCallerAuthentication bool
@@ -94,7 +94,7 @@ type AuthConfig struct {
 
 // GitHubSyncConfig supplies credentials used by GitHub issue synchronization.
 // TokenEnv names an environment variable containing a token; token values are
-// never stored in Config. Empty fields use Kata's standalone defaults.
+// never stored in Config. Empty fields use Poomsae's standalone defaults.
 type GitHubSyncConfig struct {
 	TokenEnv  string
 	TokenHost string
@@ -120,7 +120,7 @@ type TodoistSyncConfig struct{ APIOrigin, TokenEnv string }
 type TickTickSyncConfig struct{ TokenEnv string }
 
 // NotionSyncConfig selects the daemon-owned Notion token environment variable.
-// Empty TokenEnv uses KATA_NOTION_TOKEN; credentials are resolved only for runs.
+// Empty TokenEnv uses POOMSAE_NOTION_TOKEN; credentials are resolved only for runs.
 type NotionSyncConfig struct {
 	TokenEnv string
 }
@@ -142,8 +142,8 @@ type DocbankConfig = config.DocbankConfig
 
 // ErrMCPEventsKeyMissing is what MCPEventsKeyProvider.Load returns when no
 // key exists yet. Any other error means the key exists but cannot be used, and
-// Kata then leaves MCP Events disabled rather than replacing it.
-var ErrMCPEventsKeyMissing = errors.New("kata: MCP Events key is missing")
+// Poomsae then leaves MCP Events disabled rather than replacing it.
+var ErrMCPEventsKeyMissing = errors.New("poomsae: MCP Events key is missing")
 
 // MCPEventsKeyProvider supplies the 32-byte key that seals MCP Events webhook
 // secrets and authenticates cursors. Every Service that shares one database
@@ -208,8 +208,8 @@ type Config struct {
 	// project because they share the mirror, vector index, and reconciler lease.
 	EmbeddingProjectAllowed func(context.Context, string) (bool, error)
 	// WebHandler optionally serves public, data-free browser assets alongside
-	// the API. Non-API paths bypass Kata's bearer check. Nil keeps the service
-	// API-only. Import go.kenn.io/kata/webui to opt into the bundled application.
+	// the API. Non-API paths bypass Poomsae's bearer check. Nil keeps the service
+	// API-only. Import github.com/ifigueroap/poomsae/webui to opt into the bundled application.
 	WebHandler http.Handler
 	// DefaultTimezone applies to civil schedules without issue timezone.
 	// Empty means UTC.
@@ -217,9 +217,9 @@ type Config struct {
 	// Access selects host-supplied in-process authentication and authorization.
 	// It is mutually exclusive with Auth.
 	Access AccessController
-	// FederationAccess optionally adds host-owned authorization after Kata has
+	// FederationAccess optionally adds host-owned authorization after Poomsae has
 	// authenticated a project-scoped federation credential. It does not replace
-	// Kata's credential authentication.
+	// Poomsae's credential authentication.
 	FederationAccess FederationAccessController
 	// WorkerTransactionFence revalidates host authority from inside every
 	// background-worker writable storage transaction. It is required when
@@ -256,7 +256,7 @@ type serviceDeps struct {
 	mcpEventsWebhook *mcpevents.WebhookClient
 }
 
-// Service is a mountable Kata HTTP application and its owned lifecycle.
+// Service is a mountable Poomsae HTTP application and its owned lifecycle.
 type Service struct {
 	store                  db.Storage
 	embeddingReconciler    *daemon.Reconciler
@@ -313,73 +313,73 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 
 func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, error) {
 	if strings.TrimSpace(cfg.DSN) == "" {
-		return nil, errors.New("kata: storage DSN is required")
+		return nil, errors.New("poomsae: storage DSN is required")
 	}
 	if cfg.Profile != EmbeddingProfileStandalone && cfg.Profile != EmbeddingProfileRestricted {
-		return nil, fmt.Errorf("kata: unknown embedding profile %q", cfg.Profile)
+		return nil, fmt.Errorf("poomsae: unknown embedding profile %q", cfg.Profile)
 	}
 	cfg.DefaultTimezone = strings.TrimSpace(cfg.DefaultTimezone)
 	if cfg.DefaultTimezone != "" {
 		if _, err := time.LoadLocation(cfg.DefaultTimezone); err != nil {
-			return nil, fmt.Errorf("kata: default timezone %q is not a valid IANA timezone: %w", cfg.DefaultTimezone, err)
+			return nil, fmt.Errorf("poomsae: default timezone %q is not a valid IANA timezone: %w", cfg.DefaultTimezone, err)
 		}
 	}
 	if err := config.ValidateEmbeddings(cfg.Embeddings); err != nil {
-		return nil, fmt.Errorf("kata: embeddings: %w", err)
+		return nil, fmt.Errorf("poomsae: embeddings: %w", err)
 	}
 	if cfg.Embeddings.Enabled() {
 		backend, err := storeopen.BackendForDSN(cfg.DSN)
 		if err != nil {
-			return nil, fmt.Errorf("kata: open storage: %w", err)
+			return nil, fmt.Errorf("poomsae: open storage: %w", err)
 		}
 		if backend != storeopen.BackendPostgres {
-			return nil, errors.New("kata: embeddings require Postgres")
+			return nil, errors.New("poomsae: embeddings require Postgres")
 		}
 	}
 	usesAccess := cfg.Access != nil
 	usesToken := strings.TrimSpace(cfg.Auth.Token) != ""
 	usesTrustedCaller := cfg.Auth.TrustCallerAuthentication
 	if !usesAccess && !usesToken && !usesTrustedCaller {
-		return nil, errors.New("kata: auth token is required unless caller authentication is explicitly trusted")
+		return nil, errors.New("poomsae: auth token is required unless caller authentication is explicitly trusted")
 	}
 	if boolCount(usesAccess, usesToken, usesTrustedCaller) != 1 {
-		return nil, errors.New("kata: auth token, trusted caller authentication, and host access are mutually exclusive")
+		return nil, errors.New("poomsae: auth token, trusted caller authentication, and host access are mutually exclusive")
 	}
 	docbankConfig, err := config.NormalizeDocbankConfig(cfg.Docbank)
 	if err != nil {
-		return nil, fmt.Errorf("kata: Docbank config: %w", err)
+		return nil, fmt.Errorf("poomsae: Docbank config: %w", err)
 	}
 	if maxTTL := cfg.MCPEvents.MaxTTL; maxTTL != 0 && maxTTL < config.MinMCPEventsMaxTTL {
-		return nil, fmt.Errorf("kata: MCPEvents.MaxTTL must be zero or at least %s: %s", config.MinMCPEventsMaxTTL, maxTTL)
+		return nil, fmt.Errorf("poomsae: MCPEvents.MaxTTL must be zero or at least %s: %s", config.MinMCPEventsMaxTTL, maxTTL)
 	}
 	docbankClient := docbank.New(docbankConfig)
 	gitHubSyncConfig, err := resolveGitHubSyncConfig(cfg.GitHubSync)
 	if err != nil {
-		return nil, fmt.Errorf("kata: GitHub sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: GitHub sync config: %w", err)
 	}
 	notionSyncConfig, err := config.NormalizeNotionSyncConfig(config.NotionSyncConfig{TokenEnv: cfg.NotionSync.TokenEnv})
 	if err != nil {
-		return nil, fmt.Errorf("kata: Notion sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: Notion sync config: %w", err)
 	}
 	planeSyncConfig, err := config.NormalizePlaneSyncConfig(config.PlaneSyncConfig{APIOrigin: cfg.PlaneSync.APIOrigin, WebOrigin: cfg.PlaneSync.WebOrigin, TokenEnv: cfg.PlaneSync.TokenEnv})
 	if err != nil {
-		return nil, fmt.Errorf("kata: Plane sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: Plane sync config: %w", err)
 	}
 	linearSyncConfig, err := config.NormalizeLinearSyncConfig(config.LinearSyncConfig{TokenEnv: cfg.LinearSync.TokenEnv, AuthType: cfg.LinearSync.AuthType})
 	if err != nil {
-		return nil, fmt.Errorf("kata: Linear sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: Linear sync config: %w", err)
 	}
 	twentySyncConfig, err := config.NormalizeTwentySyncConfig(config.TwentySyncConfig{APIOrigin: cfg.TwentySync.APIOrigin, WebOrigin: cfg.TwentySync.WebOrigin, TokenEnv: cfg.TwentySync.TokenEnv})
 	if err != nil {
-		return nil, fmt.Errorf("kata: Twenty sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: Twenty sync config: %w", err)
 	}
 	todoistSyncConfig, err := config.NormalizeTodoistSyncConfig(config.TodoistSyncConfig{APIOrigin: cfg.TodoistSync.APIOrigin, TokenEnv: cfg.TodoistSync.TokenEnv})
 	if err != nil {
-		return nil, fmt.Errorf("kata: Todoist sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: Todoist sync config: %w", err)
 	}
 	tickTickSyncConfig, err := config.NormalizeTickTickSyncConfig(config.TickTickSyncConfig{TokenEnv: cfg.TickTickSync.TokenEnv})
 	if err != nil {
-		return nil, fmt.Errorf("kata: TickTick sync config: %w", err)
+		return nil, fmt.Errorf("poomsae: TickTick sync config: %w", err)
 	}
 	publicFederationCredentials := cfg.FederationCredentials
 	if publicFederationCredentials == nil {
@@ -397,10 +397,10 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 		}
 		embedder, err = embedding.New(ec)
 		if err != nil {
-			return nil, fmt.Errorf("kata: embedding client: %w", err)
+			return nil, fmt.Errorf("poomsae: embedding client: %w", err)
 		}
 		if err := embedding.ValidateBatching(ctx, cfg.Embeddings, embedder); err != nil {
-			return nil, fmt.Errorf("kata: embedding batching: %w", err)
+			return nil, fmt.Errorf("poomsae: embedding batching: %w", err)
 		}
 	}
 
@@ -414,7 +414,7 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 	)
 	store, err := storeopen.OpenWithConfig(ctx, cfg.DSN, openCfg, db.Serving())
 	if err != nil {
-		return nil, fmt.Errorf("kata: open storage: %w", err)
+		return nil, fmt.Errorf("poomsae: open storage: %w", err)
 	}
 
 	var index *vector.Index
@@ -426,7 +426,7 @@ func newService(ctx context.Context, cfg Config, deps serviceDeps) (*Service, er
 			unavailable = err.Error()
 		} else if err != nil {
 			_ = store.Close()
-			return nil, fmt.Errorf("kata: embedding index: %w", err)
+			return nil, fmt.Errorf("poomsae: embedding index: %w", err)
 		}
 	}
 	startedAt := cfg.StartedAt
@@ -710,11 +710,11 @@ func newMCPEventsService(
 		Broadcaster:    daemon.NewMCPEventsSubscriber(broadcaster),
 	})
 	if err != nil {
-		logger.Error("kata MCP Events disabled", "err", err)
+		logger.Error("poomsae MCP Events disabled", "err", err)
 		return nil
 	}
 	if availability := service.Availability(); !availability.Enabled {
-		logger.Warn("kata MCP Events disabled", "reason", availability.Reason)
+		logger.Warn("poomsae MCP Events disabled", "reason", availability.Reason)
 	}
 	return service
 }
@@ -739,7 +739,7 @@ func resolveGitHubSyncConfig(cfg GitHubSyncConfig) (config.GitHubSyncConfig, err
 // Handler returns the HTTP application for mounting in a caller-owned server.
 func (s *Service) Handler() http.Handler { return http.HandlerFunc(s.serveHTTP) }
 
-// HandlerAt mounts the complete Kata HTTP application below one clean,
+// HandlerAt mounts the complete Poomsae HTTP application below one clean,
 // absolute path. The returned handler owns only that path. Requests for the
 // path without its trailing slash are redirected so relative browser assets
 // and API requests stay beneath the mount.
@@ -747,14 +747,14 @@ func (s *Service) HandlerAt(mountPath string) (http.Handler, error) {
 	if mountPath == "" || mountPath == "/" || !strings.HasPrefix(mountPath, "/") ||
 		strings.HasSuffix(mountPath, "/") || path.Clean(mountPath) != mountPath ||
 		strings.Contains(mountPath, `\`) {
-		return nil, errors.New("kata: mount path must be a clean absolute path without a trailing slash")
+		return nil, errors.New("poomsae: mount path must be a clean absolute path without a trailing slash")
 	}
 	if mountPath == "/api" || strings.HasPrefix(mountPath, "/api/") {
-		return nil, errors.New("kata: mount path must not overlap the API namespace")
+		return nil, errors.New("poomsae: mount path must not overlap the API namespace")
 	}
 	for _, r := range mountPath {
 		if r < 0x20 || r == 0x7f {
-			return nil, errors.New("kata: mount path must not contain control characters")
+			return nil, errors.New("poomsae: mount path must not contain control characters")
 		}
 	}
 
@@ -762,7 +762,7 @@ func (s *Service) HandlerAt(mountPath string) (http.Handler, error) {
 	mounted := http.StripPrefix(mountPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			request := r.Clone(r.Context())
-			request.URL.Path = "/kata"
+			request.URL.Path = "/poomsae"
 			request.URL.RawPath = ""
 			application.ServeHTTP(w, request)
 			return
@@ -790,7 +790,7 @@ func (s *Service) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		http.Error(w, "kata service is closed", http.StatusServiceUnavailable)
+		http.Error(w, "poomsae service is closed", http.StatusServiceUnavailable)
 		return
 	}
 	s.handlerWG.Add(1)
@@ -925,7 +925,7 @@ func (a hostAccessControllerAdapter) Authorize(
 	}, nil
 }
 
-// Run executes Kata's federation, GitHub, Notion, Plane, and Linear synchronization, timed-claim,
+// Run executes Poomsae's federation, GitHub, Notion, Plane, and Linear synchronization, timed-claim,
 // due-notification, and assignment-expiry workers, and MCP Events delivery
 // when Config.MCPEvents can deliver, until ctx is canceled or
 // Close is called. Run does not start a listener and may be called only once
@@ -951,19 +951,19 @@ const (
 
 func (s *Service) runWorkers(ctx context.Context, selection workerSelection) error {
 	if ctx == nil {
-		return errors.New("kata: run context is required")
+		return errors.New("poomsae: run context is required")
 	}
 	if s.hostAccessEnabled && s.workerTransactionFence == nil {
-		return errors.New("kata: worker transaction fence is required with host access")
+		return errors.New("poomsae: worker transaction fence is required with host access")
 	}
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return errors.New("kata: service is closed")
+		return errors.New("poomsae: service is closed")
 	}
 	if s.running {
 		s.mu.Unlock()
-		return errors.New("kata: service is already running")
+		return errors.New("poomsae: service is already running")
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	fence := &fenceRecorder{cancel: cancel}
@@ -1067,7 +1067,7 @@ func (s *Service) serviceWorkers() []namedWorker {
 		Wake:        s.federationWake,
 		Retries:     s.federationRetries,
 		OnError: func(err error) {
-			s.logger.Error("kata federation worker", "err", err)
+			s.logger.Error("poomsae federation worker", "err", err)
 		},
 		OnPulledEvents: func(projectID int64, events []db.Event) {
 			s.publishWorkerEvents(projectID, events)
@@ -1159,15 +1159,15 @@ func (s *Service) serviceWorkers() []namedWorker {
 	})
 	sweeper := daemon.NewTimedClaimSweeper(s.store, s.publish)
 	sweeper.OnError = func(err error) {
-		s.logger.Error("kata timed-claim worker", "err", err)
+		s.logger.Error("poomsae timed-claim worker", "err", err)
 	}
 	dueNotificationSweeper := daemon.NewDueNotificationSweeper(s.store, s.publish, s.defaultTimezone)
 	dueNotificationSweeper.OnError = func(err error) {
-		s.logger.Error("kata due-notification worker", "err", err)
+		s.logger.Error("poomsae due-notification worker", "err", err)
 	}
 	assignmentSweeper := daemon.NewAssignmentSweeper(s.store, s.publish)
 	assignmentSweeper.OnError = func(err error) {
-		s.logger.Error("kata assignment-expiry worker", "err", err)
+		s.logger.Error("poomsae assignment-expiry worker", "err", err)
 	}
 	workers := []namedWorker{
 		{name: "federation", run: runner.Run},
@@ -1262,7 +1262,7 @@ func (w namedWorker) result(err, terminal error) error {
 	if err == nil || (errors.Is(err, terminal) && isOnlyError(err, terminal, sql.ErrTxDone)) {
 		return nil
 	}
-	return fmt.Errorf("kata: %s worker: %w", w.name, err)
+	return fmt.Errorf("poomsae: %s worker: %w", w.name, err)
 }
 
 // isOnlyError reports whether err has at least one non-nil leaf and each leaf
@@ -1334,7 +1334,7 @@ func runResult(stop runStop, workerResults []error, callerStop error) error {
 			// workers still report their own outcomes below.
 			break
 		}
-		return fmt.Errorf("kata: worker transaction fence: %w", stop.err)
+		return fmt.Errorf("poomsae: worker transaction fence: %w", stop.err)
 	case stopContextDone, stopWorkerExit:
 		// The caller learns what the workers reported.
 	}

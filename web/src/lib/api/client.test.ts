@@ -9,7 +9,7 @@ import {
 } from './client'
 import { attachmentContent, getReadUISnapshotUrl, listTeams } from './generated'
 
-describe('Kata browser API credentials', () => {
+describe('Poomsae browser API credentials', () => {
   it('serializes exploded array query parameters as repeated keys', () => {
     const url = new URL(
       getReadUISnapshotUrl({ status: ['open', 'closed'], label: ['bug', 'urgent'] }),
@@ -52,12 +52,12 @@ describe('Kata browser API credentials', () => {
     const mutation = calls[1]?.[1]
     expect(read?.credentials).toBe('same-origin')
     expect(read?.redirect).toBe('error')
-    expect(new Headers(read?.headers).get('X-Kata-Web-Session')).toBe('tab-session')
-    expect(new Headers(read?.headers).has('X-Kata-CSRF')).toBe(false)
+    expect(new Headers(read?.headers).get('X-Poomsae-Web-Session')).toBe('tab-session')
+    expect(new Headers(read?.headers).has('X-Poomsae-CSRF')).toBe(false)
     expect(mutation?.credentials).toBe('same-origin')
     expect(mutation?.redirect).toBe('error')
-    expect(new Headers(mutation?.headers).get('X-Kata-Web-Session')).toBe('tab-session')
-    expect(new Headers(mutation?.headers).get('X-Kata-CSRF')).toBe('tab-csrf')
+    expect(new Headers(mutation?.headers).get('X-Poomsae-Web-Session')).toBe('tab-session')
+    expect(new Headers(mutation?.headers).get('X-Poomsae-CSRF')).toBe('tab-csrf')
   })
 
   it('fences browser authority when a credentialed request returns 401', async () => {

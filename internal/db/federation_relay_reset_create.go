@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RelayCheckpointStateEvent is one current-state record checkpoint creation

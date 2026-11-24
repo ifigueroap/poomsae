@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func TestSubscriptionQuotas(t *testing.T) {

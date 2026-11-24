@@ -15,7 +15,7 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func TestWireDiscoveryPublishesNegotiatedToolsCapability(t *testing.T) {
@@ -119,18 +119,18 @@ func TestWireCancellationSuppressesLateToolResponse(t *testing.T) {
 		<-request.Context().Done()
 	}))
 	t.Cleanup(daemon.Close)
-	apiClient, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	apiClient, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	connection, reader := rawServerConnectionWithClient(t, apiClient)
 	writeWireRequest(t, connection, 0, "tools/call", map[string]any{
-		"name": "kata.load_issue_discovery", "arguments": map[string]any{}, "_meta": currentMeta(),
+		"name": "poomsae.load_issue_discovery", "arguments": map[string]any{}, "_meta": currentMeta(),
 	})
 	loadResponse := readWireResponse(t, reader)
 	require.Nil(t, loadResponse.Error)
 	require.EqualValues(t, 0, loadResponse.ID)
 
 	writeWireRequest(t, connection, 1, "tools/call", map[string]any{
-		"name": "kata.search", "arguments": map[string]any{"query": "slow"}, "_meta": currentMeta(),
+		"name": "poomsae.search", "arguments": map[string]any{"query": "slow"}, "_meta": currentMeta(),
 	})
 	<-started
 	writeWireNotification(t, connection, "notifications/cancelled", map[string]any{"requestId": 1})
@@ -182,7 +182,7 @@ func rawServerConnection(t *testing.T) (net.Conn, *bufio.Reader) {
 	return rawServerConnectionWithClient(t, inertTestClient(t))
 }
 
-func rawServerConnectionWithClient(t *testing.T, client *kataclient.Client) (net.Conn, *bufio.Reader) {
+func rawServerConnectionWithClient(t *testing.T, client *poomsaeclient.Client) (net.Conn, *bufio.Reader) {
 	t.Helper()
 	server, err := New(Options{
 		Client:      client,

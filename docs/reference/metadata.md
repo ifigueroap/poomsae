@@ -1,12 +1,12 @@
 ---
 title: Metadata
-description: Reference Kata's issue and project metadata model, reserved keys, scheduling fields, and update rules.
+description: Reference Poomsae's issue and project metadata model, reserved keys, scheduling fields, and update rules.
 last_edited: 2026-11-23
 ---
 
 # Metadata
 
-Every Kata issue and project carries a free-form JSON `metadata` object. You
+Every Poomsae issue and project carries a free-form JSON `metadata` object. You
 can use it to attach your own structured data, such as schedules or
 orchestration state, without coordinating a schema release with the daemon. A
 small set of reserved keys carry daemon-side semantics, and every other key is
@@ -62,27 +62,27 @@ values of the wrong shape. Everything else is stored verbatim.
 A date-only `scheduled_on` value becomes ready on that calendar day, and a
 local date-time (`YYYY-MM-DDTHH:MM` or `YYYY-MM-DDTHH:MM:SS`) becomes ready at
 that wall-clock time. To choose a specific zone, append its name in brackets,
-such as `2026-11-15T09:00[Europe/Paris]`. Without a zone, Kata resolves dates
+such as `2026-11-15T09:00[Europe/Paris]`. Without a zone, Poomsae resolves dates
 using the issue timezone, then the recurrence timezone for scheduled
 occurrences, then the daemon timezone, and finally UTC. Changing the issue
 timezone changes how unzoned dates resolve, while dates with an explicit
-`[Zone]` keep their zone. Kata resolves zone names using the installed timezone
+`[Zone]` keep their zone. Poomsae resolves zone names using the installed timezone
 rules, so a local time stays at the same wall-clock time when those rules
 change.
 
 An RFC 3339 value ending in `Z` is an exact UTC instant and does not use those
 timezones. During a daylight saving transition, if a local time repeats, the
 first occurrence opens the gate; if a local time does not exist, the gate opens
-at the first valid instant after the gap. Kata rejects numeric offsets because
+at the first valid instant after the gap. Poomsae rejects numeric offsets because
 they pin an instant while duplicating the named timezone. `deadline_on` accepts
 the same three forms and uses the same timezone rules, though it acts as a
 deadline only and does not control `ready` or `next`.
 
 ### Calendar dates on issue rows
 
-Rows from `kata list --json`, `kata show --json`, and `kata.list` include
+Rows from `poomsae list --json`, `poomsae show --json`, and `poomsae.list` include
 `scheduled_on_date` and `deadline_on_date`, which hold the `scheduled_on` and
-`deadline_on` values as `YYYY-MM-DD` calendar dates. Kata omits a field when
+`deadline_on` values as `YYYY-MM-DD` calendar dates. Poomsae omits a field when
 its key is absent or its stored value cannot be read, so one bad value never
 fails the list. The web UI snapshot uses these same field names and shared
 resolution rule. A date-only value keeps its written date, and a local
@@ -106,7 +106,7 @@ filter. You can filter on the dates yourself, for example to list issues due on
 or before a day:
 
 ```sh
-kata list --all --meta deadline_on --json \
+poomsae list --all --meta deadline_on --json \
   | jq '.issues[] | select(.deadline_on_date <= "2026-10-29")'
 ```
 
@@ -116,7 +116,7 @@ When a `scheduled_on` or `deadline_on` time is reached, the daemon surfaces it
 through ordinary `notify.*` metadata, addressing the current owner or falling
 back to the author when the issue is unowned. Existing manual inbox content
 wins until cleared. Clearing a generated request acknowledges that exact date
-and recipient, while a changed date or assignment can surface again. Kata
+and recipient, while a changed date or assignment can surface again. Poomsae
 stores no separate reminder record. A reached `scheduled_on` also records an
 `issue.scheduled_reached` event for adapters; see
 [Reached schedules](cron.md#reached-schedules).
@@ -157,52 +157,52 @@ This patch must contain only `role`. The daemon clears any existing Inbox
 designation on other projects in the same transaction, so only one project is
 designated at a time. To clear the designation, set `role` to `null` on the
 designated project. This project role is separate from the issue-level
-`notify.*` requests read by `kata inbox`.
+`notify.*` requests read by `poomsae inbox`.
 
 ## CLI usage
 
-### `kata meta set`
+### `poomsae meta set`
 
 ```sh
-kata meta set <ref> <key> <value>
+poomsae meta set <ref> <key> <value>
 ```
 
-By default, `kata meta set` stores `<value>` as a JSON string. To store raw
+By default, `poomsae meta set` stores `<value>` as a JSON string. To store raw
 JSON such as numbers, booleans, objects, or arrays, pass `--json-value`. For
 optimistic concurrency, pass `--if-match <rev>` with either the bare revision
 (`7`) or the ETag form (`rev-7`).
 
 ```sh
-kata meta set abc4 work.branch "agent/task-slug"
-kata schedule abc4 "2026-09-01T09:30"
-kata deadline abc4 "2026-09-01T17:00"
-kata meta set abc4 someday true --json-value
-kata meta set abc4 work.attention needs-human --if-match rev-7
+poomsae meta set abc4 work.branch "agent/task-slug"
+poomsae schedule abc4 "2026-09-01T09:30"
+poomsae deadline abc4 "2026-09-01T17:00"
+poomsae meta set abc4 someday true --json-value
+poomsae meta set abc4 work.attention needs-human --if-match rev-7
 ```
 
-### `kata meta unset`
+### `poomsae meta unset`
 
 ```sh
-kata meta unset <ref> <key>
+poomsae meta unset <ref> <key>
 ```
 
-Use `kata schedule <ref> <date-or-time>` as the first-class command to set
-`scheduled_on`, and `kata deadline <ref> <date-or-time>` to set `deadline_on`.
+Use `poomsae schedule <ref> <date-or-time>` as the first-class command to set
+`scheduled_on`, and `poomsae deadline <ref> <date-or-time>` to set `deadline_on`.
 Pass `-` to either command to clear its value. You can still use
-`kata meta set` and `kata meta unset` for both keys.
+`poomsae meta set` and `poomsae meta unset` for both keys.
 
-`kata meta unset` sends a `null` merge patch to clear the key. Like
-`kata meta set`, it accepts `--if-match <rev>` for optimistic concurrency.
+`poomsae meta unset` sends a `null` merge patch to clear the key. Like
+`poomsae meta set`, it accepts `--if-match <rev>` for optimistic concurrency.
 
 ```sh
-kata meta unset abc4 work.attention_msg
-kata meta unset abc4 work.attention_msg --if-match rev-7
+poomsae meta unset abc4 work.attention_msg
+poomsae meta unset abc4 work.attention_msg --if-match rev-7
 ```
 
-### `kata meta get`
+### `poomsae meta get`
 
 ```sh
-kata meta get <ref> [key]
+poomsae meta get <ref> [key]
 ```
 
 Prints the whole metadata object, or one key when you pass `[key]`. It honors
@@ -216,42 +216,42 @@ was read.
 This command reads from the issue's project-local metadata projection. It
 returns only the short ID, metadata, and current revision, without fetching
 comments or refreshing a federated lease. If you need the complete issue and
-its best-effort current lease state, use `kata show`.
+its best-effort current lease state, use `poomsae show`.
 
 ```sh
-kata meta get abc4
-kata meta get abc4 work.attention --agent
+poomsae meta get abc4
+poomsae meta get abc4 work.attention --agent
 ```
 
-### `kata create --meta`
+### `poomsae create --meta`
 
 Attach metadata when you create an issue instead of patching it afterward:
 
 ```sh
-kata create "wire up the widget" --meta work.branch=agent/task-slug
+poomsae create "wire up the widget" --meta work.branch=agent/task-slug
 ```
 
 You can repeat `--meta`, and it accepts **string values only** (`key=value`).
 For non-string or reserved-typed values, create the issue first and then run
-`kata meta set` with `--json-value`.
+`poomsae meta set` with `--json-value`.
 
-### `kata list --meta`
+### `poomsae list --meta`
 
 Filter the selected project's list by metadata:
 
 ```sh
-kata list --meta work.attention           # issues that have the key at all
-kata list --meta work.attention=needs-human  # issues where it equals this string
+poomsae list --meta work.attention           # issues that have the key at all
+poomsae list --meta work.attention=needs-human  # issues where it equals this string
 ```
 
 You can repeat `--meta`. A bare `key` matches on **presence**, and `key=value`
 matches on **equality against a string value**. Multiple `--meta` filters are
 ANDed together. To apply the same filters across the daemon's active projects
-(API 0.9.0 or newer), run `kata list --all --meta`.
+(API 0.9.0 or newer), run `poomsae list --all --meta`.
 
 ## Issue creation teammate (`metadata.teammate`)
 
-When `kata create` or `kata.create` resolves a nonempty teammate, it stores
+When `poomsae create` or `poomsae.create` resolves a nonempty teammate, it stores
 that string in the new issue's initial `metadata.teammate` to record which
 participant created the issue under the accountable author. The key remains
 ordinary, auditable issue metadata: explicit metadata edits keep their usual
@@ -263,7 +263,7 @@ column and no arbitrary per-comment metadata object.
 ## Teammate requests (`notify.*` keys)
 
 To write a request, run
-`kata notify <ref> --to <actor>[/<teammate>] --message <reason>`. To remove it,
+`poomsae notify <ref> --to <actor>[/<teammate>] --message <reason>`. To remove it,
 run the same exact address with `--clear`. The CLI handles the encoding: each
 key starts with `notify.` followed by the unpadded base64url encoding of the
 trimmed, case-sensitive recipient handle. Its value is an object containing
@@ -271,7 +271,7 @@ trimmed, case-sensitive recipient handle. Its value is an object containing
 the sender participant. These keys remain opaque to the daemon.
 
 To read requests on open issues in the selected project, run
-`kata inbox --for <actor>[/<teammate>]`. Add `--all` to read across the
+`poomsae inbox --for <actor>[/<teammate>]`. Add `--all` to read across the
 selected daemon's active projects with qualified issue refs, which needs daemon
 API 0.9.0 or newer and daemon-wide read authority. Closing hides requests
 without deleting them, and reopening restores uncleared requests. The actor
@@ -285,7 +285,7 @@ You can view the same requests in the TUI under `T`.
 
 `work.*` is a documented convention layered on top of the generic metadata
 model: a coordination contract between the tools that launch coding agents and
-the tools that watch them. Kata validates `work.attention`; other `work.*` keys
+the tools that watch them. Poomsae validates `work.attention`; other `work.*` keys
 are stored without validation. See
 [Agent orchestration](../operations/agent-orchestration.md) for the operational
 recipe.
@@ -293,9 +293,9 @@ recipe.
 ### The keys
 
 - **`work.branch`** (string). The git branch doing the work, set by the
-  launcher. Kata does not learn git and never validates it against a
+  launcher. Poomsae does not learn git and never validates it against a
   repository, so it accepts any string. A stale value is a coordination problem
-  for the consumer, not an error Kata can detect.
+  for the consumer, not an error Poomsae can detect.
 - **`work.pr_url`** (string). The issue's PR URL, recorded while the issue is
   open and still valid after closing. Attach the same PR as evidence when
   closing the issue as done.
@@ -305,7 +305,7 @@ recipe.
     - `needs-human`: the agent wants human input or review, though it may still
       be making progress.
     - `stuck`: the agent cannot proceed.
-  Kata refuses other values. Clearing the key works, and existing values remain
+  Poomsae refuses other values. Clearing the key works, and existing values remain
   until the key is rewritten.
   New recurring issues omit unsupported attention values from older templates.
 - **`work.attention_msg`** (string). A one-line current-state message that
@@ -347,14 +347,14 @@ writers of the attention pair.
 
 ### Disambiguation: `work.attention` vs blocks/blocked-by
 
-`work.attention` and Kata's dependency links (`--blocks` / `--blocked-by`) are
+`work.attention` and Poomsae's dependency links (`--blocks` / `--blocked-by`) are
 different axes:
 
 - **Dependency links** model *issue ordering*: issue X cannot start until issue
   Y is done. They are durable structural relationships on the board.
 - **`work.attention`** is an agent's *live, transient* state on a single issue.
 
-The enum says `stuck` instead of `blocked` to avoid colliding with Kata's
+The enum says `stuck` instead of `blocked` to avoid colliding with Poomsae's
 `blocked` state, which already means "has an open blocked-by dependency".
 Reusing it for the attention axis would mix a structural relationship with a
 moment-to-moment agent signal.

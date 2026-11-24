@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestRoundtripRichDatabaseIsByteEquivalent(t *testing.T) {
@@ -156,21 +156,21 @@ func TestExternalRootProjectFilteredExportIncludesActiveAndReferencedMappings(t 
 	first := seedExternalRootFixture(t, source, "first", "connector-first")
 	seedExternalRootFixture(t, source, "second", "connector-second")
 	_, err := source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-first", KataField: "scheduled_on",
+		ConnectorInstance: "connector-first", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "field-first-v2", ExternalFieldName: "Schedule v2",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-first-v2",
 	})
 	require.NoError(t, err)
 	_, err = source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-first", KataField: "deadline_on",
+		ConnectorInstance: "connector-first", PoomsaeField: "deadline_on",
 		ExternalFieldID: "field-first-due", ExternalFieldName: "Deadline",
 		AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-first-due",
 	})
 	require.NoError(t, err)
 	_, err = source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-unreferenced", KataField: "deadline_on",
+		ConnectorInstance: "connector-unreferenced", PoomsaeField: "deadline_on",
 		ExternalFieldID: "field-unreferenced", ExternalFieldName: "Unreferenced",
 		AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-unreferenced",
@@ -242,7 +242,7 @@ func seedExternalRootFixture(
 	})
 	require.NoError(t, err)
 	mapping, err := source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: connectorInstance, KataField: "scheduled_on",
+		ConnectorInstance: connectorInstance, PoomsaeField: "scheduled_on",
 		ExternalFieldID: "field-" + suffix, ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-" + suffix,

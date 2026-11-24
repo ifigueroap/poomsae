@@ -19,10 +19,10 @@ type recordingRoundTripper struct {
 
 func TestResolvedBearerTrustPrivateNetworkSurvivesMissingAuthTokenFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_AUTH_TOKEN_FILE", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", "")
 	config := fmt.Sprintf(`[auth]
 trust_private_network = true
 token_file = %q
@@ -115,7 +115,7 @@ func TestBearerTransportCanonicalIPv6ZoneOrigin(t *testing.T) {
 }
 
 // TestBearerTargetPolicyMatrix is the accept/reject contract for bearer
-// targets: every policy combination crossed with every target shape kata can
+// targets: every policy combination crossed with every target shape poomsae can
 // be pointed at. It is the gate for folding the telescoping bearer helpers
 // onto BearerPolicy — the refactor is only safe if this table's answers do
 // not move.
@@ -131,7 +131,7 @@ func TestBearerTargetPolicyMatrix(t *testing.T) {
 		{"http cgnat literal", "http://100.64.0.5:7777/api/v1/ping"},
 		{"http public host", "http://daemon.example/api/v1/ping"},
 		{"http private hostname", "http://daemon-host:7777/api/v1/ping"},
-		{"unix sentinel", "http://kata.invalid/api/v1/ping"},
+		{"unix sentinel", "http://poomsae.invalid/api/v1/ping"},
 	}
 	// want[policyName][targetName] = accepted
 	want := map[string]map[string]bool{
@@ -372,12 +372,12 @@ func TestBearerPolicyConfigureClientEmptyToken(t *testing.T) {
 		},
 		{
 			name:              "unix sentinel accepted without token",
-			baseURL:           "http://kata.invalid",
+			baseURL:           "http://poomsae.invalid",
 			wantSameTransport: true,
 		},
 		{
 			name:           "unix sentinel accepted with token",
-			baseURL:        "http://kata.invalid",
+			baseURL:        "http://poomsae.invalid",
 			token:          "secret",
 			wantAuthHeader: "Bearer secret",
 		},

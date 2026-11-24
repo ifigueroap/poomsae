@@ -8,8 +8,8 @@ import (
 	"slices"
 	"sort"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 type invalidExternalFieldReadError struct {
@@ -30,9 +30,9 @@ type MergeAction string
 const (
 	// MergeAccept records a shared value without writing either side.
 	MergeAccept MergeAction = "accept"
-	// MergeWriteKata applies the external value to Kata.
+	// MergeWriteKata applies the external value to Poomsae.
 	MergeWriteKata MergeAction = "write_kata"
-	// MergeWriteExternal applies the Kata value to the external root.
+	// MergeWriteExternal applies the Poomsae value to the external root.
 	MergeWriteExternal MergeAction = "write_external"
 	// MergeConflict records divergent changes for explicit resolution.
 	MergeConflict MergeAction = "conflict"
@@ -44,41 +44,41 @@ const (
 type MergeDecision struct {
 	Action   MergeAction
 	Baseline connector.FieldValue
-	Kata     connector.FieldValue
+	Poomsae  connector.FieldValue
 	External connector.FieldValue
 }
 
 // DecideInitialFieldMerge reconciles a field before a stored baseline exists.
-func DecideInitialFieldMerge(kata, external connector.FieldValue) MergeDecision {
-	kata = canonicalForMerge(kata)
+func DecideInitialFieldMerge(poomsae, external connector.FieldValue) MergeDecision {
+	poomsae = canonicalForMerge(poomsae)
 	external = canonicalForMerge(external)
-	if fieldValuesEqual(kata, external) {
-		return MergeDecision{Action: MergeAccept, Baseline: kata, Kata: kata, External: external}
+	if fieldValuesEqual(poomsae, external) {
+		return MergeDecision{Action: MergeAccept, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
-	if isNull(kata) {
-		return MergeDecision{Action: MergeWriteKata, Baseline: external, Kata: kata, External: external}
+	if isNull(poomsae) {
+		return MergeDecision{Action: MergeWriteKata, Baseline: external, Poomsae: poomsae, External: external}
 	}
 	if isNull(external) {
-		return MergeDecision{Action: MergeWriteExternal, Baseline: kata, Kata: kata, External: external}
+		return MergeDecision{Action: MergeWriteExternal, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
-	return MergeDecision{Action: MergeConflict, Baseline: nullFieldValue(), Kata: kata, External: external}
+	return MergeDecision{Action: MergeConflict, Baseline: nullFieldValue(), Poomsae: poomsae, External: external}
 }
 
 // DecideFieldMerge compares the two current values with their stored baseline.
-func DecideFieldMerge(baseline, kata, external connector.FieldValue) MergeDecision {
+func DecideFieldMerge(baseline, poomsae, external connector.FieldValue) MergeDecision {
 	baseline = canonicalForMerge(baseline)
-	kata = canonicalForMerge(kata)
+	poomsae = canonicalForMerge(poomsae)
 	external = canonicalForMerge(external)
-	if fieldValuesEqual(kata, external) {
-		return MergeDecision{Action: MergeAccept, Baseline: kata, Kata: kata, External: external}
+	if fieldValuesEqual(poomsae, external) {
+		return MergeDecision{Action: MergeAccept, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
-	if fieldValuesEqual(kata, baseline) {
-		return MergeDecision{Action: MergeWriteKata, Baseline: external, Kata: kata, External: external}
+	if fieldValuesEqual(poomsae, baseline) {
+		return MergeDecision{Action: MergeWriteKata, Baseline: external, Poomsae: poomsae, External: external}
 	}
 	if fieldValuesEqual(external, baseline) {
-		return MergeDecision{Action: MergeWriteExternal, Baseline: kata, Kata: kata, External: external}
+		return MergeDecision{Action: MergeWriteExternal, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
-	return MergeDecision{Action: MergeConflict, Baseline: baseline, Kata: kata, External: external}
+	return MergeDecision{Action: MergeConflict, Baseline: baseline, Poomsae: poomsae, External: external}
 }
 
 func canonicalForMerge(value connector.FieldValue) connector.FieldValue {

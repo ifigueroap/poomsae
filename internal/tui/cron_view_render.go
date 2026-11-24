@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/mattn/go-runewidth"
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/pkg/client/generated"
 	"go.kenn.io/kit/tui/helplayout"
 	"go.kenn.io/kit/tui/termtext"
 )
 
-var cronTabNames = [...]string{"kata カタ", "jobs", "runs", "workflows"}
+var cronTabNames = [...]string{"poomsae カタ", "jobs", "runs", "workflows"}
 
 type cronLine struct {
 	text   string
@@ -392,7 +392,7 @@ func cronHelpRows(m Model) [][]helplayout.HelpItem {
 }
 
 func cronKeyRows(m Model) []helplayout.HelpItem {
-	open, back := "open", "kata"
+	open, back := "open", "poomsae"
 	if len(m.cron.stack) > 0 {
 		open, back = "follow", "back"
 	}
@@ -423,7 +423,7 @@ func cronNoticeRows(m Model) int {
 }
 func renderCron(m Model) string {
 	if m.scope.allProjects || m.scope.projectID == 0 {
-		body := []string{renderTitleBar(m.width, m.scope, kataVersion, m.chrome().daemon), cronTabs(m.cron.tab), "", "Press P to pick a project, then 2 for Jobs, 3 for Runs, or 4 for Workflows."}
+		body := []string{renderTitleBar(m.width, m.scope, poomsaeVersion, m.chrome().daemon), cronTabs(m.cron.tab), "", "Press P to pick a project, then 2 for Jobs, 3 for Runs, or 4 for Workflows."}
 		help := cronHelpRows(m)
 		for range max(m.height-len(body)-helpLines(help, m.width)-cronNoticeRows(m), 1) {
 			body = append(body, "")
@@ -469,7 +469,7 @@ func renderCron(m Model) string {
 		right = "loading…"
 	}
 	body := []string{
-		renderTitleBar(m.width, m.scope, kataVersion, m.chrome().daemon),
+		renderTitleBar(m.width, m.scope, poomsaeVersion, m.chrome().daemon),
 		cronTabs(m.cron.tab),
 		statsLineStyle.Render(padLeftRightInside(left, right, titleBarInnerWidth(m.width))),
 		"",
@@ -525,13 +525,13 @@ func cronHelp(m Model) string {
 		"A job is a schedule plus an action.",
 		"A workflow is a named list of steps jobs can run.",
 		"A run records what the executor reports and which version of the job or workflow it used.",
-		"kata cron --help shows creation examples.",
+		"poomsae cron --help shows creation examples.",
 	}
 	for i, s := range intro {
 		intro[i] = strings.Join(termtext.Wrap(s, max(m.width, 1)), "\n")
 	}
 	body := []string{
-		renderTitleBar(m.width, m.scope, kataVersion, m.chrome().daemon),
+		renderTitleBar(m.width, m.scope, poomsaeVersion, m.chrome().daemon),
 		cronTabs(m.cron.tab),
 		"",
 		strings.Join(intro, "\n"),

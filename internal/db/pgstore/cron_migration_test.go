@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func dropNativeCronSchema(ctx context.Context, t *testing.T, admin *sql.DB, schema string) {

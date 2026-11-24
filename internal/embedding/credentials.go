@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	"go.kenn.io/kit/embedclient"
 )
 

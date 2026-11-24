@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func issueSyncEnableAuthority(ctx context.Context, store db.Storage, projectID int64, provider string) error {

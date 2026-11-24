@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestImportRoundTripsExportedRows(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	issue, _, err := src.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: p.ID,
@@ -89,7 +89,7 @@ func TestImportRejectsInvalidCommentTeammateBeforeReplacingTarget(t *testing.T) 
 func TestImportRoundTripsExportedLargeIssueBody(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	body := strings.Repeat("large-body-", 2*1024*1024)
 	issue, _, err := src.CreateIssue(ctx, db.CreateIssueParams{
@@ -249,9 +249,9 @@ func TestImportV1FillsUIDsDeterministically(t *testing.T) {
 	ctx := t.Context()
 	rows := []string{
 		validExportVersion,
-		`{"kind":"project","data":{"id":1,"identity":"github.com/wesm/kata","name":"kata","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":2}}`,
+		`{"kind":"project","data":{"id":1,"identity":"github.com/wesm/poomsae","name":"poomsae","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":2}}`,
 		`{"kind":"issue","data":{"id":1,"project_id":1,"number":1,"title":"v1 issue","body":"","status":"open","closed_reason":null,"owner":null,"author":"tester","created_at":"2026-05-03T00:00:01.000Z","updated_at":"2026-05-03T00:00:01.000Z","closed_at":null,"deleted_at":null}}`,
-		`{"kind":"event","data":{"id":1,"project_id":1,"project_identity":"github.com/wesm/kata","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
+		`{"kind":"event","data":{"id":1,"project_id":1,"project_identity":"github.com/wesm/poomsae","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
 	}
 
 	first := openImportTargetDB(t)
@@ -334,7 +334,7 @@ func TestImportV1NormalizesGoStringEventTimestampForStats(t *testing.T) {
 		validExportVersion,
 		validV1ProjectRow,
 		`{"kind":"issue","data":{"id":1,"project_id":1,"number":1,"title":"v1 issue","body":"","status":"open","closed_reason":null,"owner":null,"author":"tester","created_at":"2026-05-04T00:21:07.000Z","updated_at":"2026-05-04T00:21:07.000Z","closed_at":null,"deleted_at":null}}`,
-		`{"kind":"event","data":{"id":1,"project_id":1,"project_identity":"github.com/wesm/kata","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-04 00:21:07 +0000 UTC"}}`,
+		`{"kind":"event","data":{"id":1,"project_id":1,"project_identity":"github.com/wesm/poomsae","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-04 00:21:07 +0000 UTC"}}`,
 	))
 
 	stats, err := target.BatchProjectStats(ctx)
@@ -366,8 +366,8 @@ func TestImportCurrentVersionRejectsEventHashForPreNormalizedTimestamp(t *testin
 
 	err = importJSONL(ctx, target,
 		fmt.Sprintf(`{"kind":"meta","data":{"key":"export_version","value":"%d"}}`, db.CurrentSchemaVersion()),
-		`{"kind":"project","data":{"id":1,"uid":"`+projectUID+`","name":"kata","metadata":{},"revision":1,"created_at":"2026-05-04T00:00:00.000Z"}}`,
-		`{"kind":"event","data":{"id":1,"uid":"`+eventUID+`","origin_instance_uid":"`+originUID+`","project_id":1,"project_name":"kata","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"project.imported","actor":"tester","payload":{},"hlc_physical_ms":1777854067000,"hlc_counter":1,"content_hash":"`+hash+`","created_at":"`+createdAt+`"}}`,
+		`{"kind":"project","data":{"id":1,"uid":"`+projectUID+`","name":"poomsae","metadata":{},"revision":1,"created_at":"2026-05-04T00:00:00.000Z"}}`,
+		`{"kind":"event","data":{"id":1,"uid":"`+eventUID+`","origin_instance_uid":"`+originUID+`","project_id":1,"project_name":"poomsae","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"project.imported","actor":"tester","payload":{},"hlc_physical_ms":1777854067000,"hlc_counter":1,"content_hash":"`+hash+`","created_at":"`+createdAt+`"}}`,
 	)
 
 	require.Error(t, err)
@@ -380,16 +380,16 @@ func TestImportLegacyEventSnapshotsUseFinalProjectName(t *testing.T) {
 
 	require.NoError(t, importJSONL(ctx, target,
 		validExportVersion,
-		`{"kind":"project","data":{"id":2,"identity":"github.com/example/first","name":"kata","created_at":"2026-05-02T00:00:00.000Z","next_issue_number":1}}`,
-		`{"kind":"project","data":{"id":3,"identity":"github.com/example/kata","name":"kata","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":2}}`,
+		`{"kind":"project","data":{"id":2,"identity":"github.com/example/first","name":"poomsae","created_at":"2026-05-02T00:00:00.000Z","next_issue_number":1}}`,
+		`{"kind":"project","data":{"id":3,"identity":"github.com/example/poomsae","name":"poomsae","created_at":"2026-05-03T00:00:00.000Z","next_issue_number":2}}`,
 		`{"kind":"issue","data":{"id":1,"project_id":3,"number":1,"title":"legacy issue","body":"","status":"open","closed_reason":null,"owner":null,"author":"tester","created_at":"2026-05-03T00:00:01.000Z","updated_at":"2026-05-03T00:00:01.000Z","closed_at":null,"deleted_at":null}}`,
-		`{"kind":"event","data":{"id":1,"project_id":3,"project_identity":"github.com/example/kata","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
+		`{"kind":"event","data":{"id":1,"project_id":3,"project_identity":"github.com/example/poomsae","issue_id":1,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
 	))
 
 	var projectName, eventProjectName string
 	require.NoError(t, target.QueryRowContext(ctx, `SELECT name FROM projects WHERE id = 3`).Scan(&projectName))
 	require.NoError(t, target.QueryRowContext(ctx, `SELECT project_name FROM events WHERE id = 1`).Scan(&eventProjectName))
-	assert.Equal(t, "kata-2", projectName)
+	assert.Equal(t, "poomsae-2", projectName)
 	assert.Equal(t, projectName, eventProjectName)
 }
 
@@ -400,7 +400,7 @@ func TestImportV1RejectsCorruptEventFK(t *testing.T) {
 	err := importJSONL(ctx, target,
 		validExportVersion,
 		validV1ProjectRow,
-		`{"kind":"event","data":{"id":7,"project_id":1,"project_identity":"github.com/wesm/kata","issue_id":999,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
+		`{"kind":"event","data":{"id":7,"project_id":1,"project_identity":"github.com/wesm/poomsae","issue_id":999,"issue_number":1,"related_issue_id":null,"type":"issue.created","actor":"tester","payload":{},"created_at":"2026-05-03T00:00:01.000Z"}}`,
 	)
 
 	require.Error(t, err)
@@ -505,8 +505,8 @@ func TestImportRejectsTokenCreatedMissingRequiredFields(t *testing.T) {
 
 	err := importJSONL(ctx, target,
 		`{"kind":"meta","data":{"key":"export_version","value":"11"}}`,
-		`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".kata-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
-		`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".kata-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.created","actor":"bootstrap","payload":{"token_id":1,"target_actor":"alice"},"created_at":"2026-05-03T00:00:01.000Z"}}`,
+		`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".poomsae-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
+		`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".poomsae-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.created","actor":"bootstrap","payload":{"token_id":1,"target_actor":"alice"},"created_at":"2026-05-03T00:00:01.000Z"}}`,
 	)
 
 	require.Error(t, err)
@@ -520,8 +520,8 @@ func TestImportRejectsTokenRevokedForUnknownToken(t *testing.T) {
 
 	err := importJSONL(ctx, target,
 		`{"kind":"meta","data":{"key":"export_version","value":"11"}}`,
-		`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".kata-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
-		`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".kata-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.revoked","actor":"bootstrap","payload":{"token_id":99},"created_at":"2026-05-03T00:00:01.000Z"}}`,
+		`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".poomsae-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
+		`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".poomsae-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.revoked","actor":"bootstrap","payload":{"token_id":99},"created_at":"2026-05-03T00:00:01.000Z"}}`,
 	)
 
 	require.Error(t, err)
@@ -579,8 +579,8 @@ func TestImportRejectsMalformedTokenReplayFields(t *testing.T) {
 
 			err := importJSONL(ctx, target,
 				`{"kind":"meta","data":{"key":"export_version","value":"11"}}`,
-				`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".kata-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
-				`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".kata-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.created","actor":"bootstrap","payload":`+tc.payload+`,"created_at":"2026-05-03T00:00:01.000Z"}}`,
+				`{"kind":"project","data":{"id":1,"uid":"00000000000000000000000000","name":".poomsae-system","created_at":"2026-05-03T00:00:00.000Z","metadata":{},"revision":1}}`,
+				`{"kind":"event","data":{"id":1,"uid":"01HZNQ7VFPK1XGD8R5MABCD4EX","origin_instance_uid":"01HZNQ7VFPK1XGD8R5MABCD4EY","project_id":1,"project_name":".poomsae-system","issue_id":null,"issue_uid":null,"related_issue_id":null,"related_issue_uid":null,"type":"token.created","actor":"bootstrap","payload":`+tc.payload+`,"created_at":"2026-05-03T00:00:01.000Z"}}`,
 			)
 
 			require.Error(t, err)
@@ -591,7 +591,7 @@ func TestImportRejectsMalformedTokenReplayFields(t *testing.T) {
 
 func openImportTargetDB(t *testing.T) *sqlitestore.Store {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	d, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "target.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/notification"
 )
 
 // RecurringCronCandidate avoids decoding a page's documents before individual dispatch.

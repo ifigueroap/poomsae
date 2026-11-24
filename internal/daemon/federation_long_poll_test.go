@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // federationReadProbe wraps a hub store to count the ReadFederation calls that
@@ -240,7 +240,7 @@ func TestFederationPollWithoutWaitAnswersAtOnce(t *testing.T) {
 	result := f.poll(t, cursor, "")
 	require.Equal(t, http.StatusOK, result.status, "%s", result.raw)
 	assert.Empty(t, result.body.Events)
-	assert.Equal(t, "45", result.header.Get("X-Kata-Federation-Poll-Wait-Max"))
+	assert.Equal(t, "45", result.header.Get("X-Poomsae-Federation-Poll-Wait-Max"))
 	assert.Less(t, result.elapsed, time.Second)
 }
 

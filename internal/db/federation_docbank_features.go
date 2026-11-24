@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // DocbankOriginEventFeature identifies absolute Docbank reference origins.

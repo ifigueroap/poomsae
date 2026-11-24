@@ -16,7 +16,7 @@ type LinearSyncConfig struct {
 func NormalizeLinearSyncConfig(c LinearSyncConfig) (LinearSyncConfig, error) {
 	c.TokenEnv = strings.TrimSpace(c.TokenEnv)
 	if c.TokenEnv == "" {
-		c.TokenEnv = "KATA_LINEAR_TOKEN"
+		c.TokenEnv = "POOMSAE_LINEAR_TOKEN"
 	}
 	if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(c.TokenEnv) {
 		return LinearSyncConfig{}, fmt.Errorf("linear_sync.token_env must be a valid environment variable name")

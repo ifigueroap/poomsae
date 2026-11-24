@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // openChildrenSampleLimit caps the number of children listed inline in the
 // parent-close refusal message. The full count is surfaced as a "(N more)"
-// suffix so the user knows to consult `kata show` for the rest.
+// suffix so the user knows to consult `poomsae show` for the rest.
 const openChildrenSampleLimit = 10
 
 // defaultSiblingThrottleWindow is the default look-back period over which
@@ -35,7 +35,7 @@ const repeatedMessageWindow = 30 * time.Minute
 // issue has zero open children (closed children do not block parent close).
 //
 // issueID is the parent's rowid (driving the OpenChildrenOf query);
-// issueShortID is the user-facing ref quoted in the "kata show ... --json"
+// issueShortID is the user-facing ref quoted in the "poomsae show ... --json"
 // hint so the suggested command is something the user can actually run.
 // parentProjectID scopes the child-ref rendering: links may span projects,
 // so a child outside the parent's project is listed qualified
@@ -58,7 +58,7 @@ func CheckParentCloseCompleteness(
 	}
 	suffix := ""
 	if total > openChildrenSampleLimit {
-		suffix = fmt.Sprintf("\n  ... (%d more, see `kata show %s --json`)",
+		suffix = fmt.Sprintf("\n  ... (%d more, see `poomsae show %s --json`)",
 			total-openChildrenSampleLimit, issueShortID)
 	}
 	return fmt.Errorf(

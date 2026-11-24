@@ -6,30 +6,30 @@ last_edited: 2026-11-21
 
 # Connector author contract
 
-Build a Kata external-root connector as an executable that speaks the versioned
-`kata.connector.v1` JSON protocol. Keep provider-specific credentials and API
+Build a Poomsae external-root connector as an executable that speaks the versioned
+`poomsae.connector.v1` JSON protocol. Keep provider-specific credentials and API
 calls inside the connector.
 
 Use this page when you write a connector. It covers the wire protocol, the
 public Go SDK, and the conformance kit. If you operate connectors instead,
-configure instances with `[[connector]]` tables in `<KATA_HOME>/config.toml`
+configure instances with `[[connector]]` tables in `<POOMSAE_HOME>/config.toml`
 in the [configuration reference](configuration.md), and manage bindings with
-the `kata connector` and `kata bridge` commands in the
+the `poomsae connector` and `poomsae bridge` commands in the
 [CLI reference](cli.md#external-root-bridges).
 
 ## Process and framing
 
-For each RPC, Kata starts a fresh connector process, writes exactly one JSON request
+For each RPC, Poomsae starts a fresh connector process, writes exactly one JSON request
 to standard input, and closes the request stream. Your connector must write
 exactly one JSON response to standard output. Extra JSON, malformed responses,
 mismatched request IDs, an unsupported protocol version, or output past the
 bounded response limit fail the call. Diagnostic output is not part of the
 protocol.
 
-Kata reads standard output until it closes, and only then validates the
+Poomsae reads standard output until it closes, and only then validates the
 response. Make sure no child process holds standard output open after your
 connector exits. If a child stays alive with standard output still open
-shortly after exit, Kata terminates the connector's process tree and fails the
+shortly after exit, Poomsae terminates the connector's process tree and fails the
 call. A child that left the process tree, such as a Unix process in its own
 process group, holds the call open until it closes standard output or the
 connector timeout expires. When that happens, the call fails with
@@ -41,7 +41,7 @@ Every request contains:
 
 ```json
 {
-  "protocol": "kata.connector.v1",
+  "protocol": "poomsae.connector.v1",
   "id": "opaque-request-id",
   "method": "read_root",
   "instance": "notes",
@@ -55,7 +55,7 @@ The response repeats `protocol` and `id`, then returns either `result` or
 
 ```json
 {
-  "protocol": "kata.connector.v1",
+  "protocol": "poomsae.connector.v1",
   "id": "opaque-request-id",
   "error": {
     "code": "root_unavailable",
@@ -90,14 +90,14 @@ Every handler implements these methods:
 Advertise optional methods through capabilities in `describe`:
 `publish_comment` for `publish_comment`, `fields` for the field methods, and
 `conditional_fields` separately for compare-and-set field writes. If your
-connector does not advertise `conditional_fields`, Kata rejects conditional
+connector does not advertise `conditional_fields`, Poomsae rejects conditional
 writes instead of retrying them without preconditions. For any optional method
 whose capability you do not advertise, you can return a structured unsupported
 error.
 
 Treat root keys, account identities, connector IDs, actor IDs, comment IDs,
 field IDs, and schema revisions as opaque, stable identities. Never encode
-Kata issue UIDs, refs, project IDs, binding IDs, branches, or other Kata-owned
+Poomsae issue UIDs, refs, project IDs, binding IDs, branches, or other Poomsae-owned
 identity inside provider metadata. Field descriptor IDs and schema revisions
 must already be canonical, with no surrounding whitespace.
 
@@ -141,14 +141,14 @@ canonical, call `connector.ValidateFieldValue`.
 
 These wire kinds extend protocol v1 without changing existing date requests.
 Adapters can use them to expose tags, assignees, or provider selections,
-though they do not register new native Kata mapping fields. Kata still maps
+though they do not register new native Poomsae mapping fields. Poomsae still maps
 only `scheduled_on` and `deadline_on`, and each future mapping needs its own
 native ownership and validation contract.
 
 The [built-in Forgejo connector](../operations/forgejo-connector.md) exposes
 text and set fields without advertising `conditional_fields`, because its
 provider API has no atomic compare-and-set field operation. A read followed by
-a write does not satisfy the conditional-write contract, so Kata refuses
+a write does not satisfy the conditional-write contract, so Poomsae refuses
 automatic mappings for it. Unconditional batches can take several provider
 calls and partially apply before failing. Callers must read current values
 before recovering.
@@ -211,7 +211,7 @@ comment's stable ID to keep its changed revision across later unchanged reads.
 ## Current boundaries
 
 - The external root owns title and body while a binding is active.
-- Kata planning-field mappings are limited to `scheduled_on` and `deadline_on`
+- Poomsae planning-field mappings are limited to `scheduled_on` and `deadline_on`
   in protocol v1.
-- Kata uses one process per RPC for isolation and bounded cleanup.
+- Poomsae uses one process per RPC for isolation and bounded cleanup.
 - The browser UI has no bridge indicator yet.

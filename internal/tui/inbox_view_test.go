@@ -15,7 +15,7 @@ import (
 )
 
 type inboxTestAPI struct {
-	KataAPI
+	PoomsaeAPI
 	projects      []ProjectSummary
 	issues        []Issue
 	detail        *IssueDetail
@@ -510,7 +510,7 @@ func TestInboxStatusCycleUnavailable(t *testing.T) {
 func TestInboxFilterFormOmitsStatusAxis(t *testing.T) {
 	useNoColor(t)
 	m := filterFormFixture()
-	m.scope = scope{projectID: 7, projectName: "kata", inbox: true}
+	m.scope = scope{projectID: 7, projectName: "poomsae", inbox: true}
 	m.list.inboxOnly = true
 	m.list.filter = ListFilter{Owner: "avery", Search: "login", Labels: []string{"bug"}}
 	m = openFilterForm(t, m)

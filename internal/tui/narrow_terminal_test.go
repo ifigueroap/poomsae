@@ -12,12 +12,12 @@ import (
 // short and a future copy edit only touches one place.
 const narrowHintMarker = "needs more space"
 
-// narrowTestSetup pins the package to KATA_COLOR_MODE=none so View
+// narrowTestSetup pins the package to POOMSAE_COLOR_MODE=none so View
 // output is plain UTF-8, then returns a fresh Model with no loading
 // flag set. The cleanup func reverts the color rebuild.
 func narrowTestSetup(t *testing.T) (Model, func()) {
 	t.Helper()
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	m := initialModel(Options{})
@@ -61,7 +61,7 @@ func TestNarrowTerminal_ShortHeightRendersNormally(t *testing.T) {
 	m, cleanup := narrowTestSetup(t)
 	defer cleanup()
 	m.list.issues = []Issue{{ProjectID: 7, UID: "01TEST-aaa1", ShortID: "aaa1", Title: "short pane", Status: "open"}}
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 
 	m = resizeModel(m, 120, 12)
 	assertHintVisible(t, m, false)
@@ -173,7 +173,7 @@ func TestNarrowTerminal_QuitConfirmModalOverlaysHint(t *testing.T) {
 	if !strings.Contains(view, "[Y]") {
 		t.Fatalf("quit-confirm modal hidden by narrow short-circuit; got:\n%s", view)
 	}
-	if !strings.Contains(view, "Quit kata?") {
+	if !strings.Contains(view, "Quit poomsae?") {
 		t.Fatalf("modal title missing after narrow resize; got:\n%s", view)
 	}
 	// The hint's sharp top corner ┌ pokes out next to the modal's
@@ -199,7 +199,7 @@ func TestNarrowTerminal_DaemonViewShowsHintAndToast(t *testing.T) {
 	if !strings.Contains(view, narrowHintMarker) {
 		t.Fatalf("daemon view at narrow width must show stable too-narrow hint; got:\n%s", view)
 	}
-	if strings.Contains(view, "kata / daemons") {
+	if strings.Contains(view, "poomsae / daemons") {
 		t.Fatalf("daemon view rendered full picker below minimum width; got:\n%s", view)
 	}
 	if !strings.Contains(view, "daemon failed") {

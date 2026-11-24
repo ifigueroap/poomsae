@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const pendingClaimSelect = `SELECT id, request_uid, project_id, issue_id, issue_uid,
@@ -50,7 +50,7 @@ func (s *Store) EnqueuePendingClaim(ctx context.Context, input db.PendingClaimPa
 		if !errors.Is(err, db.ErrNotFound) {
 			return err
 		}
-		requestUID, err := katauid.New()
+		requestUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate pending claim request uid: %w", err)
 		}

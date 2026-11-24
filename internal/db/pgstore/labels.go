@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const labelSelect = `SELECT issue_id, label, author, created_at FROM issue_labels`

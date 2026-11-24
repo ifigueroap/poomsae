@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func issueCreationPayload(issueUID, actor string) jsontext.Value {
@@ -17,7 +17,7 @@ func issueCreationPayload(issueUID, actor string) jsontext.Value {
 
 // headerlessIssueEvents returns issue events that name their issue only in
 // the payload: an edit of knownIssueUID naming it as issue_uid, and a creation
-// of a new issue naming it as uid. No Kata release writes this shape; every
+// of a new issue naming it as uid. No Poomsae release writes this shape; every
 // writer copies the issue UID into the event header.
 func headerlessIssueEvents(t *testing.T, project db.Project, knownIssueUID, actor, origin string) []db.RemoteEvent {
 	t.Helper()

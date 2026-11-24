@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 // RelayCheckpointCapacityBytes is the largest signed reset checkpoint a root

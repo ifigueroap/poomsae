@@ -1,0 +1,397 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/spf13/cobra"
+
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	mcpserver "github.com/ifigueroap/poomsae/internal/mcp"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/version"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+)
+
+func newMCPCmd() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "mcp",
+		Short: "serve Poomsae tools through Model Context Protocol",
+	}
+	command.AddCommand(newMCPServeCmd(), newMCPStatusCmd())
+	return command
+}
+
+func newMCPServeCmd() *cobra.Command {
+	var runtimeDirectory string
+	var allProjects bool
+	var projects []string
+	var storageRoot string
+	var storageTargets []string
+	var enableTokenAdmin bool
+	var httpAddress string
+	var httpTokenEnv string
+	var httpTokenFile string
+	var trustPrivateNetwork bool
+	command := &cobra.Command{
+		Use:   "serve",
+		Short: "serve Poomsae tools over stdio or streamable HTTP",
+		Args:  cobra.NoArgs,
+		RunE: func(command *cobra.Command, _ []string) error {
+			if strings.TrimSpace(storageRoot) == "" && len(storageTargets) > 0 {
+				return errors.New("--storage-target requires --storage-root")
+			}
+			if allProjects && (len(projects) > 0 || strings.TrimSpace(flags.Workspace) != "" || strings.TrimSpace(flags.Project) != "") {
+				return errors.New("--all cannot be combined with --projects, --project, or --workspace")
+			}
+			if len(projects) > 0 && strings.TrimSpace(flags.Workspace) != "" {
+				return errors.New("--projects cannot be combined with --workspace")
+			}
+			if len(projects) > 0 && strings.TrimSpace(flags.Project) != "" {
+				return errors.New("--projects cannot be combined with --project")
+			}
+			if enableTokenAdmin && !allProjects {
+				return errors.New("--enable-token-admin requires --all")
+			}
+			httpToken, err := resolveMCPHTTPToken(httpAddress, httpTokenFile, httpTokenEnv, trustPrivateNetwork)
+			if err != nil {
+				return err
+			}
+			handle, err := resolveTeammate(command)
+			if err != nil {
+				return err
+			}
+			ctx := command.Context()
+			var storage *storageadmin.Admin
+			if strings.TrimSpace(storageRoot) != "" {
+				if err := requireHostLocalExport(ctx); err != nil {
+					return fmt.Errorf("enable MCP storage: %w", err)
+				}
+				targets, err := parseMCPStorageTargets(storageTargets)
+				if err != nil {
+					return err
+				}
+				sourceDSN, err := config.PoomsaeDSN(ctx)
+				if err != nil {
+					return err
+				}
+				storage, err = storageadmin.New(storageadmin.Config{Root: storageRoot, SourceDSN: sourceDSN, Targets: targets})
+				if err != nil {
+					return fmt.Errorf("configure MCP storage: %w", err)
+				}
+				defer func() { _ = storage.Close() }()
+			}
+			resolved, err := resolveMCPRuntime(ctx, runtimeDirectory)
+			if err != nil {
+				return err
+			}
+			ctx = context.WithValue(ctx, resolvedDaemonContextKey{}, resolved)
+			baseURL := resolved.BaseURL
+			// Ordinary daemon calls retain the CLI request timeout so a
+			// stalled daemon cannot consume every MCP tool-call slot.
+			httpClient, err := httpClientForResolved(ctx, resolved)
+			if err != nil {
+				return err
+			}
+			requiredAPI := apiVersionMCPServer
+			if !allProjects {
+				requiredAPI = apiVersionMCPProjectScope
+			}
+			health, err := requireDaemonAPIVersionHealth(
+				ctx, httpClient, baseURL, requiredAPI, "poomsae mcp serve",
+			)
+			if err != nil {
+				return err
+			}
+			stopKeepalive := startMCPIdleKeepalive(ctx, httpClient, baseURL, health)
+			defer stopKeepalive()
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			apiClient, longRunningAPIClient, err := newMCPAPIClients(ctx, resolved, httpClient)
+			if err != nil {
+				return err
+			}
+			var scope *mcpserver.Scope
+			var projectID int64
+			var projectName string
+			switch {
+			case allProjects:
+				scope = mcpserver.NewAllScope()
+			case len(projects) > 0:
+				scope, err = mcpserver.ResolveAllowlistScope(ctx, apiClient, projects)
+			default:
+				start, startErr := resolveStartPath(flags.Workspace)
+				if startErr != nil {
+					return startErr
+				}
+				projectID, projectName, err = resolveProjectIDAndNameWithClient(
+					daemonAPI{ctx: ctx, client: httpClient, baseURL: baseURL}, start)
+				if err != nil && strings.TrimSpace(flags.Workspace) == "" && strings.TrimSpace(flags.Project) == "" {
+					err = fmt.Errorf("%w (run inside a poomsae workspace, or pass --project, --workspace, --projects, or --all)", err)
+				}
+				if err == nil {
+					scope, err = mcpserver.ResolveBoundScope(ctx, apiClient, mcpserver.ProjectIdentity{ID: projectID, Name: projectName})
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("resolve MCP project scope: %w", err)
+			}
+			observe, stopReporting := startMCPAgentUseReporter(ctx, apiClient, resolved, false)
+			defer stopReporting()
+			// Events forwards to the daemon, which owns every subscription, and is
+			// served only on stdio and the 2026-07-28 HTTP path. The legacy-session
+			// server never registers or advertises it.
+			admission := mcpserver.NewToolAdmission()
+			newServer := func(events bool) (*sdkmcp.Server, error) {
+				return mcpserver.New(mcpserver.Options{
+					Events:            events,
+					Admission:         admission,
+					Client:            apiClient,
+					ObserveToolCall:   observe,
+					LongRunningClient: longRunningAPIClient,
+					Scope:             scope,
+					ProjectID:         projectID,
+					ProjectName:       projectName,
+					Actor:             actor,
+					Teammate:          handle,
+					Version:           version.Version,
+					StorageAdmin:      storage,
+					EnableTokenAdmin:  enableTokenAdmin,
+				})
+			}
+			server, err := newServer(true)
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(httpAddress) != "" {
+				home, err := config.PoomsaeHome()
+				if err != nil {
+					return err
+				}
+				backendURL := baseURL
+				if resolved.Network == "unix" {
+					backendURL = "unix://" + resolved.UnixSocket
+				}
+				legacyServer, err := newServer(false)
+				if err != nil {
+					return err
+				}
+				return serveMCPHTTP(ctx, command.ErrOrStderr(), httpAddress, httpToken, legacyServer, server, filepath.Join(home, "mcp"), backendURL)
+			}
+			transport := mcpserver.NewStdioTransport(
+				asReadCloser(command.InOrStdin()),
+				command.OutOrStdout(),
+			)
+			err = server.Run(ctx, transport)
+			if err == nil || errors.Is(err, io.EOF) || errors.Is(err, sdkmcp.ErrConnectionClosed) {
+				return nil
+			}
+			if errors.Is(err, context.Canceled) && ctx.Err() != nil {
+				return nil
+			}
+			return err
+		},
+	}
+	command.Flags().StringVar(&runtimeDirectory, "runtime-dir", "", "use an existing daemon runtime directory without starting a daemon")
+	command.Flags().BoolVar(&allProjects, "all", false, "serve every project visible to the selected daemon")
+	command.Flags().StringSliceVar(&projects, "projects", nil, "serve only these project names")
+	command.Flags().StringVar(&storageRoot, "storage-root", "", "enable host-local JSONL artifacts under this directory")
+	command.Flags().StringArrayVar(&storageTargets, "storage-target", nil, "approved import target alias=path-or-DSN (repeatable)")
+	command.Flags().BoolVar(&enableTokenAdmin, "enable-token-admin", false, "enable daemon token administration tools")
+	command.Flags().StringVar(&httpAddress, "http", "", "serve streamable HTTP on host:port instead of stdio")
+	command.Flags().StringVar(&httpTokenEnv, "http-token-env", "", "require an inbound bearer read from this environment variable")
+	command.Flags().StringVar(&httpTokenFile, "http-token-file", "", "require an inbound bearer read from this owner-only secret file (wins over --http-token-env)")
+	command.Flags().BoolVar(&trustPrivateNetwork, "trust-private-network", false, "trust plaintext MCP HTTP on a non-loopback private network")
+	return command
+}
+
+func newMCPAPIClients(ctx context.Context, resolved client.ResolvedDaemon, httpClient *http.Client) (*poomsaeclient.Client, *poomsaeclient.Client, error) {
+	apiClient, err := poomsaeclient.NewWithHTTPClient(resolved.BaseURL, httpClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Sync passes, bounded waits, and SSE streams use their own request contexts.
+	longRunningHTTPClient, err := longRunningClientForResolved(ctx, resolved)
+	if err != nil {
+		return nil, nil, err
+	}
+	longRunningAPIClient, err := poomsaeclient.NewWithHTTPClient(resolved.BaseURL, longRunningHTTPClient)
+	return apiClient, longRunningAPIClient, err
+}
+
+// drainOnStop lets modern request cleanup finish queued observations within one second.
+func startMCPAgentUseReporter(ctx context.Context, apiClient *poomsaeclient.Client, target client.ResolvedDaemon, drainOnStop bool) (func(), context.CancelFunc) {
+	if !telemetry.Eligible() {
+		return nil, func() {}
+	}
+	reportCtx, cancel := context.WithCancel(ctx)
+	queue := make(chan struct{}, 128)
+	var queueMu sync.Mutex
+	queueStopped := false
+	marker := client.TelemetryDayMarkerPath(target, "agent-full-")
+	var gate client.TelemetryGate
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		fullDay := ""
+		for {
+			select {
+			case <-reportCtx.Done():
+				return
+			case _, ok := <-queue:
+				if !ok || reportCtx.Err() != nil {
+					return
+				}
+				day := cliUseNow().UTC().Format(time.DateOnly)
+				if fullDay == day {
+					continue
+				}
+				callCtx, stop := context.WithTimeout(reportCtx, time.Second)
+				stopped, err := gate.Report(callCtx, client.TelemetryTargetKey(target), marker, day, true, func(ctx context.Context) (*generated.CaptureTelemetryEventResponse, error) {
+					return apiClient.CaptureTelemetryEvent(ctx, &generated.CaptureTelemetryEventRequestOptions{
+						Body: &generated.CaptureTelemetryEventBody{Event: "agent_active"},
+					})
+				})
+				stop()
+				if err == nil && stopped {
+					fullDay = day
+				}
+			}
+		}
+	}()
+	observe := func() {
+		queueMu.Lock()
+		defer queueMu.Unlock()
+		if queueStopped {
+			return
+		}
+		select {
+		case queue <- struct{}{}:
+		default:
+		}
+	}
+	return observe, func() {
+		queueMu.Lock()
+		if !queueStopped {
+			queueStopped = true
+			if drainOnStop {
+				close(queue)
+			} else {
+				cancel()
+			}
+		}
+		queueMu.Unlock()
+		if drainOnStop {
+			// One deadline bounds the entire queue, including an in-flight report.
+			timer := time.AfterFunc(time.Second, cancel)
+			defer timer.Stop()
+		}
+		<-done
+		cancel()
+	}
+}
+
+func startMCPIdleKeepalive(
+	ctx context.Context,
+	client *http.Client,
+	baseURL string,
+	health daemonAPIHealth,
+) context.CancelFunc {
+	if health.IdleShutdown == nil {
+		return func() {}
+	}
+	timeout, err := time.ParseDuration(strings.TrimSpace(health.IdleShutdown.Timeout))
+	if err != nil || timeout < config.MinAutostartIdleTimeout {
+		return func() {}
+	}
+	return startMCPIdleKeepaliveLoop(ctx, client, baseURL, timeout/2)
+}
+
+func startMCPIdleKeepaliveLoop(
+	ctx context.Context,
+	client *http.Client,
+	baseURL string,
+	interval time.Duration,
+) context.CancelFunc {
+	if interval <= 0 {
+		return func() {}
+	}
+	keepaliveCtx, cancel := context.WithCancel(ctx)
+	sendMCPIdleKeepalive(keepaliveCtx, client, baseURL)
+	go func() {
+		timer := time.NewTimer(interval)
+		defer timer.Stop()
+		for {
+			select {
+			case <-keepaliveCtx.Done():
+				return
+			case <-timer.C:
+				sendMCPIdleKeepalive(keepaliveCtx, client, baseURL)
+				timer.Reset(interval)
+			}
+		}
+	}()
+	return cancel
+}
+
+func sendMCPIdleKeepalive(ctx context.Context, client *http.Client, baseURL string) {
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+	if err != nil {
+		return
+	}
+	_, _ = apiClient.PingWithResponse(ctx, func(_ context.Context, request *http.Request) error {
+		request.Header.Set(daemon.IdleKeepaliveHeader, "1")
+		return nil
+	})
+}
+
+func parseMCPStorageTargets(values []string) (map[string]string, error) {
+	targets := make(map[string]string, len(values))
+	for index, value := range values {
+		parts := strings.SplitN(value, "=", 2)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+			// Never echo the raw value: a malformed DSN can carry credentials.
+			return nil, fmt.Errorf("invalid --storage-target at position %d; expected alias=path-or-DSN", index+1)
+		}
+		alias, target := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if _, exists := targets[alias]; exists {
+			return nil, fmt.Errorf("duplicate --storage-target alias %q", alias)
+		}
+		targets[alias] = target
+	}
+	return targets, nil
+}
+
+func asReadCloser(reader io.Reader) io.ReadCloser {
+	if readCloser, ok := reader.(io.ReadCloser); ok {
+		return readCloser
+	}
+	return io.NopCloser(reader)
+}
+
+// resolveMCPRuntime lets an embedding client pin the daemon it has already
+// discovered, including a Unix socket behind a separate browser listener.
+func resolveMCPRuntime(ctx context.Context, directory string) (client.ResolvedDaemon, error) {
+	if directory == "" {
+		return ensureDaemonResolved(ctx)
+	}
+	resolved, found, err := client.DiscoverResolved(ctx, directory)
+	if err != nil {
+		return client.ResolvedDaemon{}, err
+	}
+	if !found {
+		return client.ResolvedDaemon{}, fmt.Errorf("no running daemon in runtime directory %q", directory)
+	}
+	return resolved, nil
+}

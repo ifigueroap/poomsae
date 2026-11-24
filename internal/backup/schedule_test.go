@@ -57,11 +57,11 @@ func TestScheduleIntervalsRetentionAndIsolation(t *testing.T) {
 	other := filepath.Join(root, "fedcba543210")
 	require.NoError(t, os.MkdirAll(own, 0o700))
 	require.NoError(t, os.MkdirAll(other, 0o700))
-	old := "kata-backup-20260901T000000.000000000Z-abcdef.jsonl"
+	old := "poomsae-backup-20260901T000000.000000000Z-abcdef.jsonl"
 	for _, path := range []string{filepath.Join(own, old), filepath.Join(other, old), filepath.Join(own, "notes.jsonl")} {
 		require.NoError(t, os.WriteFile(path, []byte("old"), 0o600))
 	}
-	link := filepath.Join(own, "kata-backup-20260901T000000.000000000Z-123456.jsonl")
+	link := filepath.Join(own, "poomsae-backup-20260901T000000.000000000Z-123456.jsonl")
 	linkCreated := os.Symlink(filepath.Join(other, old), link) == nil
 	exports := make(chan string, 4)
 	schedule, err := New(Settings{Dir: root, StorageID: "012345abcdef", Interval: time.Hour, Retain: 24 * time.Hour, Export: func(_ context.Context, path string) error {
@@ -124,7 +124,7 @@ func TestScheduleExportFailureKeepsOldBackupAndRetries(t *testing.T) {
 	root := t.TempDir()
 	own := filepath.Join(root, "012345abcdef")
 	require.NoError(t, os.MkdirAll(own, 0o700))
-	old := filepath.Join(own, "kata-backup-20260901T000000.000000000Z-abcdef.jsonl")
+	old := filepath.Join(own, "poomsae-backup-20260901T000000.000000000Z-abcdef.jsonl")
 	require.NoError(t, os.WriteFile(old, []byte("old"), 0o600))
 	attempts := 0
 	reported := make(chan error, 1)

@@ -8,14 +8,14 @@
     floatingPopoverStyle,
   } from '@kenn-io/kit-ui'
   import { tick } from 'svelte'
-  import type { KataOptionalTaskColumn, KataTaskColumnVisibility } from '../lib/kata/columns'
+  import type { PoomsaeOptionalTaskColumn, PoomsaeTaskColumnVisibility } from '../lib/poomsae/columns'
 
   interface Props {
-    visibility: KataTaskColumnVisibility
-    columns: readonly { id: KataOptionalTaskColumn; label: string }[]
+    visibility: PoomsaeTaskColumnVisibility
+    columns: readonly { id: PoomsaeOptionalTaskColumn; label: string }[]
     splitDirection: 'horizontal' | 'vertical'
     onSplitDirectionChange: (direction: 'horizontal' | 'vertical') => void
-    onchange: (visibility: KataTaskColumnVisibility) => void
+    onchange: (visibility: PoomsaeTaskColumnVisibility) => void
   }
 
   let { visibility, columns, splitDirection, onSplitDirectionChange, onchange }: Props = $props()

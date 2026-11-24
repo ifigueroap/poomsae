@@ -31,8 +31,8 @@ func main() {
 }
 
 func run(ctx context.Context, stderr io.Writer) int {
-	baseRef := getenvDefault("KATA_MIGRATION_BASE_REF", defaultBaseRef)
-	migrationDir := strings.TrimRight(getenvDefault("KATA_MIGRATION_DIR", defaultMigrationDir), "/")
+	baseRef := getenvDefault("POOMSAE_MIGRATION_BASE_REF", defaultBaseRef)
+	migrationDir := strings.TrimRight(getenvDefault("POOMSAE_MIGRATION_DIR", defaultMigrationDir), "/")
 
 	if _, err := git(ctx, "rev-parse", "--git-dir"); err != nil {
 		writef(stderr, "migration history check must run inside a git worktree\n")
@@ -40,7 +40,7 @@ func run(ctx context.Context, stderr io.Writer) int {
 	}
 	if _, err := git(ctx, "rev-parse", "--verify", "--quiet", baseRef+"^{commit}"); err != nil {
 		writef(stderr, "Cannot verify migration history because %s is unavailable.\n", baseRef)
-		writef(stderr, "Fetch the main branch or set KATA_MIGRATION_BASE_REF to the main-branch ref to compare against.\n")
+		writef(stderr, "Fetch the main branch or set POOMSAE_MIGRATION_BASE_REF to the main-branch ref to compare against.\n")
 		return 1
 	}
 

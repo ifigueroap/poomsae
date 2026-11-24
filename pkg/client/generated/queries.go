@@ -252,7 +252,7 @@ type PollFederationProjectEventsQuery struct {
 	IssueUID *string `json:"issue_uid,omitempty"`
 	Limit    *int64  `json:"limit,omitempty"`
 
-	// Wait Seconds the hub may hold a caught-up project poll until an event commits. The hub caps it at the value in X-Kata-Federation-Poll-Wait-Max and answers at once when it cannot hold the request.
+	// Wait Seconds the hub may hold a caught-up project poll until an event commits. The hub caps it at the value in X-Poomsae-Federation-Poll-Wait-Max and answers at once when it cannot hold the request.
 	Wait *int64 `json:"wait,omitempty"`
 }
 

@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 func TestFederationClientPollProjectEvents(t *testing.T) {
@@ -120,7 +120,7 @@ func TestFederationClientIngestProjectEvents(t *testing.T) {
 		EventUID:          "01HZNQ7VFPK1XGD8R5MABCD4EX",
 		OriginInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 		ProjectUID:        "01HZNQ7VFPK1XGD8R5MABCD4EP",
-		ProjectName:       "kata",
+		ProjectName:       "poomsae",
 		IssueUID:          &issueUID,
 		Type:              "issue.created",
 		Actor:             "spoke",
@@ -176,7 +176,7 @@ func TestFederationClientProjectFederation(t *testing.T) {
 		require.NoError(t, json.NewEncoder(w).Encode(api.ProjectFederationBody{
 			ProjectID:              42,
 			ProjectUID:             "01HZNQ7VFPK1XGD8R5MABCD4EX",
-			ProjectName:            "kata",
+			ProjectName:            "poomsae",
 			ReplayHorizonEventID:   9,
 			BaselineThroughEventID: 11,
 		}))

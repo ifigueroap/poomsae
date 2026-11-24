@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 type sourceFixture struct {
@@ -41,7 +41,7 @@ func sourceData() *sourceFixture {
 }
 func adapterDB(t *testing.T) (*sqlitestore.Store, db.IssueSyncBinding) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, s.Close()) })
@@ -903,7 +903,7 @@ func TestAdapterRecoversMissingAtUniqueTaskLimit(t *testing.T) {
 }
 
 // Completed history must not accumulate lookups or checkpoint entries: a
-// missing task whose Kata issue is closed stops being read until it reappears.
+// missing task whose Poomsae issue is closed stops being read until it reappears.
 func TestAdapterRetiresClosedMissingTasks(t *testing.T) {
 	ctx := t.Context()
 	s, b := adapterDB(t)
@@ -1167,7 +1167,7 @@ func TestRecoveredTaskIsDatedWhenRead(t *testing.T) {
 	require.Equal(t, "Remote change", mappedIssue(t, s, b, "task-1").Title)
 }
 
-// A TickTick completion of an issue already closed in Kata keeps the local
+// A TickTick completion of an issue already closed in Poomsae keeps the local
 // close reason and time.
 func TestRemoteCompletionKeepsLocalCloseDetails(t *testing.T) {
 	ctx := t.Context()

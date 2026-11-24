@@ -1,4 +1,4 @@
-// Package docs embeds Kata's user-facing Markdown documentation so the MCP
+// Package docs embeds Poomsae's user-facing Markdown documentation so the MCP
 // server can answer documentation questions without network access.
 package docs
 

@@ -14,7 +14,7 @@ export function currentApplicationBaseURL(): URL {
 }
 
 export function applicationRoutePath(base = runtimeBaseURL): string {
-  return base.pathname === '/' ? '/kata' : base.pathname
+  return base.pathname === '/' ? '/poomsae' : base.pathname
 }
 
 export function applicationURL(input: string | URL, base = runtimeBaseURL): URL {

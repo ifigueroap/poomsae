@@ -1,4 +1,4 @@
-// Package colormode resolves kata's terminal palette preference.
+// Package colormode resolves poomsae's terminal palette preference.
 package colormode
 
 import (
@@ -22,12 +22,12 @@ const (
 	None
 )
 
-// Resolve honors NO_COLOR over KATA_COLOR_MODE. Unrecognized values use Auto.
+// Resolve honors NO_COLOR over POOMSAE_COLOR_MODE. Unrecognized values use Auto.
 func Resolve() Mode {
 	if os.Getenv("NO_COLOR") != "" {
 		return None
 	}
-	switch strings.ToLower(os.Getenv("KATA_COLOR_MODE")) {
+	switch strings.ToLower(os.Getenv("POOMSAE_COLOR_MODE")) {
 	case "dark":
 		return Dark
 	case "light":

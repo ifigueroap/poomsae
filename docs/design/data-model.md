@@ -4,7 +4,7 @@ last_edited: 2026-11-19
 
 # Data model and durability
 
-This note explains the parts of kata's data model that are easy to get wrong and
+This note explains the parts of poomsae's data model that are easy to get wrong and
 hard to reconstruct from the schema alone: how identity works, why the audit log
 is the spine of the system, and the cursor invariant that lets a client miss a
 purge without missing data. It complements the
@@ -44,7 +44,7 @@ State changes are not just stored; they are recorded. Three rules follow:
 - Issues themselves are mutable current-state rows, but every mutation emits an
   event, so the current row is always reconstructable from history.
 
-This is what makes kata auditable by construction, and it is the foundation the
+This is what makes poomsae auditable by construction, and it is the foundation the
 [federation fold engine](federation.md) later relies on to converge replicas.
 
 ### The destructive ladder
@@ -71,7 +71,7 @@ monotonic id doubles as the stream cursor. Purge complicates this: deleting
 events leaves a hole in the id sequence, and a client reconnecting with an old
 cursor must not silently skip the fact that history changed underneath it.
 
-kata solves this by reserving a synthetic cursor at purge time. In the same
+poomsae solves this by reserving a synthetic cursor at purge time. In the same
 transaction that deletes events, the daemon advances the events table's
 autoincrement sequence by one **without inserting a row**, and stores that
 reserved value as `purge_log.purge_reset_after_event_id`. The reserved value is
@@ -111,7 +111,7 @@ correctness one.
 
 Two independent mechanisms keep agents from creating duplicate issues.
 
-**Idempotency keys.** A create request may carry an idempotency key. kata stores
+**Idempotency keys.** A create request may carry an idempotency key. poomsae stores
 a fingerprint alongside it that covers every creation-affecting field: title,
 body, owner, labels, and initial links, each canonicalized so cosmetic
 whitespace differences do not matter. Replaying the same key with the same
@@ -229,7 +229,7 @@ indexes. The 50→51 step drops `idx_events_resolved_issue_uid` and adds
 creating the index it would drop. The 52→53 step adds
 `idx_events_project_moves`.
 
-Changes to existing tables, triggers, or FTS use JSONL cutover. Kata exports the current
+Changes to existing tables, triggers, or FTS use JSONL cutover. Poomsae exports the current
 database to JSONL exactly as stored, imports that JSONL
 into a fresh database at the binary's current schema, applies deterministic fill
 rules for anything an older export version lacked, validates, and atomically
@@ -279,7 +279,7 @@ path before relying on preservation because an older daemon can omit the field
 while materializing and re-exporting comment state.
 
 Postgres never uses the ambient `public` schema. A standalone open defaults to
-the dedicated `kata` schema; configured opens accept one restricted lowercase
+the dedicated `poomsae` schema; configured opens accept one restricted lowercase
 identifier and replace any DSN-provided `search_path` with that single quoted
 schema. Bootstrap mode creates an empty target schema, installs the canonical
 schema or applies registered forward migrations, and holds a
@@ -289,10 +289,10 @@ concurrently. A pre-existing non-empty schema without migration metadata is
 treated as a conflict rather than adopted.
 
 Validation mode performs no DDL and requires the exact binary schema version.
-It is the runtime-role path after a separate migration role runs `kata storage
+It is the runtime-role path after a separate migration role runs `poomsae storage
 postgres migrate`. Older versions require a complete registered migration
 chain; newer versions fail closed until a matching binary is used. This keeps
-schema ownership with kata without requiring the serving credential to hold
+schema ownership with poomsae without requiring the serving credential to hold
 schema-creation privileges. The production ceremony and grants are documented
 in [PostgreSQL operations](../operations/postgres.md).
 
@@ -345,13 +345,13 @@ backend-package tests remain appropriate for SQL-specific details.
 
 JSONL replay is an atomic whole-database replacement on both backends, not a
 merge. SQLite imports into a temporary file set before swapping it into place;
-Postgres truncates every kata-owned table except `meta` inside the same
+Postgres truncates every poomsae-owned table except `meta` inside the same
 locked replay transaction, restores the snapshot, rebuilds derived token state,
-and reconciles identity sequences before commit. This lets `kata import
---target postgres://...` create a fresh `kata` schema or replace an initialized
+and reconciles identity sequences before commit. This lets `poomsae import
+--target postgres://...` create a fresh `poomsae` schema or replace an initialized
 one with `--force` without exposing partial restored state.
 
-`kata import --as-standalone` uses the same replay transaction for an independent
+`poomsae import --as-standalone` uses the same replay transaction for an independent
 copy. JSONL normalization removes federation bindings, sync status, quarantine,
 enrollments, root pins, signed provenance, root-key transition metadata, relay
 delivery and reset metadata, pending attribution state, claims, pending claim

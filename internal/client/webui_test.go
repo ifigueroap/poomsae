@@ -14,25 +14,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/version"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestPrepareWebUIRequiresAssetsDuringDaemonSelection(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
-	t.Setenv("KATA_SERVER", "")
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SERVER", "")
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	uid := store.InstanceUID()
 	require.NoError(t, store.Close())
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, uid)
@@ -69,13 +69,13 @@ func TestOpenWebUILocalLoopbackOpensDirectly(t *testing.T) {
 			Origin:       "http://127.0.0.1:27123",
 			Capabilities: []string{"loopback", "sse"},
 		},
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "http://127.0.0.1:27123/kata?view=today", opened.PublicURL)
+	assert.Equal(t, "http://127.0.0.1:27123/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUILocalExplicitDaemonPinsInitialSelection(t *testing.T) {
@@ -85,17 +85,17 @@ func TestOpenWebUILocalExplicitDaemonPinsInitialSelection(t *testing.T) {
 		Runtime: DiscoveredWebRuntime{
 			Origin: "http://127.0.0.1:27123", Capabilities: []string{"loopback", "sse"},
 		},
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "http://127.0.0.1:27123/kata?view=today#daemon=example-local", opened.PublicURL)
+	assert.Equal(t, "http://127.0.0.1:27123/poomsae?view=today#daemon=example-local", opened.PublicURL)
 }
 
 func TestResolveWebUIHostTargetUsesLocalGatewayDespiteRemoteOverride(t *testing.T) {
-	t.Setenv("KATA_SERVER", "https://daemon.example")
+	t.Setenv("POOMSAE_SERVER", "https://daemon.example")
 	ctx := context.WithValue(t.Context(), BaseURLKey{}, "http://127.0.0.1:27123")
 
 	resolved, err := resolveWebUIHostTarget(ctx, PrepareWebUIOptions{})
@@ -147,9 +147,9 @@ allow_insecure = true
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_AUTH_TOKEN", "")
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_AUTH_TOKEN", "")
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 			require.NoError(t, writeRawConfig(home, tt.configBody))
 
 			prepared, err := PrepareWebUI(t.Context(), PrepareWebUIOptions{DaemonName: tt.daemonName})
@@ -169,21 +169,21 @@ func TestOpenWebUILocalTrustedProxyOpensDirectly(t *testing.T) {
 		Runtime: DiscoveredWebRuntime{
 			Origin: "https://daemon.example", Capabilities: []string{"proxy", "sse"},
 		},
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://daemon.example/kata?view=today", opened.PublicURL)
+	assert.Equal(t, "https://daemon.example/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUIRemoteLoginRejectsPathPrefix(t *testing.T) {
 	opened := false
 	err := OpenWebUI(t.Context(), PreparedWebUI{
-		BaseURL:          "https://daemon.example/kata",
+		BaseURL:          "https://daemon.example/poomsae",
 		ConfiguredRemote: true,
-	}, "/kata?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&status=open", func(_ context.Context, _ WebUILaunch) error {
+	}, "/poomsae?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&status=open", func(_ context.Context, _ WebUILaunch) error {
 		opened = true
 		return nil
 	})
@@ -213,13 +213,13 @@ func TestOpenWebUIRemoteReadonlyOpensWithoutLogin(t *testing.T) {
 	var opened WebUILaunch
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, server.URL+"/kata?view=today", opened.PublicURL)
+	assert.Equal(t, server.URL+"/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUIExplicitRemoteDisablesGatewayReselection(t *testing.T) {
@@ -237,13 +237,13 @@ func TestOpenWebUIExplicitRemoteDisablesGatewayReselection(t *testing.T) {
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, DaemonName: "example-remote",
 		AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, server.URL+"/kata?view=today#direct=1", opened.PublicURL)
+	assert.Equal(t, server.URL+"/poomsae?view=today#direct=1", opened.PublicURL)
 }
 
 func TestOpenWebUIRemoteReadonlyProbeRejectsRedirect(t *testing.T) {
@@ -261,7 +261,7 @@ func TestOpenWebUIRemoteReadonlyProbeRejectsRedirect(t *testing.T) {
 	opened := false
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: source.URL, ConfiguredRemote: true, AnonymousClient: source.Client(),
-	}, "/kata", func(_ context.Context, _ WebUILaunch) error {
+	}, "/poomsae", func(_ context.Context, _ WebUILaunch) error {
 		opened = true
 		return nil
 	})
@@ -275,7 +275,7 @@ func TestOpenWebUIRemoteLoginRejectsUntrustedPlaintext(t *testing.T) {
 	opened := false
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: "http://daemon.example", ConfiguredRemote: true,
-	}, "/kata", func(_ context.Context, _ WebUILaunch) error {
+	}, "/poomsae", func(_ context.Context, _ WebUILaunch) error {
 		opened = true
 		return nil
 	})
@@ -319,8 +319,8 @@ func TestValidateWebLoginTargetPolicy(t *testing.T) {
 
 func TestOpenWebUIRemoteAuthenticationOpensCanonicalLoginOrigin(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("X-Kata-Web-Origin", "https://daemon.example")
-		w.Header().Set("X-Kata-Web-Authentication", "login")
+		w.Header().Set("X-Poomsae-Web-Origin", "https://daemon.example")
+		w.Header().Set("X-Poomsae-Web-Authentication", "login")
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	t.Cleanup(server.Close)
@@ -328,7 +328,7 @@ func TestOpenWebUIRemoteAuthenticationOpensCanonicalLoginOrigin(t *testing.T) {
 	var opened WebUILaunch
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
@@ -340,7 +340,7 @@ func TestOpenWebUIRemoteAuthenticationOpensCanonicalLoginOrigin(t *testing.T) {
 	fragment, err := url.ParseQuery(target.Fragment)
 	require.NoError(t, err)
 	assert.Equal(t, "1", fragment.Get("login"))
-	assert.Equal(t, "/kata?view=today", fragment.Get("return_path"))
+	assert.Equal(t, "/poomsae?view=today", fragment.Get("return_path"))
 }
 
 func TestOpenWebUIRemoteAuthenticationRequiresCanonicalOrigin(t *testing.T) {
@@ -352,7 +352,7 @@ func TestOpenWebUIRemoteAuthenticationRequiresCanonicalOrigin(t *testing.T) {
 	opened := false
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, _ WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, _ WebUILaunch) error {
 		opened = true
 		return nil
 	})
@@ -363,8 +363,8 @@ func TestOpenWebUIRemoteAuthenticationRequiresCanonicalOrigin(t *testing.T) {
 
 func TestOpenWebUIConfiguredLoopbackOpensDirectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Kata-Web-Origin", "http://"+r.Host)
-		w.Header().Set("X-Kata-Web-Authentication", "loopback")
+		w.Header().Set("X-Poomsae-Web-Origin", "http://"+r.Host)
+		w.Header().Set("X-Poomsae-Web-Authentication", "loopback")
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	t.Cleanup(server.Close)
@@ -372,19 +372,19 @@ func TestOpenWebUIConfiguredLoopbackOpensDirectly(t *testing.T) {
 	var opened WebUILaunch
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, server.URL+"/kata?view=today", opened.PublicURL)
+	assert.Equal(t, server.URL+"/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUIConfiguredTrustedProxyOpensDirectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("X-Kata-Web-Origin", "https://daemon.example")
-		w.Header().Set("X-Kata-Web-Authentication", "proxy")
+		w.Header().Set("X-Poomsae-Web-Origin", "https://daemon.example")
+		w.Header().Set("X-Poomsae-Web-Authentication", "proxy")
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	t.Cleanup(server.Close)
@@ -392,13 +392,13 @@ func TestOpenWebUIConfiguredTrustedProxyOpensDirectly(t *testing.T) {
 	var opened WebUILaunch
 	err := OpenWebUI(t.Context(), PreparedWebUI{
 		BaseURL: server.URL, ConfiguredRemote: true, AnonymousClient: server.Client(),
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://daemon.example/kata?view=today", opened.PublicURL)
+	assert.Equal(t, "https://daemon.example/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUILocalReadonlyOpensDirectly(t *testing.T) {
@@ -407,12 +407,12 @@ func TestOpenWebUILocalReadonlyOpensDirectly(t *testing.T) {
 		Runtime: DiscoveredWebRuntime{
 			Origin: "http://127.0.0.1:27123", Capabilities: []string{"readonly", "poll"},
 		},
-	}, "/kata?view=today", func(_ context.Context, target WebUILaunch) error {
+	}, "/poomsae?view=today", func(_ context.Context, target WebUILaunch) error {
 		opened = target
 		return nil
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "http://127.0.0.1:27123/kata?view=today", opened.PublicURL)
+	assert.Equal(t, "http://127.0.0.1:27123/poomsae?view=today", opened.PublicURL)
 }
 
 func TestOpenWebUIRefusesUnsafeRuntimeMetadata(t *testing.T) {
@@ -422,7 +422,7 @@ func TestOpenWebUIRefusesUnsafeRuntimeMetadata(t *testing.T) {
 		Runtime: DiscoveredWebRuntime{
 			Origin: unsafeOrigin, Capabilities: []string{"loopback"},
 		},
-	}, "/kata", func(context.Context, WebUILaunch) error {
+	}, "/poomsae", func(context.Context, WebUILaunch) error {
 		opened = true
 		return nil
 	})
@@ -434,7 +434,7 @@ func TestLocalProfileBrowserUsesSelectedRuntimeWithoutOuterAlias(t *testing.T) {
 	profile, root := localProfileFixture(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
@@ -443,10 +443,10 @@ func TestLocalProfileBrowserUsesSelectedRuntimeWithoutOuterAlias(t *testing.T) {
 	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
-	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"), Version: "test", Metadata: map[string]string{"web_origin": "http://127.0.0.1:27123", "web_origin_stable": "true", "web_capabilities": "loopback,sse"}})
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"), Version: "test", Metadata: map[string]string{"web_origin": "http://127.0.0.1:27123", "web_origin_stable": "true", "web_capabilities": "loopback,sse"}})
 	require.NoError(t, err)
-	t.Setenv("KATA_POSTGRES_SCHEMA", "invalid parent schema")
-	t.Setenv("KATA_DSN", "postgres://user@127.0.0.1:1/personal")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "invalid parent schema")
+	t.Setenv("POOMSAE_DSN", "postgres://user@127.0.0.1:1/personal")
 	for _, name := range []string{"", "work"} {
 		t.Run("name="+name, func(t *testing.T) {
 			prepared, err := PrepareWebUI(t.Context(), PrepareWebUIOptions{WorkspaceStart: root, DaemonName: name})
@@ -454,8 +454,8 @@ func TestLocalProfileBrowserUsesSelectedRuntimeWithoutOuterAlias(t *testing.T) {
 			assert.Empty(t, prepared.DaemonName)
 			assert.Equal(t, "http://127.0.0.1:27123", prepared.Runtime.Origin)
 			var opened WebUILaunch
-			require.NoError(t, OpenWebUI(t.Context(), prepared, "/kata", func(_ context.Context, v WebUILaunch) error { opened = v; return nil }))
-			assert.Equal(t, "http://127.0.0.1:27123/kata", opened.PublicURL)
+			require.NoError(t, OpenWebUI(t.Context(), prepared, "/poomsae", func(_ context.Context, v WebUILaunch) error { opened = v; return nil }))
+			assert.Equal(t, "http://127.0.0.1:27123/poomsae", opened.PublicURL)
 		})
 	}
 }

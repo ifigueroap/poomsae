@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
 )
 
 // switchableHubProxy forwards to the hub until it is taken down, after which
@@ -62,7 +62,7 @@ type bridgeDisconnectBody struct {
 // and its undelivered issue stay, all bridge state goes, and the response warns
 // that the hub grant was not revoked.
 func TestFederationBridgeLocalOnlyDisconnectWithoutHub(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	proxy, down := switchableHubProxy(t, hub)
 	store := openReplicaServiceStore(t)
@@ -160,7 +160,7 @@ func TestFederationBridgeLocalOnlyDisconnectWithoutHub(t *testing.T) {
 // binding. A local-only detach resolves that binding and needs no saved hub
 // credential; an ordinary disconnect still does.
 func TestFederationBridgeLocalOnlyDisconnectWithoutCredential(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	proxy, down := switchableHubProxy(t, hub)
 	store := openReplicaServiceStore(t)
@@ -233,7 +233,7 @@ func TestFederationBridgeLocalOnlyDisconnectWithoutCredential(t *testing.T) {
 // enrollment_pending. Once the credential entry is gone too, the owner can
 // still detach that bridge locally from the binding alone.
 func TestFederationBridgeLocalOnlyDisconnectPendingEnrollmentWithoutCredential(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProject(t.Context(), "shared-replica")
 	require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestFederationBridgeLocalOnlyDisconnectPendingEnrollmentWithoutCredential(t
 // Downstream relays depend on this bridge, so a local-only disconnect is
 // refused, in preflight and for real, until they are revoked.
 func TestFederationBridgeLocalOnlyDisconnectRefusesDownstream(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	store := openReplicaServiceStore(t)
 	local := newBridgeLocalDaemon(t, store, hub.catalog(hub.root.server.URL))
@@ -323,7 +323,7 @@ func TestFederationBridgeLocalOnlyDisconnectRefusesDownstream(t *testing.T) {
 // never saw: the new binding offers them to the hub before any reset, and
 // they stay in the local project.
 func TestFederationBridgeReconnectAfterLocalOnlyDeliversRetainedWork(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	proxy, down := switchableHubProxy(t, hub)
 	store := openReplicaServiceStore(t)

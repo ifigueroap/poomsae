@@ -19,7 +19,7 @@ import (
 	ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/golang-jwt/jwt/v4"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // CredentialKind identifies the credential source selected for a GitHub sync

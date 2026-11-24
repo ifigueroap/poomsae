@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 
-	"go.kenn.io/kata/internal/mcpevents"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 const wantEventsExtensionID = "io.modelcontextprotocol/events"
@@ -99,7 +99,7 @@ func TestSubscribeForwardsWireShapeAndScope(t *testing.T) {
 	assert.Contains(t, result, "refreshBefore")
 	assert.Nil(t, result["refreshBefore"])
 	assert.Equal(t, map[string]any{"active": true}, result["deliveryStatus"])
-	// kata.inbox.changed does not replay (SEP-3415): the client's cursor and
+	// poomsae.inbox.changed does not replay (SEP-3415): the client's cursor and
 	// maxAgeMs are ignored and the result carries a null cursor.
 	assert.Contains(t, result, "cursor")
 	assert.Nil(t, result["cursor"])
@@ -174,7 +174,7 @@ func TestEmptyProjectUIDsAreRejectedBeforeTheDaemon(t *testing.T) {
 				t.Run(selection+"/"+scopeName+"/"+method, func(t *testing.T) {
 					daemon, client := newRecordingDaemon(t)
 					handler := newTestHTTPHandler(t, client, scope(t))
-					params := `"name":"kata.inbox.changed","arguments":{"for":"example-agent/worker","project_uids":` + selection + `},"delivery":{"mode":"webhook","url":"` + testCallback + `","secret":"` + testSecret + `"}`
+					params := `"name":"poomsae.inbox.changed","arguments":{"for":"example-agent/worker","project_uids":` + selection + `},"delivery":{"mode":"webhook","url":"` + testCallback + `","secret":"` + testSecret + `"}`
 					recorder, wire := serve(handler, currentRequest(method, testEventName, eventsRPC(method, params)))
 					require.Equal(t, http.StatusBadRequest, recorder.Code, recorder.Body.String())
 					errObj := wire["error"].(map[string]any)
@@ -193,8 +193,8 @@ func TestMalformedParamsAreInvalidParams(t *testing.T) {
 	handler := newTestHTTPHandler(t, client, boundTestScope(t))
 	for _, params := range []string{
 		eventsParams(`"surprise":1`),
-		`"name":"kata.inbox.changed","arguments":"x","delivery":{}`,
-		`"name":"kata.inbox.changed","arguments":{"for":"a","extra":1},"delivery":{"mode":"webhook","url":"u","secret":"s"}`,
+		`"name":"poomsae.inbox.changed","arguments":"x","delivery":{}`,
+		`"name":"poomsae.inbox.changed","arguments":{"for":"a","extra":1},"delivery":{"mode":"webhook","url":"u","secret":"s"}`,
 	} {
 		recorder, wire := serve(handler, currentRequest("events/subscribe", testEventName, eventsRPC("events/subscribe", params)))
 		require.Equal(t, http.StatusBadRequest, recorder.Code, recorder.Body.String())
@@ -275,7 +275,7 @@ func TestEventSubscriptionsToolReadsTheDaemonStatusRoute(t *testing.T) {
 	daemon, client := newRecordingDaemon(t)
 	daemon.reply = func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"enabled":true,"subscriptions":[{"id":"sub_fixture","name":"kata.inbox.changed","recipient":"example-agent/worker","project_uids":["01ARZ3NDEKTSV4RRFFQ69G5FAA"],"state":"active","refresh_before":null,"delivery":{"active":true,"last_error":"timeout"},"failed_attempts":1,"dead_letter_count":0}]}`))
+		_, _ = w.Write([]byte(`{"enabled":true,"subscriptions":[{"id":"sub_fixture","name":"poomsae.inbox.changed","recipient":"example-agent/worker","project_uids":["01ARZ3NDEKTSV4RRFFQ69G5FAA"],"state":"active","refresh_before":null,"delivery":{"active":true,"last_error":"timeout"},"failed_attempts":1,"dead_letter_count":0}]}`))
 	}
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, Scope: boundTestScope(t), Actor: "example-agent", Version: "test", Events: true,
@@ -286,9 +286,9 @@ func TestEventSubscriptionsToolReadsTheDaemonStatusRoute(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names = append(names, tool.Name)
 	}
-	assert.Contains(t, names, "kata.event_subscriptions")
+	assert.Contains(t, names, "poomsae.event_subscriptions")
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.event_subscriptions", Arguments: map[string]any{}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.event_subscriptions", Arguments: map[string]any{}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, mustJSON(t, result))
 	output := result.StructuredContent.(map[string]any)
@@ -336,7 +336,7 @@ func TestUnresolvableForwarderScopeIsAFixedUnavailable(t *testing.T) {
 func TestEventSubscriptionsDisplayFilterFollowsTheForwarderScope(t *testing.T) {
 	const other = "01ARZ3NDEKTSV4RRFFQ69G5FAB"
 	row := func(id, projects string) string {
-		return `{"id":"` + id + `","name":"kata.inbox.changed","recipient":"r","state":"active","refresh_before":null,"delivery":{"active":true},"failed_attempts":0,"dead_letter_count":0` + projects + `}`
+		return `{"id":"` + id + `","name":"poomsae.inbox.changed","recipient":"r","state":"active","refresh_before":null,"delivery":{"active":true},"failed_attempts":0,"dead_letter_count":0` + projects + `}`
 	}
 	body := `{"enabled":true,"subscriptions":[` +
 		row("in_scope", `,"project_uids":["`+testProjectUID+`"]`) + `,` +
@@ -350,7 +350,7 @@ func TestEventSubscriptionsDisplayFilterFollowsTheForwarderScope(t *testing.T) {
 			_, _ = w.Write([]byte(body))
 		}
 		session := connectTestServerWithOptions(t, Options{Client: client, Scope: scope, Actor: "example-agent", Version: "test", Events: true})
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.event_subscriptions", Arguments: map[string]any{}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.event_subscriptions", Arguments: map[string]any{}})
 		require.NoError(t, err)
 		require.False(t, result.IsError, mustJSON(t, result))
 		var out []string
@@ -399,7 +399,7 @@ func TestSharedToolAdmissionCapsBothServers(t *testing.T) {
 func TestSubscribeOutlivesTheOrdinaryRequestTimeout(t *testing.T) {
 	server := httptest.NewServer(&recordingDaemon{})
 	t.Cleanup(server.Close)
-	longRunning, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	longRunning, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	current, err := New(Options{
 		Events: true, Client: inertTestClient(t), LongRunningClient: longRunning, Scope: boundTestScope(t), Actor: "example-agent", Version: "test-version",

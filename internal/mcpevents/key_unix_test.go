@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/mcpevents"
 )
 
 // A FIFO at the key path must fail the load promptly. A blocking open would

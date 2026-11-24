@@ -13,7 +13,7 @@ import {
 describe('browser session bootstrap', () => {
   beforeEach(() => {
     sessionStorage.clear()
-    history.replaceState(null, '', '/kata')
+    history.replaceState(null, '', '/poomsae')
   })
 
   it('bootstraps a direct local tab without a launch fragment', async () => {
@@ -21,12 +21,12 @@ describe('browser session bootstrap', () => {
       expect(String(input)).toBe('/api/v1/ui/session/local')
       expect(init?.credentials).toBe('same-origin')
       expect(init?.redirect).toBe('error')
-      expect(init?.body).toBe(JSON.stringify({ return_path: '/kata' }))
+      expect(init?.body).toBe(JSON.stringify({ return_path: '/poomsae' }))
       return new Response(
         JSON.stringify({
           session: 'local-session',
           csrf: 'local-csrf',
-          return_path: '/kata',
+          return_path: '/poomsae',
           writable: true,
           updates: 'sse',
           actor_policy: 'request',
@@ -35,7 +35,7 @@ describe('browser session bootstrap', () => {
       )
     })
 
-    const result = await openLocalSession('/kata', fetcher, sessionStorage)
+    const result = await openLocalSession('/poomsae', fetcher, sessionStorage)
 
     expect(result?.kind).toBe('authenticated')
     expect(loadSessionCredentials(sessionStorage)).toEqual({
@@ -46,7 +46,7 @@ describe('browser session bootstrap', () => {
 
   it('leaves unavailable direct local bootstrap unauthenticated', async () => {
     const result = await openLocalSession(
-      '/kata',
+      '/poomsae',
       vi.fn(async () => new Response('', { status: 404 })),
       sessionStorage,
     )
@@ -64,7 +64,7 @@ describe('browser session bootstrap', () => {
         JSON.stringify({
           session: 'proxy-session',
           csrf: 'proxy-csrf',
-          return_path: '/kata',
+          return_path: '/poomsae',
           writable: true,
           updates: 'sse',
           actor_policy: 'identity',
@@ -73,7 +73,7 @@ describe('browser session bootstrap', () => {
       )
     })
 
-    const result = await openTrustedProxySession('/kata', fetcher, sessionStorage)
+    const result = await openTrustedProxySession('/poomsae', fetcher, sessionStorage)
 
     expect(result.kind).toBe('authenticated')
     expect(result.capabilities.actorPolicy).toBe('identity')
@@ -87,7 +87,7 @@ describe('browser session bootstrap', () => {
         JSON.stringify({
           session: 'login-session',
           csrf: 'login-csrf',
-          return_path: '/kata?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&label=ready',
+          return_path: '/poomsae?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&label=ready',
           writable: true,
           updates: 'sse',
           actor_policy: 'identity',
@@ -98,7 +98,7 @@ describe('browser session bootstrap', () => {
 
     await exchangeLoginToken(
       'direct-bearer-value',
-      '/kata?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&label=ready',
+      '/poomsae?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&label=ready',
       fetcher,
       sessionStorage,
     )
@@ -116,7 +116,7 @@ describe('browser session bootstrap', () => {
           JSON.stringify({
             session: 'expired-session',
             csrf: 'expired-csrf',
-            return_path: '/kata',
+            return_path: '/poomsae',
             writable: true,
             updates: 'poll',
             actor_policy: 'identity',
@@ -134,7 +134,7 @@ describe('browser session bootstrap', () => {
     )
 
     await expect(
-      exchangeLoginToken('direct-bearer-value', '/kata', fetcher, sessionStorage),
+      exchangeLoginToken('direct-bearer-value', '/poomsae', fetcher, sessionStorage),
     ).rejects.toThrow('Login failed')
     expect(loadSessionCredentials(sessionStorage)).toBeUndefined()
   })
@@ -143,22 +143,22 @@ describe('browser session bootstrap', () => {
     history.replaceState(
       null,
       '',
-      '/kata#login=1&return_path=%2Fkata%3Fscope%3D01HZNQ7VFPK1XGD8R5MABCD4EX%26owner%3Duser-a',
+      '/poomsae#login=1&return_path=%2Fpoomsae%3Fscope%3D01HZNQ7VFPK1XGD8R5MABCD4EX%26owner%3Duser-a',
     )
 
     const result = consumeLaunchFragment(window.location, history.replaceState.bind(history))
 
     expect(result).toEqual({
       kind: 'login',
-      returnPath: '/kata?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&owner=user-a',
+      returnPath: '/poomsae?scope=01HZNQ7VFPK1XGD8R5MABCD4EX&owner=user-a',
     })
     expect(window.location.hash).toBe('')
   })
 
   it.each([
-    ['/kata?issue=example#abc4', '/kata?issue=example%23abc4'],
-    ['/kata?issue=01J00000000000000000000001#comments', '/kata?issue=01J00000000000000000000001'],
-    ['/kata?scope=example&issue=abc4#top', '/kata?scope=example&issue=abc4'],
+    ['/poomsae?issue=example#abc4', '/poomsae?issue=example%23abc4'],
+    ['/poomsae?issue=01J00000000000000000000001#comments', '/poomsae?issue=01J00000000000000000000001'],
+    ['/poomsae?scope=example&issue=abc4#top', '/poomsae?scope=example&issue=abc4'],
   ])('handles issue fragment in %s', (url, expected) => {
     history.replaceState(null, '', url)
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
@@ -169,55 +169,55 @@ describe('browser session bootstrap', () => {
   })
 
   it('consumes an explicit daemon launch target before routing', () => {
-    history.replaceState(null, '', '/kata#daemon=example-remote')
+    history.replaceState(null, '', '/poomsae#daemon=example-remote')
 
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
       kind: 'none',
-      returnPath: '/kata',
+      returnPath: '/poomsae',
       daemonID: 'example-remote',
     })
     expect(window.location.hash).toBe('')
   })
 
   it('consumes direct-target launch state before routing', () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
 
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
       kind: 'none',
-      returnPath: '/kata',
+      returnPath: '/poomsae',
       directTarget: true,
     })
     expect(window.location.hash).toBe('')
 
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
       kind: 'none',
-      returnPath: '/kata',
+      returnPath: '/poomsae',
       directTarget: true,
     })
   })
 
   it('clears retained direct mode for an explicit gateway launch', () => {
-    history.replaceState(null, '', '/kata#direct=1')
+    history.replaceState(null, '', '/poomsae#direct=1')
     consumeLaunchFragment(window.location, history.replaceState.bind(history))
-    history.replaceState(null, '', '/kata#daemon=example-remote')
+    history.replaceState(null, '', '/poomsae#daemon=example-remote')
 
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
       kind: 'none',
-      returnPath: '/kata',
+      returnPath: '/poomsae',
       daemonID: 'example-remote',
     })
     expect(consumeLaunchFragment(window.location, history.replaceState.bind(history))).toEqual({
       kind: 'none',
-      returnPath: '/kata',
+      returnPath: '/poomsae',
     })
   })
 
   it('keeps the explicitly selected authentication mechanism tab-local', () => {
-    expect(selectAuthenticationMode({ kind: 'login', returnPath: '/kata' }, sessionStorage)).toBe(
+    expect(selectAuthenticationMode({ kind: 'login', returnPath: '/poomsae' }, sessionStorage)).toBe(
       'login',
     )
     expect(sessionStorage.getItem(authenticationModeStorageKey)).toBe('login')
-    expect(selectAuthenticationMode({ kind: 'none', returnPath: '/kata' }, sessionStorage)).toBe(
+    expect(selectAuthenticationMode({ kind: 'none', returnPath: '/poomsae' }, sessionStorage)).toBe(
       'login',
     )
   })

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json/v2"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // CronWorkflowCreateInput retains the identity before the first network write.
@@ -24,12 +24,12 @@ type CronWorkflowUpdateInput struct {
 
 func registerCronWorkflowTools(server *sdkmcp.Server, h toolHandlers) {
 	read := toolHints(true, false, false)
-	addCronTool(server, "kata.cron_workflows", "List cron workflows", "List portable workflow definitions. Workflows require an external execution adapter; these tools launch no processes.", read, h.cronWorkflows)
-	addCronTool(server, "kata.cron_workflow", "Read cron workflow", "Read a retained workflow UID and its current definition_event_uid, including a reversible tombstone.", read, h.cronWorkflow)
-	addCronTool(server, "kata.cron_workflow_create", "Create cron workflow", "Create a typed workflow using a UID retained before the first call. No process or execution adapter is launched.", toolHints(false, false, false), h.cronWorkflowCreate)
-	addCronTool(server, "kata.cron_workflow_update", "Replace cron workflow", "Replace a complete workflow using its current expected_event_uid; stale values preserve daemon conflicts.", toolHints(false, true, false), h.cronWorkflowUpdate)
-	addCronTool(server, "kata.cron_workflow_delete", "Archive cron workflow", "Reversibly tombstone a workflow using its current expected_event_uid. In-use workflow conflicts are preserved.", toolHints(false, true, false), h.cronWorkflowDelete)
-	addCronTool(server, "kata.cron_workflow_restore", "Restore cron workflow", "Restore a workflow tombstone using its current expected_event_uid and the daemon's dependency checks.", toolHints(false, false, false), h.cronWorkflowRestore)
+	addCronTool(server, "poomsae.cron_workflows", "List cron workflows", "List portable workflow definitions. Workflows require an external execution adapter; these tools launch no processes.", read, h.cronWorkflows)
+	addCronTool(server, "poomsae.cron_workflow", "Read cron workflow", "Read a retained workflow UID and its current definition_event_uid, including a reversible tombstone.", read, h.cronWorkflow)
+	addCronTool(server, "poomsae.cron_workflow_create", "Create cron workflow", "Create a typed workflow using a UID retained before the first call. No process or execution adapter is launched.", toolHints(false, false, false), h.cronWorkflowCreate)
+	addCronTool(server, "poomsae.cron_workflow_update", "Replace cron workflow", "Replace a complete workflow using its current expected_event_uid; stale values preserve daemon conflicts.", toolHints(false, true, false), h.cronWorkflowUpdate)
+	addCronTool(server, "poomsae.cron_workflow_delete", "Archive cron workflow", "Reversibly tombstone a workflow using its current expected_event_uid. In-use workflow conflicts are preserved.", toolHints(false, true, false), h.cronWorkflowDelete)
+	addCronTool(server, "poomsae.cron_workflow_restore", "Restore cron workflow", "Restore a workflow tombstone using its current expected_event_uid and the daemon's dependency checks.", toolHints(false, false, false), h.cronWorkflowRestore)
 }
 func (h toolHandlers) cronWorkflows(ctx context.Context, _ *sdkmcp.CallToolRequest, in CronListInput) (*sdkmcp.CallToolResult, generated.ListCronWorkflowsResponse, error) {
 	p, err := h.createTarget(ctx, in.Project)

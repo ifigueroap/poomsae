@@ -17,23 +17,23 @@ import (
 // code into a leaf package instead.
 var (
 	allowedKataPackages = []string{
-		"go.kenn.io/kata/internal/client",
-		"go.kenn.io/kata/internal/config",
-		"go.kenn.io/kata/internal/credentialfile",
-		"go.kenn.io/kata/internal/daemonruntime",
-		"go.kenn.io/kata/internal/federationsigning/signingpolicy",
-		"go.kenn.io/kata/internal/httpurl",
-		"go.kenn.io/kata/internal/linkpath",
-		"go.kenn.io/kata/internal/processtree",
-		"go.kenn.io/kata/internal/projectscope",
-		"go.kenn.io/kata/internal/shellquote",
-		"go.kenn.io/kata/internal/tokenactor",
-		"go.kenn.io/kata/internal/transcript",
-		"go.kenn.io/kata/internal/uid",
-		"go.kenn.io/kata/internal/version",
-		"go.kenn.io/kata/pkg/client",
-		"go.kenn.io/kata/pkg/client/generated",
-		"go.kenn.io/kata/pkg/federationprovider",
+		"github.com/ifigueroap/poomsae/internal/client",
+		"github.com/ifigueroap/poomsae/internal/config",
+		"github.com/ifigueroap/poomsae/internal/credentialfile",
+		"github.com/ifigueroap/poomsae/internal/daemonruntime",
+		"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy",
+		"github.com/ifigueroap/poomsae/internal/httpurl",
+		"github.com/ifigueroap/poomsae/internal/linkpath",
+		"github.com/ifigueroap/poomsae/internal/processtree",
+		"github.com/ifigueroap/poomsae/internal/projectscope",
+		"github.com/ifigueroap/poomsae/internal/shellquote",
+		"github.com/ifigueroap/poomsae/internal/tokenactor",
+		"github.com/ifigueroap/poomsae/internal/transcript",
+		"github.com/ifigueroap/poomsae/internal/uid",
+		"github.com/ifigueroap/poomsae/internal/version",
+		"github.com/ifigueroap/poomsae/pkg/client",
+		"github.com/ifigueroap/poomsae/pkg/client/generated",
+		"github.com/ifigueroap/poomsae/pkg/federationprovider",
 	}
 	allowedModules = []string{
 		"github.com/BurntSushi/toml",
@@ -53,7 +53,7 @@ var (
 		"github.com/tklauser/go-sysconf",
 		"github.com/tklauser/numcpus",
 		"github.com/yusufpapurcu/wmi",
-		"go.kenn.io/kata",
+		"github.com/ifigueroap/poomsae",
 		"go.kenn.io/kit",
 		"go.yaml.in/yaml/v4",
 		"golang.org/x/crypto",
@@ -72,7 +72,7 @@ func TestClientPackageLinksOnlyClientDependencies(t *testing.T) {
 		t.Run(goos, func(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), "go", "list", "-deps",
 				"-f", "{{if not .Standard}}{{.ImportPath}} {{with .Module}}{{.Path}}{{end}}{{end}}",
-				"go.kenn.io/kata/pkg/client")
+				"github.com/ifigueroap/poomsae/pkg/client")
 			cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH=amd64", "CGO_ENABLED=0")
 			output, err := cmd.Output()
 			require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestClientPackageLinksOnlyClientDependencies(t *testing.T) {
 				if pkg == "" {
 					continue
 				}
-				if module == "go.kenn.io/kata" && !slices.Contains(allowedKataPackages, pkg) ||
+				if module == "github.com/ifigueroap/poomsae" && !slices.Contains(allowedKataPackages, pkg) ||
 					!slices.Contains(allowedModules, module) {
 					unexpected = append(unexpected, pkg)
 				}

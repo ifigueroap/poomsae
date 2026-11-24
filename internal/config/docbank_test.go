@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func readDocbank(t *testing.T, body string) (*config.DaemonConfig, error) {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(body), 0600))
 	return config.ReadDaemonConfig()
 }
@@ -24,7 +24,7 @@ api_key="test-key"
 `)
 	require.NoError(t, err)
 	require.True(t, cfg.Docbank.Enabled())
-	require.Equal(t, "/kata", cfg.Docbank.Folder)
+	require.Equal(t, "/poomsae", cfg.Docbank.Folder)
 	for _, u := range []string{"http://localhost:9000", "http://127.0.0.1:9000", "http://[::1]:9000", "https://docbank.example/prefix"} {
 		_, err = readDocbank(t, fmt.Sprintf("[docbank]\nurl=%q\napi_key=\"test-key\"\n", u))
 		require.NoError(t, err)
@@ -55,9 +55,9 @@ func TestDocbankLocalConfig(t *testing.T) {
 	require.NoError(t, err, "the local Docbank publishes its own key")
 	require.True(t, cfg.Docbank.Enabled())
 	require.True(t, cfg.Docbank.UsesLocal())
-	require.Equal(t, "/kata", cfg.Docbank.Folder)
+	require.Equal(t, "/poomsae", cfg.Docbank.Folder)
 
-	t.Setenv("KATA_DOCBANK_URL", "https://docbank.example")
+	t.Setenv("POOMSAE_DOCBANK_URL", "https://docbank.example")
 	cfg, err = readDocbank(t, "[docbank]\nlocal=true\napi_key=\"test-key\"\n")
 	require.NoError(t, err)
 	require.False(t, cfg.Docbank.UsesLocal(), "a configured url selects that Docbank instead")

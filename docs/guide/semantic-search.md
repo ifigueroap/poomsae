@@ -6,14 +6,14 @@ last_edited: 2026-11-21
 
 # Semantic search
 
-By default, `kata search` is lexical and matches the words you type against
+By default, `poomsae search` is lexical and matches the words you type against
 issue titles, bodies, and comments. Word matching misses issues that describe
 the same problem in different terms, which matters most when an agent searches
 before creating a duplicate. Semantic search adds a vector (embedding) leg so
 a query like "auth redirect duplicates" can find an issue titled "Login
 callback double-submits on Safari" even though they share no keywords.
 
-Semantic search is **opt-in**. Without an embedding endpoint, `kata search`
+Semantic search is **opt-in**. Without an embedding endpoint, `poomsae search`
 matches words. When search by meaning is off, a local daemon prints a stderr
 hint pointing to **Settings** and the CLI setup command. `--quiet` and
 `--agent` suppress that hint, and stdout stays unchanged.
@@ -33,47 +33,47 @@ search then runs two legs and merges their results:
 - **Vector leg.** Embeds your query and finds issues whose vectors are closest
   to it.
 
-Kata merges both lists with reciprocal rank fusion, so an issue that ranks high
+Poomsae merges both lists with reciprocal rank fusion, so an issue that ranks high
 in either leg surfaces, and an issue that ranks high in both rises to the top.
 
-Kata can run a shared local embeddings server or use an OpenAI-compatible
+Poomsae can run a shared local embeddings server or use an OpenAI-compatible
 `/embeddings` endpoint, such as Ollama or a hosted provider.
 
 ## Enabling it
 
 You can turn on search by meaning from the web UI or from the CLI.
 
-To enable it in the web UI, open `kata ui`, open **Settings** at the bottom of the sidebar,
+To enable it in the web UI, open `poomsae ui`, open **Settings** at the bottom of the sidebar,
 and choose **Turn on** under **Search by meaning**. **Settings** applies to
 every project on the daemon. **Turn on** downloads any missing files and saves
 the setting. When prompted, choose **Restart daemon** and confirm.
 
 Every project and client on the daemon disconnects briefly during the restart.
 At a stable browser address, a direct local session reconnects automatically,
-while token-login users log in again. If the address changes, run `kata ui` to
-reopen it; if the daemon uses a custom home, set `KATA_HOME` first. Only a
+while token-login users log in again. If the address changes, run `poomsae ui` to
+reopen it; if the daemon uses a custom home, set `POOMSAE_HOME` first. Only a
 local owner session or a daemon access administrator can use this action. Other
 viewers, including viewers connected through the daemon switcher, see the
 status.
 
-If **Settings** cannot restart the daemon, run `kata daemon restart` on its
-host or restart it through its service manager. Reopen `kata ui` to watch
+If **Settings** cannot restart the daemon, run `poomsae daemon restart` on its
+host or restart it through its service manager. Reopen `poomsae ui` to watch
 indexing progress and any retry errors.
 
-If you use PostgreSQL, prepare pgvector and Kata's semantic-search tables first
+If you use PostgreSQL, prepare pgvector and Poomsae's semantic-search tables first
 by following the [PostgreSQL setup guide](../operations/postgres.md), then
 choose **Turn on** again.
 
 The built-in server choice is shared with supported apps on the same computer.
 When another supported app enables it, a SQLite daemon starts indexing on its
-next start unless Kata already has a configured provider. PostgreSQL requires
-explicit setup in Kata. A saved built-in setting also starts with installed
+next start unless Poomsae already has a configured provider. PostgreSQL requires
+explicit setup in Poomsae. A saved built-in setting also starts with installed
 files; if those files are missing, SQLite accepts a shared choice to download
-them, and otherwise you can run `kata daemon local-embeddings` to approve the
+them, and otherwise you can run `poomsae daemon local-embeddings` to approve the
 download.
 
-Kata records the shared choice after setup succeeds. If Kata cannot confirm
-that the choice was saved, setup still succeeds and Kata logs the failure,
+Poomsae records the shared choice after setup succeeds. If Poomsae cannot confirm
+that the choice was saved, setup still succeeds and Poomsae logs the failure,
 though other apps may miss the choice if it was not saved. The CLI writes that
 warning to stderr. **Settings** writes it to the detached daemon's
 `daemon.log`, or to stderr when the daemon runs in the foreground.
@@ -81,7 +81,7 @@ warning to stderr. **Settings** writes it to the detached daemon's
 You can also turn on search by meaning from the CLI:
 
 ```sh
-kata daemon local-embeddings
+poomsae daemon local-embeddings
 ```
 
 For a home without embeddings configured, the command uses a running Ollama
@@ -90,7 +90,7 @@ about 295 MB on a fresh install, and asks before downloading the built-in
 server. All Kenn apps share those files. Pass `--yes` for unattended setup. The
 command restarts a running daemon, which embeds existing issues in the
 background, while a stopped daemon picks up the setting on its next start. You
-can watch progress with `kata health --json`.
+can watch progress with `poomsae health --json`.
 
 Run the command again to switch a configured Ollama home to the built-in
 server. It asks before starting the server, even when the shared files are
@@ -108,13 +108,13 @@ they can reuse its vectors.
 The setup command preserves comments and formatting outside the rewritten
 settings. It checks that running daemons support restart before writing, then
 waits for them to restart. If a restart fails, run the command again to retry;
-if a daemon refuses its restart, setup restores the configuration file. Older Kata releases reject the `local` config key. Use the updated binary after
+if a daemon refuses its restart, setup restores the configuration file. Older Poomsae releases reject the `local` config key. Use the updated binary after
 enabling it.
 
 A `base_url` from any source takes precedence over `local = true`. The setup
-command refuses to run while `KATA_SEARCH_EMBEDDINGS_BASE_URL` is set; unset
+command refuses to run while `POOMSAE_SEARCH_EMBEDDINGS_BASE_URL` is set; unset
 that variable and rerun. A service with that variable set still uses its
-configured server after restart. Kata ignores API key settings while the
+configured server after restart. Poomsae ignores API key settings while the
 built-in server is selected.
 
 ### Use Ollama or another provider
@@ -126,7 +126,7 @@ built-in server is selected.
    ollama pull nomic-embed-text
    ```
 
-2. Add a `[search.embeddings]` block to `<KATA_HOME>/config.toml`, or replace
+2. Add a `[search.embeddings]` block to `<POOMSAE_HOME>/config.toml`, or replace
    the existing block, and set `local = false` in it:
 
    ```toml
@@ -136,11 +136,11 @@ built-in server is selected.
    ```
 
    An external provider requires both `base_url` and `model`. When no
-   credential source is configured, Kata sends requests without an
+   credential source is configured, Poomsae sends requests without an
    `Authorization` header. Local Ollama needs no placeholder key.
 
    For a provider that requires a key, use
-   `api_key_file = "~/.config/kata/embedding.key"` with an owner-only file
+   `api_key_file = "~/.config/poomsae/embedding.key"` with an owner-only file
    (`chmod 600` on Unix), or set `api_key_env` to the name of an environment
    variable supplied to the daemon's launch environment. Keep literal keys out
    of `config.toml`. Use an absolute file path or a path starting with `~/`;
@@ -155,7 +155,7 @@ built-in server is selected.
 
    Credential precedence is inline > file > env, and an unavailable selected
    source does not fall back to another source. After replacing a key file, run
-   `kata daemon reload`; model or endpoint changes require a restart. See
+   `poomsae daemon reload`; model or endpoint changes require a restart. See
    [Configuration](../reference/configuration.md#semantic-search) for every
    field (`dims`, `batch_size`, `model_context_tokens`, `max_batch_tokens`,
    `timeout_seconds`, `fingerprint_salt`, `trust_private_network`). If your
@@ -163,21 +163,21 @@ built-in server is selected.
    keep background embedding batches below that limit; leave them unset for
    count-only batching.
 
-3. Restart or start the daemon. Kata picks up the configuration and begins
+3. Restart or start the daemon. Poomsae picks up the configuration and begins
    embedding existing issues in the background right away.
 
 4. Confirm that the endpoint is live and watch the backfill drain by checking
    the `embeddings` object in the JSON health response:
 
    ```sh
-   kata health --json   # see the "embeddings" object: backlog, last_success_at
+   poomsae health --json   # see the "embeddings" object: backlog, last_success_at
    ```
 
-After setup finishes, Kata embeds new and edited issues automatically.
+After setup finishes, Poomsae embeds new and edited issues automatically.
 
 ## Search modes
 
-`kata search` accepts three mutually exclusive mode flags. With none of them,
+`poomsae search` accepts three mutually exclusive mode flags. With none of them,
 it runs in **auto** mode:
 
 | Mode | Flag | Behavior |
@@ -211,7 +211,7 @@ reconciler re-embeds it, so the vector leg can rank it on the old text while
 the lexical leg already matches the new text in the same results. In both
 cases, staleness is brief and bounded by reconciler lag.
 
-You can monitor the reconciler in `kata health --json` under `embeddings`:
+You can monitor the reconciler in `poomsae health --json` under `embeddings`:
 
 - `configured`. Whether an endpoint is set.
 - `embedded`. How many issues are embedded at their current revision for the
@@ -255,7 +255,7 @@ that candidate ceiling before filling the requested result limit, an auto
 search returns the reachable results with `degraded` set. Explicit `--hybrid`
 and `--semantic` searches return HTTP 503 instead, because they cannot
 guarantee a complete result page. When the candidates fill the requested limit,
-Kata emits no degraded signal.
+Poomsae emits no degraded signal.
 
 A persistent endpoint problem shows up in health output as a growing `backlog`
 and a stale `last_success_at`, while the reconciler backs off and retries. When
@@ -270,7 +270,7 @@ returns no HTTP response, `last_error_status` stays unset, and the growing
 Each stored vector belongs to a generation keyed by a fingerprint of the model,
 dimensionality, and text recipe used to produce it. If you change `model`,
 `dims`, `fingerprint_salt`, any literal document or query prefix or suffix, or
-`request_dimensions`, Kata builds a new generation and re-embeds all issue text
+`request_dimensions`, Poomsae builds a new generation and re-embeds all issue text
 in the background. See the
 [configuration reference](../reference/configuration.md#semantic-search) for
 the exact controls. Empty affixes and `request_dimensions = false` keep the
@@ -280,8 +280,8 @@ While that backfill runs, the vector leg is **unavailable**. Queries embedded
 under the new configuration cannot be scored against the old generation's
 vectors, so auto mode serves labeled degraded lexical results and explicit
 `--hybrid` and `--semantic` requests return HTTP 503. Lexical search keeps
-working throughout. Once the new generation finishes filling, Kata cuts over to
-it automatically, semantic results resume, and Kata reclaims the old
+working throughout. Once the new generation finishes filling, Poomsae cuts over to
+it automatically, semantic results resume, and Poomsae reclaims the old
 generation's storage. If you keep the same model name but its weights change
 underneath you, for example after re-pulling an Ollama tag, bump
 `fingerprint_salt` to force the same re-embed.
@@ -291,7 +291,7 @@ underneath you, for example after re-pulling an Ollama tag, bump
 Configuring an embedding endpoint sends issue titles and bodies to that
 endpoint on every embed. That is the consent boundary. For sensitive projects,
 prefer a local endpoint such as Ollama on loopback so issue text never leaves
-the host. Kata sends the embedding API key only to the configured `base_url`
+the host. Poomsae sends the embedding API key only to the configured `base_url`
 origin.
 
 The search index is local derived state, and it is not copied to a direct
@@ -307,7 +307,7 @@ An all-project MCP semantic or hybrid search returns available results and
 names local projects without embeddings.
 
 SQLite stores the vectors in a sidecar database, and PostgreSQL stores them in
-pgvector tables in its selected Kata schema when that optional extension is
+pgvector tables in its selected Poomsae schema when that optional extension is
 installed. Both JSONL [backup/export](../operations/backup-restore.md) forms,
 full backups and project exports, keep complete portable embedding artifacts,
 and a project export includes only that project's artifacts. A restore
@@ -315,12 +315,12 @@ validates those artifacts and reuses an artifact's vectors without requesting
 new embeddings only when the artifact's input and recipe match the daemon's
 current embedding configuration. The daemon re-embeds issues without a matching
 artifact. Legacy index embeddings are still excluded. Archives exported by
-older kata versions that still contain embedding records import cleanly; Kata
+older poomsae versions that still contain embedding records import cleanly; Poomsae
 skips those records and the reconciler rebuilds the vectors.
 
 ## Scope and limits
 
-- **Title and body only.** Kata embeds only issue titles and bodies today.
+- **Title and body only.** Poomsae embeds only issue titles and bodies today.
   Comments remain searchable lexically, and a paraphrase that lives only in a
   comment does not vector-match.
 - **PostgreSQL requirements.** PostgreSQL semantic search requires pgvector 0.7
@@ -333,7 +333,7 @@ For the design rationale and internals, see the
 
 ### Missing or rejected credentials
 
-`kata health` reports `credential: missing`, `rejected`, or `ok` along with the
+`poomsae health` reports `credential: missing`, `rejected`, or `ok` along with the
 selected `credential_source`, and never prints the secret. When a provider
 rejects a request, health output includes a readable `last_error` and
 `last_error_at`, which clear on the next successful provider call. Human and
@@ -342,19 +342,19 @@ fields without a stderr warning. Top-level health `ok` continues to describe
 daemon and database health, so ordinary issue tracking and lexical search keep
 working during an embedding credential problem.
 
-If a selected key file or environment variable cannot supply a key, Kata sends
+If a selected key file or environment variable cannot supply a key, Poomsae sends
 no provider requests and retains the backlog. The error reason identifies the
-source and the problem. Fix that source and run `kata daemon reload`;
+source and the problem. Fix that source and run `poomsae daemon reload`;
 credential resolution does not fall back to a lower-priority source.
 
 When no credential source is configured, requests omit `Authorization`. If a
-provider responds with HTTP 401 in that case, Kata reports that an API key is
+provider responds with HTTP 401 in that case, Poomsae reports that an API key is
 required. HTTP 401 with a key reports a rejected key, and HTTP 403 reports
 denied access, which does not necessarily mean the key is invalid. Later
 queries and background embedding attempts can retry after these provider
 responses, and a successful request clears the error.
 
-Credential errors cause `kata search --semantic` and `--hybrid` to fail with a
+Credential errors cause `poomsae search --semantic` and `--hybrid` to fail with a
 readable validation error. Default search falls back to lexical results with
 one `# mode=lexical degraded: …` header in human output and no extra stderr
 warning. JSON and agent formats carry the degradation reason. An unconfigured

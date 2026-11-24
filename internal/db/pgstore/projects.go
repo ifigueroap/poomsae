@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const projectSelect = `SELECT id, uid, name, metadata, revision, created_at, deleted_at FROM projects`
@@ -44,7 +44,7 @@ func (s *Store) CreateProjectAndEvent(ctx context.Context, name, actor string) (
 	if name == db.SystemProjectName {
 		return db.Project{}, db.Event{}, fmt.Errorf("create project: reserved project name %q", name)
 	}
-	projectUID, err := katauid.New()
+	projectUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Project{}, db.Event{}, fmt.Errorf("generate project uid: %w", err)
 	}
@@ -72,7 +72,7 @@ func (s *Store) createProjectWithUID(ctx context.Context, name, projectUID, acto
 	if projectUID == db.SystemProjectUID {
 		return db.Project{}, db.Event{}, fmt.Errorf("create project: reserved project uid %q", projectUID)
 	}
-	if !katauid.Valid(projectUID) {
+	if !poomsaeuid.Valid(projectUID) {
 		return db.Project{}, db.Event{}, fmt.Errorf("invalid project uid %q", projectUID)
 	}
 	var (

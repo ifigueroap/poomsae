@@ -10,11 +10,11 @@ import (
 func TestValidateRejectsForbiddenKeyVariantsInsideFieldValues(t *testing.T) {
 	for _, collection := range []string{"fields", "expected"} {
 		for _, key := range []string{
-			"kata_uid", "kataUid", "kata-uid", "kata.uid",
-			"kata_ref", "kataRef", "kata-ref", "kata.ref",
-			"kata_project_id", "kataProjectId", "kata-project-id", "kata.project.id",
-			"kata_binding_id", "kataBindingId", "kata-binding-id", "kata.binding.id",
-			"kata_work_branch", "kataWorkBranch", "kata-work-branch", "kata.work.branch",
+			"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+			"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+			"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+			"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+			"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 		} {
 			params := map[string]any{
 				"root_key": "root-example",
@@ -38,20 +38,20 @@ func TestValidateRejectsForbiddenKeyVariantsInsideFieldValues(t *testing.T) {
 }
 
 func TestValidateAllowsOpaqueFieldIDs(t *testing.T) {
-	raw := jsontext.Value(`{"root_key":"root-example","fields":{"kata_uid":{"kind":"date","value":"2026-08-20"},"katakana_start":{"kind":"null"}},"expected":{"kata_uid":{"kind":"null"},"katakana_start":{"kind":"date","value":"2026-08-19"}}}`)
+	raw := jsontext.Value(`{"root_key":"root-example","fields":{"kata_uid":{"kind":"date","value":"2026-08-20"},"poomsaekana_start":{"kind":"null"}},"expected":{"kata_uid":{"kind":"null"},"poomsaekana_start":{"kind":"date","value":"2026-08-19"}}}`)
 	if err := Validate("write_fields", raw, Options{ExternalRootKey: "root-example"}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestValidateRejectsArbitraryStructuralKataKeys(t *testing.T) {
-	for _, key := range []string{"kataOwnerId", "kata-owner-ref", "kata.project.token", "kata"} {
+	for _, key := range []string{"poomsaeOwnerId", "poomsae-owner-ref", "poomsae.project.token", "poomsae"} {
 		raw, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
 			"fields": map[string]any{
-				"katakana_start": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
+				"poomsaekana_start": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
 			},
-			"expected": map[string]any{"katakana_start": map[string]any{"kind": "null"}},
+			"expected": map[string]any{"poomsaekana_start": map[string]any{"kind": "null"}},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -63,9 +63,9 @@ func TestValidateRejectsArbitraryStructuralKataKeys(t *testing.T) {
 		}
 	}
 
-	raw := jsontext.Value(`{"root_key":"root-example","fields":{"katakana_start":{"kind":"null"}},"expected":{"katakana_start":{"kind":"date","value":"2026-08-20"}}}`)
+	raw := jsontext.Value(`{"root_key":"root-example","fields":{"poomsaekana_start":{"kind":"null"}},"expected":{"poomsaekana_start":{"kind":"date","value":"2026-08-20"}}}`)
 	if err := Validate("write_fields", raw, Options{ExternalRootKey: "root-example"}); err != nil {
-		t.Fatalf("katakana field rejected: %v", err)
+		t.Fatalf("poomsaekana field rejected: %v", err)
 	}
 }
 
@@ -108,14 +108,14 @@ func TestValidateTreatsReadFieldSelectorsAsOpaque(t *testing.T) {
 		LongUIDs:        []string{"01ARZ3NDEKTSV4RRFFQ69G5FAV"},
 		ShortIDs:        []string{"root-short"},
 	}
-	raw := jsontext.Value(`{"root_key":"root-example","field_ids":["root-short","prefix-01ARZ3NDEKTSV4RRFFQ69G5FAV-suffix","kataOwnerId"]}`)
+	raw := jsontext.Value(`{"root_key":"root-example","field_ids":["root-short","prefix-01ARZ3NDEKTSV4RRFFQ69G5FAV-suffix","poomsaeOwnerId"]}`)
 	if err := Validate("read_fields", raw, options); err != nil {
 		t.Fatalf("opaque field selectors rejected: %v", err)
 	}
 
 	for _, invalid := range []jsontext.Value{
 		jsontext.Value(`{"root_key":"root-short","field_ids":[]}`),
-		jsontext.Value(`{"root_key":"root-example","field_ids":[],"kataOwnerId":"neutral-forbidden"}`),
+		jsontext.Value(`{"root_key":"root-example","field_ids":[],"poomsaeOwnerId":"neutral-forbidden"}`),
 	} {
 		if err := Validate("read_fields", invalid, options); err == nil {
 			t.Fatalf("surrounding identity channel accepted: %s", invalid)

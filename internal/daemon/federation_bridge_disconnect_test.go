@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 type bridgeDisconnectPartialSetupStore struct {
@@ -103,9 +103,9 @@ func TestFederationBridgeDisconnectLifecycle(t *testing.T) {
 	for _, mode := range []string{"normal", "lost_response", "disconnect_write_race", "disconnect_validation_write_race", "pending_enrollment", "precommit_enrollment_failure", "partial_project_only", "partial_binding_without_relay", "partial_project_archived", "inflight_enrollment", "parent_revoked", "credential_changed", "archived", "archived_pending", "signed_disconnect"} {
 		t.Run(mode, func(t *testing.T) {
 			projectAccessBackends(t, func(t *testing.T, store db.Storage) {
-				t.Setenv("KATA_HOME", t.TempDir())
+				t.Setenv("POOMSAE_HOME", t.TempDir())
 				if mode == "signed_disconnect" {
-					t.Setenv("KATA_BRIDGE_SIGNING_KEY", strings.Repeat("k", 64))
+					t.Setenv("POOMSAE_BRIDGE_SIGNING_KEY", strings.Repeat("k", 64))
 				}
 				rootStore := openReplicaServiceStore(t)
 				root := newProjectAccessFixture(t, rootStore)
@@ -325,7 +325,7 @@ func TestFederationBridgeDisconnectLifecycle(t *testing.T) {
 				require.True(t, found)
 				if mode == "signed_disconnect" {
 					credential.Signing = &signingpolicy.Source{
-						KeyID: "bridge-signing-key", KeyEnv: "KATA_BRIDGE_SIGNING_KEY", HubURL: remote.URL,
+						KeyID: "bridge-signing-key", KeyEnv: "POOMSAE_BRIDGE_SIGNING_KEY", HubURL: remote.URL,
 					}
 					require.NoError(t, config.DefaultFederationCredentialStore().StoreFederationCredential(t.Context(), root.private.UID, credential))
 				}

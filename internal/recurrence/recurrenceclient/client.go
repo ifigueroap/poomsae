@@ -1,7 +1,7 @@
 // Package recurrenceclient is what every client of the daemon's recurrence routes
 // shares: the calls (List, Active, Start, Change, Stop), the template built
 // from a shown issue, the zone rules and the refusal for the parent of a cron
-// job, so `kata schedule --repeat` and the TUI behave alike. The store layer
+// job, so `poomsae schedule --repeat` and the TUI behave alike. The store layer
 // uses internal/recurrence instead and does not import this package.
 package recurrenceclient
 
@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // CronProgressPrefix starts the metadata keys a native cron job writes on the
@@ -31,7 +31,7 @@ const APIVersionIfMatch = "0.37.0"
 // parents a native recurring job: closing it as done would pause the job.
 const (
 	CronParentRefusal = "this issue parents a recurring cron job; closing it as done would pause the job"
-	CronParentHint    = "make the work a child instead: kata cron job create --parent <issue-ref>"
+	CronParentHint    = "make the work a child instead: poomsae cron job create --parent <issue-ref>"
 )
 
 // ParentsCronJob reports whether the issue metadata marks a parent of a
@@ -46,7 +46,7 @@ func ParentsCronJob[V any](metadata map[string]V) bool {
 }
 
 // View is a daemon recurrence row as clients read it, and the block
-// `kata show --json` adds under "recurrence". NextOccurrenceKey is the date
+// `poomsae show --json` adds under "recurrence". NextOccurrenceKey is the date
 // after the issue's own occurrence; it is null once the rule is exhausted.
 type View struct {
 	ID                int64   `json:"id"`

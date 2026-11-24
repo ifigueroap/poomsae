@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 const notionOrigin = "https://api.notion.com"
@@ -64,7 +64,7 @@ var _ Session = (*clientSession)(nil)
 // NewClient constructs the daemon's fixed-origin, redirect-rejecting client.
 func NewClient(cfg ClientConfig) *Client {
 	if cfg.TokenEnv == "" {
-		cfg.TokenEnv = "KATA_NOTION_TOKEN"
+		cfg.TokenEnv = "POOMSAE_NOTION_TOKEN"
 	}
 	if cfg.LookupEnv == nil {
 		cfg.LookupEnv = os.LookupEnv

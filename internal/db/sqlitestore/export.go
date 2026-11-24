@@ -9,7 +9,7 @@ import (
 	"iter"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // streamRows runs query against readQ and yields each row scanned via scan.
@@ -416,7 +416,7 @@ func (d *Store) ExportExternalFieldMappings(ctx context.Context, f db.ExportFilt
 			var rec db.ExternalFieldMappingExport
 			var accepted string
 			var nullable, writable, active int
-			if err := rows.Scan(&rec.ConnectorInstance, &rec.KataField, &rec.ExternalFieldID,
+			if err := rows.Scan(&rec.ConnectorInstance, &rec.PoomsaeField, &rec.ExternalFieldID,
 				&rec.ExternalFieldName, &accepted, &nullable, &writable,
 				&rec.SchemaRevision, &active, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
 				return db.ExternalFieldMappingExport{}, scanError("external_field_mapping", err)
@@ -763,7 +763,7 @@ func (d *Store) ExportProjectPurgeLog(ctx context.Context, f db.ExportFilter) it
 
 // ExportEvents streams events ordered by id, reproducing the orphan filter and
 // related-id scrub from the v10 jsonl export. The subject join matches by row
-// id / UID alone — kata move rehomes the issue row while its historical
+// id / UID alone — poomsae move rehomes the issue row while its historical
 // events stay in the source project, so requiring the subject's project to
 // equal the event's would silently drop every event of a moved issue.
 func (d *Store) ExportEvents(ctx context.Context, f db.ExportFilter) iter.Seq2[db.EventExport, error] {

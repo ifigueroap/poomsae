@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RelaySelfRevocationEnrollmentID resolves a retained relay grant without

@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/similarity"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/similarity"
 )
 
 // Fingerprint returns the lowercase hex SHA-256 of the canonical concatenation
@@ -50,7 +50,7 @@ func Fingerprint(title, body string, owner *string, labels []string, links []Ini
 	return fingerprintCore(title, body, owner, labels, DedupeLinks(links), priority, metadata)
 }
 
-// FingerprintLegacy reproduces the pre-kata#1 hashing layout that did NOT
+// FingerprintLegacy reproduces the pre-poomsae#1 hashing layout that did NOT
 // dedupe links before sort + serialize. Lookup paths compute both forms so
 // idempotency events written before the dedupe-in-Fingerprint change still
 // match a retry under the new code. New writes always use Fingerprint

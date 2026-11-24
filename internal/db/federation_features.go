@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // CronEventFeature identifies support for all cron definitions, runs and native delivery state.
@@ -170,10 +170,10 @@ func nativeJobDefinition(raw jsontext.Value) (bool, error) {
 }
 
 // EventFeaturesHeader advertises supported federation event formats.
-const EventFeaturesHeader = "X-Kata-Event-Features"
+const EventFeaturesHeader = "X-Poomsae-Event-Features"
 
 // RequiredEventFeaturesHeader names formats needed to read a project history.
-const RequiredEventFeaturesHeader = "X-Kata-Required-Event-Features"
+const RequiredEventFeaturesHeader = "X-Poomsae-Required-Event-Features"
 
 // ErrFederationNotEnabled reports a metadata read for a project that is not an
 // enabled federation hub.

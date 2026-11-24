@@ -5,17 +5,17 @@ import (
 	"time"
 )
 
-// KataAPI is the daemon surface the TUI consumes. It is owned by this
+// PoomsaeAPI is the daemon surface the TUI consumes. It is owned by this
 // package (the consumer) and covers exactly the methods the TUI calls
 // today — no speculative future-proofing for a remote engine. When that
 // engine lands it will satisfy this interface structurally and the
 // surface can grow alongside concrete need.
 //
 // The narrower listAPI / detailAPI / labelLister interfaces continue to
-// type the call sites that only need a slice of the surface. KataAPI is
+// type the call sites that only need a slice of the surface. PoomsaeAPI is
 // the union held by Model.api so a single value can be passed to those
 // narrower seams.
-type KataAPI interface {
+type PoomsaeAPI interface {
 	cronAPI
 	listAPI
 	detailAPI

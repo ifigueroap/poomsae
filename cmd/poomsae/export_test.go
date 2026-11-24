@@ -1,0 +1,324 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestExportRejectsConfiguredRemoteBeforeReadingLocalStorage(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	project, err := d.CreateProject(t.Context(), "local-project")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: project.ID, Title: "must not be exported", Author: "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/ping" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(remote.Close)
+	t.Setenv("POOMSAE_SERVER", remote.URL)
+	output := filepath.Join(home, "remote-export.jsonl")
+
+	_, err = runCmdOutput(t, nil, "export", "--output", output)
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "host-local")
+	assert.Contains(t, ce.Message, "remote daemon")
+	_, statErr := os.Stat(output)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestExportRejectsExplicitDaemonSelection(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	project, err := d.CreateProject(t.Context(), "local-project")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: project.ID, Title: "current-home issue", Author: "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	profileHome := t.TempDir()
+	profileDB := openKataTestDB(t, filepath.Join(profileHome, "poomsae.db"))
+	profileUID := profileDB.InstanceUID()
+	require.NoError(t, profileDB.Close())
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf(`[[daemon]]
+name = "work"
+local = true
+home = %q
+instance_uid = %q
+`, profileHome, profileUID)), 0600))
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Chdir(t.TempDir())
+
+	output := filepath.Join(home, "selected-export.jsonl")
+
+	_, err = runCmdOutput(t, nil, "--daemon", "work", "export", "--output", output)
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "host-local")
+	assert.Contains(t, ce.Message, "--daemon")
+	_, statErr := os.Stat(output)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestExportWritesJSONLToOutput(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	p, err := d.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: p.ID,
+		Title:     "exported issue",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	outPath := filepath.Join(home, "export.jsonl")
+	out, err := runCmdOutput(t, nil, "export", "--output", outPath)
+	require.NoError(t, err)
+
+	bs, err := os.ReadFile(outPath) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	assert.Contains(t, string(bs), `"kind":"meta"`)
+	assert.Contains(t, string(bs), "exported issue")
+	assert.Contains(t, out, outPath)
+}
+
+func TestExportReadsDatabaseWithoutWritePermission(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	p, err := d.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: p.ID,
+		Title:     "read-only export",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	require.NoError(t, os.Chmod(dbPath, 0o400))
+	t.Cleanup(func() { _ = os.Chmod(dbPath, 0o600) })
+
+	outPath := filepath.Join(home, "readonly.jsonl")
+	_, err = runCmdOutput(t, nil, "export", "--output", outPath)
+	require.NoError(t, err)
+
+	bs, err := os.ReadFile(outPath) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	assert.Contains(t, string(bs), "read-only export")
+}
+
+func TestExportDoesNotReplaceExistingOutputOnFailure(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	ctx := t.Context()
+	d := openKataTestDB(t, dbPath)
+	p, err := d.CreateProject(ctx, "poomsae")
+	require.NoError(t, err)
+	issue, _, err := d.CreateIssue(ctx, db.CreateIssueParams{
+		ProjectID: p.ID,
+		Title:     "invalid metadata",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	conn, err := d.Conn(ctx)
+	require.NoError(t, err)
+	_, err = conn.ExecContext(ctx, `PRAGMA ignore_check_constraints = ON`)
+	require.NoError(t, err)
+	_, err = conn.ExecContext(ctx, `UPDATE issues SET metadata = '{' WHERE id = ?`, issue.ID)
+	require.NoError(t, err)
+	_, err = conn.ExecContext(ctx, `PRAGMA ignore_check_constraints = OFF`)
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
+	require.NoError(t, d.Close())
+
+	outPath := filepath.Join(home, "export.jsonl")
+	require.NoError(t, os.WriteFile(outPath, []byte("previous backup\n"), 0o600))
+	_, err = runCmdOutput(t, nil, "export", "--output", outPath)
+	require.Error(t, err)
+
+	bs, readErr := os.ReadFile(outPath) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, readErr)
+	assert.Equal(t, "previous backup\n", string(bs))
+}
+
+func TestExportReplacesExistingOutput(t *testing.T) {
+	home := setupKataEnv(t)
+	d := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	p, err := d.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: p.ID, Title: "replacement export", Author: "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	outPath := filepath.Join(home, "export.jsonl")
+	require.NoError(t, os.WriteFile(outPath, []byte("previous backup\n"), 0o600))
+	_, err = runCmdOutput(t, nil, "export", "--output", outPath)
+	require.NoError(t, err)
+
+	bs, err := os.ReadFile(outPath) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	assert.Contains(t, string(bs), "replacement export")
+	assert.NotContains(t, string(bs), "previous backup")
+}
+
+func TestExportRefusesSymlinkedOutput(t *testing.T) {
+	home := setupKataEnv(t)
+	d := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	_, err := d.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	linkTarget := filepath.Join(home, "elsewhere.jsonl")
+	require.NoError(t, os.WriteFile(linkTarget, []byte("untouched\n"), 0o600))
+	outPath := filepath.Join(home, "export.jsonl")
+	if err := os.Symlink(linkTarget, outPath); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, err = runCmdOutput(t, nil, "export", "--output", outPath)
+	require.Error(t, err)
+
+	info, err := os.Lstat(outPath)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink, "export must leave the symlink in place")
+	bs, err := os.ReadFile(linkTarget) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	assert.Equal(t, "untouched\n", string(bs))
+}
+
+func TestExportAgentOutput(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	p, err := d.CreateProject(t.Context(), "poomsae")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
+		ProjectID: p.ID,
+		Title:     "agent export",
+		Author:    "tester",
+	})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	outPath := filepath.Join(home, "agent.jsonl")
+	out, err := runCmdOutput(t, nil, "export", "--agent", "--output", outPath)
+	require.NoError(t, err)
+
+	// agentValue is identity for separator-free Unix paths but quotes Windows
+	// paths (backslashes), so assert against the formatted value, not raw.
+	assert.Equal(t, "OK export output="+agentValue(outPath)+"\n", out)
+}
+
+func TestExportScopesByProjectName(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	ctx := t.Context()
+	d := openKataTestDB(t, dbPath)
+	alpha, err := d.CreateProject(ctx, "alpha")
+	require.NoError(t, err)
+	beta, err := d.CreateProject(ctx, "beta")
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(ctx, db.CreateIssueParams{ProjectID: alpha.ID, Title: "alpha-only", Author: "tester"})
+	require.NoError(t, err)
+	_, _, err = d.CreateIssue(ctx, db.CreateIssueParams{ProjectID: beta.ID, Title: "beta-only", Author: "tester"})
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	outPath := filepath.Join(home, "alpha.jsonl")
+	_, err = runCmdOutput(t, nil, "--project", "alpha", "export", "--output", outPath)
+	require.NoError(t, err)
+	bs, err := os.ReadFile(outPath) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	assert.Contains(t, string(bs), "alpha-only")
+	assert.NotContains(t, string(bs), "beta-only")
+}
+
+func TestExportProjectNameNotFound(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	_, err := d.CreateProject(t.Context(), "alpha")
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	_, err = runCmdOutput(t, nil, "--project", "nope", "export", "--output", filepath.Join(home, "x.jsonl"))
+	ce := requireCLIError(t, err, ExitNotFound)
+	assert.Contains(t, ce.Message, `project "nope" not found`)
+}
+
+func TestExportProjectFlagConflict(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	alpha, err := d.CreateProject(t.Context(), "alpha")
+	require.NoError(t, err)
+	beta, err := d.CreateProject(t.Context(), "beta")
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	_, err = runCmdOutput(t, nil,
+		"--project", "alpha", "export",
+		"--project-id", fmt.Sprintf("%d", beta.ID),
+		"--output", filepath.Join(home, "x.jsonl"))
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "conflicts with --project-id")
+	_ = alpha
+}
+
+func TestExportRefusesRunningDaemonUnlessAllowed(t *testing.T) {
+	home := setupKataEnv(t)
+	dbPath := filepath.Join(home, "poomsae.db")
+	d := openKataTestDB(t, dbPath)
+	require.NoError(t, d.Close())
+	addr, cleanup := pipeServer(t)
+	t.Cleanup(cleanup)
+	require.NoError(t, writeRuntimeFor(home, addr))
+
+	_, err := runCmdOutput(t, nil, "export", "--output", filepath.Join(home, "export.jsonl"))
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "daemon is running")
+}
+
+func TestLocalProfileExportRejectsSelectedProfile(t *testing.T) {
+	resetFlags(t)
+	home := t.TempDir()
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	profileHome := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf(`active_daemon = "work"
+[[daemon]]
+name = "work"
+local = true
+home = %q
+instance_uid = "01HZZZZZZZZZZZZZZZZZZZZZ01"
+`, profileHome)), 0600))
+	err := requireHostLocalExport(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "POOMSAE_HOME")
+	_, err = os.Stat(filepath.Join(home, "poomsae.db"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}

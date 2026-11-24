@@ -13,12 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func TestClaimGateHelperBypassesProjectsWithoutEnabledFederation(t *testing.T) {
@@ -441,9 +441,9 @@ func TestClaimGateHelperPullOnlySpokeRejectsEvenWithCachedClaim(t *testing.T) {
 func openClaimGateHelperDB(t *testing.T) *sqlitestore.Store {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	ctx := t.Context()
-	store, err := testfix.OpenSQLite(ctx, filepath.Join(home, "kata.db"))
+	store, err := testfix.OpenSQLite(ctx, filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	return store
@@ -497,7 +497,7 @@ func enableClaimGateHelperSpokeWithPush(t *testing.T, store *sqlitestore.Store, 
 
 func newClaimGateHelperUID(t *testing.T) string {
 	t.Helper()
-	uid, err := katauid.New()
+	uid, err := poomsaeuid.New()
 	require.NoError(t, err)
 	return uid
 }

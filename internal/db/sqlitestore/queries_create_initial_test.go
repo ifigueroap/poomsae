@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestCreateIssue_WithInitialLabels(t *testing.T) {
@@ -194,7 +194,7 @@ func TestCreateIssue_DuplicateInitialLinksAreDeduped(t *testing.T) {
 }
 
 // TestCreateIssue_RelatedIncomingNormalizes covers a roborev-flagged
-// case from kata#1: the API documents Incoming=true on related links as
+// case from poomsae#1: the API documents Incoming=true on related links as
 // a no-op (related is symmetric), but the runtime previously treated
 // (related, N, false) and (related, N, true) as distinct entries —
 // both targeting the same canonical (smaller-id, larger-id) row, so the

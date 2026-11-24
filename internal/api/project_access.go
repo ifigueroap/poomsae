@@ -1,6 +1,6 @@
 package api
 
-import "go.kenn.io/kata/internal/db"
+import "github.com/ifigueroap/poomsae/internal/db"
 
 // CreateTeamRequest creates a team under the daemon owner’s administrative authority.
 type CreateTeamRequest struct {

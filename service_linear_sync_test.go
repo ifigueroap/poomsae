@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/linearsync"
 )
 
 const runtimeLinearStateID = "22222222-2222-4222-8222-222222222222"
@@ -110,7 +110,7 @@ func TestServiceLinearScheduledProgress(t *testing.T) {
 func TestServiceLinearConfigAndExplicitCredentials(t *testing.T) {
 	_, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "bad.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, LinearSync: LinearSyncConfig{AuthType: "unsupported"}})
 	require.ErrorContains(t, err, "linear_sync.auth_type")
-	t.Setenv("KATA_LINEAR_TOKEN", "unrelated-example-secret")
+	t.Setenv("POOMSAE_LINEAR_TOKEN", "unrelated-example-secret")
 	t.Setenv("EXAMPLE_LINEAR_TOKEN", "")
 	s, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, LinearSync: LinearSyncConfig{TokenEnv: "EXAMPLE_LINEAR_TOKEN"}})
 	require.NoError(t, err)

@@ -1,0 +1,435 @@
+// Package main is the poomsae CLI entry point.
+package main
+
+import (
+	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"slices"
+	"strings"
+	"syscall"
+
+	"github.com/spf13/cobra"
+)
+
+// globalFlags carries the universal flags applied on every command. Sel is the
+// output selection as typed; Mode is the single resolved answer, written once
+// by PersistentPreRunE and read everywhere through currentOutputMode().
+type globalFlags struct {
+	Sel       outputSelection
+	Mode      outputMode
+	Quiet     bool
+	As        string
+	Workspace string
+	Project   string
+	Daemon    string
+	Version   bool
+}
+
+var flags globalFlags
+
+// runEEntered is set by PersistentPreRunE before any subcommand's RunE fires.
+// It stays false when cobra fails during argument/flag parsing, allowing main()
+// to distinguish a parse error (ExitUsage) from an operational failure (ExitInternal).
+var runEEntered bool
+var errorCommandName string
+
+// Foreground daemons retain the runtime's panic handling, including its stack.
+var daemonProcessEntered bool
+
+func newRootCmd() *cobra.Command {
+	flags = globalFlags{}
+	runEEntered = false
+	errorCommandName = ""
+	daemonProcessEntered = false
+	cliUseTarget.Store(nil)
+	cmd := &cobra.Command{
+		Use:           "poomsae",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		// The root is runnable only to serve the conventional `--version`
+		// flag; with no flag it falls back to printing help. Registering
+		// the flag ourselves (rather than setting cobra's Version field)
+		// keeps --json/--agent working, because cobra's built-in version
+		// flag short-circuits before PersistentPreRunE resolves the output
+		// mode.
+		//
+		// A runnable root also means PersistentPreRunE now runs for a bare
+		// `poomsae`, where cobra previously short-circuited to help before it.
+		// Plain `poomsae` still prints help and exits zero, but invalid or
+		// conflicting global output flags are now a usage error on the root
+		// instead of being silently ignored, matching every subcommand.
+		// TestRoot_NoArgsValidatesGlobalOutputFlags pins that contract.
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if flags.Version {
+				return writeVersion(cmd.OutOrStdout(), currentOutputMode())
+			}
+			return cmd.Help()
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			runEEntered = true
+			errorCommandName = commandLeaf(cmd)
+			mode, err := resolveOutputModeForCommand(cmd)
+			if err != nil {
+				return err
+			}
+			flags.Mode = mode
+			if cmd.Flags().Changed("as") && flags.As == "" {
+				return &cliError{Message: "--as must be non-empty", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			return nil
+		},
+		// Cobra runs this only after the command's RunE succeeded.
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			reportCLIUse(cmd)
+			return nil
+		},
+	}
+	cmd.PersistentFlags().Var(outputFormatFlag{values: &flags.Sel.formats},
+		"format", "output mode: human (default), json, or agent; quickstart also accepts contract")
+	cmd.PersistentFlags().BoolVar(&flags.Sel.json, "json", false, "full JSON envelope for scripts")
+	cmd.PersistentFlags().BoolVar(&flags.Sel.agent, "agent", false, "agent output: an OK or ERR status line, then command-specific details (use in agent sessions)")
+	cmd.PersistentFlags().BoolVarP(&flags.Quiet, "quiet", "q", false, "suppress non-essential output")
+	cmd.PersistentFlags().String("teammate", "", "teammate attribution (default: $POOMSAE_TEAMMATE; empty suppresses inheritance)")
+	cmd.PersistentFlags().StringVar(&flags.As, "as", "", "override actor (default: $POOMSAE_AUTHOR > $USER > git > anonymous)")
+	cmd.PersistentFlags().StringVar(&flags.Workspace, "workspace", "", "path used for project resolution (default: cwd)")
+	cmd.PersistentFlags().StringVar(&flags.Project, "project", "", "project name (show and comment also accept project ID for bare UID refs; default: from .poomsae.toml at or above --workspace)")
+	cmd.PersistentFlags().StringVar(&flags.Daemon, "daemon", "", "named daemon catalog entry (default: POOMSAE_SERVER, workspace, active_daemon, local)")
+	// Root-local, not persistent: `poomsae --version` is the conventional
+	// spelling, while `poomsae list --version` should stay an unknown flag.
+	// No `-v` shorthand: that spelling conventionally means verbose, and
+	// reclaiming it after release would break callers.
+	cmd.Flags().BoolVar(&flags.Version, "version", false, "print version information")
+	// Catch the cobra/pflag pitfall where a positional that looks like
+	// a negative integer (poomsae show -1, poomsae delete -1) is parsed as
+	// a flag and produces "unknown shorthand flag: '1' in -1" — useless
+	// to humans and to agents. Translate the cryptic pflag message into
+	// a kindUsage cliError that points at the `--` separator workaround
+	// (hammer-test finding #9). Applies to every subcommand because
+	// FlagErrorFunc is inherited from the root.
+	cmd.SetFlagErrorFunc(translateFlagError)
+
+	subs := []*cobra.Command{
+		newDaemonCmd(),
+		newConnectorCmd(),
+		newBridgeCmd(),
+		newMCPCmd(),
+		newStorageCmd(),
+		newInitCmd(),
+		newCreateCmd(),
+		newShowCmd(),
+		newStatusCmd(),
+		newListCmd(),
+		newEditCmd(),
+		newScheduleCmd(),
+		newDeadlineCmd(),
+		newMetaCmd(),
+		newNotifyCmd(),
+		newInboxCmd(),
+		newMoveCmd(),
+		newCommentCmd(),
+		newCloseCmd(),
+		newReopenCmd(),
+		newDeleteCmd(),
+		newRestoreCmd(),
+		newPurgeCmd(),
+		newSearchCmd(),
+		newLabelCmd(),
+		newLabelsCmd(),
+		newAssignCmd(),
+		newUnassignCmd(),
+		newClaimCmd(),
+		newAgentHooksCmd(),
+		newAgentCmd(),
+		newAttentionHookCmd(),
+		newAgentContractHookCmd(),
+		newReadyCmd(),
+		newNextCmd(),
+		newWaitCmd(),
+		newSyncCmd(),
+		newFederationCmd(),
+		newCronCmd(),
+		newAttachmentCmd(),
+		newEventsCmd(),
+		newExportCmd(),
+		newImportCmd(),
+		newDigestCmd(),
+		newAuditCmd(),
+		newQuickstartCmd(),
+		newWhoamiCmd(),
+		newHealthCmd(),
+		newDoctorCmd(),
+		newOpenAPICmd(),
+		newProjectsCmd(),
+		newTokensCmd(),
+		newTeamsCmd(),
+		newUICmd(),
+		newTUICmd(),
+		newUpdateCmd(),
+		newMigrateFromKataCmd(),
+		newVersionCmd(),
+		newWebAssetsCheckCmd(),
+	}
+	cmd.AddCommand(subs...)
+	cmd.AddCommand(newCLICmd(cmd))
+	applyRootHelp(cmd)
+	return cmd
+}
+
+func main() {
+	var cmd *cobra.Command
+	defer func() {
+		if value := recover(); value != nil {
+			if daemonProcessEntered {
+				panic(value)
+			}
+			// Never format the panic value: it may contain credentials or
+			// request bodies, or invoke an unsafe Error/String method.
+			err := &cliError{
+				Message:  "internal error: unexpected panic",
+				Kind:     kindInternal,
+				Hint:     "report this bug at https://github.com/ifigueroap/poomsae/issues",
+				ExitCode: ExitInternal,
+			}
+			mode, _ := resolvedOutputModeForError(cmd, os.Args[1:])
+			errorCommandName = commandNameForError(cmd, os.Args[1:], runEEntered)
+			emitErrorForMode(os.Stderr, err, mode, runEEntered)
+			os.Exit(ExitInternal)
+		}
+	}()
+	// Wire SIGINT/SIGTERM into cobra's command context so long-running
+	// subcommands (notably `poomsae daemon start`) can shut down gracefully via
+	// their deferred cleanups instead of being torn down mid-syscall. Once the
+	// first signal arrives, restore default handling so a second ctrl-C
+	// escalates to a hard kill (e.g. if a deferred cleanup hangs).
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	maybeMigrateFromKata(ctx, os.Stderr)
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
+	cmd = newRootCmd()
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		emitRootError(os.Stderr, cmd, os.Args[1:], err, runEEntered)
+		os.Exit(exitCodeForErr(err, runEEntered))
+	}
+}
+
+func emitErrorForMode(w io.Writer, err error, mode outputMode, runEReached bool) {
+	switch mode {
+	case outputJSON:
+		emitJSONError(w, err, runEReached)
+	case outputAgent:
+		emitAgentError(w, commandNameForError(nil, nil, runEReached), cliErrorForErr(err, runEReached))
+	default:
+		emitHumanError(w, err, runEReached)
+	}
+}
+
+func emitRootError(w io.Writer, cmd *cobra.Command, args []string, err error, runEReached bool) {
+	mode, modeErr := resolvedOutputModeForError(cmd, args)
+	if modeErr != nil {
+		err = modeErr
+	}
+	switch mode {
+	case outputAgent:
+		emitAgentError(w, commandNameForError(cmd, args, runEReached), cliErrorForErr(err, runEReached))
+	default:
+		emitErrorForMode(w, err, mode, runEReached)
+	}
+	if mode == outputHuman && runEReached && modeErr == nil {
+		action, _ := preParse(cmd, args)
+		kind := map[string]string{"poomsae create": "issue_created", "poomsae close": "issue_closed"}[action.CommandPath()]
+		if kind != "" {
+			reportCLIOutcome(action, "error_shown", kind)
+		}
+	}
+}
+
+func resolvedOutputModeForError(root *cobra.Command, args []string) (outputMode, error) {
+	if flags.Mode != "" {
+		return flags.Mode, nil
+	}
+	cmd, sel := preParse(root, args)
+	return sel.resolve(isImportCommand(cmd), supportsContractOutput(cmd))
+}
+
+func commandNameForError(root *cobra.Command, args []string, runEReached bool) string {
+	if errorCommandName != "" {
+		return errorCommandName
+	}
+	if !runEReached {
+		if cmd, _ := preParse(root, args); cmd != nil && cmd != root {
+			return commandLeaf(cmd)
+		}
+	}
+	return "poomsae"
+}
+
+func childCommandByName(cmd *cobra.Command, name string) *cobra.Command {
+	if cmd == nil {
+		return nil
+	}
+	for _, child := range cmd.Commands() {
+		if child.Name() == name {
+			return child
+		}
+		if slices.Contains(child.Aliases, name) {
+			return child
+		}
+	}
+	return nil
+}
+
+func commandLeaf(cmd *cobra.Command) string {
+	if cmd == nil {
+		return "poomsae"
+	}
+	parts := strings.Fields(cmd.CommandPath())
+	if len(parts) == 0 {
+		return "poomsae"
+	}
+	return parts[len(parts)-1]
+}
+
+// emitJSONError writes a JSON envelope shaped after the daemon's
+// ErrorEnvelope plus a `kind` and `exit_code` for client-side classification.
+// The JSON envelope is always emitted to stderr in main so stdout stays
+// reserved for successful command output.
+func emitJSONError(w io.Writer, err error, runEReached bool) {
+	cli := cliErrorForErr(err, runEReached)
+	env := struct {
+		Error struct {
+			Kind     errKind        `json:"kind"`
+			Code     string         `json:"code,omitempty"`
+			Hint     string         `json:"hint,omitempty"`
+			Message  string         `json:"message"`
+			ExitCode int            `json:"exit_code"`
+			Data     jsontext.Value `json:"data,omitempty"`
+		} `json:"error"`
+	}{}
+	env.Error.Kind = cli.Kind
+	env.Error.Code = cli.Code
+	env.Error.Hint = cli.Hint
+	env.Error.Message = cli.Message
+	env.Error.ExitCode = cli.ExitCode
+	env.Error.Data = cli.Data
+	bs, mErr := json.Marshal(env)
+	if mErr == nil {
+		_, _ = fmt.Fprintln(w, string(bs))
+		return
+	}
+	emitHumanError(w, err, runEReached)
+}
+
+func emitHumanError(w io.Writer, err error, runEReached bool) {
+	cli := cliErrorForErr(err, runEReached)
+	if cli.Message != "" {
+		message := cli.Message
+		if cli.Code == "duplicate_candidates" {
+			message = appendCreateConflictRefs(message, cli)
+		}
+		_, _ = fmt.Fprintln(w, "poomsae:", message) //nolint:gosec // G705: CLI stderr error text, not HTML.
+	}
+	if cli.Hint != "" {
+		_, _ = fmt.Fprintln(w, "hint:", cli.Hint)
+	}
+}
+
+func cliErrorForErr(err error, runEReached bool) *cliError {
+	var cli *cliError
+	if !errors.As(err, &cli) {
+		if transportErr, ok := errors.AsType[*daemonTransportError](err); ok {
+			message := transportErr.Error()
+			if transportErr.mutationOutcomeUnknown() {
+				message += "; mutation result may be unknown"
+			}
+			return &cliError{
+				Message:  message,
+				Kind:     kindDaemonUnavail,
+				Code:     "daemon_unavailable",
+				ExitCode: ExitDaemonUnavail,
+			}
+		}
+		// Non-cliError: synthesize one so the JSON path has uniform
+		// shape. Kind/code are inferred from exit-code conventions.
+		exit := exitCodeForErr(err, runEReached)
+		cli = &cliError{
+			Message:  err.Error(),
+			Kind:     kindForExit(exit),
+			ExitCode: exit,
+		}
+	}
+	return cli
+}
+
+// exitCodeForErr returns the exit code an error should produce. When
+// err is a *cliError, its ExitCode wins; otherwise exitCodeFor's
+// runE-reached heuristic decides.
+func exitCodeForErr(err error, runEReached bool) int {
+	if cli, ok := errors.AsType[*cliError](err); ok {
+		return cli.ExitCode
+	}
+	// Only the selected daemon's transport marks unavailable errors. Hub and
+	// other external dial failures retain their command's error classification.
+	// Command-specific outcome-unknown errors above still take priority.
+	if _, ok := errors.AsType[*daemonTransportError](err); ok {
+		return ExitDaemonUnavail
+	}
+	return exitCodeFor(err, runEReached)
+}
+
+// translateFlagError adds command-specific help to unknown flags and keeps
+// the separator advice for negative numbers parsed as shorthand flags.
+func translateFlagError(cmd *cobra.Command, err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	const prefix = "unknown shorthand flag: '"
+	_, after, ok := strings.Cut(msg, prefix)
+	if ok && after != "" && isDigit(after[0]) {
+		return &cliError{
+			Message: "negative numbers in positional args need the `--` " +
+				"separator (e.g. `poomsae show -- -1`)",
+			Kind:     kindUsage,
+			ExitCode: ExitUsage,
+		}
+	}
+	if strings.HasPrefix(msg, "unknown flag:") || strings.HasPrefix(msg, prefix) {
+		path := "poomsae"
+		if cmd != nil {
+			path = cmd.CommandPath()
+		}
+		return &cliError{
+			Message:  msg,
+			Hint:     fmt.Sprintf("run %q for flags", path+" --help"),
+			Kind:     kindUsage,
+			ExitCode: ExitUsage,
+		}
+	}
+	return err
+}
+
+func isDigit(b byte) bool { return b >= '0' && b <= '9' }
+
+// exitCodeFor maps a non-cliError ExecuteContext error to a CLI exit code
+// based on whether RunE was reached. PersistentPreRunE flips runEEntered to
+// true before any subcommand's RunE runs, so a false value means cobra
+// rejected the invocation during arg/flag parsing.
+func exitCodeFor(_ error, runEReached bool) int {
+	if !runEReached {
+		// Cobra failed before PersistentPreRunE — unknown command, missing
+		// positional arg (cobra.ExactArgs / NoArgs), or bad flag value.
+		return ExitUsage
+	}
+	// RunE entered and returned a plain error — operational failure (daemon
+	// startup, HTTP transport, filesystem).
+	return ExitInternal
+}

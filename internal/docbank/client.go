@@ -1,4 +1,4 @@
-// Package docbank implements the folder, upload, and immutable-content API used by Kata.
+// Package docbank implements the folder, upload, and immutable-content API used by Poomsae.
 package docbank
 
 import (
@@ -20,7 +20,7 @@ import (
 	"time"
 	"uuid"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // Error exposes only the upstream status, keeping credentials and response details private.

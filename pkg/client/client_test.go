@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestNewWithHTTPClientNormalizesBaseURL(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNewWithHTTPClientNormalizesBaseURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	defer server.Close()
 
@@ -42,7 +42,7 @@ func TestNewWithBearerAddsAuthorization(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	defer server.Close()
 
@@ -56,13 +56,13 @@ func TestNewWithBearerAddsAuthorization(t *testing.T) {
 }
 
 func TestNewWithGlobalAuthAddsEnvAuthorization(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "env-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "env-token")
 
 	var gotAuth string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	defer server.Close()
 
@@ -86,12 +86,12 @@ func TestNewForTargetAllowsPlaintextPrivateNetworkOptOut(t *testing.T) {
 
 // TestNewForTargetHonorsTrustPrivateNetwork pins that the public SDK can
 // express the same private-network trust the CLI does. Without the field the
-// conversion dropped it, so an SDK caller got a stricter policy than kata
+// conversion dropped it, so an SDK caller got a stricter policy than poomsae
 // itself for the same endpoint.
 func TestNewForTargetHonorsTrustPrivateNetwork(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 
 	_, err := NewForTarget(t.Context(), "http://100.64.0.5:7777",
 		TargetAuth{Token: "target-token"})
@@ -106,13 +106,13 @@ func TestNewForTargetHonorsTrustPrivateNetwork(t *testing.T) {
 func TestNewWithTrustedActorHeader(t *testing.T) {
 	var gotActor string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotActor = r.Header.Get("X-Kata-Actor")
+		gotActor = r.Header.Get("X-Poomsae-Actor")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	defer server.Close()
 
-	api, err := New(server.URL, WithTrustedActor("X-Kata-Actor", "alice"))
+	api, err := New(server.URL, WithTrustedActor("X-Poomsae-Actor", "alice"))
 	require.NoError(t, err)
 
 	_, err = api.PingWithResponse(t.Context())
@@ -124,13 +124,13 @@ func TestNewWithTrustedActorHeader(t *testing.T) {
 func TestNewWithTrustedActorTrimsOnce(t *testing.T) {
 	var gotActor string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotActor = r.Header.Get("X-Kata-Actor")
+		gotActor = r.Header.Get("X-Poomsae-Actor")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	defer server.Close()
 
-	api, err := New(server.URL, WithTrustedActor(" X-Kata-Actor ", " alice "))
+	api, err := New(server.URL, WithTrustedActor(" X-Poomsae-Actor ", " alice "))
 	require.NoError(t, err)
 
 	_, err = api.PingWithResponse(t.Context())

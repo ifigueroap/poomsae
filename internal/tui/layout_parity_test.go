@@ -117,7 +117,7 @@ func TestSplitLayout_RenderParity(t *testing.T) {
 		mode colorMode
 	}{{"none", colorNone}, {"light", colorLight}, {"dark", colorDark}} {
 		t.Run(palette.name, func(t *testing.T) {
-			t.Setenv("KATA_COLOR_MODE", palette.name)
+			t.Setenv("POOMSAE_COLOR_MODE", palette.name)
 			defer applyDefaultColorMode()
 			for _, width := range splitParityWidths {
 				for _, height := range splitParityHeights {

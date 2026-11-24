@@ -2,13 +2,13 @@
   import { Button, Notice } from '@kenn-io/kit-ui'
 
   import Modal from './Modal.svelte'
-  import { formatDay } from '../lib/kata/dates'
-  import type { KataRecurrence } from '../lib/kata/types'
+  import { formatDay } from '../lib/poomsae/dates'
+  import type { PoomsaeRecurrence } from '../lib/poomsae/types'
   import { formatRRule } from '../lib/recurrence/rrule'
 
   interface Props {
     open: boolean
-    recurrence: KataRecurrence
+    recurrence: PoomsaeRecurrence
     disabled?: boolean | undefined
     error?: string | undefined
     // Set when the rule moved to a newer revision while this dialog was open.

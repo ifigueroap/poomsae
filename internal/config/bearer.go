@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // ConfigureClient attaches an origin-pinned bearer transport to c under this
@@ -33,11 +33,11 @@ func (p BearerPolicy) ConfigureClient(c *http.Client, baseURL, token string) err
 
 // ResolvedBearerTrustPrivateNetwork reports the operator's configured
 // private-network trust decision ([auth].trust_private_network, or
-// KATA_TRUST_PRIVATE_NETWORK when the config cannot be read).
+// POOMSAE_TRUST_PRIVATE_NETWORK when the config cannot be read).
 func ResolvedBearerTrustPrivateNetwork() bool {
 	auth, err := ReadAuthConfigForPolicy()
 	if err != nil {
-		return EnvTruthy("KATA_TRUST_PRIVATE_NETWORK")
+		return EnvTruthy("POOMSAE_TRUST_PRIVATE_NETWORK")
 	}
 	return auth.TrustPrivateNetwork
 }
@@ -66,7 +66,7 @@ func (p BearerPolicy) CheckTargetURL(u *url.URL) error {
 	if u == nil {
 		return fmt.Errorf("nil URL for bearer-token safety check")
 	}
-	if u.Host == "kata.invalid" {
+	if u.Host == "poomsae.invalid" {
 		return nil
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
@@ -99,7 +99,7 @@ func (p BearerPolicy) CheckTargetURL(u *url.URL) error {
 		"the daemon does not terminate TLS, so the token would travel in cleartext; "+
 		"use a Unix socket or loopback address, tunnel via SSH, terminate TLS "+
 		"in a reverse proxy, or opt into the private network with "+
-		"KATA_TRUST_PRIVATE_NETWORK=1 ([auth].trust_private_network)", u.Redacted())
+		"POOMSAE_TRUST_PRIVATE_NETWORK=1 ([auth].trust_private_network)", u.Redacted())
 }
 
 // OriginForBaseURL validates baseURL under this policy and returns the

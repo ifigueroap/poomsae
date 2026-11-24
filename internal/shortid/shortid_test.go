@@ -3,9 +3,9 @@ package shortid_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/shortid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/shortid"
 )
 
 func TestDeriveTakesLowercaseSuffix(t *testing.T) {
@@ -48,9 +48,9 @@ func TestValidShortIDRejectsBadAlphabet(t *testing.T) {
 }
 
 func TestParseQualified(t *testing.T) {
-	r, err := shortid.Parse("kata#abc4")
+	r, err := shortid.Parse("poomsae#abc4")
 	require.NoError(t, err)
-	assert.Equal(t, "kata", r.Project)
+	assert.Equal(t, "poomsae", r.Project)
 	assert.Equal(t, "abc4", r.ShortID)
 	assert.Empty(t, r.ULID)
 }
@@ -95,7 +95,7 @@ func TestParseQualifiedWithMultipleHashes(t *testing.T) {
 func TestParseRejectsShortLegacyNumber(t *testing.T) {
 	_, err := shortid.Parse("12")
 	assert.ErrorIs(t, err, shortid.ErrInvalidRef)
-	_, err = shortid.Parse("kata#12")
+	_, err = shortid.Parse("poomsae#12")
 	assert.ErrorIs(t, err, shortid.ErrInvalidRef)
 }
 
@@ -109,9 +109,9 @@ func TestParseAcceptsLongAllDigitAsShortID(t *testing.T) {
 	assert.Equal(t, "1234", r.ShortID)
 	assert.Empty(t, r.Project)
 
-	r, err = shortid.Parse("kata#1234")
+	r, err = shortid.Parse("poomsae#1234")
 	require.NoError(t, err)
-	assert.Equal(t, "kata", r.Project)
+	assert.Equal(t, "poomsae", r.Project)
 	assert.Equal(t, "1234", r.ShortID)
 }
 

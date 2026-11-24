@@ -10,9 +10,9 @@ import (
 
 	"github.com/gofrs/flock"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/linkpath"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/linkpath"
 )
 
 const daemonChildExitGrace = 5 * time.Second
@@ -107,7 +107,7 @@ func waitForDaemonStartupWithProbe(
 			}
 			continue
 		case <-ctx.Done():
-			return fmt.Errorf("stopped waiting for daemon readiness; detached daemon was left running; inspect kata daemon logs: %w", ctx.Err())
+			return fmt.Errorf("stopped waiting for daemon readiness; detached daemon was left running; inspect poomsae daemon logs: %w", ctx.Err())
 		case <-deadline.C:
 			// The lock can be released after this iteration's probe.
 			cutoverActive, released := observeCutover()
@@ -115,7 +115,7 @@ func waitForDaemonStartupWithProbe(
 				continue
 			}
 			if exitedWhileMigrating != nil && waitingAfterCutover && !cutoverActive {
-				return fmt.Errorf("daemon exited before readiness and the concurrent migration has stopped: %w; inspect kata daemon logs", exitedWhileMigrating)
+				return fmt.Errorf("daemon exited before readiness and the concurrent migration has stopped: %w; inspect poomsae daemon logs", exitedWhileMigrating)
 			}
 			if exitedBeforeReadiness != nil {
 				if cutoverActive {
@@ -128,28 +128,28 @@ func waitForDaemonStartupWithProbe(
 					continue
 				}
 				if sawCutoverLock && waitingAfterCutover {
-					return fmt.Errorf("daemon exited before readiness and the concurrent migration has stopped: %w; inspect kata daemon logs", exitedBeforeReadiness)
+					return fmt.Errorf("daemon exited before readiness and the concurrent migration has stopped: %w; inspect poomsae daemon logs", exitedBeforeReadiness)
 				}
 				if exitedWhileStoreOwned {
-					return fmt.Errorf("daemon exited before readiness while another daemon owned the store, and no compatible daemon became ready within %s: %w; inspect kata daemon logs", wait, exitedBeforeReadiness)
+					return fmt.Errorf("daemon exited before readiness while another daemon owned the store, and no compatible daemon became ready within %s: %w; inspect poomsae daemon logs", wait, exitedBeforeReadiness)
 				}
-				return fmt.Errorf("daemon exited before readiness and no compatible daemon became ready within %s: %w; inspect kata daemon logs", daemonChildExitGrace, exitedBeforeReadiness)
+				return fmt.Errorf("daemon exited before readiness and no compatible daemon became ready within %s: %w; inspect poomsae daemon logs", daemonChildExitGrace, exitedBeforeReadiness)
 			}
 			// Without a child exit to observe, an old schema alone cannot tell a
 			// pending cutover from a replacement that failed before taking the lock.
 			if cutoverActive || exited != nil && migrationAllowed && sqliteMigrationPending(ctx) {
-				fmt.Fprintln(os.Stderr, "kata: SQLite migration in progress; waiting for daemon readiness (cancelling stops waiting and leaves the daemon running)")
+				fmt.Fprintln(os.Stderr, "poomsae: SQLite migration in progress; waiting for daemon readiness (cancelling stops waiting and leaves the daemon running)")
 				deadline.Reset(wait)
 				continue
 			}
-			return fmt.Errorf("%w: daemon startup is still in progress after %s; detached daemon was left running; inspect kata daemon status and kata daemon logs", ErrLocalDaemonUnreachable, wait)
+			return fmt.Errorf("%w: daemon startup is still in progress after %s; detached daemon was left running; inspect poomsae daemon status and poomsae daemon logs", ErrLocalDaemonUnreachable, wait)
 		case <-tick.C:
 		}
 	}
 }
 
 func sqliteMigrationPending(ctx context.Context) bool {
-	dsn, err := config.KataDSN(ctx)
+	dsn, err := config.PoomsaeDSN(ctx)
 	if err != nil || strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
 		return false
 	}
@@ -181,7 +181,7 @@ func sqliteMigrationPendingForPath(ctx context.Context, path string, inspector S
 }
 
 func sqliteCutoverLocked(ctx context.Context) bool {
-	dsn, err := config.KataDSN(ctx)
+	dsn, err := config.PoomsaeDSN(ctx)
 	return err == nil && SQLiteCutoverLockedForDSN(dsn)
 }
 

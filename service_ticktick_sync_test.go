@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/tickticksync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/tickticksync"
 )
 
 type runtimeTickTickFetcher struct {
@@ -103,7 +103,7 @@ func TestServiceTickTickScheduledProgress(t *testing.T) {
 func TestServiceTickTickConfigAndExplicitCredentials(t *testing.T) {
 	_, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "bad.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TickTickSync: TickTickSyncConfig{TokenEnv: "bad-name"}})
 	require.ErrorContains(t, err, "ticktick_sync.token_env")
-	t.Setenv("KATA_TICKTICK_TOKEN", "unrelated-example-secret")
+	t.Setenv("POOMSAE_TICKTICK_TOKEN", "unrelated-example-secret")
 	t.Setenv("EXAMPLE_TICKTICK_TOKEN", "")
 	s, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TickTickSync: TickTickSyncConfig{TokenEnv: "EXAMPLE_TICKTICK_TOKEN"}})
 	require.NoError(t, err)

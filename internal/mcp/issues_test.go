@@ -13,16 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func TestMultiProjectListWithoutProjectReturnsBothProjects(t *testing.T) {
 	session, _ := connectMultiProjectServer(t, nil)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.list", Arguments: map[string]any{"limit": 20}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.list", Arguments: map[string]any{"limit": 20}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	issues := result.StructuredContent.(map[string]any)["issues"].([]any)
@@ -35,7 +35,7 @@ func TestMultiProjectListWithoutProjectReturnsBothProjects(t *testing.T) {
 func TestMultiProjectReadyWithoutProjectReturnsBothProjects(t *testing.T) {
 	session, _ := connectMultiProjectServer(t, nil)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.ready", Arguments: map[string]any{"limit": 20}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.ready", Arguments: map[string]any{"limit": 20}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	issues := result.StructuredContent.(map[string]any)["issues"].([]any)
@@ -45,7 +45,7 @@ func TestMultiProjectReadyWithoutProjectReturnsBothProjects(t *testing.T) {
 func TestMultiProjectIssueWritesRequireQualifiedReference(t *testing.T) {
 	session, requests := connectMultiProjectServer(t, nil)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.claim", Arguments: map[string]any{"ref": "spk1"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.claim", Arguments: map[string]any{"ref": "spk1"}})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	require.Empty(t, *requests)
@@ -58,7 +58,7 @@ func TestMultiProjectCreateRequiresExplicitInScopeProject(t *testing.T) {
 		{"title": "Unscoped", "idempotency_key": "unscoped"},
 		{"project": "spoke-project", "title": "Bad relationship", "blocked_by": []any{"other-project#abcd"}, "idempotency_key": "outside"},
 	} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.create", Arguments: arguments})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.create", Arguments: arguments})
 		require.NoError(t, err)
 		require.True(t, result.IsError)
 	}
@@ -68,7 +68,7 @@ func TestMultiProjectCreateRequiresExplicitInScopeProject(t *testing.T) {
 func TestMultiProjectShowRoutesQualifiedReference(t *testing.T) {
 	session, requests := connectMultiProjectServer(t, nil)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.show", Arguments: map[string]any{"ref": "hub-project#hbb1"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.show", Arguments: map[string]any{"ref": "hub-project#hbb1"}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	require.Contains(t, *requests, "/api/v1/projects/2/issues/hbb1")
@@ -103,7 +103,7 @@ func TestSearchFanoutUsesStableGlobalOrdering(t *testing.T) {
 			if status != "" {
 				arguments["status"] = status
 			}
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search", Arguments: arguments})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: arguments})
 			require.NoError(t, err)
 			require.False(t, result.IsError)
 			hits := result.StructuredContent.(map[string]any)["results"].([]any)
@@ -163,7 +163,7 @@ func TestSearchFanoutWhenOneProjectFails(t *testing.T) {
 				})
 				return true
 			})
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "shared", "mode": mode, "project": tc.project}})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "shared", "mode": mode, "project": tc.project}})
 			require.NoError(t, err)
 			if !tc.retained {
 				require.True(t, result.IsError)
@@ -247,7 +247,7 @@ func TestCreateRejectsNumericScheduleOffsetAndDedicatedCollision(t *testing.T) {
 		{"title": "Collision", "scheduled_on": "2026-09-01", "metadata": map[string]any{"scheduled_on": "2026-09-02"}, "idempotency_key": "collision"},
 		{"title": "Bad zone", "timezone": "Not/AZone", "idempotency_key": "bad-zone"},
 	} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.create", Arguments: arguments})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.create", Arguments: arguments})
 		require.NoError(t, err)
 		require.True(t, result.IsError, "%s", mustJSON(t, result))
 	}
@@ -262,11 +262,11 @@ func TestCreateSendsSchedulingSomedayAndForceNew(t *testing.T) {
 		_, _ = writer.Write(daemonResponse(request))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.create", Arguments: map[string]any{
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.create", Arguments: map[string]any{
 		"title": "Timed work", "scheduled_on": "2026-09-01T15:00", "timezone": "America/Los_Angeles",
 		"metadata": map[string]any{"someday": true}, "force_new": true, "idempotency_key": "timed-work",
 	}})
@@ -290,11 +290,11 @@ func TestEditSchedulingClearUsesOneMetadataPatch(t *testing.T) {
 		_, _ = writer.Write(daemonResponse(request))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.edit", Arguments: map[string]any{
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.edit", Arguments: map[string]any{
 		"ref": "abc1", "scheduled_on": "2026-09-01T22:00:00Z", "clear_timezone": true,
 	}})
 	require.NoError(t, err)
@@ -317,11 +317,11 @@ func TestForceClaimReportsPreviousOwner(t *testing.T) {
 		writeJSON(writer, response)
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.claim", Arguments: map[string]any{"ref": "abc1", "force": true}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.claim", Arguments: map[string]any{"ref": "abc1", "force": true}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	require.Equal(t, "other-agent", result.StructuredContent.(map[string]any)["previous_owner"])
@@ -337,12 +337,12 @@ func TestClaimReportsAssignmentExpiry(t *testing.T) {
 		writeJSON(writer, response)
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 
 	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "kata.claim", Arguments: map[string]any{"ref": "abc1", "ttl_seconds": 3600},
+		Name: "poomsae.claim", Arguments: map[string]any{"ref": "abc1", "ttl_seconds": 3600},
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
@@ -375,12 +375,12 @@ func TestClaimForwardsTTLAndIfUnowned(t *testing.T) {
 		_, _ = writer.Write(daemonResponse(request))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 
 	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "kata.claim",
+		Name: "poomsae.claim",
 		Arguments: map[string]any{
 			"ref": "abc1", "if_unowned": true, "ttl_seconds": 7200,
 		},
@@ -398,7 +398,7 @@ func TestClaimRejectsOutOfRangeTTL(t *testing.T) {
 	session := connectTestServer(t)
 	for _, ttl := range []int{59, 86401} {
 		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-			Name: "kata.claim", Arguments: map[string]any{"ref": "abc1", "ttl_seconds": ttl},
+			Name: "poomsae.claim", Arguments: map[string]any{"ref": "abc1", "ttl_seconds": ttl},
 		})
 		require.NoError(t, err)
 		assert.True(t, result.IsError, "ttl=%d result=%s", ttl, mustJSON(t, result))
@@ -448,7 +448,7 @@ func connectMultiProjectServer(t *testing.T, override func(http.ResponseWriter, 
 		}
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	scope, err := NewAllowlistScope([]ProjectIdentity{
 		{ID: 1, UID: "01HAAAAAAAAAAAAAAAAAAAAAAA", Name: "spoke-project"},
@@ -501,18 +501,18 @@ func TestSearchEmptyMultiWordHints(t *testing.T) {
 		require.NoError(t, err)
 		ids = append(ids, created.ID)
 	}
-	client, err := kataclient.NewWithHTTPClient(env.URL, env.HTTP)
+	client, err := poomsaeclient.NewWithHTTPClient(env.URL, env.HTTP)
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test"})
 	want := []any{map[string]any{"code": "every_word_required", "message": "no issue contains every word; search again with fewer words"}}
-	assert.Equal(t, want, callWorkflowTool(t, session, "kata.search", map[string]any{"query": "paginate inventory"})["hints"])
+	assert.Equal(t, want, callWorkflowTool(t, session, "poomsae.search", map[string]any{"query": "paginate inventory"})["hints"])
 
-	single := callWorkflowTool(t, session, "kata.search", map[string]any{"query": "absent"})
+	single := callWorkflowTool(t, session, "poomsae.search", map[string]any{"query": "absent"})
 	assert.Empty(t, single["results"])
 	assert.NotContains(t, single, "hints")
 
 	page := map[string]any{"query": "inventory export", "mode": "lexical", "project": "example-project", "limit": 1}
-	first := callWorkflowTool(t, session, "kata.search", page)
+	first := callWorkflowTool(t, session, "poomsae.search", page)
 	require.Len(t, first["results"], 1)
 	require.NotEmpty(t, first["next_cursor"])
 	for _, id := range ids {
@@ -520,17 +520,17 @@ func TestSearchEmptyMultiWordHints(t *testing.T) {
 		require.NoError(t, err)
 	}
 	page["cursor"] = first["next_cursor"]
-	continued := callWorkflowTool(t, session, "kata.search", page)
+	continued := callWorkflowTool(t, session, "poomsae.search", page)
 	assert.Empty(t, continued["results"])
 	assert.NotContains(t, continued, "hints")
 }
 
 func TestSearchEmptyCatalogHasNoEveryWordHint(t *testing.T) {
 	env := testenv.New(t)
-	client, err := kataclient.NewWithHTTPClient(env.URL, env.HTTP)
+	client, err := poomsaeclient.NewWithHTTPClient(env.URL, env.HTTP)
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test"})
-	out := callWorkflowTool(t, session, "kata.search", map[string]any{"query": "paginate inventory"})
+	out := callWorkflowTool(t, session, "poomsae.search", map[string]any{"query": "paginate inventory"})
 	assert.Empty(t, out["results"])
 	assert.NotContains(t, out, "hints")
 }

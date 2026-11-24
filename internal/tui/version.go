@@ -1,6 +1,6 @@
 package tui
 
-import "go.kenn.io/kata/internal/version"
+import "github.com/ifigueroap/poomsae/internal/version"
 
-// kataVersion is the build identifier shown in the title bar.
-var kataVersion = version.Version
+// poomsaeVersion is the build identifier shown in the title bar.
+var poomsaeVersion = version.Version

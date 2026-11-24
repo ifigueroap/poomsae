@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func movedPurgeResetFixture(t *testing.T, opts ...testenv.Option) (*testenv.Env, []db.Project, db.Issue, int64) {
@@ -105,7 +105,7 @@ func TestMovedIssuePurgePublishesEveryAffectedProjectReset(t *testing.T) {
 				subscriptions[i] = env.Broadcaster.Subscribe(daemon.SubFilter{ProjectID: project.ID})
 				defer subscriptions[i].Unsub()
 			}
-			response, raw := envDoRaw(t, env, http.MethodPost, fmt.Sprintf("/api/v1/projects/%d/issues/%s/actions/purge", projects[2].ID, issue.UID), map[string]string{"actor": "worker"}, map[string]string{"X-Kata-Confirm": "PURGE " + projects[2].Name + "#" + issue.ShortID})
+			response, raw := envDoRaw(t, env, http.MethodPost, fmt.Sprintf("/api/v1/projects/%d/issues/%s/actions/purge", projects[2].ID, issue.UID), map[string]string{"actor": "worker"}, map[string]string{"X-Poomsae-Confirm": "PURGE " + projects[2].Name + "#" + issue.ShortID})
 			status := http.StatusOK
 			if baselineFails {
 				status = http.StatusInternalServerError
@@ -144,7 +144,7 @@ func TestMovedIssuePurgeWakesLiveFormerProjectStream(t *testing.T) {
 	first, ok := framer.Next(t, 2*time.Second)
 	require.True(t, ok)
 	require.Equal(t, strconv.FormatInt(sentinel.ID, 10), first.id)
-	purgeResponse, raw := envDoRaw(t, env, http.MethodPost, fmt.Sprintf("/api/v1/projects/%d/issues/%s/actions/purge", projects[2].ID, issue.UID), map[string]string{"actor": "worker"}, map[string]string{"X-Kata-Confirm": "PURGE " + projects[2].Name + "#" + issue.ShortID})
+	purgeResponse, raw := envDoRaw(t, env, http.MethodPost, fmt.Sprintf("/api/v1/projects/%d/issues/%s/actions/purge", projects[2].ID, issue.UID), map[string]string{"actor": "worker"}, map[string]string{"X-Poomsae-Confirm": "PURGE " + projects[2].Name + "#" + issue.ShortID})
 	require.Equal(t, http.StatusOK, purgeResponse.StatusCode, string(raw))
 	reset, ok := framer.Next(t, 2*time.Second)
 	require.True(t, ok, "the former project must wake immediately, before a heartbeat")

@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestCloseTranscript_PersistenceAndRetries(t *testing.T) {

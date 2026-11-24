@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 )
 
 // These operation IDs are the explicit restricted-ingress allowlist. Paths

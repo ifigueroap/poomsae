@@ -7,7 +7,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/internal/storageadmin"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
 )
 
 // StorageExportInput selects a root-contained JSONL artifact.
@@ -46,8 +46,8 @@ func registerStorageTools(server *sdkmcp.Server, handlers toolHandlers) {
 	if handlers.options.StorageAdmin == nil {
 		return
 	}
-	addTool(server, "kata.storage_export", "Export storage", "Export Kata JSONL to an artifact under the operator-approved storage root; force overwrites an existing artifact.", toolHints(false, true, false), handlers.storageExport)
-	addTool(server, "kata.storage_import", "Import storage", "Restore Kata JSONL to a startup-configured storage target alias; a forced retry replaces the target again, and new_instance mints a fresh instance identity each run.", nonIdempotent(toolHints(false, true, false)), handlers.storageImport)
+	addTool(server, "poomsae.storage_export", "Export storage", "Export Poomsae JSONL to an artifact under the operator-approved storage root; force overwrites an existing artifact.", toolHints(false, true, false), handlers.storageExport)
+	addTool(server, "poomsae.storage_import", "Import storage", "Restore Poomsae JSONL to a startup-configured storage target alias; a forced retry replaces the target again, and new_instance mints a fresh instance identity each run.", nonIdempotent(toolHints(false, true, false)), handlers.storageImport)
 }
 
 func (h toolHandlers) storageExport(ctx context.Context, _ *sdkmcp.CallToolRequest, input StorageExportInput) (*sdkmcp.CallToolResult, StorageExportOutput, error) {

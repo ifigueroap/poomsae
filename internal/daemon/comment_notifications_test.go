@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/notification"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestCommentNotificationTransaction(t *testing.T) {
@@ -381,7 +381,7 @@ func checkBroadcastHistoryBoundaryBackend(t *testing.T, second uint8, postgres b
 		BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
 	}
 	if postgres {
-		dsn := os.Getenv("KATA_TEST_POSTGRES_DSN")
+		dsn := os.Getenv("POOMSAE_TEST_POSTGRES_DSN")
 		if dsn == "" {
 			t.Skip("requires explicit PostgreSQL test service")
 		}

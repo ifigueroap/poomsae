@@ -4,8 +4,8 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R5: validate the entire signed replacement before any native pin mutation.

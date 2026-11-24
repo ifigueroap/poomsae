@@ -22,7 +22,7 @@ func TestAssetNameMatchesKitDefault(t *testing.T) {
 	} {
 		t.Run(tc.goos+"_"+tc.goarch, func(t *testing.T) {
 			req := selfupdate.AssetRequest{
-				BinaryName: "kata",
+				BinaryName: "poomsae",
 				Version:    "0.5.0",
 				GOOS:       tc.goos,
 				GOARCH:     tc.goarch,
@@ -34,7 +34,7 @@ func TestAssetNameMatchesKitDefault(t *testing.T) {
 }
 
 func TestAssetNameUsesBareSemver(t *testing.T) {
-	assert.Equal(t, "kata_0.5.0_linux_amd64.tar.gz", AssetName("0.5.0", "linux", "amd64"))
+	assert.Equal(t, "poomsae_0.5.0_linux_amd64.tar.gz", AssetName("0.5.0", "linux", "amd64"))
 	assert.NotContains(t, AssetName("0.5.0", "linux", "amd64"), "v0.5.0")
 }
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# kata installer
-# Usage: curl -fsSL https://katatracker.com/install.sh | bash
+# poomsae installer
+# Usage: curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
 
 set -euo pipefail
 
-REPO="kenn-io/kata"
-BINARY_NAME="kata"
-KATA_INSTALL_TMPDIR=""
-KATA_DOWNLOAD_PID=""
+REPO="ifigueroap/poomsae"
+BINARY_NAME="poomsae"
+POOMSAE_INSTALL_TMPDIR=""
+POOMSAE_DOWNLOAD_PID=""
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -63,7 +63,7 @@ retry() {
     "$@" && return 0
     if ((attempt == NETWORK_ATTEMPTS)); then
       error "Could not download ${url} after ${NETWORK_ATTEMPTS} attempts.
-Check your network connection and run the installer again, install with Homebrew (brew install kata), or download the release manually from https://github.com/${REPO}/releases"
+Check your network connection and run the installer again, or download the release manually from https://github.com/${REPO}/releases"
     fi
     warn "Could not download ${url}; retrying in ${RETRY_DELAY}s (attempt $((attempt + 1)) of ${NETWORK_ATTEMPTS})..." >&2
     sleep "$RETRY_DELAY"
@@ -154,15 +154,15 @@ fetch_with_progress() {
     wget "${WGET_LIMITS[@]}" "$quiet" -S -O "$output" "$url" 2>"$headers" &
     errors="$headers"
   fi
-  KATA_DOWNLOAD_PID=$!
+  POOMSAE_DOWNLOAD_PID=$!
 
-  while kill -0 "$KATA_DOWNLOAD_PID" 2>/dev/null; do
+  while kill -0 "$POOMSAE_DOWNLOAD_PID" 2>/dev/null; do
     print_progress "$(file_size "$output")" "$(content_length "$headers")"
     sleep 0.5
   done
   local status=0
-  wait "$KATA_DOWNLOAD_PID" || status=$?
-  KATA_DOWNLOAD_PID=""
+  wait "$POOMSAE_DOWNLOAD_PID" || status=$?
+  POOMSAE_DOWNLOAD_PID=""
 
   if ((status == 0)); then
     print_progress "$(file_size "$output")" "$(content_length "$headers")"
@@ -262,9 +262,9 @@ extract_archive() {
     if command -v unzip >/dev/null 2>&1; then
       unzip -q "$archive_path" -d "$tmpdir"
     elif command -v powershell.exe >/dev/null 2>&1; then
-      KATA_ARCHIVE_PATH="$archive_path" KATA_EXTRACT_DIR="$tmpdir" powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath \$env:KATA_ARCHIVE_PATH -DestinationPath \$env:KATA_EXTRACT_DIR -Force"
+      POOMSAE_ARCHIVE_PATH="$archive_path" POOMSAE_EXTRACT_DIR="$tmpdir" powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath \$env:POOMSAE_ARCHIVE_PATH -DestinationPath \$env:POOMSAE_EXTRACT_DIR -Force"
     elif command -v powershell >/dev/null 2>&1; then
-      KATA_ARCHIVE_PATH="$archive_path" KATA_EXTRACT_DIR="$tmpdir" powershell -NoProfile -Command "Expand-Archive -LiteralPath \$env:KATA_ARCHIVE_PATH -DestinationPath \$env:KATA_EXTRACT_DIR -Force"
+      POOMSAE_ARCHIVE_PATH="$archive_path" POOMSAE_EXTRACT_DIR="$tmpdir" powershell -NoProfile -Command "Expand-Archive -LiteralPath \$env:POOMSAE_ARCHIVE_PATH -DestinationPath \$env:POOMSAE_EXTRACT_DIR -Force"
     else
       error "Neither unzip nor PowerShell found for extracting Windows archive"
     fi
@@ -301,17 +301,17 @@ verify_release_binary() {
     return 0
   fi
   if ! "$binary_path" _web-assets-check >/dev/null 2>&1; then
-    error "Downloaded release does not contain the validated Kata web UI"
+    error "Downloaded release does not contain the validated Poomsae web UI"
   fi
 }
 
 # A background download ignores Ctrl-C because non-interactive bash starts
 # background jobs with SIGINT ignored, so stop it here.
 cleanup_install() {
-  if [[ -n "$KATA_DOWNLOAD_PID" ]]; then
-    kill "$KATA_DOWNLOAD_PID" 2>/dev/null || true
+  if [[ -n "$POOMSAE_DOWNLOAD_PID" ]]; then
+    kill "$POOMSAE_DOWNLOAD_PID" 2>/dev/null || true
   fi
-  rm -rf "$KATA_INSTALL_TMPDIR"
+  rm -rf "$POOMSAE_INSTALL_TMPDIR"
 }
 
 install_from_release() {
@@ -337,7 +337,7 @@ install_from_release() {
   local base_url="https://github.com/${REPO}/releases/download/${version}"
   local tmpdir
   tmpdir="$(mktemp -d)"
-  KATA_INSTALL_TMPDIR="$tmpdir"
+  POOMSAE_INSTALL_TMPDIR="$tmpdir"
   trap cleanup_install EXIT
 
   local archive_path="$tmpdir/release.tar.gz"
@@ -360,7 +360,7 @@ install_from_release() {
 }
 
 main() {
-  info "Installing kata..."
+  info "Installing poomsae..."
   echo
 
   local os
@@ -387,13 +387,13 @@ main() {
   fi
 
   echo "Check the install:"
-  echo "  kata version"
-  echo "  kata update --check"
+  echo "  poomsae version"
+  echo "  poomsae update --check"
   echo
   echo "Get started:"
   echo "  cd your-repo"
-  echo "  kata init"
-  echo "  kata tui"
+  echo "  poomsae init"
+  echo "  poomsae tui"
 }
 
 if [[ "${BASH_SOURCE[0]-}" == "${0}" || -z "${BASH_SOURCE[0]-}" ]]; then

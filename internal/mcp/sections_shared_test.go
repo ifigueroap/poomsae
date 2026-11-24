@@ -12,7 +12,7 @@ func TestLoadedSectionsHydrateAndUnion(t *testing.T) {
 	options := Options{Client: inertTestClient(t), Scope: NewAllScope(), Actor: "example-agent", Version: "test", LoadedSections: selected}
 	first, second := connectRawTestServerWithOptions(t, options), connectRawTestServerWithOptions(t, options)
 	for i, session := range []*sdkmcp.ClientSession{first, second} {
-		loaded, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: []string{"kata.load_docs", "kata.load_projects"}[i]})
+		loaded, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: []string{"poomsae.load_docs", "poomsae.load_projects"}[i]})
 		require.NoError(t, err)
 		require.False(t, loaded.IsError)
 	}
@@ -25,6 +25,6 @@ func TestLoadedSectionsHydrateAndUnion(t *testing.T) {
 	for _, tool := range listed.Tools {
 		names[tool.Name] = true
 	}
-	require.True(t, names["kata.projects"])
-	require.True(t, names["kata.search_docs"])
+	require.True(t, names["poomsae.projects"])
+	require.True(t, names["poomsae.search_docs"])
 }

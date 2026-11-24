@@ -17,14 +17,14 @@
     type TypeaheadOption,
   } from '@kenn-io/kit-ui'
   import { formatTimestamp } from '@kenn-io/kit-ui/utils/time'
-  import { formatDay } from '../lib/kata/dates'
+  import { formatDay } from '../lib/poomsae/dates'
   import { markColor } from '../lib/marks'
-  import type { KataTaskDetail } from '../lib/kata/types'
-  import { deadlineDate, httpURL, scheduledDate } from '../lib/kata/view'
+  import type { PoomsaeTaskDetail } from '../lib/poomsae/types'
+  import { deadlineDate, httpURL, scheduledDate } from '../lib/poomsae/view'
   import DatePicker from './DatePicker.svelte'
 
   interface Props {
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     administrativeActionsAllowed?: boolean | undefined
     onMove?: (() => void) | undefined
     onCreateRecurrence?: (() => void) | undefined

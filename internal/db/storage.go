@@ -351,7 +351,7 @@ type Storage interface {
 	ClearPendingExternalComment(ctx context.Context, p ClearPendingExternalCommentParams) (ExternalRootBinding, Event, error)
 	ListExternalFieldMappings(ctx context.Context, connectorInstance string) ([]ExternalFieldMapping, error)
 	UpsertExternalFieldMapping(ctx context.Context, p ExternalFieldMappingParams) (ExternalFieldMapping, error)
-	UnmapExternalField(ctx context.Context, connectorInstance, kataField string) (ExternalFieldMapping, error)
+	UnmapExternalField(ctx context.Context, connectorInstance, poomsaeField string) (ExternalFieldMapping, error)
 	ExternalFieldStates(ctx context.Context, bindingID int64) ([]ExternalFieldState, error)
 	UpsertExternalFieldState(ctx context.Context, p ExternalFieldStateParams) (ExternalFieldState, *Event, error)
 	ResolveExternalFieldConflict(ctx context.Context, p ResolveExternalFieldConflictParams) (ExternalFieldState, Event, error)

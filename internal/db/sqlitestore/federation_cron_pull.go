@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Cron rows derive only from cron events. A cron-only page still folds their

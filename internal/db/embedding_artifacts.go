@@ -6,7 +6,7 @@ import (
 	"iter"
 	"time"
 
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 // Staging limits bound temporary bytes that do not establish durable acceptance.

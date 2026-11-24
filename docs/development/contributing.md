@@ -1,6 +1,6 @@
 # Contributing
 
-kata is a Go project with a local daemon, CLI, TUI, SQLite store, JSONL
+poomsae is a Go project with a local daemon, CLI, TUI, SQLite store, JSONL
 import/export path, and federation tests. Keep changes small, verified, and
 documented.
 
@@ -8,7 +8,7 @@ documented.
 
 | Path | Responsibility |
 | --- | --- |
-| `cmd/kata` | CLI commands and output modes. |
+| `cmd/poomsae` | CLI commands and output modes. |
 | `internal/daemon` | HTTP routes, daemon runtime, auth, SSE, federation routes. |
 | `internal/db` | Storage contract, backend implementations, schemas, projections, events, queries, federation state. |
 | `internal/embedding` | OpenAI-compatible embeddings client and text recipe (storage-free). |
@@ -28,7 +28,7 @@ extension. Development builds on machines with a C toolchain default to
 `CGO_ENABLED=1`. On Unix those builds open the vector sidecar with
 `mattn/go-sqlite3` and load the cgo sqlite-vec binding before the first
 connection. kit's sqlitevec does not pick a driver or register the extension;
-Kata does both in `internal/vector/driver_*.go`, and there is nothing to
+Poomsae does both in `internal/vector/driver_*.go`, and there is nothing to
 configure. Keep the mattn dependency: the cgo sqlite-vec binding links against
 its C SQLite, even though release builds don't use it.
 
@@ -66,7 +66,7 @@ make lint
 make nilaway
 ```
 
-Pull requests select checks based on the changed files. See the filters and job conditions in [test.yml](https://github.com/kenn-io/kata/blob/main/.github/workflows/test.yml) for the selection rules. Pushes to `main` run every check.
+Pull requests select checks based on the changed files. See the filters and job conditions in [test.yml](https://github.com/ifigueroap/poomsae/blob/main/.github/workflows/test.yml) for the selection rules. Pushes to `main` run every check.
 
 ### Git hooks
 
@@ -76,7 +76,7 @@ Install the hooks to catch common CI failures before you push:
 prek install
 ```
 
-[prek.toml](https://github.com/kenn-io/kata/blob/main/prek.toml) lists the
+[prek.toml](https://github.com/ifigueroap/poomsae/blob/main/prek.toml) lists the
 hooks for each stage. The commit hooks are fast. The push hooks run the API,
 lint, and nil-safety checks that CI also runs.
 
@@ -105,7 +105,7 @@ To review the whole branch and wait for the result:
 roborev review --branch --wait
 ```
 
-Agents follow [AGENTS.md](https://github.com/kenn-io/kata/blob/main/AGENTS.md)
+Agents follow [AGENTS.md](https://github.com/ifigueroap/poomsae/blob/main/AGENTS.md)
 and start a review only when you ask for one.
 
 A review covers your work only when its `git_ref` ends at the commit you are
@@ -145,16 +145,16 @@ If another change takes your version, move your marker and any feature minimum c
 ### Native agent plugins
 
 The `native-agent-plugins` job in
-[test.yml](https://github.com/kenn-io/kata/blob/main/.github/workflows/test.yml)
+[test.yml](https://github.com/ifigueroap/poomsae/blob/main/.github/workflows/test.yml)
 installs pinned published packages into a temporary directory and runs the
 native loader and SDK checks. Use the same install and test commands locally.
 The tests use temporary application state and do not need provider credentials.
 
 | Variable | Package location |
 | --- | --- |
-| `KATA_NATIVE_PLUGIN_SDK_ROOT` | Install prefix containing the Amp and OpenCode SDKs in `node_modules`. |
-| `KATA_PI_TEST_RUNTIME` | Absolute `dist` directory of the published Pi package. |
-| `KATA_OPENCLAW_TEST_RUNTIME` | Published OpenClaw package directory. |
+| `POOMSAE_NATIVE_PLUGIN_SDK_ROOT` | Install prefix containing the Amp and OpenCode SDKs in `node_modules`. |
+| `POOMSAE_PI_TEST_RUNTIME` | Absolute `dist` directory of the published Pi package. |
+| `POOMSAE_OPENCLAW_TEST_RUNTIME` | Published OpenClaw package directory. |
 
 Pi and OpenClaw tests exercise their native loaders and runners. Amp and
 OpenCode checks compile against published declarations and exercise callbacks;
@@ -181,10 +181,10 @@ make web-dev
 
 `web-dev` builds the repository binary without installing it and creates an
 owned temporary home, workspace, and database beneath the ignored
-`.kata-web-dev/` directory. Vite serves `http://127.0.0.1:5173` and proxies API
+`.poomsae-web-dev/` directory. Vite serves `http://127.0.0.1:5173` and proxies API
 and event-stream requests to that isolated daemon using the same configured
 origin, browser-session, CSRF, and SSE policy as production. It does not add a
-development authentication or Origin bypass. Set `KATA_WEB_DEV_PORT` to use a
+development authentication or Origin bypass. Set `POOMSAE_WEB_DEV_PORT` to use a
 different Vite port.
 
 Run the static, unit, and browser checks with:
@@ -206,7 +206,7 @@ make web-build web-assets-check web-embed
 make web-release-check
 ```
 
-`web-release-check` builds a full Kata binary and refuses the harmless Go-only
+`web-release-check` builds a full Poomsae binary and refuses the harmless Go-only
 asset stub or an incomplete production graph. Published archives must all use
 the same validated embedded distribution.
 
@@ -266,7 +266,7 @@ source line after them. Remove the note once the command ships.
 
 ## Documentation standards
 
-Write for the person trying to use or maintain Kata:
+Write for the person trying to use or maintain Poomsae:
 
 - Lead with the outcome, name who does what, use short sentences, and explain
   unfamiliar terms.
@@ -328,7 +328,7 @@ too.
 When changing behavior:
 
 - update CLI help when flags or contracts change;
-  `go test ./cmd/kata -run 'TestHelp'` parses every
+  `go test ./cmd/poomsae -run 'TestHelp'` parses every
   advertised command without running it;
 - update `README.md` if the project overview or quickstart changes;
 - update `docs/` for public user/operator behavior;
@@ -348,7 +348,7 @@ Every Markdown page under `docs/guide/`, `docs/operations/`, and
 ```yaml
 ---
 title: Configuration reference
-description: "Configure Kata's daemon and clients."
+description: "Configure Poomsae's daemon and clients."
 last_edited: 2026-09-15
 ---
 ```
@@ -370,10 +370,10 @@ End the pull request description with a `Model used:` line naming the model, suc
 trailer for the tool to each commit it wrote and to the end of the description,
 because squash-merge keeps only the description.
 
-When closing kata issues, close with a substantive message and typed evidence:
+When closing poomsae issues, close with a substantive message and typed evidence:
 
 ```sh
-kata close abc4 --done \
+poomsae close abc4 --done \
   --message "Updated docs for remote daemon auth and verified docs-check passes." \
   --commit <sha> \
   --test "make docs-check"

@@ -9,10 +9,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestIssueScopedProjectLookupHidesMetadata(t *testing.T) {
@@ -136,6 +136,6 @@ func TestResolveHiddenArchivedMatchesMissing(t *testing.T) {
 		require.JSONEq(t, string(missingBodies[i]), string(deniedBody))
 		owner, _, ownerBody := f.request(t, http.MethodPost, "/api/v1/projects/resolve", "admin", request, nil)
 		require.Equal(t, http.StatusNotFound, owner, string(ownerBody))
-		require.Contains(t, string(ownerBody), fmt.Sprintf("kata projects restore %d", project.ID))
+		require.Contains(t, string(ownerBody), fmt.Sprintf("poomsae projects restore %d", project.ID))
 	}
 }

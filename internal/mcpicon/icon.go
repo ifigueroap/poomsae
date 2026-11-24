@@ -1,4 +1,4 @@
-// Package mcpicon shares Kata's public mark between MCP metadata and listeners.
+// Package mcpicon shares Poomsae's public mark between MCP metadata and listeners.
 package mcpicon
 
 import (
@@ -12,8 +12,8 @@ import (
 // iconPNG is the canonical website favicon rendered at 256x256.
 // Regenerate from the repository root with:
 //
-//	rsvg-convert -w 256 -h 256 docs/website/favicon.svg -o /tmp/kata-mcp-icon.png
-//	magick /tmp/kata-mcp-icon.png -strip -define png:exclude-chunks=date,time internal/mcpicon/assets/icon.png
+//	rsvg-convert -w 256 -h 256 docs/website/favicon.svg -o /tmp/poomsae-mcp-icon.png
+//	magick /tmp/poomsae-mcp-icon.png -strip -define png:exclude-chunks=date,time internal/mcpicon/assets/icon.png
 //
 //go:embed assets/icon.png
 var iconPNG []byte

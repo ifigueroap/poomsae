@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func decodeLines(ctx context.Context, lines ...string) ([]jsonl.Envelope, error) {

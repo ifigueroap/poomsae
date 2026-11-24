@@ -1,6 +1,6 @@
 version: 2
 
-project_name: kata
+project_name: poomsae
 
 changelog:
   disable: true
@@ -8,35 +8,15 @@ changelog:
 release:
   mode: append
   prerelease: auto
-  extra_files:
-    - glob: release-artifacts/kata_{{ .Version }}_source.tar.gz
-    - glob: release-artifacts/homebrew-core/kata.rb
 
 before:
   hooks:
     - make web-release-check
-    - >-
-      go run ./cmd/release-artifacts build-source
-      --repo .
-      --version {{ .Version }}
-      {{ if not .IsSnapshot }}--tag {{ .Tag }}{{ end }}
-      {{ if .IsSnapshot }}--snapshot{{ end }}
-      --output release-artifacts/kata_{{ .Version }}_source.tar.gz
-      --metadata release-artifacts/source-archive.json
-    - >-
-      go run ./cmd/release-artifacts verify-source
-      --archive release-artifacts/kata_{{ .Version }}_source.tar.gz
-      --metadata release-artifacts/source-archive.json
-    - >-
-      go run ./cmd/release-artifacts render-homebrew-core
-      --template packaging/homebrew-core/kata.rb.tmpl
-      --output release-artifacts/homebrew-core/kata.rb
-      --metadata release-artifacts/source-archive.json
 
 builds:
-  - id: kata
-    main: ./cmd/kata
-    binary: kata
+  - id: poomsae
+    main: ./cmd/poomsae
+    binary: poomsae
     env:
       - CGO_ENABLED=0
     flags:
@@ -44,10 +24,9 @@ builds:
       - -buildvcs=false
     ldflags:
       - -s -w
-      - -X go.kenn.io/kata/internal/version.Version=v{{ .Version }}
-      - -X go.kenn.io/kata/internal/version.Commit={{ .ShortCommit }}
-      - -X go.kenn.io/kata/internal/version.BuildDate={{ .Date }}
-      - -X go.kenn.io/kit/telemetry/posthog.projectKey=phc_AzHd9YvuHR7M5poKzC6eW654d3SgKyBdoQPuwkWhimUf
+      - -X github.com/ifigueroap/poomsae/internal/version.Version=v{{ .Version }}
+      - -X github.com/ifigueroap/poomsae/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/ifigueroap/poomsae/internal/version.BuildDate={{ .Date }}
     goos:
       - linux
       - darwin
@@ -55,149 +34,18 @@ builds:
     goarch:
       - amd64
       - arm64
-  - id: kata-homebrew
-    main: ./cmd/kata
-    binary: kata
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-      - -buildvcs=false
-    ldflags:
-      - -s -w
-      - -X go.kenn.io/kata/internal/version.Version=v{{ .Version }}
-      - -X go.kenn.io/kata/internal/version.Commit={{ .ShortCommit }}
-      - -X go.kenn.io/kata/internal/version.BuildDate={{ .Date }}
-      - -X go.kenn.io/kit/telemetry/posthog.projectKey=phc_AzHd9YvuHR7M5poKzC6eW654d3SgKyBdoQPuwkWhimUf
-      - -X go.kenn.io/kata/internal/version.Distribution=homebrew
-      - -X go.kenn.io/kit/telemetry/posthog.distribution=homebrew
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-  - id: kata-deb
-    main: ./cmd/kata
-    binary: kata
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-      - -buildvcs=false
-    ldflags:
-      - -s -w
-      - -X go.kenn.io/kata/internal/version.Version=v{{ .Version }}
-      - -X go.kenn.io/kata/internal/version.Commit={{ .ShortCommit }}
-      - -X go.kenn.io/kata/internal/version.BuildDate={{ .Date }}
-      - -X go.kenn.io/kit/telemetry/posthog.projectKey=phc_AzHd9YvuHR7M5poKzC6eW654d3SgKyBdoQPuwkWhimUf
-      - -X go.kenn.io/kata/internal/version.Distribution=deb
-      - -X go.kenn.io/kit/telemetry/posthog.distribution=deb
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-  - id: kata-rpm
-    main: ./cmd/kata
-    binary: kata
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-      - -buildvcs=false
-    ldflags:
-      - -s -w
-      - -X go.kenn.io/kata/internal/version.Version=v{{ .Version }}
-      - -X go.kenn.io/kata/internal/version.Commit={{ .ShortCommit }}
-      - -X go.kenn.io/kata/internal/version.BuildDate={{ .Date }}
-      - -X go.kenn.io/kit/telemetry/posthog.projectKey=phc_AzHd9YvuHR7M5poKzC6eW654d3SgKyBdoQPuwkWhimUf
-      - -X go.kenn.io/kata/internal/version.Distribution=rpm
-      - -X go.kenn.io/kit/telemetry/posthog.distribution=rpm
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
 
 archives:
-  - id: kata
+  - id: poomsae
     ids:
-      - kata
+      - poomsae
     formats:
       - tar.gz
     format_overrides:
       - goos: windows
         formats:
           - zip
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- .Os }}_
-      {{- .Arch }}
-  - id: kata-homebrew
-    ids:
-      - kata-homebrew
-    formats:
-      - tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_homebrew_
-      {{- .Os }}_
-      {{- .Arch }}
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: SHA256SUMS
-  extra_files:
-    - glob: release-artifacts/kata_{{ .Version }}_source.tar.gz
-
-nfpms:
-  - id: kata-linux-deb
-    ids:
-      - kata-deb
-    package_name: kata
-    file_name_template: "{{ .ProjectName }}_{{ .Version }}_linux_{{ .Arch }}"
-    vendor: kata
-    homepage: https://katatracker.com
-    maintainer: kata contributors
-    description: Git-native issue tracking for agentic development.
-    license: MIT
-    formats:
-      - deb
-    bindir: /usr/bin
-  - id: kata-linux-rpm
-    ids:
-      - kata-rpm
-    package_name: kata
-    file_name_template: "{{ .ProjectName }}_{{ .Version }}_linux_{{ .Arch }}"
-    vendor: kata
-    homepage: https://katatracker.com
-    maintainer: kata contributors
-    description: Git-native issue tracking for agentic development.
-    license: MIT
-    formats:
-      - rpm
-    bindir: /usr/bin
-
-# `brews` remains deprecated in the pinned GoReleaser v2.19.0.
-# Keep generating the formula candidate until the distribution migrates.
-brews:
-  - name: kata
-    ids:
-      - kata-homebrew
-    # GoReleaser skips formula generation when repository.name
-    # is absent, even with upload disabled. These fields select no credential
-    # and are retained only so snapshot and release runs render the candidate.
-    repository:
-      owner: kenn-io
-      name: homebrew-tap
-    directory: Formula
-    homepage: https://katatracker.com
-    description: Git-native issue tracking for agentic development
-    license: MIT
-    skip_upload: true
-    test: |
-      info = shell_output("#{bin}/kata version --json")
-      assert_match '"distribution":"homebrew"', info
-      system bin/"kata", "_web-assets-check"
-      assert_match "brew upgrade kata", shell_output("#{bin}/kata update --yes 2>&1", 2)

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func TestDiscoverPaths_FindsKataTomlAndGit(t *testing.T) {
@@ -174,10 +174,10 @@ func TestNormalizeRemoteURL(t *testing.T) {
 	cases := []struct {
 		in, want string
 	}{
-		{"https://github.com/wesm/kata.git", "github.com/wesm/kata"},
-		{"https://github.com/wesm/kata", "github.com/wesm/kata"},
-		{"https://user:pass@github.com/wesm/kata.git", "github.com/wesm/kata"},
-		{"git@github.com:wesm/kata.git", "github.com/wesm/kata"},
+		{"https://github.com/wesm/poomsae.git", "github.com/wesm/poomsae"},
+		{"https://github.com/wesm/poomsae", "github.com/wesm/poomsae"},
+		{"https://user:pass@github.com/wesm/poomsae.git", "github.com/wesm/poomsae"},
+		{"git@github.com:wesm/poomsae.git", "github.com/wesm/poomsae"},
 		{"ssh://git@gitlab.com/team/repo.git", "gitlab.com/team/repo"},
 		// Percent-encoded paths (Azure DevOps, spaces in org/project names)
 		{"rtstnz@vs-ssh.visualstudio.com:v3/rtstnz/AI%20Experiments/AI%20Experiments", "vs-ssh.visualstudio.com/v3/rtstnz/AI-Experiments/AI-Experiments"},
@@ -192,17 +192,17 @@ func TestNormalizeRemoteURL(t *testing.T) {
 
 func TestComputeAliasIdentity_GitWithRemote(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 
 	a, err := config.ComputeAliasIdentity(t.Context(), config.DiscoveredPaths{GitRoot: dir})
 	require.NoError(t, err)
-	assert.Equal(t, "github.com/wesm/kata", a.Identity)
+	assert.Equal(t, "github.com/wesm/poomsae", a.Identity)
 	assert.Equal(t, "git", a.Kind)
 }
 
 func TestComputeAliasIdentity_RespectsCanceledContext(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
@@ -239,7 +239,7 @@ func TestValidateIdentity(t *testing.T) {
 		ok   bool
 		hint string
 	}{
-		{"github.com/wesm/kata", true, ""},
+		{"github.com/wesm/poomsae", true, ""},
 		{"local:///abs/path", true, ""},
 		{"a_b.c-d:foo/bar", true, ""},
 		{"", false, "non-empty"},
@@ -260,25 +260,25 @@ func TestValidateIdentity(t *testing.T) {
 
 func TestPickInitName_KataTomlOnly(t *testing.T) {
 	cfg := &config.ProjectConfig{}
-	cfg.Project.Name = "kata"
+	cfg.Project.Name = "poomsae"
 
 	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{}, cfg, "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "kata", got.Name)
+	assert.Equal(t, "poomsae", got.Name)
 }
 
 func TestPickInitName_KataTomlMatchingInputName(t *testing.T) {
 	cfg := &config.ProjectConfig{}
-	cfg.Project.Name = "kata"
+	cfg.Project.Name = "poomsae"
 
-	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{}, cfg, "kata", false)
+	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{}, cfg, "poomsae", false)
 	require.NoError(t, err)
-	assert.Equal(t, "kata", got.Name)
+	assert.Equal(t, "poomsae", got.Name)
 }
 
 func TestPickInitName_KataTomlConflictWithoutReplace(t *testing.T) {
 	cfg := &config.ProjectConfig{}
-	cfg.Project.Name = "kata"
+	cfg.Project.Name = "poomsae"
 
 	_, err := config.PickInitName(t.Context(), config.DiscoveredPaths{}, cfg, "other", false)
 	require.Error(t, err)
@@ -287,7 +287,7 @@ func TestPickInitName_KataTomlConflictWithoutReplace(t *testing.T) {
 
 func TestPickInitName_KataTomlConflictWithReplace(t *testing.T) {
 	cfg := &config.ProjectConfig{}
-	cfg.Project.Name = "kata"
+	cfg.Project.Name = "poomsae"
 
 	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{}, cfg, "other", true)
 	require.NoError(t, err)
@@ -302,11 +302,11 @@ func TestPickInitName_InputName(t *testing.T) {
 
 func TestPickInitName_FromGitRoot(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 
 	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{GitRoot: dir}, nil, "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "kata", got.Name)
+	assert.Equal(t, "poomsae", got.Name)
 }
 
 func TestPickInitName_FromLocalWorkspace(t *testing.T) {
@@ -327,11 +327,11 @@ func TestPickInitName_KataTomlEmptyNameFallsBackToSource(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = ""
 	dir := testfix.InitGitRepo(t)
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 
 	got, err := config.PickInitName(t.Context(), config.DiscoveredPaths{GitRoot: dir}, cfg, "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "kata", got.Name)
+	assert.Equal(t, "poomsae", got.Name)
 }
 
 func TestValidateAliasInfo(t *testing.T) {
@@ -343,7 +343,7 @@ func TestValidateAliasInfo(t *testing.T) {
 	}{
 		{
 			name: "git alias passes ValidateIdentity rules",
-			info: config.AliasInfo{Identity: "github.com/wesm/kata", Kind: "git"},
+			info: config.AliasInfo{Identity: "github.com/wesm/poomsae", Kind: "git"},
 			ok:   true,
 		},
 		{
@@ -364,13 +364,13 @@ func TestValidateAliasInfo(t *testing.T) {
 		},
 		{
 			name: "unknown kind is rejected",
-			info: config.AliasInfo{Identity: "github.com/wesm/kata", Kind: "bogus"},
+			info: config.AliasInfo{Identity: "github.com/wesm/poomsae", Kind: "bogus"},
 			ok:   false,
 			hint: "kind",
 		},
 		{
 			name: "empty kind is rejected",
-			info: config.AliasInfo{Identity: "github.com/wesm/kata", Kind: ""},
+			info: config.AliasInfo{Identity: "github.com/wesm/poomsae", Kind: ""},
 			ok:   false,
 			hint: "kind",
 		},

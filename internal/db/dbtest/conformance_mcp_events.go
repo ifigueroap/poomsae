@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 var mcpEventsNow = time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
@@ -22,7 +22,7 @@ func mcpEventSub(id, subject string) db.MCPEventSubscription {
 		PrincipalSubject:   subject,
 		PrincipalKey:       "auth.example:" + subject,
 		Actor:              "Example Actor",
-		EventName:          "kata.inbox.changed",
+		EventName:          "poomsae.inbox.changed",
 		Arguments:          []byte(`{"for":"me"}`),
 		CallbackURL:        "https://receiver.example/hook/" + id,
 		SecretEnc:          []byte("sealed-secret"),

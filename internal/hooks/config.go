@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ResolvedHook is one [[hook]] entry after parsing and validation. The
@@ -26,7 +26,7 @@ type ResolvedHook struct {
 	Command    string            // absolute path or bare name (no '/')
 	Args       []string
 	Timeout    time.Duration
-	WorkingDir string   // absolute, defaulted to $KATA_HOME at load
+	WorkingDir string   // absolute, defaulted to $POOMSAE_HOME at load
 	UserEnv    []string // ["KEY=VAL", ...]; sorted by key for determinism
 	Index      int      // 0-based source-file ordinal (used in output filenames)
 }
@@ -261,9 +261,9 @@ func buildLoadedConfig(raw rawHookFile, base Config) (LoadedConfig, error) {
 		return LoadedConfig{}, fmt.Errorf("%d [[hook]] entries (max %d)", len(raw.Hook), maxHookEntries)
 	}
 
-	home, err := config.KataHome()
+	home, err := config.PoomsaeHome()
 	if err != nil {
-		return LoadedConfig{}, fmt.Errorf("resolve KATA_HOME: %w", err)
+		return LoadedConfig{}, fmt.Errorf("resolve POOMSAE_HOME: %w", err)
 	}
 	hooks := make([]ResolvedHook, 0, len(raw.Hook))
 	for i, h := range raw.Hook {

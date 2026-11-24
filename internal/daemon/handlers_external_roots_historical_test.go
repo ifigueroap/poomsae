@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/rootbridge"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 type historicalBridgeFixture struct {
@@ -85,7 +85,7 @@ func (f historicalBridgeFixture) pendingComment(t *testing.T, binding db.Externa
 
 func (f historicalBridgeFixture) fieldConflict(t *testing.T, binding db.ExternalRootBinding) {
 	t.Helper()
-	mapping, err := f.service.MapField(t.Context(), rootbridge.MapFieldParams{ConnectorInstance: "example-connector", KataField: "scheduled_on", ExternalField: "start-date"})
+	mapping, err := f.service.MapField(t.Context(), rootbridge.MapFieldParams{ConnectorInstance: "example-connector", PoomsaeField: "scheduled_on", ExternalField: "start-date"})
 	require.NoError(t, err)
 	_, err = f.store.PatchIssueMetadata(t.Context(), db.PatchIssueMetadataIn{IssueID: f.issue.ID, Actor: "operator", Patch: map[string]jsontext.Value{"scheduled_on": jsontext.Value(`"2026-08-21"`)}})
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestExternalRootHistoricalRouteActions(t *testing.T) {
 			case "resolve-field":
 				f.fieldConflict(t, binding)
 				body["kata_field"] = "scheduled_on"
-				body["use"] = "kata"
+				body["use"] = "poomsae"
 			case "resolve-comment":
 				f.pendingComment(t, binding)
 				body["action"] = "skip"

@@ -13,14 +13,14 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/internal/vector"
 	"go.kenn.io/kit/embedclient"
 	kitvec "go.kenn.io/kit/vector"
 )
@@ -30,11 +30,11 @@ import (
 // so the dirty-target predicate and upsert round-trip are covered end to end.
 func newReconcilerTestStore(t *testing.T) *sqlitestore.Store {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	// Search fixtures seed a thousand issues; flushing each commit to disk dominated their runtime.
-	t.Setenv("KATA_TEST_FAST_SQLITE", "1")
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "1")
 	ctx := t.Context()
-	d, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	d, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestReconcilerLeaderRetriesWhenDrainAdmissionReopens(t *testing.T) {
 // cleanup.
 func openTestVectorIndex(t *testing.T) *vector.Index {
 	t.Helper()
-	t.Setenv("KATA_TEST_FAST_SQLITE", "1")
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "1")
 	idx, err := vector.Open(t.Context(), filepath.Join(t.TempDir(), "vectors.db"))
 	if err != nil {
 		t.Fatalf("open vector index: %v", err)

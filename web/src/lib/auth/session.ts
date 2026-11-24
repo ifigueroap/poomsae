@@ -2,9 +2,9 @@ import { applicationRequest, applicationRoutePath } from '../applicationBase'
 import { validUID } from '../router'
 import { assertValidIssueScopedCapabilities } from './scopedAuthority'
 
-export const sessionStorageKey = 'kata.web.session.v1'
-export const authenticationModeStorageKey = 'kata.web.authentication-mode.v1'
-const directTargetStorageKey = 'kata.web.direct-target.v1'
+export const sessionStorageKey = 'poomsae.web.session.v1'
+export const authenticationModeStorageKey = 'poomsae.web.authentication-mode.v1'
+const directTargetStorageKey = 'poomsae.web.direct-target.v1'
 
 export type AuthenticationMode = 'login'
 

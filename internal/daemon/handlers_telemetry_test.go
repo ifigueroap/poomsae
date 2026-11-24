@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
 )
 
 const telemetryTestOrigin = "http://127.0.0.1:27123"
@@ -43,12 +43,12 @@ func newTelemetryTestServer(t *testing.T, reporter TelemetryReporter, principal 
 		RequireBrowserSession: true, AllowLocalSession: true,
 	})
 	require.NoError(t, err)
-	issued, err := manager.IssueSession(principal, "/kata")
+	issued, err := manager.IssueSession(principal, "/poomsae")
 	require.NoError(t, err)
 	return telemetryTestServer{handler: handler, session: issued, manager: manager}
 }
 
-// newDisabledReporter is the go-test reporter: disabled, with kata's allowlist.
+// newDisabledReporter is the go-test reporter: disabled, with poomsae's allowlist.
 func newDisabledReporter(t *testing.T) TelemetryReporter {
 	t.Helper()
 	reporter, err := telemetry.NewReporter(telemetry.Options{})

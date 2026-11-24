@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 func TestProgressFencesOldClaimsAndReturnsCopies(t *testing.T) {

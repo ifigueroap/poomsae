@@ -34,7 +34,7 @@ var updateGoldens = flag.Bool(
 var snapshotFixedNow = time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 
 // snapshotInit prepares the package for a deterministic snapshot run:
-//   - KATA_COLOR_MODE=none strips ANSI from rendered output, so the
+//   - POOMSAE_COLOR_MODE=none strips ANSI from rendered output, so the
 //     golden files are plain UTF-8 text with no escape sequences.
 //   - applyDefaultColorMode rebuilds the package-level styles against
 //     io.Discard with the just-set env var so the new mode takes effect.
@@ -44,7 +44,7 @@ var snapshotFixedNow = time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 // Returns a cleanup func; tests defer it.
 func snapshotInit(t *testing.T) func() {
 	t.Helper()
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	prior := renderNow
@@ -105,12 +105,12 @@ func normalizeGoldenSnapshot(s string) string {
 }
 
 // snapViewChrome returns the steady-state viewChrome used by every
-// list snapshot: project 7 / "kata" scope, SSE connected, version
+// list snapshot: project 7 / "poomsae" scope, SSE connected, version
 // "v0.1.0". Tests that need to mutate (e.g. add an input bar) assign
 // to a local and modify the field they care about.
 func snapViewChrome() viewChrome {
 	return viewChrome{
-		scope:     scope{projectID: 7, projectName: "kata"},
+		scope:     scope{projectID: 7, projectName: "poomsae"},
 		sseStatus: sseConnected,
 		version:   "v0.1.0",
 	}
@@ -246,7 +246,7 @@ func TestSnapshot_List_DefaultMixedStatus(t *testing.T) {
 	assertGolden(t, "list-default-mixed-status", got)
 }
 
-// All snapshot tests run under KATA_COLOR_MODE=none for deterministic
+// All snapshot tests run under POOMSAE_COLOR_MODE=none for deterministic
 // goldens (the renderer writes through io.Discard, which is not a TTY,
 // so lipgloss strips ANSI even in colored modes). The plan called for a
 // separate list-no-color-mode snapshot, but it would be byte-identical
@@ -531,7 +531,7 @@ func TestSnapshot_Detail_DocumentPage80x50(t *testing.T) {
 	dm.issue.CreatedAt = time.Date(2026, 4, 30, 10, 0, 0, 0, time.UTC)
 	dm.issue.UpdatedAt = snapshotFixedNow.Add(-3 * time.Hour)
 	got := dm.View(80, 50, viewChrome{
-		scope:   scope{projectID: 7, projectName: "kata"},
+		scope:   scope{projectID: 7, projectName: "poomsae"},
 		version: "dev",
 	})
 	assertGolden(t, "detail-document-80x50", got)
@@ -564,7 +564,7 @@ func TestSnapshot_Detail_DocumentWide160x32(t *testing.T) {
 		},
 	}, nil)
 	got := dm.View(160, 32, viewChrome{
-		scope:   scope{projectID: 7, projectName: "kata"},
+		scope:   scope{projectID: 7, projectName: "poomsae"},
 		version: "dev",
 	})
 	assertGolden(t, "detail-document-wide-160x32", got)
@@ -754,7 +754,7 @@ func TestSnapshot_LabelPrompt_Scroll(t *testing.T) {
 func snapSplitModel(width, height int, focus focusPane) Model {
 	dm := snapDetailFixture()
 	m := initialModel(Options{})
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m.list.loading = false
 	m.list.issues = snapListFixture()
 	m.list.cursor = 1
@@ -804,7 +804,7 @@ func snapLabelPromptModel() Model {
 	dm := snapDetailFixture()
 	m := Model{
 		view:          viewDetail,
-		scope:         scope{projectID: 7, projectName: "kata"},
+		scope:         scope{projectID: 7, projectName: "poomsae"},
 		width:         120,
 		height:        30,
 		sseStatus:     sseConnected,

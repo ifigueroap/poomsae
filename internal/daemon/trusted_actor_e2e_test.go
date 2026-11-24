@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 // startTrustedProxyTestServer pre-binds a loopback TCP listener, then builds a
@@ -126,7 +126,7 @@ func startBearerProxyTestServer(t *testing.T, headerName string, auth bearerProx
 // trustedProxyCreateProject posts to /api/v1/projects with a path-free init
 // (name only) so the test does not need a git workspace on disk. Returns the
 // new project's rowid. The headers map is passed through to doReq so callers
-// can carry an X-Kata-Actor header on the setup call when token-identity mode
+// can carry an X-Poomsae-Actor header on the setup call when token-identity mode
 // or trusted-proxy mode requires attribution.
 func trustedProxyCreateProject(t *testing.T, ts *httptest.Server, headers map[string]string) int64 {
 	t.Helper()
@@ -164,12 +164,12 @@ func trustedProxyCreateIssue(t *testing.T, ts *httptest.Server, projectID int64,
 }
 
 // TestTrustedProxyHeader_CreditsHeaderActor exercises the full pipeline:
-// withTrustedProxyActor turns the X-Kata-Actor header into a PrincipalTrustedProxy
+// withTrustedProxyActor turns the X-Poomsae-Actor header into a PrincipalTrustedProxy
 // on the trusted listener, attributedActor prefers the principal's actor over
 // the request body's actor, and the close event row records the header value
 // rather than the body value.
 func TestTrustedProxyHeader_CreditsHeaderActor(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
 	// Seed via the HTTP surface so the trusted-proxy principal is the
 	// only writer in scope. initProject (POST /api/v1/projects) does
@@ -177,9 +177,9 @@ func TestTrustedProxyHeader_CreditsHeaderActor(t *testing.T) {
 	// middleware so passing it here is harmless and keeps the test
 	// uniform. createIssue does call attributedActor, so the header is
 	// required for the seed issue to materialize.
-	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Kata-Actor": "setup"})
+	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Poomsae-Actor": "setup"})
 	issueRef := trustedProxyCreateIssue(t, ts, projectID,
-		map[string]string{"X-Kata-Actor": "setup"})
+		map[string]string{"X-Poomsae-Actor": "setup"})
 
 	// The body carries actor="client-claim"; the trusted header carries
 	// "proxy-user". A passing test proves attributedActor preferred the
@@ -192,7 +192,7 @@ func TestTrustedProxyHeader_CreditsHeaderActor(t *testing.T) {
 	}
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
-		body, map[string]string{"X-Kata-Actor": "proxy-user"})
+		body, map[string]string{"X-Poomsae-Actor": "proxy-user"})
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "close: %s", raw)
 
 	var payload struct {
@@ -213,11 +213,11 @@ func TestTrustedProxyHeader_CreditsHeaderActor(t *testing.T) {
 // Without this guard a misconfigured proxy could silently let body-supplied
 // actor values through on a listener that callers expect to be header-attributed.
 func TestTrustedProxyHeader_MissingHeaderRejects(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
-	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Kata-Actor": "setup"})
+	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Poomsae-Actor": "setup"})
 	issueRef := trustedProxyCreateIssue(t, ts, projectID,
-		map[string]string{"X-Kata-Actor": "setup"})
+		map[string]string{"X-Poomsae-Actor": "setup"})
 
 	body := map[string]any{
 		"actor":   "client-claim",
@@ -227,7 +227,7 @@ func TestTrustedProxyHeader_MissingHeaderRejects(t *testing.T) {
 	}
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
-		body, nil) // no X-Kata-Actor on the close call
+		body, nil) // no X-Poomsae-Actor on the close call
 	assertAPIError(t, resp.StatusCode, raw, http.StatusBadRequest, "actor_header_required")
 }
 
@@ -236,7 +236,7 @@ func TestTrustedProxyHeader_MissingHeaderRejects(t *testing.T) {
 // for the read, but read handlers never call attributedActor, so the missing
 // header must not reject the request.
 func TestTrustedProxyHeader_ReadsNotBlocked(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
 	// GET /api/v1/health is a read with no actor and no required setup.
 	// On a trusted listener with no header, the middleware stores a
@@ -267,7 +267,7 @@ func TestTrustedProxyHeader_ModeOffUnchanged(t *testing.T) {
 	}
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
-		body, map[string]string{"X-Kata-Actor": "should-be-ignored"})
+		body, map[string]string{"X-Poomsae-Actor": "should-be-ignored"})
 	require.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", raw)
 
 	var payload struct {
@@ -286,14 +286,14 @@ func TestTrustedProxyHeader_ModeOffUnchanged(t *testing.T) {
 // not_found before dispatch. The handler retains ensureTokenAdminAllowed as
 // a second check; a trusted actor header never grants token administration.
 func TestTrustedProxyHeader_TokenAdminForbidden(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
 	body := map[string]any{
 		"actor": "alice",
 		"name":  "test-token",
 	}
 	resp, raw := doReq(t, ts, "POST", "/api/v1/tokens",
-		body, map[string]string{"X-Kata-Actor": "alice"})
+		body, map[string]string{"X-Poomsae-Actor": "alice"})
 	require.Equal(t, http.StatusNotFound, resp.StatusCode, "body: %s", raw)
 
 	var env struct {
@@ -307,11 +307,11 @@ func TestTrustedProxyHeader_TokenAdminForbidden(t *testing.T) {
 
 	// And the same boundary holds for list and revoke.
 	resp, raw = doReq(t, ts, "GET", "/api/v1/tokens", nil,
-		map[string]string{"X-Kata-Actor": "alice"})
+		map[string]string{"X-Poomsae-Actor": "alice"})
 	require.Equal(t, http.StatusNotFound, resp.StatusCode, "list body: %s", raw)
 
 	resp, raw = doReq(t, ts, "POST", "/api/v1/tokens/42/actions/revoke", nil,
-		map[string]string{"X-Kata-Actor": "alice"})
+		map[string]string{"X-Poomsae-Actor": "alice"})
 	require.Equal(t, http.StatusNotFound, resp.StatusCode, "revoke body: %s", raw)
 }
 
@@ -320,7 +320,7 @@ func TestTrustedProxyHeader_TokenAdminForbidden(t *testing.T) {
 // returns 404 not_found before dispatch, and ensureTokenAdminAllowed remains
 // a second check in the handler for both trusted-proxy principal variants.
 func TestTrustedProxyHeader_TokenAdminForbiddenWithoutHeader(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
 	body := map[string]any{
 		"actor": "alice",
@@ -350,11 +350,11 @@ func TestTrustedProxyHeader_TokenAdminForbiddenWithoutHeader(t *testing.T) {
 // actor is server-derived, a client-controlled source=tui flag must not bypass
 // close message/evidence validation.
 func TestTrustedProxyHeader_TUIBypassRequiresCloseValidation(t *testing.T) {
-	ts := startTrustedProxyTestServer(t, "X-Kata-Actor")
+	ts := startTrustedProxyTestServer(t, "X-Poomsae-Actor")
 
-	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Kata-Actor": "setup"})
+	projectID := trustedProxyCreateProject(t, ts, map[string]string{"X-Poomsae-Actor": "setup"})
 	issueRef := trustedProxyCreateIssue(t, ts, projectID,
-		map[string]string{"X-Kata-Actor": "setup"})
+		map[string]string{"X-Poomsae-Actor": "setup"})
 
 	body := map[string]any{
 		"actor":  "client-claim",
@@ -363,7 +363,7 @@ func TestTrustedProxyHeader_TUIBypassRequiresCloseValidation(t *testing.T) {
 	}
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
-		body, map[string]string{"X-Kata-Actor": "proxy-user"})
+		body, map[string]string{"X-Poomsae-Actor": "proxy-user"})
 	assertAPIError(t, resp.StatusCode, raw, http.StatusBadRequest, "validation")
 }
 
@@ -374,11 +374,11 @@ func TestTrustedProxyHeader_TUIBypassRequiresCloseValidation(t *testing.T) {
 // value credited as the actor (not the body actor, and not anything derived
 // from the bearer — static tokens have no associated actor).
 func TestTrustedProxyHeader_StaticBearerHeaderWins(t *testing.T) {
-	ts, _, logs := startBearerProxyTestServer(t, "X-Kata-Actor",
+	ts, _, logs := startBearerProxyTestServer(t, "X-Poomsae-Actor",
 		bearerProxyOpts{Token: "static-bearer"})
 	authed := map[string]string{
-		"Authorization": "Bearer static-bearer",
-		"X-Kata-Actor":  "proxy-user",
+		"Authorization":   "Bearer static-bearer",
+		"X-Poomsae-Actor": "proxy-user",
 	}
 
 	projectID := trustedProxyCreateProject(t, ts, authed)
@@ -418,11 +418,11 @@ func TestTrustedProxyHeader_StaticBearerHeaderWins(t *testing.T) {
 // fail with 400 actor_header_required (not 401 — bearer was fine — and not a
 // silent body-actor fallback).
 func TestTrustedProxyHeader_StaticBearerMissingHeaderRejects(t *testing.T) {
-	ts, _, _ := startBearerProxyTestServer(t, "X-Kata-Actor",
+	ts, _, _ := startBearerProxyTestServer(t, "X-Poomsae-Actor",
 		bearerProxyOpts{Token: "static-bearer"})
 	authed := map[string]string{
-		"Authorization": "Bearer static-bearer",
-		"X-Kata-Actor":  "setup",
+		"Authorization":   "Bearer static-bearer",
+		"X-Poomsae-Actor": "setup",
 	}
 
 	projectID := trustedProxyCreateProject(t, ts, authed)
@@ -431,10 +431,10 @@ func TestTrustedProxyHeader_StaticBearerMissingHeaderRejects(t *testing.T) {
 	body := map[string]any{
 		"actor":   "client-claim",
 		"reason":  "done",
-		"message": "valid bearer, but no X-Kata-Actor on a trusted listener.",
+		"message": "valid bearer, but no X-Poomsae-Actor on a trusted listener.",
 		"source":  "tui",
 	}
-	// Same Authorization header, but no X-Kata-Actor.
+	// Same Authorization header, but no X-Poomsae-Actor.
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
 		body, map[string]string{"Authorization": "Bearer static-bearer"})
@@ -448,13 +448,13 @@ func TestTrustedProxyHeader_StaticBearerMissingHeaderRejects(t *testing.T) {
 // middleware order in composition could quietly let the header through on
 // unauthenticated requests.
 func TestTrustedProxyHeader_BadBearerStops401BeforeProxy(t *testing.T) {
-	ts, _, _ := startBearerProxyTestServer(t, "X-Kata-Actor",
+	ts, _, _ := startBearerProxyTestServer(t, "X-Poomsae-Actor",
 		bearerProxyOpts{Token: "static-bearer"})
 
 	// Setup uses the right bearer so we have something to close.
 	authed := map[string]string{
-		"Authorization": "Bearer static-bearer",
-		"X-Kata-Actor":  "setup",
+		"Authorization":   "Bearer static-bearer",
+		"X-Poomsae-Actor": "setup",
 	}
 	projectID := trustedProxyCreateProject(t, ts, authed)
 	issueRef := trustedProxyCreateIssue(t, ts, projectID, authed)
@@ -470,8 +470,8 @@ func TestTrustedProxyHeader_BadBearerStops401BeforeProxy(t *testing.T) {
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
 		body, map[string]string{
-			"Authorization": "Bearer wrong-bearer",
-			"X-Kata-Actor":  "proxy-user",
+			"Authorization":   "Bearer wrong-bearer",
+			"X-Poomsae-Actor": "proxy-user",
 		})
 	assertAPIError(t, resp.StatusCode, raw, http.StatusForbidden, "auth_invalid")
 }
@@ -485,7 +485,7 @@ func TestTrustedProxyHeader_BadBearerStops401BeforeProxy(t *testing.T) {
 // "bob" (token), not "client-claim" (body). Pin this so a future change that
 // reverses the precedence (or silently merges the two principals) fails here.
 func TestTrustedProxyHeader_DBTokenIdentityHeaderOverwrites(t *testing.T) {
-	ts, store, logs := startBearerProxyTestServer(t, "X-Kata-Actor",
+	ts, store, logs := startBearerProxyTestServer(t, "X-Poomsae-Actor",
 		bearerProxyOpts{Token: "bootstrap-token", RequireTokenIdentity: true})
 
 	// Mint a DB-registered token for "bob" so requireIdentityBearer sets
@@ -501,8 +501,8 @@ func TestTrustedProxyHeader_DBTokenIdentityHeaderOverwrites(t *testing.T) {
 	// Setup uses the bootstrap token (allowed in identity mode for admin-
 	// shaped writes) plus the proxy header for actor attribution.
 	setup := map[string]string{
-		"Authorization": "Bearer bootstrap-token",
-		"X-Kata-Actor":  "setup",
+		"Authorization":   "Bearer bootstrap-token",
+		"X-Poomsae-Actor": "setup",
 	}
 	projectID := trustedProxyCreateProject(t, ts, setup)
 	issueRef := trustedProxyCreateIssue(t, ts, projectID, setup)
@@ -518,8 +518,8 @@ func TestTrustedProxyHeader_DBTokenIdentityHeaderOverwrites(t *testing.T) {
 	resp, raw := doReq(t, ts, "POST",
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues/"+issueRef+"/actions/close",
 		body, map[string]string{
-			"Authorization": "Bearer " + bobPlain,
-			"X-Kata-Actor":  "alice",
+			"Authorization":   "Bearer " + bobPlain,
+			"X-Poomsae-Actor": "alice",
 		})
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "close: %s", raw)
 

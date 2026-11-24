@@ -111,7 +111,7 @@ func TestDocsScreenshotGeneratorCreatesAndReplacesOwnedOutput(t *testing.T) {
 		}
 	}
 
-	staging, err := filepath.Glob(filepath.Join(tempDir, ".kata-docs-screenshots.*"))
+	staging, err := filepath.Glob(filepath.Join(tempDir, ".poomsae-docs-screenshots.*"))
 	require.NoError(t, err)
 	assert.Empty(t, staging)
 }
@@ -260,7 +260,7 @@ func TestDocsAssetHydratorUsesPinnedCommitWithoutRefreshingRemote(t *testing.T) 
 	hydrator := installDocsScript(t, repo, "hydrate-assets.sh")
 	cmd := exec.CommandContext(t.Context(), "bash", hydrator, "--force") //nolint:gosec // test-owned script installed under TempDir
 	cmd.Dir = repo
-	cmd.Env = append(envWithout("KATA_DOCS_ASSETS_COMMIT"), "KATA_DOCS_ASSETS_COMMIT="+pinnedCommit)
+	cmd.Env = append(envWithout("POOMSAE_DOCS_ASSETS_COMMIT"), "POOMSAE_DOCS_ASSETS_COMMIT="+pinnedCommit)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))
 
@@ -283,19 +283,19 @@ func TestWebScreenshotGeneratorRunsFocusedCapture(t *testing.T) {
 	//nolint:gosec // test-owned shell fixture must be executable.
 	require.NoError(t, os.WriteFile(fakeBun, []byte(`#!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$*" >"$KATA_FAKE_BUN_ARGS"
-mkdir -p "$KATA_DOCS_SCREENSHOT_DIR/web-ui"
+printf '%s\n' "$*" >"$POOMSAE_FAKE_BUN_ARGS"
+mkdir -p "$POOMSAE_DOCS_SCREENSHOT_DIR/web-ui"
 for image in workspace issue-detail relationships daemon-switcher; do
-  printf 'synthetic png\n' >"$KATA_DOCS_SCREENSHOT_DIR/web-ui/$image.png"
+  printf 'synthetic png\n' >"$POOMSAE_DOCS_SCREENSHOT_DIR/web-ui/$image.png"
 done
 `), 0o700))
 
 	script := filepath.Join("..", "docs", "screenshots", "generate-web-ui.sh")
 	cmd := exec.CommandContext(t.Context(), "bash", script, "--out", outputDir) //nolint:gosec // fixed repository script and TempDir output
 	cmd.Dir = filepath.Join("..", "web")
-	cmd.Env = append(envWithout("PATH", "KATA_DOCS_SCREENSHOT_DIR", "KATA_FAKE_BUN_ARGS"),
+	cmd.Env = append(envWithout("PATH", "POOMSAE_DOCS_SCREENSHOT_DIR", "POOMSAE_FAKE_BUN_ARGS"),
 		"PATH="+fakeBin+":/usr/bin:/bin",
-		"KATA_FAKE_BUN_ARGS="+argsLog,
+		"POOMSAE_FAKE_BUN_ARGS="+argsLog,
 	)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))
@@ -320,17 +320,17 @@ func TestFederationScreenshotGeneratorConnectsToListenerAuthority(t *testing.T) 
 
 	tempDir := t.TempDir()
 	outputDir := filepath.Join(tempDir, "output")
-	fakeKata := filepath.Join(tempDir, "kata")
+	fakeKata := filepath.Join(tempDir, "poomsae")
 	//nolint:gosec // test-owned shell fixture must be executable.
 	require.NoError(t, os.WriteFile(fakeKata, []byte(`#!/usr/bin/env bash
 set -euo pipefail
 if [[ " $* " == *" daemon start --foreground "* ]]; then
-  printf 'kata daemon: listening on 127.0.0.1:45678\n'
+  printf 'poomsae daemon: listening on 127.0.0.1:45678\n'
   trap 'exit 0' TERM INT
   while :; do sleep 1; done
 fi
-if [[ " $* " == *" init "* && -n "${KATA_SERVER:-}" && "$KATA_SERVER" != "http://127.0.0.1:45678" ]]; then
-  printf 'unexpected live docs daemon authority: %s\n' "$KATA_SERVER" >&2
+if [[ " $* " == *" init "* && -n "${POOMSAE_SERVER:-}" && "$POOMSAE_SERVER" != "http://127.0.0.1:45678" ]]; then
+  printf 'unexpected live docs daemon authority: %s\n' "$POOMSAE_SERVER" >&2
   exit 9
 fi
 if [[ " $* " == *" create "* ]]; then
@@ -349,7 +349,7 @@ if [[ " $* " == *" tui "* ]]; then
   printf '%s\n' \
     'Project: demo-spoke-project' \
     'show selected spoke project everywhere' \
-    'kata / federation' \
+    'poomsae / federation' \
     'selected project: demo-spoke-project' \
     'Select local spoke project' \
     'Select hub daemon' \
@@ -368,8 +368,8 @@ exit 0
 	script := filepath.Join("..", "docs", "screenshots", "generate-federation-tui.sh")
 	cmd := exec.CommandContext(t.Context(), "bash", script, "--out", outputDir) //nolint:gosec // fixed repository script and TempDir output
 	cmd.Dir = filepath.Join("..", "scripts")
-	cmd.Env = append(envWithout("KATA_BIN", "KATA_SERVER", "KATA_AUTH_TOKEN", "KATA_HOME"),
-		"KATA_BIN="+fakeKata,
+	cmd.Env = append(envWithout("POOMSAE_BIN", "POOMSAE_SERVER", "POOMSAE_AUTH_TOKEN", "POOMSAE_HOME"),
+		"POOMSAE_BIN="+fakeKata,
 	)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))

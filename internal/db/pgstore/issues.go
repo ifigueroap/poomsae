@@ -10,10 +10,10 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/shortid"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const issueColumns = `i.id, i.uid, i.project_id, p.uid, i.short_id, i.title, i.body, i.status,
@@ -86,11 +86,11 @@ func (s *Store) createIssueTx(ctx context.Context, tx *sql.Tx, params db.CreateI
 		}
 		issueUID := params.UID
 		if issueUID == "" {
-			issueUID, err = katauid.New()
+			issueUID, err = poomsaeuid.New()
 			if err != nil {
 				return fmt.Errorf("generate issue uid: %w", err)
 			}
-		} else if !katauid.Valid(issueUID) {
+		} else if !poomsaeuid.Valid(issueUID) {
 			return fmt.Errorf("invalid issue uid %q", issueUID)
 		}
 		shortIDValue, err := s.resolveShortIDTx(ctx, tx, params.ProjectID, issueUID, params.ShortIDOverride)

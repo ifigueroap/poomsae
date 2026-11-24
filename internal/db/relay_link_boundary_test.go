@@ -4,8 +4,8 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A relay-sourced issue.links_changed folds without its crossing additions and

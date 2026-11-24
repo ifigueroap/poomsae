@@ -36,7 +36,7 @@ func TestFillEmbedsChunksAndQueryFindsThem(t *testing.T) {
 	// Long content must produce multiple chunks (> splitMaxRunes runes).
 	if _, err := ix.db.ExecContext(ctx,
 		`UPDATE issue_mirror SET content = ? WHERE issue_uid = 'u1'`,
-		strings.Repeat("kata ", 1000)); err != nil {
+		strings.Repeat("poomsae ", 1000)); err != nil {
 		t.Fatal(err)
 	}
 	g := testGen("m1")
@@ -149,7 +149,7 @@ func TestFillAbortsOnBatchShape400(t *testing.T) {
 	// Long content: multiple chunks, all sent in one encode call (batch 0).
 	if _, err := ix.db.ExecContext(ctx,
 		`UPDATE issue_mirror SET content = ? WHERE issue_uid = 'u1'`,
-		strings.Repeat("kata ", 1000)); err != nil {
+		strings.Repeat("poomsae ", 1000)); err != nil {
 		t.Fatal(err)
 	}
 	g := testGen("m1")

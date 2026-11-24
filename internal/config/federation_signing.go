@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 )
 
 // FederationSigningConfig applies hub-controlled policy on every listener.

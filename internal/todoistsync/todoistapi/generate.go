@@ -1,6 +1,6 @@
 // Package todoistapi is a client for Todoist's published API v1, generated
 // from https://developer.todoist.com/openapi.json. config.yaml selects the
-// operations Kata uses. Run go generate to refresh it from the live spec; every
+// operations Poomsae uses. Run go generate to refresh it from the live spec; every
 // other .go file in this package is generated.
 //
 // jq rewrites the spec's escaped UTF-16 surrogate pairs, which the generator's

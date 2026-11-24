@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ErrEvidenceTargetUnavailable reports a duplicate or superseding issue that

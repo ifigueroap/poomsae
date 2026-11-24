@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // MaxEventID returns the highest events.id, or 0 when the table is empty. The
@@ -29,11 +29,11 @@ func (d *Store) MaxEventID(ctx context.Context) (int64, error) {
 
 // EventsAfter returns up to Limit events ordered by id ASC. The issue and
 // related_issue short_ids are joined from the live `issues` table so events
-// render with display ids that stay current even after `kata projects merge`
+// render with display ids that stay current even after `poomsae projects merge`
 // or a future federation merge shifts a peer's short_id. UIDs remain stable.
 // The joins match by row id / UID alone — both globally unique — with no
 // project filter: a link event's related issue may live in another project,
-// and `kata move` rehomes an issue while its historical events stay put.
+// and `poomsae move` rehomes an issue while its historical events stay put.
 func (d *Store) EventsAfter(ctx context.Context, p db.EventsAfterParams) ([]db.Event, error) {
 	conds := []string{"e.id > ?", "p.name <> ?"}
 	args := []any{p.AfterID, db.SystemProjectName}

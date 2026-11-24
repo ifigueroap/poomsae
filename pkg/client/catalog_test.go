@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func writeDaemonCatalog(t *testing.T, home, catalog string) {

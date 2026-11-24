@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"go.kenn.io/kata/internal/jsonutil"
+	"github.com/ifigueroap/poomsae/internal/jsonutil"
 )
 
 // NormalizeJSON removes whitespace and sorts object keys while preserving

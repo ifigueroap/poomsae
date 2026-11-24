@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" role="img" aria-label="Two machines, each with agents and a human making millisecond round trips to their own local kata daemon, while the two daemons replicate shared projects through a federation hub in the background, off the agents' critical path">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" role="img" aria-label="Two machines, each with agents and a human making millisecond round trips to their own local poomsae daemon, while the two daemons replicate shared projects through a federation hub in the background, off the agents' critical path">
   <style>
     text { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
     .h { fill: #e8e8e8; font-size: 18px; font-weight: 600; }
@@ -33,13 +33,13 @@
   <text class="d" x="336" y="172" text-anchor="end">agent</text>
   <line class="row" x1="64" y1="190" x2="336" y2="190"/>
   <text class="t" x="64" y="218">wes</text>
-  <text class="d" x="336" y="218" text-anchor="end">kata tui</text>
+  <text class="d" x="336" y="218" text-anchor="end">poomsae tui</text>
 
   <line class="hot" x1="200" y1="234" x2="200" y2="270" marker-end="url(#fs-hot)"/>
   <text class="m" x="214" y="260">ms</text>
 
   <rect class="daemon" x="64" y="276" width="272" height="66"/>
-  <text class="t" x="88" y="304">kata daemon</text>
+  <text class="t" x="88" y="304">poomsae daemon</text>
   <text class="m" x="88" y="326">full local ledger · SQLite</text>
 
   <!-- machine B card -->
@@ -54,13 +54,13 @@
   <text class="d" x="896" y="172" text-anchor="end">agent</text>
   <line class="row" x1="624" y1="190" x2="896" y2="190"/>
   <text class="t" x="624" y="218">ana</text>
-  <text class="d" x="896" y="218" text-anchor="end">kata ui</text>
+  <text class="d" x="896" y="218" text-anchor="end">poomsae ui</text>
 
   <line class="hot" x1="760" y1="234" x2="760" y2="270" marker-end="url(#fs-hot)"/>
   <text class="m" x="774" y="260">ms</text>
 
   <rect class="daemon" x="624" y="276" width="272" height="66"/>
-  <text class="t" x="648" y="304">kata daemon</text>
+  <text class="t" x="648" y="304">poomsae daemon</text>
   <text class="m" x="648" y="326">full local ledger · SQLite</text>
 
   <!-- hub -->

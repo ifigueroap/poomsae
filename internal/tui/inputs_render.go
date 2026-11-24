@@ -209,7 +209,7 @@ func renderFilterField(s inputState, idx, innerW int) string {
 
 // renderRadio formats the radio choices as a single line. The
 // selected choice gets a filled glyph; the others get empty. Under
-// KATA_COLOR_MODE=none we fall back to ASCII so the snapshot
+// POOMSAE_COLOR_MODE=none we fall back to ASCII so the snapshot
 // fixtures stay deterministic across UTF-8-aware terminals. The
 // active form field gets a bolded label upstream; we don't bold the
 // choices themselves so the row reads like a single statement.
@@ -227,7 +227,7 @@ func renderRadio(r radioField, _ bool) string {
 }
 
 // radioGlyphs returns the (filled, empty) glyph pair for radio
-// rendering. ASCII fallback under KATA_COLOR_MODE=none keeps the
+// rendering. ASCII fallback under POOMSAE_COLOR_MODE=none keeps the
 // snapshot bytes deterministic on terminals whose default font may
 // or may not include the ◉/◯ codepoints.
 func radioGlyphs() (string, string) {

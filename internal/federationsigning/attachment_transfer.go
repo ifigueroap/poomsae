@@ -14,7 +14,7 @@ import (
 	"time"
 	"uuid"
 
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 )
 
 const (
@@ -54,8 +54,8 @@ func IsAttachmentTransfer(method, path string) bool {
 }
 
 // bodySpool owns both its descriptor and its removable temporary file. A process
-// crash can leave a private kata-federation-body-* file in the OS temp directory.
-// Recovery may remove only those files after all Kata processes sharing that
+// crash can leave a private poomsae-federation-body-* file in the OS temp directory.
+// Recovery may remove only those files after all Poomsae processes sharing that
 // directory have stopped; never sweep files that another process may be using.
 type bodySpool struct {
 	*os.File
@@ -89,7 +89,7 @@ func spoolBody(ctx context.Context, body io.ReadCloser, length, limit int64) (_ 
 	if length > limit {
 		return nil, "", &http.MaxBytesError{Limit: limit}
 	}
-	f, err := os.CreateTemp("", "kata-federation-body-*")
+	f, err := os.CreateTemp("", "poomsae-federation-body-*")
 	if err != nil {
 		return nil, "", err
 	}

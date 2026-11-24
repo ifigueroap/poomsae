@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestConfigValidatePostgresIdentifiers(t *testing.T) {
@@ -36,8 +36,8 @@ func TestConfigValidatePostgresIdentifiers(t *testing.T) {
 		"pg_shadow",
 		"information_schema",
 		"two schemas",
-		"kata,public",
-		`kata"; DROP SCHEMA public CASCADE; --`,
+		"poomsae,public",
+		`poomsae"; DROP SCHEMA public CASCADE; --`,
 		"0123",
 		"schema-with-dash",
 		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -49,7 +49,7 @@ func TestConfigValidatePostgresIdentifiers(t *testing.T) {
 		})
 	}
 
-	for _, schema := range []string{"kata", "kata_2", "example_schema"} {
+	for _, schema := range []string{"poomsae", "kata_2", "example_schema"} {
 		t.Run(schema, func(t *testing.T) {
 			t.Parallel()
 			err := (pgstore.Config{Schema: schema, SchemaMode: pgstore.SchemaModeBootstrap}).Validate()
@@ -61,19 +61,19 @@ func TestConfigValidatePostgresIdentifiers(t *testing.T) {
 		t.Run("owner/"+owner, func(t *testing.T) {
 			t.Parallel()
 			err := (pgstore.Config{
-				Schema: "kata", SchemaMode: pgstore.SchemaModeValidate, SchemaOwner: owner,
+				Schema: "poomsae", SchemaMode: pgstore.SchemaModeValidate, SchemaOwner: owner,
 			}).Validate()
 			assert.NoError(t, err)
 		})
 	}
 
 	err := (pgstore.Config{
-		Schema: "kata", SchemaMode: pgstore.SchemaModeValidate,
+		Schema: "poomsae", SchemaMode: pgstore.SchemaModeValidate,
 		SchemaOwner: strings.Repeat("a", 64),
 	}).Validate()
 	assert.ErrorContains(t, err, "exceeds 63 bytes")
 
-	cfg := pgstore.ConfigFromValues("kata", "validate", " Exact Role ", false)
+	cfg := pgstore.ConfigFromValues("poomsae", "validate", " Exact Role ", false)
 	assert.Equal(t, " Exact Role ", cfg.SchemaOwner)
 }
 
@@ -81,7 +81,7 @@ func TestValidationModeRequiresConfiguredSchemaOwnerBeforeConnecting(t *testing.
 	t.Parallel()
 
 	store, err := pgstore.OpenWithConfig(t.Context(), "not-a-postgres-dsn", pgstore.Config{
-		Schema: "kata", SchemaMode: pgstore.SchemaModeValidate,
+		Schema: "poomsae", SchemaMode: pgstore.SchemaModeValidate,
 	})
 	assert.Nil(t, store)
 	require.Error(t, err)

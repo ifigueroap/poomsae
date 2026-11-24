@@ -2,12 +2,12 @@
   import { autoReposition, Chip, dismissable, floatingPopoverStyle } from '@kenn-io/kit-ui'
   import { tick } from 'svelte'
   import { listRecurrences } from '../lib/api/generated/default/default'
-  import { formatDay } from '../lib/kata/dates'
+  import { formatDay } from '../lib/poomsae/dates'
   import type {
-    KataCreateRecurrenceInput,
-    KataPatchRecurrenceInput,
-    KataRecurrence,
-  } from '../lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaePatchRecurrenceInput,
+    PoomsaeRecurrence,
+  } from '../lib/poomsae/types'
   import { formatRRule } from '../lib/recurrence/rrule'
   import RecurrenceDialogs from './RecurrenceDialogs.svelte'
 
@@ -17,13 +17,13 @@
     disabled?: boolean
     draftFenceGeneration?: number
     refreshKey?: number | string
-    onCreate: (projectID: number, input: KataCreateRecurrenceInput) => Promise<void>
+    onCreate: (projectID: number, input: PoomsaeCreateRecurrenceInput) => Promise<void>
     onPatch: (
-      recurrence: KataRecurrence,
-      input: KataPatchRecurrenceInput,
+      recurrence: PoomsaeRecurrence,
+      input: PoomsaePatchRecurrenceInput,
       etag: string,
     ) => Promise<void>
-    onDelete: (recurrence: KataRecurrence) => Promise<void>
+    onDelete: (recurrence: PoomsaeRecurrence) => Promise<void>
   }
   let {
     projectID,
@@ -35,7 +35,7 @@
     onPatch,
     onDelete,
   }: Props = $props()
-  let recurrences = $state<KataRecurrence[]>([])
+  let recurrences = $state<PoomsaeRecurrence[]>([])
   let open = $state(false)
   let readError = $state(false)
   let root: HTMLDivElement | undefined = $state()
@@ -43,8 +43,8 @@
   let panelStyle = $state('')
   let dialogs:
     | {
-        openEditRecurrence: (r: KataRecurrence) => void
-        openDeleteRecurrence: (r: KataRecurrence) => void
+        openEditRecurrence: (r: PoomsaeRecurrence) => void
+        openDeleteRecurrence: (r: PoomsaeRecurrence) => void
       }
     | undefined = $state()
   let generation = 0
@@ -56,7 +56,7 @@
       if (result.status !== 200 || !Array.isArray(result.data.recurrences))
         throw new Error('Could not load repeating tasks')
       if (current === generation) {
-        recurrences = result.data.recurrences as KataRecurrence[]
+        recurrences = result.data.recurrences as PoomsaeRecurrence[]
         readError = false
       }
     } catch {
@@ -106,8 +106,8 @@
     position()
   }
   async function patch(
-    recurrence: KataRecurrence,
-    input: KataPatchRecurrenceInput,
+    recurrence: PoomsaeRecurrence,
+    input: PoomsaePatchRecurrenceInput,
     etag: string,
   ): Promise<void> {
     try {
@@ -117,7 +117,7 @@
       throw error
     }
   }
-  async function stop(recurrence: KataRecurrence): Promise<void> {
+  async function stop(recurrence: PoomsaeRecurrence): Promise<void> {
     try {
       await onDelete(recurrence)
     } catch (error) {

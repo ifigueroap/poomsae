@@ -79,10 +79,9 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Install frozen web dependencies
-        run: kit-retry 3 5 make web-install
+        run: make web-install
 
       # `goreleaser check` intentionally exits nonzero for the pinned, deprecated
       # `brews` pipe. Executing the full snapshot validates that pipe and every
@@ -94,17 +93,16 @@ jobs:
           version: v2.19.0
           args: release --snapshot --clean
         env:
-          KATA_HOME: ${{ runner.temp }}/kata-release-snapshot/home
-          KATA_DB: ${{ runner.temp }}/kata-release-snapshot/home/kata.db
-          KATA_WORKSPACE: ${{ runner.temp }}/kata-release-snapshot/workspace
+          POOMSAE_HOME: ${{ runner.temp }}/poomsae-release-snapshot/home
+          POOMSAE_DB: ${{ runner.temp }}/poomsae-release-snapshot/home/poomsae.db
+          POOMSAE_WORKSPACE: ${{ runner.temp }}/poomsae-release-snapshot/workspace
 
       - name: Retain snapshot release artifacts
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kata-release-snapshot
-          path: |
-            dist/
-            release-artifacts/
+          name: poomsae-release-snapshot
+          path: dist/
+          if-no-files-found: ignore
           retention-days: 7
 
   release-image:
@@ -143,15 +141,15 @@ jobs:
         run: >-
           docker buildx bake image --load
           --set image.platform=linux/amd64
-          --set image.tags=kata-release:snapshot
+          --set image.tags=poomsae-release:snapshot
 
       - name: Exercise the native release image
         shell: bash
         run: |
           set -euo pipefail
-          image=kata-release:snapshot
+          image=poomsae-release:snapshot
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = '1000:1000'
-          docker run --rm -e KATA_HOME=/data -e KATA_DB=/data/kata.db "$image" version --json
+          docker run --rm -e POOMSAE_HOME=/data -e POOMSAE_DB=/data/poomsae.db "$image" version --json
           docker run --rm "$image" _web-assets-check
           data_dir=$(mktemp -d)
           sudo chown 1000:1000 "$data_dir"
@@ -159,11 +157,11 @@ jobs:
           trap 'if [ -n "$container" ]; then docker stop "$container"; fi' EXIT
           container=$(docker run -d --rm \
             -v "$data_dir:/data" -p 127.0.0.1::7777 \
-            -e KATA_HOME=/data -e KATA_DB=/data/kata.db \
-            -e KATA_LISTEN=0.0.0.0:7777 -e KATA_TRUST_PRIVATE_NETWORK=1 \
-            -e KATA_WEB_PUBLIC_ORIGIN=http://127.0.0.1:7777 \
-            -e KATA_BACKUP_DIR=/data/backups -e KATA_BACKUP_INTERVAL=1s \
-            -e KATA_BACKUP_RETAIN=1h "$image")
+            -e POOMSAE_HOME=/data -e POOMSAE_DB=/data/poomsae.db \
+            -e POOMSAE_LISTEN=0.0.0.0:7777 -e POOMSAE_TRUST_PRIVATE_NETWORK=1 \
+            -e POOMSAE_WEB_PUBLIC_ORIGIN=http://127.0.0.1:7777 \
+            -e POOMSAE_BACKUP_DIR=/data/backups -e POOMSAE_BACKUP_INTERVAL=1s \
+            -e POOMSAE_BACKUP_RETAIN=1h "$image")
           port=$(docker port "$container" 7777/tcp)
           # Docker's port proxy accepts and resets connections until the
           # daemon listens; plain --retry does not retry a reset.

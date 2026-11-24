@@ -3,8 +3,8 @@ package db_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // The boundary applies to event and artifact reads of the superseded epoch and

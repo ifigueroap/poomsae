@@ -30,7 +30,7 @@ type Project struct {
 	Deleted  bool
 }
 
-// Task is the subset of a Todoist task that Kata imports and writes back.
+// Task is the subset of a Todoist task that Poomsae imports and writes back.
 type Task struct {
 	ID          string
 	ProjectID   string

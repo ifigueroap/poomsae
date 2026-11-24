@@ -1,4 +1,4 @@
-// Package shortid derives, validates, and parses kata's short_id display
+// Package shortid derives, validates, and parses poomsae's short_id display
 // references. A short_id is the lowercased final L characters (4 ≤ L ≤ 26)
 // of an issue's ULID; a qualified reference is "<project>#<short_id>".
 package shortid
@@ -7,7 +7,7 @@ import (
 	"errors"
 	"strings"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // MinLength is the smallest short_id length the auto-extend algorithm
@@ -57,7 +57,7 @@ func Valid(s string) bool {
 
 // Ref is a parsed user-supplied issue reference. Exactly one of ShortID
 // or ULID is populated. Project is set only when the input was qualified
-// (e.g. "kata#abc4"); a bare short_id leaves Project empty for the
+// (e.g. "poomsae#abc4"); a bare short_id leaves Project empty for the
 // caller to fill from workspace context.
 type Ref struct {
 	Project string
@@ -70,9 +70,9 @@ type Ref struct {
 //   - a bare short_id (Ref.ShortID set; Ref.Project empty)
 //   - a qualified short_id "<project>#<short_id>" (Ref.Project, Ref.ShortID)
 //
-// Legacy numeric refs that fall below MinLength ("12", "kata#42") are
+// Legacy numeric refs that fall below MinLength ("12", "poomsae#42") are
 // rejected with ErrInvalidRef because no valid short_id is that short.
-// Numeric refs at or above MinLength ("1234", "kata#1234") parse as
+// Numeric refs at or above MinLength ("1234", "poomsae#1234") parse as
 // short_ids and resolve at the database layer — they return NotFound
 // unless a real issue's ULID suffix happens to be all-digit (≈1% of
 // short_ids at length 4). Legacy per-project issue numbers are not

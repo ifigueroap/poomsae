@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 // Test the real client against HTTP fixtures; the clock only avoids real pacing.
@@ -44,7 +44,7 @@ func testClient(t *testing.T, handler http.HandlerFunc) (*Client, Config, *testC
 	c.WebOrigin = srv.URL
 	clock := &testClock{at: time.Date(2026, 10, 4, 0, 0, 0, 0, time.UTC)}
 	client := NewClient(ClientConfig{Daemon: config.TwentySyncConfig{APIOrigin: srv.URL}, LookupEnv: func(name string) (string, bool) {
-		require.Equal(t, "KATA_TWENTY_TOKEN", name)
+		require.Equal(t, "POOMSAE_TWENTY_TOKEN", name)
 		return "example-token", true
 	}, Now: clock.now, Wait: clock.wait})
 	return client, c, clock
@@ -192,9 +192,9 @@ func TestClientMetadataPaginatesObjectsAndFieldsIndependently(t *testing.T) {
 	client, c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		query, vars := metadataOperation(t, r)
 		switch {
-		case strings.Contains(query, "KataTwentyWorkspace"):
+		case strings.Contains(query, "PoomsaeTwentyWorkspace"):
 			workspaceResponse(t, w, workspaceID)
-		case strings.Contains(query, "KataTwentyObjects"):
+		case strings.Contains(query, "PoomsaeTwentyObjects"):
 			// Twenty's metadata API uses a custom cursor scalar and the
 			// boolean comparison operator "is", unlike REST filters.
 			require.Contains(t, query, "$after: ConnectionCursor")
@@ -206,7 +206,7 @@ func TestClientMetadataPaginatesObjectsAndFieldsIndependently(t *testing.T) {
 			}
 			require.Equal(t, "object-next", vars["after"])
 			writeJSON(t, w, map[string]any{"data": map[string]any{"objects": connection([]map[string]any{{"id": "55555555-5555-4555-8555-555555555552", "nameSingular": "task", "isActive": true}}, false, "")}})
-		case strings.Contains(query, "KataTwentyFields"):
+		case strings.Contains(query, "PoomsaeTwentyFields"):
 			require.Contains(t, query, "$after: ConnectionCursor")
 			fieldPages.Add(1)
 			require.Equal(t, "55555555-5555-4555-8555-555555555552", vars["id"])

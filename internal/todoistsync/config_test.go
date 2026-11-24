@@ -57,7 +57,7 @@ func TestImportProjectionOwnership(t *testing.T) {
 	require.Contains(t, batch.Items[0].Labels, "todoist")
 }
 
-// Contract: ordinary provider label names import using Kata's canonical label spelling.
+// Contract: ordinary provider label names import using Poomsae's canonical label spelling.
 func TestImportNormalizesProviderLabels(t *testing.T) {
 	row := testTask()
 	row.Labels = []string{"Needs Review", "needs-review", "Important!", "!!!", "Todoist"}

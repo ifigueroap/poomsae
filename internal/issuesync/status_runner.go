@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // StatusAdapter opens a status-only session before content preparation.

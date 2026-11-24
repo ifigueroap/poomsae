@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func TestExportImport_DeletedIssueOmitsImportMappings(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	live, _, err := src.CreateIssue(ctx, db.CreateIssueParams{ProjectID: p.ID, Title: "live issue", Author: "tester"})
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestExportImport_DeletedIssueOmitsImportMappings(t *testing.T) {
 func TestExportImport_PreservesImportMappings(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	issue, _, err := src.CreateIssue(ctx, db.CreateIssueParams{ProjectID: p.ID, Title: "from beads", Author: "tester"})
 	require.NoError(t, err)

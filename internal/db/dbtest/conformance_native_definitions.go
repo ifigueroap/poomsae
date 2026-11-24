@@ -4,9 +4,9 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkNativeCronDefinitions(t *testing.T, store db.Storage) error {

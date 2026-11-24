@@ -5,8 +5,8 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R5: every signed transition must authorize the exact next root key. All

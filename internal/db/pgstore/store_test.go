@@ -3,13 +3,13 @@ package pgstore_test
 import (
 	"testing"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // TestStoreSatisfiesStorageInterface mirrors the package's compile-time
@@ -59,12 +59,12 @@ func TestPeekSchemaVersion_ReturnsZeroForFreshDB(t *testing.T) {
 // the test exercises pure DSN handling without a container round-trip.
 func TestStorePath_RedactsCredentials(t *testing.T) {
 	const secret = "VeryS3cretP@ssword"
-	const dsn = "postgres://kata:" + secret + "@db.example.com:5432/kata_test?sslmode=disable"
+	const dsn = "postgres://poomsae:" + secret + "@db.example.com:5432/kata_test?sslmode=disable"
 
 	store := pgstore.NewStoreForTesting(dsn)
 	path := store.Path()
 	assert.NotContains(t, path, secret, "Path() must not leak the password")
-	assert.NotContains(t, path, "kata:"+secret, "Path() must not leak user:pass form")
+	assert.NotContains(t, path, "poomsae:"+secret, "Path() must not leak user:pass form")
 	// CanonicalDSNIdentity drops userinfo entirely; the identity should
 	// carry only scheme + host + db.
 	assert.Equal(t, "postgres://db.example.com/kata_test", path)

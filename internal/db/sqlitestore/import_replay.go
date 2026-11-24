@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ImportReplay performs the entire JSONL import as one atomic transaction.
@@ -613,7 +613,7 @@ func importProject(ctx context.Context, tx *sql.Tx, p *db.ProjectExport) error {
 	// the daemon's create/rename handlers enforce, or a crafted export
 	// could land a project name with control characters that every CLI/TUI
 	// surface (including cross-project qualified refs) would echo to the
-	// terminal. Names from a kata-produced envelope already passed this
+	// terminal. Names from a poomsae-produced envelope already passed this
 	// gate at creation time, so cutover replays are unaffected. %q keeps
 	// the hostile name escaped inside the error itself.
 	if err := config.ValidateProjectName(p.Name); err != nil {
@@ -940,7 +940,7 @@ func importExternalFieldMapping(
 		accepted_kinds_json, nullable, writable, schema_revision, active,
 		created_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.ConnectorInstance, m.KataField, m.ExternalFieldID, m.ExternalFieldName,
+		m.ConnectorInstance, m.PoomsaeField, m.ExternalFieldID, m.ExternalFieldName,
 		string(acceptedKinds), boolInt(m.Nullable), boolInt(m.Writable),
 		m.SchemaRevision, boolInt(active), m.CreatedAt, m.UpdatedAt)
 	return wrapImportErr(db.ImportKindExternalFieldMapping, err)
@@ -960,7 +960,7 @@ func reuseProjectMergeExternalFieldMapping(
 		FROM external_field_mappings
 		WHERE connector_instance = ? AND kata_field = ? AND external_field_id = ?
 		  AND schema_revision = ? AND created_at = ?`,
-		m.ConnectorInstance, m.KataField, m.ExternalFieldID, m.SchemaRevision, m.CreatedAt,
+		m.ConnectorInstance, m.PoomsaeField, m.ExternalFieldID, m.SchemaRevision, m.CreatedAt,
 	).Scan(&mappingID, &externalFieldName, &storedKinds, &nullable, &writable, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil

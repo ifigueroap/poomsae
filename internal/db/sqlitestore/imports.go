@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 type importIssueState struct {
@@ -393,7 +393,7 @@ func (d *Store) insertImportedIssue(ctx context.Context, tx *sql.Tx, p db.Import
 		}
 		return db.Issue{}, db.Event{}, fmt.Errorf("check project: %w", err)
 	}
-	issueUID, err := katauid.New()
+	issueUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Issue{}, db.Event{}, fmt.Errorf("generate issue uid: %w", err)
 	}
@@ -552,7 +552,7 @@ func (d *Store) importComments(ctx context.Context, tx *sql.Tx, p db.ImportBatch
 			}
 			continue
 		}
-		commentUID, err := katauid.New()
+		commentUID, err := poomsaeuid.New()
 		if err != nil {
 			return nil, 0, fmt.Errorf("generate imported comment uid: %w", err)
 		}

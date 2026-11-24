@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/pgstore"
 )
 
 func TestRelayRootAcceptanceParent(t *testing.T) {

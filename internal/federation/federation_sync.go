@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 const federationPollLimit = 1000
@@ -39,7 +39,7 @@ const maxFederationHubIngestBodyBytes = 64 << 20
 // per-request work grows with the size of the federated data rather than with
 // the request. A budget sized for interactive calls turns a hub that is merely
 // slow into a permanently stuck spoke, because every attempt is cancelled at the
-// same point and retried from the start. KATA_HTTP_TIMEOUT overrides this.
+// same point and retried from the start. POOMSAE_HTTP_TIMEOUT overrides this.
 const defaultFederationClientTimeout = 60 * time.Second
 
 // ErrFederationResetRequired reports a hub that still requires reset after the

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
 	"modernc.org/sqlite"
 )
 
@@ -74,7 +74,7 @@ func seedCronPullHistory(t testing.TB, d *Store, p db.Project, count int) {
 		typ := "issue.updated"
 		payload := ""
 		if i%50 == 0 {
-			uid, err = katauid.New()
+			uid, err = poomsaeuid.New()
 			require.NoError(t, err)
 			typ = "issue.snapshot"
 			payload = fmt.Sprintf(`{"uid":%q,"short_id":%q,"title":"history work","author":"tester","status":"open","created_at":"2026-05-23T12:00:00.000Z"}`, uid, strings.ToLower(uid[len(uid)-8:]))

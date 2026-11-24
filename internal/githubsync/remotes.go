@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const githubSyncAllowedHostsEnv = "KATA_GITHUB_SYNC_ALLOWED_HOSTS"
+const githubSyncAllowedHostsEnv = "POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS"
 
 // ParseGitHubRemote extracts a GitHub host, owner, and repository from a git remote URL.
 func ParseGitHubRemote(remote string) (Binding, error) {

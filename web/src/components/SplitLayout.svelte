@@ -106,7 +106,7 @@
 </script>
 
 <div
-  class={['kata-sash', `kata-sash--${effectiveOrientation}`]}
+  class={['poomsae-sash', `poomsae-sash--${effectiveOrientation}`]}
   data-orientation={effectiveOrientation}
   bind:this={container}
 >
@@ -135,7 +135,7 @@
 </div>
 
 <style>
-  .kata-sash {
+  .poomsae-sash {
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -143,11 +143,11 @@
     overflow: hidden;
   }
 
-  .kata-sash--vertical {
+  .poomsae-sash--vertical {
     flex-direction: column;
   }
 
-  .kata-sash--horizontal {
+  .poomsae-sash--horizontal {
     flex-direction: row;
   }
 

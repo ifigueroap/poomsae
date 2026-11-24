@@ -10,9 +10,9 @@ import (
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
 	"github.com/oklog/ulid/v2"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"go.kenn.io/kit/safefileio"
 )
 

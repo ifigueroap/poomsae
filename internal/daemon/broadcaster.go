@@ -4,14 +4,14 @@ import (
 	"encoding/json/v2"
 	"sync"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/hooks"
 )
 
 // channelBuffer is the per-subscriber send buffer. Full channels trigger
 // overflow disconnect (Broadcast closes the channel and removes the
-// subscriber). Plan 7 may expose this as a `kata config` knob; for now it's
+// subscriber). Plan 7 may expose this as a `poomsae config` knob; for now it's
 // a const matching spec §11.
 const channelBuffer = 256
 

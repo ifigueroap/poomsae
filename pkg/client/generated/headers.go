@@ -12,11 +12,11 @@ type StreamEventsHeaders struct {
 }
 
 type LeaveFederationReplicaHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type PurgeProjectHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type CreateCronJobHeaders struct {
@@ -52,36 +52,36 @@ type FederatedDocbankContentHeaders struct {
 }
 
 type PollFederationProjectEventsHeaders struct {
-	XKataEventFeatures *string `json:"X-Kata-Event-Features,omitempty"`
-	Authorization      *string `json:"Authorization,omitempty"`
+	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
+	Authorization         *string `json:"Authorization,omitempty"`
 }
 
 type IngestFederationProjectEventsHeaders struct {
-	XKataEventFeatures *string `json:"X-Kata-Event-Features,omitempty"`
-	Authorization      *string `json:"Authorization,omitempty"`
+	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
+	Authorization         *string `json:"Authorization,omitempty"`
 }
 
 type GetFederationProjectMetadataHeaders struct {
-	XKataEventFeatures *string `json:"X-Kata-Event-Features,omitempty"`
-	Authorization      *string `json:"Authorization,omitempty"`
+	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
+	Authorization         *string `json:"Authorization,omitempty"`
 }
 
 type RetryFederationQuarantineHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type SkipFederationQuarantineHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type OfferRelayDeliveriesHeaders struct {
-	XKataEventFeatures *string `json:"X-Kata-Event-Features,omitempty"`
-	Authorization      *string `json:"Authorization,omitempty"`
+	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
+	Authorization         *string `json:"Authorization,omitempty"`
 }
 
 type GetRelayResetHeaders struct {
-	XKataEventFeatures *string `json:"X-Kata-Event-Features,omitempty"`
-	Authorization      *string `json:"Authorization,omitempty"`
+	XPoomsaeEventFeatures *string `json:"X-Poomsae-Event-Features,omitempty"`
+	Authorization         *string `json:"Authorization,omitempty"`
 }
 
 type AcceptRelayDeliveriesHeaders struct {
@@ -101,23 +101,23 @@ type SearchFederationProjectHeaders struct {
 }
 
 type CreateIssueHeaders struct {
-	// XKataSurface Client interface for action telemetry (web, tui, or cli); other values are ignored.
-	XKataSurface *string `json:"X-Kata-Surface,omitempty"`
+	// XPoomsaeSurface Client interface for action telemetry (web, tui, or cli); other values are ignored.
+	XPoomsaeSurface *string `json:"X-Poomsae-Surface,omitempty"`
 
-	// XKataProjectAlias Workspace alias identity; requires a name: selector
-	XKataProjectAlias *string `json:"X-Kata-Project-Alias,omitempty"`
+	// XPoomsaeProjectAlias Workspace alias identity; requires a name: selector
+	XPoomsaeProjectAlias *string `json:"X-Poomsae-Project-Alias,omitempty"`
 
-	// XKataProjectAliasKind Workspace alias kind; required with X-Kata-Project-Alias
-	XKataProjectAliasKind *string `json:"X-Kata-Project-Alias-Kind,omitempty"`
-	IdempotencyKey        *string `json:"Idempotency-Key,omitempty"`
+	// XPoomsaeProjectAliasKind Workspace alias kind; required with X-Poomsae-Project-Alias
+	XPoomsaeProjectAliasKind *string `json:"X-Poomsae-Project-Alias-Kind,omitempty"`
+	IdempotencyKey           *string `json:"Idempotency-Key,omitempty"`
 }
 
 type EditIssueHeaders struct {
-	// XKataProjectAlias Workspace alias identity; requires a name: selector
-	XKataProjectAlias *string `json:"X-Kata-Project-Alias,omitempty"`
+	// XPoomsaeProjectAlias Workspace alias identity; requires a name: selector
+	XPoomsaeProjectAlias *string `json:"X-Poomsae-Project-Alias,omitempty"`
 
-	// XKataProjectAliasKind Workspace alias kind; required with X-Kata-Project-Alias
-	XKataProjectAliasKind *string `json:"X-Kata-Project-Alias-Kind,omitempty"`
+	// XPoomsaeProjectAliasKind Workspace alias kind; required with X-Poomsae-Project-Alias
+	XPoomsaeProjectAliasKind *string `json:"X-Poomsae-Project-Alias-Kind,omitempty"`
 }
 
 type ClaimIssueHeaders struct {
@@ -125,14 +125,14 @@ type ClaimIssueHeaders struct {
 }
 
 type CloseIssueHeaders struct {
-	// XKataSurface Client interface for action telemetry (web, tui, or cli); other values are ignored.
-	XKataSurface   *string `json:"X-Kata-Surface,omitempty"`
-	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
-	IfMatch        *string `json:"If-Match,omitempty"`
+	// XPoomsaeSurface Client interface for action telemetry (web, tui, or cli); other values are ignored.
+	XPoomsaeSurface *string `json:"X-Poomsae-Surface,omitempty"`
+	IdempotencyKey  *string `json:"Idempotency-Key,omitempty"`
+	IfMatch         *string `json:"If-Match,omitempty"`
 }
 
 type DeleteIssueHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type MoveIssueHeaders struct {
@@ -140,24 +140,24 @@ type MoveIssueHeaders struct {
 }
 
 type PurgeIssueHeaders struct {
-	XKataConfirm *string `json:"X-Kata-Confirm,omitempty"`
+	XPoomsaeConfirm *string `json:"X-Poomsae-Confirm,omitempty"`
 }
 
 type CreateCommentHeaders struct {
-	// XKataProjectAlias Workspace alias identity; requires a name: selector
-	XKataProjectAlias *string `json:"X-Kata-Project-Alias,omitempty"`
+	// XPoomsaeProjectAlias Workspace alias identity; requires a name: selector
+	XPoomsaeProjectAlias *string `json:"X-Poomsae-Project-Alias,omitempty"`
 
-	// XKataProjectAliasKind Workspace alias kind; required with X-Kata-Project-Alias
-	XKataProjectAliasKind *string `json:"X-Kata-Project-Alias-Kind,omitempty"`
-	IdempotencyKey        *string `json:"Idempotency-Key,omitempty"`
+	// XPoomsaeProjectAliasKind Workspace alias kind; required with X-Poomsae-Project-Alias
+	XPoomsaeProjectAliasKind *string `json:"X-Poomsae-Project-Alias-Kind,omitempty"`
+	IdempotencyKey           *string `json:"Idempotency-Key,omitempty"`
 }
 
 type AddLabelHeaders struct {
-	// XKataProjectAlias Workspace alias identity; requires a name: selector
-	XKataProjectAlias *string `json:"X-Kata-Project-Alias,omitempty"`
+	// XPoomsaeProjectAlias Workspace alias identity; requires a name: selector
+	XPoomsaeProjectAlias *string `json:"X-Poomsae-Project-Alias,omitempty"`
 
-	// XKataProjectAliasKind Workspace alias kind; required with X-Kata-Project-Alias
-	XKataProjectAliasKind *string `json:"X-Kata-Project-Alias-Kind,omitempty"`
+	// XPoomsaeProjectAliasKind Workspace alias kind; required with X-Poomsae-Project-Alias
+	XPoomsaeProjectAliasKind *string `json:"X-Poomsae-Project-Alias-Kind,omitempty"`
 }
 
 type GetIssueLeaseStatusHeaders struct {
@@ -185,11 +185,11 @@ type PatchIssueMetadataHeaders struct {
 }
 
 type NotifyIssueHeaders struct {
-	// XKataProjectAlias Workspace alias identity; requires a name: selector
-	XKataProjectAlias *string `json:"X-Kata-Project-Alias,omitempty"`
+	// XPoomsaeProjectAlias Workspace alias identity; requires a name: selector
+	XPoomsaeProjectAlias *string `json:"X-Poomsae-Project-Alias,omitempty"`
 
-	// XKataProjectAliasKind Workspace alias kind; required with X-Kata-Project-Alias
-	XKataProjectAliasKind *string `json:"X-Kata-Project-Alias-Kind,omitempty"`
+	// XPoomsaeProjectAliasKind Workspace alias kind; required with X-Poomsae-Project-Alias
+	XPoomsaeProjectAliasKind *string `json:"X-Poomsae-Project-Alias-Kind,omitempty"`
 }
 
 type PatchProjectMetadataHeaders struct {

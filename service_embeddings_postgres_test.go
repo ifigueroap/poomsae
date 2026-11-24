@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServicePostgresEmbeddingSearch(t *testing.T) {
@@ -42,10 +42,10 @@ func TestServicePostgresEmbeddingSearch(t *testing.T) {
 		}
 		return []float32{1, 1}
 	}, func() { providerCalls.Add(1) })
-	cfg := kata.Config{DSN: dsn, Auth: kata.AuthConfig{TrustCallerAuthentication: true}, Embeddings: kata.EmbeddingsConfig{BaseURL: endpoint.URL, Model: "test-model", Dims: 2, TrustPrivateNetwork: true}, EmbeddingProjectAllowed: func(_ context.Context, uid string) (bool, error) {
+	cfg := poomsae.Config{DSN: dsn, Auth: poomsae.AuthConfig{TrustCallerAuthentication: true}, Embeddings: poomsae.EmbeddingsConfig{BaseURL: endpoint.URL, Model: "test-model", Dims: 2, TrustPrivateNetwork: true}, EmbeddingProjectAllowed: func(_ context.Context, uid string) (bool, error) {
 		return uid != deniedUID.Load() || allowDenied.Load(), nil
 	}}
-	service, err := kata.New(ctx, cfg)
+	service, err := poomsae.New(ctx, cfg)
 	require.NoError(t, err)
 	server := httptest.NewServer(service.Handler())
 	projectID := createProject(t, server.URL, "embeddings").Project.ID
@@ -85,7 +85,7 @@ func TestServicePostgresEmbeddingSearch(t *testing.T) {
 	require.NoError(t, <-done)
 	server.Close()
 	require.NoError(t, service.Close())
-	service, err = kata.New(ctx, cfg)
+	service, err = poomsae.New(ctx, cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 	server = httptest.NewServer(service.Handler())

@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestScheduleCodecsAreRegistered(t *testing.T) {
 	for _, key := range []string{"scheduled_on", "deadline_on"} {
 		codec, ok := fieldCodecs[key]
 		require.True(t, ok)
-		assert.Equal(t, key, codec.KataField())
+		assert.Equal(t, key, codec.PoomsaeField())
 	}
 }
 
@@ -81,7 +81,7 @@ func TestScheduleCodecKataPatchPreservesCivilTimesAcrossDST(t *testing.T) {
 		{Kind: "local_datetime", Value: "2026-03-08T02:30", Timezone: "America/New_York"},
 		{Kind: "local_datetime", Value: "2026-11-01T01:30:45", Timezone: "America/New_York"},
 	} {
-		patch, err := codec.KataPatch(db.Issue{}, value)
+		patch, err := codec.PoomsaePatch(db.Issue{}, value)
 		require.NoError(t, err)
 		assert.JSONEq(t, `"`+value.Value+`[America/New_York]"`, string(patch["scheduled_on"]))
 		assert.NotContains(t, patch, "timezone")
@@ -101,7 +101,7 @@ func TestScheduleCodecKataPatchCanonicalizesAndClears(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			patch, err := codec.KataPatch(db.Issue{}, tc.value)
+			patch, err := codec.PoomsaePatch(db.Issue{}, tc.value)
 			require.NoError(t, err)
 			got, err := json.Marshal(patch)
 			require.NoError(t, err)

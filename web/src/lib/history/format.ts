@@ -14,17 +14,17 @@ import TagIcon from '@lucide/svelte/icons/tag'
 import TrashIcon from '@lucide/svelte/icons/trash-2'
 import UserIcon from '@lucide/svelte/icons/user-round'
 
-import type { KataTaskEvent } from '../kata/types'
+import type { PoomsaeTaskEvent } from '../poomsae/types'
 
-export type KataEventTone = 'neutral' | 'positive' | 'negative' | 'warning'
+export type PoomsaeEventTone = 'neutral' | 'positive' | 'negative' | 'warning'
 
-export interface KataEventDescriptor {
+export interface PoomsaeEventDescriptor {
   icon: Component
   label: string
-  tone: KataEventTone
+  tone: PoomsaeEventTone
 }
 
-export function describeResolution(event: KataTaskEvent): string {
+export function describeResolution(event: PoomsaeTaskEvent): string {
   const payload = event.payload ?? {}
   const reason = typeof payload.reason === 'string' ? payload.reason : 'done'
   const labels: Record<string, string> = {
@@ -44,7 +44,7 @@ export function describeResolution(event: KataTaskEvent): string {
     : label
 }
 
-export function describeKataEvent(event: KataTaskEvent): KataEventDescriptor {
+export function describeKataEvent(event: PoomsaeTaskEvent): PoomsaeEventDescriptor {
   const payload = event.payload ?? {}
   switch (event.type) {
     case 'issue.created':

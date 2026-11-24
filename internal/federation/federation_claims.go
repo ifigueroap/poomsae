@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // ClaimRequest is the wire body for federation claim actions.

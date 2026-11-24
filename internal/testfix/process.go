@@ -16,7 +16,7 @@ import (
 // RunIsolated gives a test package its own application home and temporary files.
 // Child test processes retain their parent's explicit fixture setup.
 func RunIsolated(m *testing.M) (code int) {
-	if os.Getenv("KATA_TEST_HOME") != "" {
+	if os.Getenv("POOMSAE_TEST_HOME") != "" {
 		return m.Run()
 	}
 	// macOS gives each user a long TMPDIR under the /var symlink. Test socket
@@ -58,7 +58,7 @@ func RunIsolated(m *testing.M) (code int) {
 		return 1
 	}
 	environment := map[string]string{
-		"HOME": home, "USERPROFILE": home, "KATA_HOME": home, "KATA_TEST_HOME": home,
+		"HOME": home, "USERPROFILE": home, "POOMSAE_HOME": home, "POOMSAE_TEST_HOME": home,
 		"TMPDIR": temporary, "TMP": temporary, "TEMP": temporary,
 	}
 	maps.Copy(environment, toolchain)

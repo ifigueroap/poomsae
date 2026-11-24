@@ -10,7 +10,7 @@ import (
 
 func TestAutostartPolicy(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	for _, test := range []struct {
 		content string
 		enabled bool

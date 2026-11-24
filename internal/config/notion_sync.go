@@ -17,7 +17,7 @@ var notionTokenEnvPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func NormalizeNotionSyncConfig(cfg NotionSyncConfig) (NotionSyncConfig, error) {
 	cfg.TokenEnv = strings.TrimSpace(cfg.TokenEnv)
 	if cfg.TokenEnv == "" {
-		cfg.TokenEnv = "KATA_NOTION_TOKEN"
+		cfg.TokenEnv = "POOMSAE_NOTION_TOKEN"
 	}
 	if !notionTokenEnvPattern.MatchString(cfg.TokenEnv) {
 		return NotionSyncConfig{}, errors.New("notion_sync.token_env must be a valid environment variable name")

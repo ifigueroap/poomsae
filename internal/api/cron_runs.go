@@ -3,8 +3,8 @@ package api
 import (
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // CronRun is flat, bounded, independently attributed public evidence.
@@ -21,7 +21,7 @@ type CronProjectRequest struct {
 
 // CronCapabilitiesResponse advertises ordinary read-only feature support.
 type CronCapabilitiesResponse struct {
-	EventFeatures string `header:"X-Kata-Event-Features"`
+	EventFeatures string `header:"X-Poomsae-Event-Features"`
 	Body          struct {
 		ProjectUID    string   `json:"project_uid"`
 		EventFeatures []string `json:"event_features"`

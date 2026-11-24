@@ -2,16 +2,16 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('detail editing and close reasons round-trip through live Kata authority', async ({
+test('detail editing and close reasons round-trip through live Poomsae authority', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Editable example task',
     body: 'Original description',
   })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   const title = page
     .getByRole('region', { name: 'Task detail' })
@@ -50,15 +50,15 @@ test('detail editing and close reasons round-trip through live Kata authority', 
 
 test('comments, links, checklist, and history update without API fan-out', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const peer = await kata.seedIssue(page, credentials, { title: 'Related example task' })
-  const issue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const peer = await poomsae.seedIssue(page, credentials, { title: 'Related example task' })
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Collaboration example task',
     metadata: { checklist: [] },
   })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   await page.getByRole('button', { name: 'Add comment' }).click()
   await page.getByRole('textbox', { name: 'Comment' }).fill('A neutral collaboration note')

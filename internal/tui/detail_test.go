@@ -767,7 +767,7 @@ func TestDetail_TabPlaceholder_ErrorRendered(t *testing.T) {
 // the children aren't actually run against the real *Client.
 func TestHandleOpenDetail_DispatchesFetchIssue(t *testing.T) {
 	m := initialModel(Options{})
-	m.api = NewClient("http://kata.invalid", nil)
+	m.api = NewClient("http://poomsae.invalid", nil)
 	m.scope = scope{projectID: 7}
 	iss := Issue{ProjectID: 7, UID: "01TEST-42aa", ShortID: "42aa", Title: "x"}
 	_, cmd := m.Update(openDetailMsg{issue: iss})
@@ -2166,7 +2166,7 @@ func TestList_DetailMutation_Ignored(t *testing.T) {
 // mutation dispatched through Model.Update reaches the daemon with
 // the resolved identity instead of the empty string.
 func TestDetail_Open_SeedsActorFromList(t *testing.T) {
-	t.Setenv("KATA_AUTHOR", "wes")
+	t.Setenv("POOMSAE_AUTHOR", "wes")
 	m := newDetailHostModel(Options{}, 7)
 	iss := Issue{ProjectID: 7, UID: "01TEST-aaa1", ShortID: "aaa1", Title: "x"}
 	out, _ := m.Update(openDetailMsg{issue: iss})
@@ -2181,7 +2181,7 @@ func TestDetail_Open_SeedsActorFromList(t *testing.T) {
 // for the bug where dm.actor was never populated and the daemon
 // rejected with empty actor.
 func TestDetail_Mutation_ThroughModelCarriesActor(t *testing.T) {
-	t.Setenv("KATA_AUTHOR", "wes")
+	t.Setenv("POOMSAE_AUTHOR", "wes")
 	m := initialModel(Options{})
 	m.scope = scope{projectID: 7}
 	api := &fakeDetailAPI{

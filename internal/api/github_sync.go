@@ -5,7 +5,7 @@ import (
 	"encoding/json/v2"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // EnableIssueSyncRequest enables durable external issue sync for one project.

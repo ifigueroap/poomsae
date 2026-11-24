@@ -286,7 +286,7 @@ func sameRecurringPosition(a, b RecurringProgress) bool {
 
 // RecurringOccurrences previews up to n instants after the later of after and
 // the job's delivered progress, stepping as PlanRecurring does. A paused job has
-// none. Kata holds no anchor or catch-up for an adapter job, so only its cron and
+// none. Poomsae holds no anchor or catch-up for an adapter job, so only its cron and
 // once triggers have instants (the adapter's own trigger times); progress is
 // read for native jobs only.
 func RecurringOccurrences(j JobDefinition, progress RecurringProgress, after time.Time, n int) ([]time.Time, error) {
@@ -363,7 +363,7 @@ func splitCronDirective(expression string) (zone, rest string, has, bare bool) {
 	return "", expression, false, false
 }
 
-// adapterCronSchedule parses an adapter's cron trigger with kata's cron grammar: the
+// adapterCronSchedule parses an adapter's cron trigger with poomsae's cron grammar: the
 // trigger timezone applies only when the expression has no directive of its
 // own, and an @every descriptor is an interval with no preview instant.
 func adapterCronSchedule(t Trigger) (cronparser.Schedule, error) {

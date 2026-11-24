@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestFederationFailpointHubRestartMidIngestBatch(t *testing.T) {
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "before_federation_ingest_commit=exit")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "before_federation_ingest_commit=exit")
 	fx := newFederationStressFixture(t, 1)
 	fx.enableProject(t, "failpoint-mid-ingest")
 
@@ -28,7 +28,7 @@ func TestFederationFailpointHubRestartMidIngestBatch(t *testing.T) {
 	_, err := fx.hub.db.IssueByUID(t.Context(), spokeIssue.UID, db.IncludeDeletedYes)
 	require.Error(t, err, "pre-commit crash must not leave a partially-ingested issue")
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	fx.restartHub(t)
 	fx.waitForConvergence(t)
 	got, err := fx.hub.db.IssueByUID(t.Context(), spokeIssue.UID, db.IncludeDeletedNo)
@@ -37,7 +37,7 @@ func TestFederationFailpointHubRestartMidIngestBatch(t *testing.T) {
 }
 
 func TestFederationFailpointHubCommitBeforeBroadcastStillConverges(t *testing.T) {
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "after_federation_ingest_commit_before_broadcast=exit")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "after_federation_ingest_commit_before_broadcast=exit")
 	fx := newFederationStressFixture(t, 2)
 	fx.enableProject(t, "failpoint-post-commit")
 
@@ -47,7 +47,7 @@ func TestFederationFailpointHubCommitBeforeBroadcastStillConverges(t *testing.T)
 	require.NoError(t, err, "post-commit crash must retain the accepted issue")
 	assert.Equal(t, spokeIssue.ShortID, got.ShortID)
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	fx.restartHub(t)
 	fx.waitForConvergence(t)
 	fx.assertHubEventCountForIssue(t, spokeIssue.UID, 1)
@@ -55,7 +55,7 @@ func TestFederationFailpointHubCommitBeforeBroadcastStillConverges(t *testing.T)
 }
 
 func TestFederationFailpointBeforeSpokePushCursorAdvanceRetriesDuplicateBatch(t *testing.T) {
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=exit")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=exit")
 	fx := newFederationStressFixture(t, 1)
 	fx.enableProject(t, "failpoint-push-cursor")
 
@@ -63,7 +63,7 @@ func TestFederationFailpointBeforeSpokePushCursorAdvanceRetriesDuplicateBatch(t 
 	fx.waitForNodeUnavailable(t, fx.spokes[0])
 	fx.assertHubEventCountForIssue(t, spokeIssue.UID, 1)
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	fx.restartSpoke(t, fx.spokes[0])
 	fx.waitForConvergence(t)
 	fx.assertHubEventCountForIssue(t, spokeIssue.UID, 1)
@@ -74,7 +74,7 @@ func TestFederationFailpointBeforeSpokePushCursorAdvanceRetriesDuplicateBatch(t 
 
 func TestFederationFailpointConcurrentLocalWriteDuringPullApply(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "pull-apply-sleep")
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS",
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS",
 		"during_spoke_pull_apply_before_materialize=sleep:500ms:mark:"+marker)
 	fx := newFederationStressFixture(t, 1)
 	fx.enableProject(t, "failpoint-pull-apply")
@@ -95,14 +95,14 @@ func TestFederationFailpointConcurrentLocalWriteDuringPullApply(t *testing.T) {
 }
 
 func TestFederationFailpointSpokeRestartDuringPendingPush(t *testing.T) {
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=exit")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=exit")
 	fx := newFederationStressFixture(t, 1)
 	fx.enableProject(t, "failpoint-restart-pending-push")
 
 	spokeIssue := fx.createIssueOnNode(t, fx.spokes[0], "restart-pending-push")
 	fx.waitForNodeUnavailable(t, fx.spokes[0])
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	fx.restartSpoke(t, fx.spokes[0])
 	fx.waitForConvergence(t)
 	waitForFederatedIssue(t, fx.hub.db, spokeIssue.UID, fx.hub.stderr)

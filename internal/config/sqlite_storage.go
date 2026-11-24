@@ -28,14 +28,14 @@ func (c SQLiteStorageConfig) BusyTimeoutDuration() (time.Duration, error) {
 }
 
 func applySQLiteStorageEnv(cfg *SQLiteStorageConfig) {
-	if raw := strings.TrimSpace(os.Getenv("KATA_SQLITE_BUSY_TIMEOUT")); raw != "" {
+	if raw := strings.TrimSpace(os.Getenv("POOMSAE_SQLITE_BUSY_TIMEOUT")); raw != "" {
 		cfg.BusyTimeout = raw
 	}
 }
 
-// KataSQLiteStorageConfig uses the storage-only reader so direct database
+// PoomsaeSQLiteStorageConfig uses the storage-only reader so direct database
 // operations do not depend on unrelated daemon settings.
-func KataSQLiteStorageConfig(ctx context.Context) (SQLiteStorageConfig, error) {
+func PoomsaeSQLiteStorageConfig(ctx context.Context) (SQLiteStorageConfig, error) {
 	_ = ctx
 	storage, err := readStorageConfig()
 	if err != nil {

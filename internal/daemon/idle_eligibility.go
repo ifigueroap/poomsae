@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 

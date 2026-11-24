@@ -1,4 +1,4 @@
-// Package jsonl exports and imports kata database state as ordered NDJSON.
+// Package jsonl exports and imports poomsae database state as ordered NDJSON.
 package jsonl
 
 import (

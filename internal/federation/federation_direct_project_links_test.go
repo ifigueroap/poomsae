@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestSupplementalProofStaysOnExactMount(t *testing.T) {
@@ -42,8 +42,8 @@ func TestLinkPeerProofUsesOwnPlaintextPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	const target = "http://daemon.example"
-	t.Setenv("KATA_SERVER", target)
-	t.Setenv("KATA_ALLOW_INSECURE", "1")
+	t.Setenv("POOMSAE_SERVER", target)
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "1")
 	var route db.FederationBinding
 	for i, project := range spoke.projects {
 		binding, err := spoke.env.DB.FederationBindingByProject(ctx, project.ID)

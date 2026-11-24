@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // newTestClient stands up an httptest server with handler, registers
@@ -66,7 +66,7 @@ func respondJSON(t *testing.T, w http.ResponseWriter, body any) {
 }
 
 func TestTUIFederationClientsKeepAuthRolesSeparate(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "global-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
 	ctx := t.Context()
 	var spokeInstanceAuth, spokeStatusAuth, spokeJoinAuth string
 	var hubListAuth, hubEnsureAuth, hubEnsureActor, hubEnableAuth, hubEnrollmentAuth, hubMetadataAuth string
@@ -280,7 +280,7 @@ func TestTUIHubAdminClientRejectsPlainHTTPHostnameWithoutAllowInsecure(t *testin
 
 func TestTUIHubAdminClientResolvesMatchedLeaveTargetTokenEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("HUB_ADMIN_TOKEN", "catalog-env-token")
 	srv := startTUIPingServer(t)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
@@ -322,8 +322,8 @@ func TestTUIHubAdminClientDoesNotSendGlobalDaemonTokenToCatalogHub(t *testing.T)
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_AUTH_TOKEN", "local-daemon-token")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_AUTH_TOKEN", "local-daemon-token")
 			if tt.tokenEnv != "" {
 				t.Setenv(tt.tokenEnv, "hub-token")
 			}
@@ -335,7 +335,7 @@ func TestTUIHubAdminClientDoesNotSendGlobalDaemonTokenToCatalogHub(t *testing.T)
 				}
 				switch r.URL.Path {
 				case "/api/v1/ping":
-					respondJSON(t, w, map[string]any{"ok": true, "service": "kata", "version": "test"})
+					respondJSON(t, w, map[string]any{"ok": true, "service": "poomsae", "version": "test"})
 				case "/api/v1/instance":
 					gotAuth = r.Header.Get("Authorization")
 					respondJSON(t, w, map[string]any{"instance_uid": "01HZNQ7VFPK1XGD8R5MABCD4EA"})
@@ -393,9 +393,9 @@ func TestTUIHubAdminClientInjectedRemoteRetainsPrivateNetworkTrustWithoutGlobalT
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_AUTH_TOKEN", "local-daemon-token")
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_AUTH_TOKEN", "local-daemon-token")
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[auth\n"), 0o600))
 
 			hub, resolved, err := newHubAdminClient(t.Context(), tt.target())
@@ -412,8 +412,8 @@ func TestTUIHubAdminClientInjectedRemoteRetainsPrivateNetworkTrustWithoutGlobalT
 
 func TestTUIHubAdminClientLocalNamedTargetRetainsLocalDaemonGlobalAuth(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "local-daemon-token")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "local-daemon-token")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "local"
@@ -532,14 +532,14 @@ func TestClient_LocalUnixTransportFailureDoesNotRetryMutationWithoutIdempotencyK
 
 	c := NewClient(clientpkg.UnixBase, &http.Client{Transport: roundTripFunc(
 		func(*http.Request) (*http.Response, error) {
-			return nil, errors.New("read unix /tmp/kata.sock: connection reset by peer")
+			return nil, errors.New("read unix /tmp/poomsae.sock: connection reset by peer")
 		},
 	)})
 
 	_, err := c.AddComment(t.Context(), 7, "abc4", "note", "alice")
 	require.Error(t, err)
 	require.True(t, refreshed.Load(), "non-idempotent mutation should refresh the stale client")
-	assert.Contains(t, err.Error(), "local kata daemon connection failed")
+	assert.Contains(t, err.Error(), "local poomsae daemon connection failed")
 }
 
 func TestClient_LocalUnixTransportFailureRetriesMutationWithIdempotencyKey(t *testing.T) {
@@ -560,7 +560,7 @@ func TestClient_LocalUnixTransportFailureRetriesMutationWithIdempotencyKey(t *te
 
 	c := NewClient(clientpkg.UnixBase, &http.Client{Transport: roundTripFunc(
 		func(*http.Request) (*http.Response, error) {
-			return nil, errors.New("read unix /tmp/kata.sock: connection reset by peer")
+			return nil, errors.New("read unix /tmp/poomsae.sock: connection reset by peer")
 		},
 	)})
 
@@ -592,8 +592,8 @@ func TestClient_LocalUnixTransportFailureLogsAndHidesSyntheticHost(t *testing.T)
 
 	_, err := c.ListIssues(t.Context(), 7, ListFilter{Limit: 2001})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "local kata daemon connection failed")
-	assert.NotContains(t, err.Error(), "kata.invalid")
+	assert.Contains(t, err.Error(), "local poomsae daemon connection failed")
+	assert.NotContains(t, err.Error(), "poomsae.invalid")
 
 	//nolint:gosec // logPath is a test-controlled file under t.TempDir().
 	bs, readErr := os.ReadFile(logPath)
@@ -798,7 +798,7 @@ func TestClient_DecodeError_ReturnsAPIError(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(
 			`{"status":404,"error":{"code":"project_not_initialized",` +
-				`"message":"no .kata.toml ancestor","hint":"run kata init"}}`))
+				`"message":"no .poomsae.toml ancestor","hint":"run poomsae init"}}`))
 	})
 	_, err := c.GetIssueDetail(t.Context(), 7, "abc4")
 	if err == nil {
@@ -814,8 +814,8 @@ func TestClient_DecodeError_ReturnsAPIError(t *testing.T) {
 	if apiErr.Status != http.StatusNotFound {
 		t.Fatalf("Status = %d, want 404", apiErr.Status)
 	}
-	if apiErr.Hint != "run kata init" {
-		t.Fatalf("Hint = %q, want run kata init", apiErr.Hint)
+	if apiErr.Hint != "run poomsae init" {
+		t.Fatalf("Hint = %q, want run poomsae init", apiErr.Hint)
 	}
 	if !strings.Contains(apiErr.Error(), "project_not_initialized") {
 		t.Fatalf("Error() = %q, want it to mention the code", apiErr.Error())
@@ -934,7 +934,7 @@ func TestClient_ListEvents_FiltersByIssueShortID(t *testing.T) {
 	matched := "abc4"
 	other := "xyz9"
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Kata-Events-Issue-UID", "01JZ0000000000000000000001")
+		w.Header().Set("X-Poomsae-Events-Issue-UID", "01JZ0000000000000000000001")
 		require.Equal(t, "abc4", r.URL.Query().Get("issue"))
 		if r.URL.Path != "/api/v1/projects/7/events" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -999,7 +999,7 @@ func TestClient_ListEvents_FiltersByIssueShortID(t *testing.T) {
 func TestClient_ListEvents_MatchesByIssueUID(t *testing.T) {
 	const wantUID = "01JZ0000000000000000000001"
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Kata-Events-Issue-UID", "01JZ0000000000000000000001")
+		w.Header().Set("X-Poomsae-Events-Issue-UID", "01JZ0000000000000000000001")
 		require.Equal(t, wantUID, r.URL.Query().Get("issue"))
 		if r.URL.Query().Get("after_id") != "" {
 			respondJSON(t, w, map[string]any{
@@ -1031,7 +1031,7 @@ func TestClient_ListEvents_MatchesByIssueUID(t *testing.T) {
 func TestClient_ListEvents_PaginatesProjectEventStream(t *testing.T) {
 	var calls int
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Kata-Events-Issue-UID", "01JZ0000000000000000000001")
+		w.Header().Set("X-Poomsae-Events-Issue-UID", "01JZ0000000000000000000001")
 		require.Equal(t, "abc4", r.URL.Query().Get("issue"))
 		calls++
 		require.Equal(t, "/api/v1/projects/7/events", r.URL.Path)
@@ -1299,13 +1299,13 @@ func TestClient_ListProjectsWithStats_NotNilOnSuccess(t *testing.T) {
 }
 
 // TestClient_ResolveProject_PropagatesParseError guards against a
-// malformed .kata.toml silently falling through to a start_path
+// malformed .poomsae.toml silently falling through to a start_path
 // request. In remote-client mode the daemon cannot stat the
 // client's path, so the failure mode is a confusing "no such file"
 // rather than the actual broken-config error the user can fix.
 func TestClient_ResolveProject_PropagatesParseError(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.toml"), //nolint:gosec // test fixture
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), //nolint:gosec // test fixture
 		[]byte("not = valid = toml ==="), 0o644))
 
 	var called atomic.Int32
@@ -1321,10 +1321,10 @@ func TestClient_ResolveProject_PropagatesParseError(t *testing.T) {
 }
 
 // TestClient_ResolveProject_FallsBackOnMissingConfig confirms the
-// missing case still works: no .kata.toml means start_path is sent
+// missing case still works: no .poomsae.toml means start_path is sent
 // for daemon-side filesystem resolution.
 func TestClient_ResolveProject_FallsBackOnMissingConfig(t *testing.T) {
-	dir := t.TempDir() // no .kata.toml
+	dir := t.TempDir() // no .poomsae.toml
 
 	var got map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1421,7 +1421,7 @@ func TestClientResolveProjectPathFreeSendsPortableGitAlias(t *testing.T) {
 }
 
 // TestClient_ResolveProject_SendsNameAndAliasForWorkspaceConfig is
-// regression coverage for issue #35: when .kata.toml is readable, the
+// regression coverage for issue #35: when .poomsae.toml is readable, the
 // TUI must send {name, alias} so a daemon on another host can resolve
 // without stat'ing the client's filesystem.
 func TestClient_ResolveProject_SendsNameAndAliasForWorkspaceConfig(t *testing.T) {
@@ -1449,7 +1449,7 @@ func TestClient_ResolveProject_SendsNameAndAliasForWorkspaceConfig(t *testing.T)
 }
 
 // TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml
-// covers a git workspace without .kata.toml: client sends alias alone.
+// covers a git workspace without .poomsae.toml: client sends alias alone.
 // Resolve must not derive a project name from the git remote (init
 // owns by-convention).
 func TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml(t *testing.T) {
@@ -1478,9 +1478,9 @@ func TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml(t *t
 
 // TestClient_ResolveProject_RewritesStaleKataToml verifies the
 // rename-repair handoff to the client: when the daemon returns a
-// canonical name that differs from the local .kata.toml, the TUI
+// canonical name that differs from the local .poomsae.toml, the TUI
 // rewrites the file. Mirrors the CLI behavior so both clients keep
-// .kata.toml fresh.
+// .poomsae.toml fresh.
 func TestClient_ResolveProject_RewritesStaleKataToml(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
 	require.NoError(t, config.WriteProjectConfig(dir, "stale-name"))
@@ -1498,11 +1498,11 @@ func TestClient_ResolveProject_RewritesStaleKataToml(t *testing.T) {
 	cfg, _, err := config.FindProjectConfig(dir)
 	require.NoError(t, err)
 	assert.Equal(t, "canonical-name", cfg.Project.Name,
-		"stale .kata.toml must be rewritten to the daemon's canonical name")
+		"stale .poomsae.toml must be rewritten to the daemon's canonical name")
 }
 
 func TestTelemetrySkipsLocalDaemonRecovery(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	var refreshed bool
 	c := NewClient(clientpkg.UnixBase, &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, errors.New("connection refused")

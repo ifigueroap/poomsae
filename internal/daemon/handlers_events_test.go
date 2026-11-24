@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type projectLookupGateStorage struct {
@@ -912,7 +912,7 @@ func TestSSE_LiveResetClosesStream(t *testing.T) {
 	purgeResp, _ := envDoRaw(t, env, http.MethodPost,
 		issuePathRef(pid, is.ShortID, "actions/purge"),
 		map[string]string{"actor": "tester"},
-		map[string]string{"X-Kata-Confirm": "PURGE " + project.Name + "#" + is.ShortID})
+		map[string]string{"X-Poomsae-Confirm": "PURGE " + project.Name + "#" + is.ShortID})
 	require.Equal(t, 200, purgeResp.StatusCode)
 
 	reset, ok := framer.Next(t, 2*time.Second)

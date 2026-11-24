@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
 )
 
 // nextDetailFetchRequestSeq orders detail requests independently of the

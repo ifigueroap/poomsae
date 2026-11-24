@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
 )
 
 func requireUnreachable(t *testing.T, err error) {

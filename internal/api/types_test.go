@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/metadata"
 )
 
 // TestShowIssueResponseHasShortIDAndNoNumber pins the wire-side rename:
@@ -107,7 +107,7 @@ func TestIssueOutUsesLinkPeerForParent(t *testing.T) {
 }
 
 // TestLinkPeerHasStatus pins that LinkPeer carries the peer issue's status
-// (0.9.0), so clients (e.g. `kata list` human output) can render a blocked
+// (0.9.0), so clients (e.g. `poomsae list` human output) can render a blocked
 // glyph without an extra lookup per blocked_by peer.
 func TestLinkPeerHasStatus(t *testing.T) {
 	typ := reflect.TypeFor[api.LinkPeer]()

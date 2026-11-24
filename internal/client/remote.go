@@ -12,22 +12,22 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 	"go.kenn.io/kit/pathresolve"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	gitcmd "go.kenn.io/kit/git/cmd"
 )
 
-// remoteServerEnvVar is the environment variable that names a kata
-// daemon URL. When set, it takes precedence over .kata.local.toml.
-const remoteServerEnvVar = "KATA_SERVER"
+// remoteServerEnvVar is the environment variable that names a poomsae
+// daemon URL. When set, it takes precedence over .poomsae.local.toml.
+const remoteServerEnvVar = "POOMSAE_SERVER"
 
-// allowInsecureEnvVar opts out of the plain-http guard for KATA_SERVER.
-// Truthy values: "1", "true". Has no effect on .kata.local.toml; the
+// allowInsecureEnvVar opts out of the plain-http guard for POOMSAE_SERVER.
+// Truthy values: "1", "true". Has no effect on .poomsae.local.toml; the
 // equivalent there is `[server].allow_insecure = true`.
-const allowInsecureEnvVar = "KATA_ALLOW_INSECURE"
+const allowInsecureEnvVar = "POOMSAE_ALLOW_INSECURE"
 
 // activeRemoteTarget is the active_daemon catalog entry when it is a remote,
 // with its normalized URL.
@@ -40,10 +40,10 @@ type activeRemoteTarget struct {
 // configured remote URL. Callers translate
 // this into a daemon-unavailable CLI error; we keep the package free
 // of CLI-layer types so this package stays importable from the TUI.
-var ErrRemoteUnavailable = errors.New("kata server not responding")
+var ErrRemoteUnavailable = errors.New("poomsae server not responding")
 
 // ErrNamedDaemonNotFound marks a --daemon/catalog selection that does not
-// match any [[daemon]] entry in <KATA_HOME>/config.toml.
+// match any [[daemon]] entry in <POOMSAE_HOME>/config.toml.
 var ErrNamedDaemonNotFound = errors.New("named daemon not found")
 
 type namedDaemonTarget struct {
@@ -63,7 +63,7 @@ func ResolveRemote(ctx context.Context, workspaceStart string) (string, bool, er
 
 // EnsureNamedRunning returns the base URL for a named daemon catalog entry,
 // auto-starting local entries and probing remote entries. It is an explicit
-// per-invocation selection and therefore ignores KATA_SERVER, .kata.local.toml,
+// per-invocation selection and therefore ignores POOMSAE_SERVER, .poomsae.local.toml,
 // and active_daemon.
 func EnsureNamedRunning(ctx context.Context, name string) (string, error) {
 	resolved, err := EnsureResolvedNamed(ctx, name)
@@ -73,10 +73,10 @@ func EnsureNamedRunning(ctx context.Context, name string) (string, error) {
 	return resolved.BaseURL, nil
 }
 
-// NormalizeRemoteURL exposes kata's remote URL validation/canonicalization
+// NormalizeRemoteURL exposes poomsae's remote URL validation/canonicalization
 // for TUI daemon-catalog entries. It returns scheme://host[:port] with path
 // and query stripped, and applies the same allow_insecure semantics used by
-// KATA_SERVER, .kata.local.toml, and active daemon-catalog entries.
+// POOMSAE_SERVER, .poomsae.local.toml, and active daemon-catalog entries.
 func NormalizeRemoteURL(v string, allowInsecure bool) (string, error) {
 	return normalizeRemoteURL(v, allowInsecure)
 }
@@ -115,10 +115,10 @@ func RemoteAllowInsecureForBaseURL(ctx context.Context, baseURL, workspaceStart 
 
 // resolveRemote checks the opt-in remote sources, in order:
 //
-//  1. KATA_SERVER env (highest precedence)
-//  2. .kata.local.toml [server].url walked up from workspaceStart
+//  1. POOMSAE_SERVER env (highest precedence)
+//  2. .poomsae.local.toml [server].url walked up from workspaceStart
 //     (CWD when workspaceStart is empty)
-//  3. active_daemon in <KATA_HOME>/config.toml when it names a remote
+//  3. active_daemon in <POOMSAE_HOME>/config.toml when it names a remote
 //     catalog entry
 //
 // If neither is set, returns ("", false, nil) and the caller falls
@@ -128,7 +128,7 @@ func RemoteAllowInsecureForBaseURL(ctx context.Context, baseURL, workspaceStart 
 // the URL and the source name) so the user sees which input is wrong.
 //
 // workspaceStart lets callers that target a specific workspace (via
-// `--workspace`) anchor the .kata.local.toml walk there instead of
+// `--workspace`) anchor the .poomsae.local.toml walk there instead of
 // CWD; otherwise running from outside the repo with `--workspace`
 // would silently miss the workspace's local override.
 func resolveRemote(ctx context.Context, workspaceStart string) (string, bool, error) {
@@ -155,11 +155,11 @@ func resolveRemoteSelection(
 		baseURL, err := normalizeRemoteURL(value, allowInsecure)
 		if err != nil {
 			return ResolvedDaemon{}, false,
-				fmt.Errorf("KATA_SERVER %q: %w", remoteURLForError(value), err)
+				fmt.Errorf("POOMSAE_SERVER %q: %w", remoteURLForError(value), err)
 		}
 		if mode != remoteRequestTarget && !probeRemote(ctx, baseURL) {
 			return ResolvedDaemon{}, false,
-				fmt.Errorf("%w: %s (KATA_SERVER)", ErrRemoteUnavailable, baseURL)
+				fmt.Errorf("%w: %s (POOMSAE_SERVER)", ErrRemoteUnavailable, baseURL)
 		}
 		resolved := resolvedForRunning(
 			DaemonSourceServerEnv, "", remoteRunningDaemon(baseURL, true),
@@ -344,7 +344,7 @@ func activeRemoteTargetAuthForBaseURL(ctx context.Context, baseURL, workspaceSta
 }
 
 func globalAuthTokenOverrideSet() bool {
-	return strings.TrimSpace(os.Getenv("KATA_AUTH_TOKEN")) != ""
+	return strings.TrimSpace(os.Getenv("POOMSAE_AUTH_TOKEN")) != ""
 }
 
 func higherPriorityRemoteSourceMatchesBaseURL(ctx context.Context, baseURL, workspaceStart string) bool {
@@ -370,12 +370,12 @@ func higherPriorityRemoteSourceMatchesBaseURL(ctx context.Context, baseURL, work
 func daemonConfigSource() string {
 	path, err := config.DaemonConfigPath()
 	if err != nil {
-		return "<KATA_HOME>/config.toml"
+		return "<POOMSAE_HOME>/config.toml"
 	}
 	return path
 }
 
-// envAllowInsecure reports whether KATA_ALLOW_INSECURE is set to a
+// envAllowInsecure reports whether POOMSAE_ALLOW_INSECURE is set to a
 // truthy value. Accepts "1" and "true" (case-insensitive) with
 // surrounding whitespace trimmed.
 func envAllowInsecure() bool {
@@ -424,31 +424,31 @@ func LocalConfigPathInWorkspace(ctx context.Context, start string) (string, erro
 	return path, err
 }
 
-// findLocalConfig walks upward from start looking for .kata.local.toml,
+// findLocalConfig walks upward from start looking for .poomsae.local.toml,
 // but caps the walk at the closest workspace boundary (an ancestor
-// directory containing .kata.toml or .git). The file is only honored
+// directory containing .poomsae.toml or .git). The file is only honored
 // when it sits at or below that boundary.
 //
 // Without the boundary check, an attacker on a multi-user system
-// could plant a .kata.local.toml in a shared ancestor like /tmp; a
-// victim running kata from a descendant would walk up to the shared
+// could plant a .poomsae.local.toml in a shared ancestor like /tmp; a
+// victim running poomsae from a descendant would walk up to the shared
 // dir and route their daemon traffic to the attacker's URL. Anchoring
 // to a workspace boundary closes that hole and matches the documented
-// contract — .kata.local.toml lives next to .kata.toml.
+// contract — .poomsae.local.toml lives next to .poomsae.toml.
 //
 // When start is empty the walk begins at CWD. Commands targeting a
 // specific workspace via --workspace pass that path so the walk
 // honors the targeted workspace rather than wherever the user
 // happens to be.
 //
-// A .kata.local.toml discovered at the boundary is additionally
+// A .poomsae.local.toml discovered at the boundary is additionally
 // refused when it is git-tracked in its containing repo (see
 // localConfigTracked): the file is meant to be per-developer and
 // gitignored, so a committed one has unverifiable provenance and
 // could redirect [server].url to route a victim's bearer token to an
 // attacker-controlled host.
 //
-// A non-nil error means a .kata.local.toml was found but its tracked
+// A non-nil error means a .poomsae.local.toml was found but its tracked
 // status could not be verified inside a git worktree. That case must
 // abort resolution rather than fall through: the file may be a
 // developer's legitimate override, and silently ignoring it on a
@@ -465,12 +465,15 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 		}
 	}
 
-	// Track the closest .kata.local.toml we see; only return it after
+	// Track the closest .poomsae.local.toml we see; only return it after
 	// we confirm we hit a workspace boundary at or above its level.
 	var localRoot, localPath string
 	foundLocal := false
 
 	for {
+		if _, adoptErr := config.AdoptLegacyProjectFiles(dir); adoptErr != nil {
+			return "", "", false, adoptErr
+		}
 		if !foundLocal {
 			candidate := filepath.Join(dir, config.LocalConfigFilename)
 			if _, err := os.Stat(candidate); err == nil {
@@ -479,7 +482,7 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 				// Permission denied, broken symlink, etc. — surface to
 				// stderr so the user is not silently routed past their
 				// config file.
-				fmt.Fprintf(os.Stderr, "kata: warning: cannot stat %s: %v\n", candidate, err)
+				fmt.Fprintf(os.Stderr, "poomsae: warning: cannot stat %s: %v\n", candidate, err)
 			}
 		}
 		if isWorkspaceBoundary(dir) {
@@ -487,16 +490,16 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 				tracked, determined := localConfigTrackState(ctx, localRoot)
 				switch {
 				case determined && tracked:
-					// A .kata.local.toml that is committed into the repo has
+					// A .poomsae.local.toml that is committed into the repo has
 					// attacker-controlled provenance: a hostile contributor
 					// can `git add -f` it past the gitignore and point
 					// [server].url at a host they control, so a victim who
-					// runs kata in the checkout (with a global bearer token
+					// runs poomsae in the checkout (with a global bearer token
 					// configured) misroutes that token. The file is meant to
 					// be per-developer and gitignored; a tracked one is never
 					// honored as a server/URL override. Drop it and fall
 					// through to active_daemon/local resolution.
-					fmt.Fprintf(os.Stderr, "kata: warning: ignoring %s: it is tracked by git; a committed .kata.local.toml is not honored as a server override (keep it untracked/gitignored)\n", localPath)
+					fmt.Fprintf(os.Stderr, "poomsae: warning: ignoring %s: it is tracked by git; a committed .poomsae.local.toml is not honored as a server override (keep it untracked/gitignored)\n", localPath)
 					return "", "", false, nil
 				case !determined && gitWorktreePresent(localRoot):
 					// Tracked status could not be established (git missing,
@@ -514,7 +517,7 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 					// Either determined-untracked (legitimate gitignored
 					// developer override) or unknown with no .git present at
 					// all (a genuine non-repo workspace anchored only by
-					// .kata.toml, where there is no notion of tracking). Honor.
+					// .poomsae.toml, where there is no notion of tracking). Honor.
 					return localRoot, localPath, true, nil
 				}
 			}
@@ -523,7 +526,7 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			// Walked to filesystem root without ever crossing a
-			// workspace boundary. A .kata.local.toml found in a
+			// workspace boundary. A .poomsae.local.toml found in a
 			// shared ancestor without a workspace anchor is
 			// unverifiable provenance — drop it.
 			return "", "", false, nil
@@ -533,10 +536,10 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 }
 
 // isWorkspaceBoundary reports whether dir holds a marker that anchors
-// a kata workspace: either a committed .kata.toml binding, or a .git
+// a poomsae workspace: either a committed .poomsae.toml binding, or a .git
 // directory/file (covering both regular repos and worktrees). Either
 // is enough — pre-init flows in a freshly cloned repo can drop a
-// .kata.local.toml beside .git before .kata.toml exists.
+// .poomsae.local.toml beside .git before .poomsae.toml exists.
 func isWorkspaceBoundary(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, config.ProjectConfigFilename)); err == nil {
 		return true
@@ -597,7 +600,7 @@ func dotGitInAncestors(dir string) bool {
 	}
 }
 
-// localConfigTrackState reports whether the .kata.local.toml in root is tracked
+// localConfigTrackState reports whether the .poomsae.local.toml in root is tracked
 // by git, as a tri-state: (tracked, determined). A tracked file is one that was
 // committed into the repo (including a force-add past the gitignore), which
 // gives its contents attacker-controlled provenance; callers must refuse to
@@ -615,7 +618,7 @@ func dotGitInAncestors(dir string) bool {
 //
 // The match is case-insensitive and must not depend on git's core.ignorecase:
 // on a case-insensitive filesystem (macOS/APFS) findLocalConfig opens a
-// committed `.KATA.LOCAL.TOML` via its lowercase stat, so a plain lowercase
+// committed `.POOMSAE.LOCAL.TOML` via its lowercase stat, so a plain lowercase
 // pathspec could miss the uppercase tracked entry and honor the redirect. The
 // `:(icase)` pathspec magic performs the case-insensitive match explicitly and
 // is anchored to root (no wildcard, so it never matches a same-named file in a
@@ -637,8 +640,8 @@ func localConfigTrackState(ctx context.Context, root string) (tracked, determine
 		}
 		// The :(icase) pathspec matches only the root-level file (a nested
 		// same-named file is never returned), but git may print it either
-		// cwd-relative (".kata.local.toml") or repo-relative
-		// ("workspaces/app/.kata.local.toml") depending on version/config.
+		// cwd-relative (".poomsae.local.toml") or repo-relative
+		// ("workspaces/app/.poomsae.local.toml") depending on version/config.
 		// Compare the basename (git always separates with "/") so a
 		// committed override is recognized regardless of the printed form;
 		// rejecting slashed entries would miss it and honor the redirect.
@@ -690,7 +693,7 @@ func requireSecureOrPrivate(u *url.URL, allowInsecure bool) error {
 	}
 	host := u.Hostname()
 	if err := daemonruntime.ValidateNonPublicAddress(net.JoinHostPort(host, "1")); err != nil {
-		return fmt.Errorf("plain http to %q is not allowed: %w; use https or set allow_insecure (env KATA_ALLOW_INSECURE=1, or [server].allow_insecure=true in .kata.local.toml)", host, err)
+		return fmt.Errorf("plain http to %q is not allowed: %w; use https or set allow_insecure (env POOMSAE_ALLOW_INSECURE=1, or [server].allow_insecure=true in .poomsae.local.toml)", host, err)
 	}
 	return nil
 }
@@ -706,7 +709,7 @@ func remoteURLForError(raw string) string {
 // probeRemote checks an explicitly configured remote using the normal
 // non-streaming request budget. Connection refusal still fails immediately,
 // while a black-holed or misconfigured remote can wait for the full default or
-// operator-selected KATA_HTTP_TIMEOUT budget. Local runtime discovery keeps its
+// operator-selected POOMSAE_HTTP_TIMEOUT budget. Local runtime discovery keeps its
 // separate one-second probe so auto-start remains responsive.
 //
 // Indirected through a package-level var so tests that exercise

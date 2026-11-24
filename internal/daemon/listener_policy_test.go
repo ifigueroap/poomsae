@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestBrowserHostPolicy(t *testing.T) {
@@ -280,7 +280,7 @@ func TestBrowserOriginPolicySharedTCPPreservesCLI(t *testing.T) {
 		{
 			name: "browser session header",
 			path: "/api/v1/projects", host: "spoke-b:7777",
-			headers: map[string]string{"X-Kata-Web-Session": "tab-session"}, want: http.StatusBadRequest,
+			headers: map[string]string{"X-Poomsae-Web-Session": "tab-session"}, want: http.StatusBadRequest,
 		},
 		{
 			name: "browser session cookie",
@@ -293,7 +293,7 @@ func TestBrowserOriginPolicySharedTCPPreservesCLI(t *testing.T) {
 		},
 		{
 			name: "browser route",
-			path: "/kata", host: "spoke-b:7777", want: http.StatusBadRequest,
+			path: "/poomsae", host: "spoke-b:7777", want: http.StatusBadRequest,
 		},
 	}
 
@@ -383,7 +383,7 @@ func TestUnixSocketOriginPolicy(t *testing.T) {
 	}), ListenerPolicy{Kind: ListenerSocket})
 	require.NoError(t, err)
 
-	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://kata.invalid/api/v1/ping", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://poomsae.invalid/api/v1/ping", nil)
 	request.Header.Set("Origin", "http://127.0.0.1:27123")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)

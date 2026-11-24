@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 )
 
 // Backend identifies the storage implementation selected by a DSN.
@@ -85,7 +85,7 @@ func Open(ctx context.Context, dsn string, opts ...db.OpenOption) (db.Storage, e
 		return nil, err
 	}
 	if backend == BackendPostgres {
-		storageConfig, err := config.KataPostgresStorageConfig(ctx)
+		storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +95,7 @@ func Open(ctx context.Context, dsn string, opts ...db.OpenOption) (db.Storage, e
 		)
 	}
 	if backend == BackendSQLite {
-		storageConfig, err := config.KataSQLiteStorageConfig(ctx)
+		storageConfig, err := config.PoomsaeSQLiteStorageConfig(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func PeekSchemaVersion(ctx context.Context, dsn string) (int, error) {
 		return 0, err
 	}
 	if backend == BackendPostgres {
-		storageConfig, err := config.KataPostgresStorageConfig(ctx)
+		storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
 		if err != nil {
 			return 0, err
 		}
@@ -175,7 +175,7 @@ func RemoveFreshPostgresTarget(ctx context.Context, dsn, instanceUID string) err
 	if backend != BackendPostgres {
 		return fmt.Errorf("fresh target cleanup requires a postgres DSN")
 	}
-	storageConfig, err := config.KataPostgresStorageConfig(ctx)
+	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func openSQLite(ctx context.Context, path string, cfg db.OpenConfig, opts []db.O
 	}
 	switch {
 	case peekErr == nil && ver > db.CurrentSchemaVersion():
-		return nil, fmt.Errorf("schema_version %d at %s is newer than binary schema %d; use a newer kata binary",
+		return nil, fmt.Errorf("schema_version %d at %s is newer than binary schema %d; use a newer poomsae binary",
 			ver, path, db.CurrentSchemaVersion())
 	case peekErr == nil && ver < db.CurrentSchemaVersion():
 		if ver == 0 && !hasTables {

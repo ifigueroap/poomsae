@@ -83,7 +83,7 @@ a:hover {
   outline-offset: 1px;
 }
 
-.kata-app {
+.poomsae-app {
   box-sizing: border-box;
   min-height: 100vh;
   display: grid;
@@ -92,7 +92,7 @@ a:hover {
   text-align: center;
 }
 
-.kata-app.ready {
+.poomsae-app.ready {
   height: 100%;
   min-height: 0;
   display: block;

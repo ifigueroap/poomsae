@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // digestActor is the per-actor slice in the digest response: totals plus a
@@ -56,7 +56,7 @@ type digestBody struct {
 
 func TestDigestClassifiesAssignmentRenewalAndExpiry(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	issueID := createIssueAs(t, env, pid, "operator", "timed assignment")
 	issue, err := env.DB.IssueByID(t.Context(), issueID)
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func fetchDigest(t *testing.T, env *testenv.Env, projectID int64, since, until s
 // digest then surfaces per-actor totals and per-issue action sequences.
 func TestDigest_AggregatesByActor(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 
 	// Alice creates two issues, comments on the first twice, closes it.
 	a := createIssueAs(t, env, pid, "alice", "first")
@@ -196,7 +196,7 @@ func TestDigest_AggregatesByActor(t *testing.T) {
 // TestDigest_ActorFilter only returns events for the named actors.
 func TestDigest_ActorFilter(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	_ = createIssueAs(t, env, pid, "alice", "x")
 	_ = createIssueAs(t, env, pid, "bob", "y")
 
@@ -208,7 +208,7 @@ func TestDigest_ActorFilter(t *testing.T) {
 
 func TestDigest_RepeatedActorFiltersIncludeEveryActor(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	createIssueAs(t, env, pid, "alice", "alice issue")
 	createIssueAs(t, env, pid, "bob", "bob issue")
 	createIssueAs(t, env, pid, "carol", "carol issue")
@@ -229,11 +229,11 @@ func TestDigest_RepeatedActorFiltersIncludeEveryActor(t *testing.T) {
 // owner, and links supplied at issue creation are folded into digest totals
 // and per-issue actions. CreateIssue does not emit separate
 // issue.labeled/assigned/linked events for create-time state — without payload
-// mining the digest would silently undercount common `kata create --label
+// mining the digest would silently undercount common `poomsae create --label
 // bug --owner alice --blocks 7` activity.
 func TestDigest_CountsCreateTimeLabelsOwnerLinks(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 
 	// Seed a target issue alice's later issue can block.
 	target := createIssueAs(t, env, pid, "alice", "target")
@@ -280,14 +280,14 @@ func TestDigest_CountsCreateTimeLabelsOwnerLinks(t *testing.T) {
 }
 
 // TestDigest_CreateTimeBlockedByEmitsBlockedByAction pins the digest's
-// translation of a `--blocked-by N` create-time link. Per kata#1, this
+// translation of a `--blocked-by N` create-time link. Per poomsae#1, this
 // is stored as type="blocks" with incoming=true; the digest must flip
 // the per-issue action token to `blocked_by:<short_id>` so the summary
 // reads in the issue's POV. Without the flip, agents see the dependency
 // reversed.
 func TestDigest_CreateTimeBlockedByEmitsBlockedByAction(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 
 	blocker := createIssueAs(t, env, pid, "alice", "blocker")
 	blockerShortID := shortIDOf(t, env, blocker)
@@ -316,15 +316,15 @@ func TestDigest_CreateTimeBlockedByEmitsBlockedByAction(t *testing.T) {
 }
 
 // TestDigest_BlockedByRemovedIsPlainUnlink pins the digest's actor
-// semantics for `kata edit X --remove-blocked-by Y`. From X's POV, X is
+// semantics for `poomsae edit X --remove-blocked-by Y`. From X's POV, X is
 // not actively unblocking anyone — X is becoming unblocked. The digest
 // must record a plain unlink (Unlinked total + per-issue Unlinked
 // action) without crediting X with UnblocksOthers or bumping Unblocked.
-// The mirror operation, `kata edit Y --remove-blocks X`, still credits
+// The mirror operation, `poomsae edit Y --remove-blocks X`, still credits
 // Y with unblocking.
 func TestDigest_BlockedByRemovedIsPlainUnlink(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 
 	blocker := createIssueAs(t, env, pid, "alice", "blocker")
 	child := createIssueAs(t, env, pid, "alice", "blocked")
@@ -356,7 +356,7 @@ func TestDigest_BlockedByRemovedIsPlainUnlink(t *testing.T) {
 // applyEvent rather than falling into the Other bucket.
 func TestDigest_PriorityEvents(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	n := createIssueAs(t, env, pid, "alice", "p3 issue")
 
 	prio := int64(0)
@@ -378,7 +378,7 @@ func TestDigest_PriorityEvents(t *testing.T) {
 // TestDigest_RejectsBadSince validates the since parameter.
 func TestDigest_RejectsBadSince(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	resp := envDoJSON(t, env, "GET", projectPath(pid)+"/digest?since=not-a-time", nil, nil)
 	assert.Equal(t, 400, resp.StatusCode)
 }
@@ -386,7 +386,7 @@ func TestDigest_RejectsBadSince(t *testing.T) {
 // TestDigest_GlobalEndpoint covers the cross-project route.
 func TestDigest_GlobalEndpoint(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	_ = createIssueAs(t, env, pid, "alice", "x")
 
 	var body struct {

@@ -14,16 +14,16 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 // Every fixture origin has an explicit in-memory transport. Unknown origins
@@ -95,7 +95,7 @@ func TestRelayDocbankSignedUploadThroughBothHops(t *testing.T) {
 		for _, node := range []*relayMatrixNode{root, relay, leaf} {
 			server := daemon.NewServer(daemon.ServerConfig{FederationSyncOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
 				return federation.SyncFederationOnce(ctx, node.store, binding, credential, node.credentials)
-			}, DB: node.store, FederationCredentials: node.credentials, RootSigning: daemon.NewRootSigning(node.signer), Auth: config.AuthConfig{Token: "bootstrap-test-token", RequireTokenIdentity: true}, FederationSigning: verifiers[node], FederationSigningRequired: verifiers[node] != nil, Docbank: docbank.NewClient(vaults[node].Server.URL, func() (string, error) { return "test-key", nil }), DocbankFolder: "/kata"})
+			}, DB: node.store, FederationCredentials: node.credentials, RootSigning: daemon.NewRootSigning(node.signer), Auth: config.AuthConfig{Token: "bootstrap-test-token", RequireTokenIdentity: true}, FederationSigning: verifiers[node], FederationSigningRequired: verifiers[node] != nil, Docbank: docbank.NewClient(vaults[node].Server.URL, func() (string, error) { return "test-key", nil }), DocbankFolder: "/poomsae"})
 			t.Cleanup(func() { require.NoError(t, server.Close()) })
 			handler := server.Handler()
 			node.handler.Store(&handler)

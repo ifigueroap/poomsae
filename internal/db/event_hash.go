@@ -7,7 +7,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // EventHashInput is the portable event content used for replay de-duplication.

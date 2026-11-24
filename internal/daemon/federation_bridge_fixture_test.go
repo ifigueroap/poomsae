@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 type bridgeHubFixture struct {
@@ -43,7 +43,7 @@ func (h bridgeHubFixture) catalog(url string) []config.CatalogDaemonConfig {
 }
 
 // newBridgeLocalDaemon starts the bridging daemon with the default on-disk
-// credential store under a temporary KATA_HOME.
+// credential store under a temporary POOMSAE_HOME.
 func newBridgeLocalDaemon(t *testing.T, store db.Storage, catalog []config.CatalogDaemonConfig) projectAccessFixture {
 	t.Helper()
 	server := daemon.NewServer(daemon.ServerConfig{DB: store, Auth: config.AuthConfig{Token: "local-owner-test-token"}, FederationCredentials: config.DefaultFederationCredentialStore(), FederationCatalog: catalog})

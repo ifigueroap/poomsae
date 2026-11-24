@@ -1,6 +1,6 @@
-# kata
+# poomsae
 
-> kata is a local-first, open-source issue tracker for coding agents and the
+> poomsae is a local-first, open-source issue tracker for coding agents and the
 > humans steering them. A daemon on your own machine answers queries in about
 > 4ms, agents coordinate and hand off work through the ledger, and a TUI and
 > browser UI supervise the same data.
@@ -11,84 +11,84 @@ for machine readers.
 
 ## Product
 
-- [Product overview](https://katatracker.com/index.md): what kata is; speed,
+- [Product overview](https://github.com/ifigueroap/poomsae/index.md): what poomsae is; speed,
   memory, coordination, discipline, supervision, interfaces, sync, reach
-- [The kata guide](https://katatracker.com/guide.md): the nine-move operating
+- [The poomsae guide](https://github.com/ifigueroap/poomsae/guide.md): the nine-move operating
   loop of bind, seed, claim, note, coordinate, close, supervise, sync, own
 
 ## Docs
 
-- [Documentation index](https://katatracker.com/docs/index.md): overview and
+- [Documentation index](https://github.com/ifigueroap/poomsae/docs/index.md): overview and
   quickstart
-- [Quickstart](https://katatracker.com/docs/get-started/quickstart.md): install
+- [Quickstart](https://github.com/ifigueroap/poomsae/docs/get-started/quickstart.md): install
   to first close
-- [Install](https://katatracker.com/docs/get-started/install.md): all install
+- [Install](https://github.com/ifigueroap/poomsae/docs/get-started/install.md): all install
   options
-- [Concepts](https://katatracker.com/docs/guide/concepts.md): projects,
+- [Concepts](https://github.com/ifigueroap/poomsae/docs/guide/concepts.md): projects,
   workspaces, issue identity, events, close discipline
-- [Agent workflows](https://katatracker.com/docs/workflows/agents.md): the
+- [Agent workflows](https://github.com/ifigueroap/poomsae/docs/workflows/agents.md): the
   operating contract for coding agents
-- [Agent orchestration](https://katatracker.com/docs/operations/agent-orchestration.md):
+- [Agent orchestration](https://github.com/ifigueroap/poomsae/docs/operations/agent-orchestration.md):
   fan-out/join, attention hooks, dashboards
-- [CLI reference](https://katatracker.com/docs/reference/cli.md): every command
+- [CLI reference](https://github.com/ifigueroap/poomsae/docs/reference/cli.md): every command
   and flag
-- [MCP reference](https://katatracker.com/docs/reference/mcp.md): stdio and
+- [MCP reference](https://github.com/ifigueroap/poomsae/docs/reference/mcp.md): stdio and
   Streamable HTTP transports, tool loading
-- [MCP Events webhooks](https://katatracker.com/docs/operations/mcp-events.md):
+- [MCP Events webhooks](https://github.com/ifigueroap/poomsae/docs/operations/mcp-events.md):
   daemon-owned signed inbox wakes, subscriptions, keys and recovery
-- [Agent output format](https://katatracker.com/docs/reference/agent-output.md):
+- [Agent output format](https://github.com/ifigueroap/poomsae/docs/reference/agent-output.md):
   the `--agent` output contract
-- [Go client](https://katatracker.com/docs/reference/go-client.md): typed Go
+- [Go client](https://github.com/ifigueroap/poomsae/docs/reference/go-client.md): typed Go
   client, daemon discovery, and an in-process test server
-- [Web UI](https://katatracker.com/docs/guide/web-ui.md): the browser workspace
-- [Issue attachments](https://katatracker.com/docs/guide/attachments.md):
+- [Web UI](https://github.com/ifigueroap/poomsae/docs/guide/web-ui.md): the browser workspace
+- [Issue attachments](https://github.com/ifigueroap/poomsae/docs/guide/attachments.md):
   Docbank file attachments, image and video previews, and close evidence
-- [Semantic search](https://katatracker.com/docs/guide/semantic-search.md):
+- [Semantic search](https://github.com/ifigueroap/poomsae/docs/guide/semantic-search.md):
   opt-in embeddings
-- [Gated workflows](https://katatracker.com/docs/workflows/gated-workflows.md):
+- [Gated workflows](https://github.com/ifigueroap/poomsae/docs/workflows/gated-workflows.md):
   ordered issue stages, human approval, evidence, and attention.
-- [Sharing models](https://katatracker.com/docs/workflows/sharing.md): local,
+- [Sharing models](https://github.com/ifigueroap/poomsae/docs/workflows/sharing.md): local,
   private network, federation, hosted
-- [Share projects between hubs](https://katatracker.com/docs/guide/project-relays.md):
+- [Share projects between hubs](https://github.com/ifigueroap/poomsae/docs/guide/project-relays.md):
   relay setup, daemon selection, credentials, sync status and recovery
-- [Federation](https://katatracker.com/docs/operations/federation.md):
+- [Federation](https://github.com/ifigueroap/poomsae/docs/operations/federation.md):
   operator reference for replication, account credentials, team access and recovery
-- [HTTP API](https://katatracker.com/docs/reference/http-api.md):
+- [HTTP API](https://github.com/ifigueroap/poomsae/docs/reference/http-api.md):
   request contracts, project access, concurrent changes and relay enrollment
-- [Forgejo connector](https://katatracker.com/docs/operations/forgejo-connector.md):
+- [Forgejo connector](https://github.com/ifigueroap/poomsae/docs/operations/forgejo-connector.md):
   Bind Forgejo issues through the built-in Go connector.
-- [GitHub sync](https://katatracker.com/docs/operations/github-sync.md):
-  mirror upstream issues into kata
-- [Notion sync](https://katatracker.com/docs/operations/notion-sync.md):
+- [GitHub sync](https://github.com/ifigueroap/poomsae/docs/operations/github-sync.md):
+  mirror upstream issues into poomsae
+- [Notion sync](https://github.com/ifigueroap/poomsae/docs/operations/notion-sync.md):
   mirror one task data source with daemon polling and optional two-way status sync
-- [Configuration](https://katatracker.com/docs/reference/configuration.md):
+- [Configuration](https://github.com/ifigueroap/poomsae/docs/reference/configuration.md):
   config.toml reference
-- [Cron](https://katatracker.com/docs/reference/cron.md):
+- [Cron](https://github.com/ifigueroap/poomsae/docs/reference/cron.md):
   shared job definitions, run evidence, and recurring child issues
-- [Cron failure alerts](https://katatracker.com/docs/guide/cron-failure-alerts.md):
+- [Cron failure alerts](https://github.com/ifigueroap/poomsae/docs/guide/cron-failure-alerts.md):
   notify an inbox recipient about failed or unknown runs
-- [Diagnosing setup](https://katatracker.com/docs/operations/doctor.md):
-  read-only configuration, daemon, project and hook diagnostics with `kata doctor`
-- [Backup and restore](https://katatracker.com/docs/operations/backup-restore.md):
+- [Diagnosing setup](https://github.com/ifigueroap/poomsae/docs/operations/doctor.md):
+  read-only configuration, daemon, project and hook diagnostics with `poomsae doctor`
+- [Backup and restore](https://github.com/ifigueroap/poomsae/docs/operations/backup-restore.md):
   JSONL export and import
-- [Containers](https://katatracker.com/docs/operations/containers.md):
+- [Containers](https://github.com/ifigueroap/poomsae/docs/operations/containers.md):
   stock images, environment settings, mounted secrets, and persistent storage
-- [Architecture](https://katatracker.com/docs/design/architecture.md): design
+- [Architecture](https://github.com/ifigueroap/poomsae/docs/design/architecture.md): design
   notes
-- [Comparisons](https://katatracker.com/docs/guide/comparisons.md): kata vs.
+- [Comparisons](https://github.com/ifigueroap/poomsae/docs/guide/comparisons.md): poomsae vs.
   SaaS issue trackers
 
 ## Other
 
-- [GitHub repository](https://github.com/kenn-io/kata): source, issues,
+- [GitHub repository](https://github.com/ifigueroap/poomsae): source, issues,
   releases
-- [Changelog](https://katatracker.com/docs/changelog.md): release history
+- [Changelog](https://github.com/ifigueroap/poomsae/docs/changelog.md): release history
 
-- [Local daemon profiles](https://katatracker.com/docs/operations/local-daemon-profiles.md):
+- [Local daemon profiles](https://github.com/ifigueroap/poomsae/docs/operations/local-daemon-profiles.md):
   Pin personal/work homes and recover existing spokes without changing routing.
 
-- [Plane sync](https://katatracker.com/docs/operations/plane-sync.md): Mirror a Plane project with daemon-owned API credentials and optional two-way status sync.
-- [Linear sync](https://katatracker.com/docs/operations/linear-sync.md): Scope, credentials, field ownership, status synchronization, and recovery.
-- [Twenty sync](https://katatracker.com/docs/operations/twenty-sync.md): Mirror Twenty workspace tasks with self-hosted support and optional two-way status sync.
-- [Todoist sync](https://katatracker.com/docs/operations/todoist-sync.md): Scoped task import, status writeback, field ownership, and recovery.
-- [TickTick sync](https://katatracker.com/docs/operations/ticktick-sync.md): Import one task project and write ordinary completion back through the public API.
+- [Plane sync](https://github.com/ifigueroap/poomsae/docs/operations/plane-sync.md): Mirror a Plane project with daemon-owned API credentials and optional two-way status sync.
+- [Linear sync](https://github.com/ifigueroap/poomsae/docs/operations/linear-sync.md): Scope, credentials, field ownership, status synchronization, and recovery.
+- [Twenty sync](https://github.com/ifigueroap/poomsae/docs/operations/twenty-sync.md): Mirror Twenty workspace tasks with self-hosted support and optional two-way status sync.
+- [Todoist sync](https://github.com/ifigueroap/poomsae/docs/operations/todoist-sync.md): Scoped task import, status writeback, field ownership, and recovery.
+- [TickTick sync](https://github.com/ifigueroap/poomsae/docs/operations/ticktick-sync.md): Import one task project and write ordinary completion back through the public API.

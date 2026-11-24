@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 type projectTargetRequest interface {

@@ -37,7 +37,7 @@ func renderProjects(m Model) string {
 
 	headerCells := []string{"Project", "Open", "Closed", "Total", "Updated"}
 	body := []string{
-		titleStyle.Render("kata / projects"),
+		titleStyle.Render("poomsae / projects"),
 		subtleStyle.Render(fmt.Sprintf("%d projects", len(rows)-1)),
 		"",
 		renderProjectsHeader(headerCells, m.width),

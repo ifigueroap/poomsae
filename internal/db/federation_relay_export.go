@@ -4,7 +4,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RelayOutboxExport and the following records are daemon-local delivery state.

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 )
 
 // ResolveInterfaceListen resolves iface:<name>:<port> to one concrete private

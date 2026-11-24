@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // CronRunObservation is attributed portable evidence with immutable run identity.

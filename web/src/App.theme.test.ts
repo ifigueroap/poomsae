@@ -1,4 +1,4 @@
-// @vitest-environment-options { "url": "http://127.0.0.2/kata" }
+// @vitest-environment-options { "url": "http://127.0.0.2/poomsae" }
 
 import { cleanup, render } from '@testing-library/svelte'
 import { tick } from 'svelte'

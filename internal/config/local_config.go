@@ -12,13 +12,13 @@ import (
 )
 
 // LocalConfigFilename is the per-developer override file. Gitignored.
-const LocalConfigFilename = ".kata.local.toml"
+const LocalConfigFilename = ".poomsae.local.toml"
 
 // ErrLocalConfigMissing is returned by ReadLocalConfig when the file
 // is absent. Other I/O and parse errors are returned as-is.
-var ErrLocalConfigMissing = errors.New(".kata.local.toml not found")
+var ErrLocalConfigMissing = errors.New(".poomsae.local.toml not found")
 
-// ReadLocalConfig parses <workspaceRoot>/.kata.local.toml and validates
+// ReadLocalConfig parses <workspaceRoot>/.poomsae.local.toml and validates
 // version == 1. Unlike ReadProjectConfig, [project] is optional — a
 // developer may set only [server]. Empty [server].url is treated as
 // the zero value.
@@ -36,7 +36,7 @@ func ReadLocalConfig(workspaceRoot string) (*ProjectConfig, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	if cfg.Version != 1 {
-		return nil, fmt.Errorf("unsupported .kata.local.toml version %d (expected 1)", cfg.Version)
+		return nil, fmt.Errorf("unsupported .poomsae.local.toml version %d (expected 1)", cfg.Version)
 	}
 	cfg.Project.LegacyIdentity = strings.TrimSpace(cfg.Project.LegacyIdentity)
 	cfg.Project.Name = strings.TrimSpace(cfg.Project.Name)

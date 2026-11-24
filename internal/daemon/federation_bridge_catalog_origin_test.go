@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // A catalog URL selects a hub by its origin. Spelling the same origin with an
@@ -31,7 +31,7 @@ func TestFederationBridgeCatalogAcceptsEquivalentOriginSpellings(t *testing.T) {
 		"uppercase host":        {url: "http://LOCALHOST:" + port, accepted: true},
 		"trailing slash":        {url: "http://localhost:" + port + "/", accepted: true},
 		"explicit default port": {url: "HTTPS://Hub.Example:443", accepted: true},
-		"path prefix":           {url: "http://localhost:" + port + "/kata"},
+		"path prefix":           {url: "http://localhost:" + port + "/poomsae"},
 		"query":                 {url: "http://localhost:" + port + "/?next=1"},
 		"fragment":              {url: "http://localhost:" + port + "#hub"},
 	} {

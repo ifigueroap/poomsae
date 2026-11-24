@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
 )
 
 // The recovery hint is a command an operator pastes into a shell, so a
@@ -20,5 +20,5 @@ func TestFederationRelayLeaveHintQuotesProjectName(t *testing.T) {
 	var apiErr *api.APIError
 	require.True(t, errors.As(err, &apiErr))
 	require.Equal(t, "federation_lifecycle_blocked", apiErr.Code)
-	require.Contains(t, apiErr.Hint, `kata federation bridge disconnect --project 'spoke project '"'"'two'"'"'' --local-only`)
+	require.Contains(t, apiErr.Hint, `poomsae federation bridge disconnect --project 'spoke project '"'"'two'"'"'' --local-only`)
 }

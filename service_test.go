@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -14,19 +14,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/webui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/webui"
 )
 
 func TestServiceDocbankAttachments(t *testing.T) {
 	vault := docbanktest.New(t)
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:     filepath.Join(t.TempDir(), "service.db"),
-		Auth:    kata.AuthConfig{TrustCallerAuthentication: true},
-		Docbank: kata.DocbankConfig{URL: vault.Server.URL, APIKey: "test-key", Folder: "/embedded"},
+		Auth:    poomsae.AuthConfig{TrustCallerAuthentication: true},
+		Docbank: poomsae.DocbankConfig{URL: vault.Server.URL, APIKey: "test-key", Folder: "/embedded"},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
@@ -57,9 +57,9 @@ func TestServiceDocbankAttachments(t *testing.T) {
 
 func TestServiceMountRunAndClose(t *testing.T) {
 	dsn := filepath.Join(t.TempDir(), "service.db")
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  dsn,
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 
@@ -88,9 +88,9 @@ func TestServiceMountRunAndClose(t *testing.T) {
 	require.NoError(t, service.Close())
 	require.NoError(t, service.Close())
 
-	reopened, err := kata.New(t.Context(), kata.Config{
+	reopened, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  dsn,
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, reopened.Close()) })
@@ -105,9 +105,9 @@ func TestServiceMountRunAndClose(t *testing.T) {
 func TestServiceHandlerAtMountsAPIAndBrowserApplication(t *testing.T) {
 	webHandler, err := webui.NewEmbeddedHandler()
 	require.NoError(t, err)
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:        filepath.Join(t.TempDir(), "service.db"),
-		Auth:       kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth:       poomsae.AuthConfig{TrustCallerAuthentication: true},
 		WebHandler: webHandler,
 	})
 	require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestServiceHandlerAtMountsAPIAndBrowserApplication(t *testing.T) {
 	assert.Equal(t, http.StatusOK, redirect.StatusCode)
 	body, err := io.ReadAll(redirect.Body)
 	require.NoError(t, err)
-	assert.Contains(t, string(body), "Kata UI assets are not built")
+	assert.Contains(t, string(body), "Poomsae UI assets are not built")
 
 	req, reqErr := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/tools/tasks/api/v1/health", nil)
 	require.NoError(t, reqErr)
@@ -151,9 +151,9 @@ func TestServiceHandlerAtMountsAPIAndBrowserApplication(t *testing.T) {
 }
 
 func TestServiceHandlerAtRejectsInvalidMountPaths(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
@@ -170,9 +170,9 @@ func TestServiceHandlerAtRejectsInvalidMountPaths(t *testing.T) {
 }
 
 func TestServiceHandlerAtRejectsSiblingPathBeforeCallingService(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	handler, err := service.HandlerAt("/tools/tasks")
@@ -187,26 +187,26 @@ func TestServiceHandlerAtRejectsSiblingPathBeforeCallingService(t *testing.T) {
 }
 
 func TestNewRejectsMissingDSN(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{})
+	service, err := poomsae.New(t.Context(), poomsae.Config{})
 
 	assert.Nil(t, service)
-	assert.EqualError(t, err, "kata: storage DSN is required")
+	assert.EqualError(t, err, "poomsae: storage DSN is required")
 }
 
 func TestNewRejectsMissingAuthenticationPolicy(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"),
 	})
 
 	assert.Nil(t, service)
-	assert.EqualError(t, err, "kata: auth token is required unless caller authentication is explicitly trusted")
+	assert.EqualError(t, err, "poomsae: auth token is required unless caller authentication is explicitly trusted")
 }
 
 func TestNewRejectsInvalidDefaultTimezone(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:             filepath.Join(t.TempDir(), "service.db"),
 		DefaultTimezone: "Not/AZone",
-		Auth:            kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth:            poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 
 	assert.Nil(t, service)
@@ -215,9 +215,9 @@ func TestNewRejectsInvalidDefaultTimezone(t *testing.T) {
 }
 
 func TestNewRejectsAmbiguousAuthenticationPolicy(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{
+		Auth: poomsae.AuthConfig{
 			Token:                     "service-token",
 			TrustCallerAuthentication: true,
 		},
@@ -225,13 +225,13 @@ func TestNewRejectsAmbiguousAuthenticationPolicy(t *testing.T) {
 
 	assert.Nil(t, service)
 	assert.EqualError(t, err,
-		"kata: auth token, trusted caller authentication, and host access are mutually exclusive")
+		"poomsae: auth token, trusted caller authentication, and host access are mutually exclusive")
 }
 
 func TestServiceBearerAuthentication(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{Token: "service-token"},
+		Auth: poomsae.AuthConfig{Token: "service-token"},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
@@ -302,15 +302,15 @@ func listProjects(t *testing.T, baseURL string) projectsResponse {
 func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
-		embeddings kata.EmbeddingsConfig
+		embeddings poomsae.EmbeddingsConfig
 		want       string
 	}{
-		{"partial", kata.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234"}, "kata: embeddings:"},
-		{"sqlite", kata.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2}, "embeddings require Postgres"},
+		{"partial", poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234"}, "poomsae: embeddings:"},
+		{"sqlite", poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2}, "embeddings require Postgres"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "service.db")
-			service, err := kata.New(t.Context(), kata.Config{DSN: path, Auth: kata.AuthConfig{TrustCallerAuthentication: true}, Embeddings: tc.embeddings})
+			service, err := poomsae.New(t.Context(), poomsae.Config{DSN: path, Auth: poomsae.AuthConfig{TrustCallerAuthentication: true}, Embeddings: tc.embeddings})
 			require.Nil(t, service)
 			require.ErrorContains(t, err, tc.want)
 			_, err = os.Stat(path)
@@ -318,9 +318,9 @@ func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 		})
 	}
 	t.Run("invalid batch budget", func(t *testing.T) {
-		service, err := kata.New(t.Context(), kata.Config{
-			DSN: "postgres://kata@127.0.0.1:1/kata?sslmode=disable", Auth: kata.AuthConfig{TrustCallerAuthentication: true},
-			Embeddings: kata.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2, MaxBatchTokens: 100},
+		service, err := poomsae.New(t.Context(), poomsae.Config{
+			DSN: "postgres://poomsae@127.0.0.1:1/poomsae?sslmode=disable", Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
+			Embeddings: poomsae.EmbeddingsConfig{BaseURL: "http://127.0.0.1:1234", Model: "test", Dims: 2, MaxBatchTokens: 100},
 		})
 		if service != nil {
 			require.NoError(t, service.Close())
@@ -330,7 +330,7 @@ func TestServiceRejectsInvalidEmbeddingConfig(t *testing.T) {
 }
 
 func TestServiceSemanticSearchWithoutEmbeddings(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: kata.AuthConfig{TrustCallerAuthentication: true}})
+	service, err := poomsae.New(t.Context(), poomsae.Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: poomsae.AuthConfig{TrustCallerAuthentication: true}})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 	server := httptest.NewServer(service.Handler())

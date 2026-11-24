@@ -11,44 +11,44 @@ import (
 // Empty values leave TOML settings intact, including empty Compose substitutions.
 func applyDeploymentEnv(cfg *DaemonConfig) error {
 	for name, field := range map[string]*string{
-		"KATA_DOCBANK_URL":                    &cfg.Docbank.URL,
-		"KATA_DOCBANK_API_KEY_FILE":           &cfg.Docbank.APIKeyFile,
-		"KATA_DOCBANK_FOLDER":                 &cfg.Docbank.Folder,
-		"KATA_LISTEN":                         &cfg.Listen,
-		"KATA_WEB_LISTEN":                     &cfg.Web.Listen,
-		"KATA_WEB_PUBLIC_ORIGIN":              &cfg.Web.PublicOrigin,
-		"KATA_MCP_ACTOR":                      &cfg.MCP.Actor,
-		"KATA_MCP_TOKEN_FILE":                 &cfg.MCP.TokenFile,
-		"KATA_BACKUP_DIR":                     &cfg.Backup.Dir,
-		"KATA_BACKUP_INTERVAL":                &cfg.Backup.Interval,
-		"KATA_BACKUP_RETAIN":                  &cfg.Backup.Retain,
-		"KATA_SEARCH_EMBEDDINGS_BASE_URL":     &cfg.Search.Embeddings.BaseURL,
-		"KATA_SEARCH_EMBEDDINGS_MODEL":        &cfg.Search.Embeddings.Model,
-		"KATA_SEARCH_EMBEDDINGS_API_KEY_FILE": &cfg.Search.Embeddings.APIKeyFile,
+		"POOMSAE_DOCBANK_URL":                    &cfg.Docbank.URL,
+		"POOMSAE_DOCBANK_API_KEY_FILE":           &cfg.Docbank.APIKeyFile,
+		"POOMSAE_DOCBANK_FOLDER":                 &cfg.Docbank.Folder,
+		"POOMSAE_LISTEN":                         &cfg.Listen,
+		"POOMSAE_WEB_LISTEN":                     &cfg.Web.Listen,
+		"POOMSAE_WEB_PUBLIC_ORIGIN":              &cfg.Web.PublicOrigin,
+		"POOMSAE_MCP_ACTOR":                      &cfg.MCP.Actor,
+		"POOMSAE_MCP_TOKEN_FILE":                 &cfg.MCP.TokenFile,
+		"POOMSAE_BACKUP_DIR":                     &cfg.Backup.Dir,
+		"POOMSAE_BACKUP_INTERVAL":                &cfg.Backup.Interval,
+		"POOMSAE_BACKUP_RETAIN":                  &cfg.Backup.Retain,
+		"POOMSAE_SEARCH_EMBEDDINGS_BASE_URL":     &cfg.Search.Embeddings.BaseURL,
+		"POOMSAE_SEARCH_EMBEDDINGS_MODEL":        &cfg.Search.Embeddings.Model,
+		"POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE": &cfg.Search.Embeddings.APIKeyFile,
 	} {
 		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
 			*field = value
 			cfg.Sources[deploymentSourceKey(name)] = name
 		}
 	}
-	if value := strings.TrimSpace(os.Getenv("KATA_MCP_PROJECTS")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("POOMSAE_MCP_PROJECTS")); value != "" {
 		cfg.MCP.Projects = strings.Split(value, ",")
 		for i, name := range cfg.MCP.Projects {
 			cfg.MCP.Projects[i] = strings.TrimSpace(name)
 		}
-		cfg.Sources["mcp_projects"] = "KATA_MCP_PROJECTS"
+		cfg.Sources["mcp_projects"] = "POOMSAE_MCP_PROJECTS"
 	}
-	if value := strings.TrimSpace(os.Getenv("KATA_MCP_STARTUP_SECTIONS")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("POOMSAE_MCP_STARTUP_SECTIONS")); value != "" {
 		cfg.MCP.StartupSections = strings.Split(value, ",")
 		for i, section := range cfg.MCP.StartupSections {
 			cfg.MCP.StartupSections[i] = strings.TrimSpace(section)
 		}
-		cfg.Sources["mcp_startup_sections"] = "KATA_MCP_STARTUP_SECTIONS"
+		cfg.Sources["mcp_startup_sections"] = "POOMSAE_MCP_STARTUP_SECTIONS"
 	}
 	for name, field := range map[string]*bool{
-		"KATA_DOCBANK_TRUST_PRIVATE_NETWORK": &cfg.Docbank.TrustPrivateNetwork,
-		"KATA_MCP_ENABLED":                   &cfg.MCP.Enabled,
-		"KATA_MCP_ALL_PROJECTS":              &cfg.MCP.AllProjects,
+		"POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK": &cfg.Docbank.TrustPrivateNetwork,
+		"POOMSAE_MCP_ENABLED":                   &cfg.MCP.Enabled,
+		"POOMSAE_MCP_ALL_PROJECTS":              &cfg.MCP.AllProjects,
 	} {
 		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
 			parsed, err := strconv.ParseBool(value)
@@ -59,13 +59,13 @@ func applyDeploymentEnv(cfg *DaemonConfig) error {
 			cfg.Sources[deploymentSourceKey(name)] = name
 		}
 	}
-	if value := strings.TrimSpace(os.Getenv("KATA_SEARCH_EMBEDDINGS_DIMS")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("POOMSAE_SEARCH_EMBEDDINGS_DIMS")); value != "" {
 		dims, err := strconv.Atoi(value)
 		if err != nil || dims < 0 {
-			return fmt.Errorf("KATA_SEARCH_EMBEDDINGS_DIMS must be a non-negative integer")
+			return fmt.Errorf("POOMSAE_SEARCH_EMBEDDINGS_DIMS must be a non-negative integer")
 		}
 		cfg.Search.Embeddings.Dims = dims
-		cfg.Sources["search_embeddings_dims"] = "KATA_SEARCH_EMBEDDINGS_DIMS"
+		cfg.Sources["search_embeddings_dims"] = "POOMSAE_SEARCH_EMBEDDINGS_DIMS"
 	}
 	return applyEmbeddingTextEnv(cfg)
 }
@@ -74,29 +74,29 @@ func applyDeploymentEnv(cfg *DaemonConfig) error {
 // literal provider text, so a set value keeps its whitespace.
 func applyEmbeddingTextEnv(cfg *DaemonConfig) error {
 	for name, field := range map[string]*string{
-		"KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX": &cfg.Search.Embeddings.DocumentPrefix,
-		"KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX": &cfg.Search.Embeddings.DocumentSuffix,
-		"KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX":    &cfg.Search.Embeddings.QueryPrefix,
-		"KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX":    &cfg.Search.Embeddings.QuerySuffix,
+		"POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX": &cfg.Search.Embeddings.DocumentPrefix,
+		"POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX": &cfg.Search.Embeddings.DocumentSuffix,
+		"POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX":    &cfg.Search.Embeddings.QueryPrefix,
+		"POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX":    &cfg.Search.Embeddings.QuerySuffix,
 	} {
 		if value := os.Getenv(name); strings.TrimSpace(value) != "" {
 			*field = value
 			cfg.Sources[deploymentSourceKey(name)] = name
 		}
 	}
-	if value := strings.TrimSpace(os.Getenv("KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS")); value != "" {
 		request, err := strconv.ParseBool(value)
 		if err != nil {
-			return fmt.Errorf("KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS must be true or false")
+			return fmt.Errorf("POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS must be true or false")
 		}
 		cfg.Search.Embeddings.RequestDimensions = request
-		cfg.Sources["search_embeddings_request_dimensions"] = "KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS"
+		cfg.Sources["search_embeddings_request_dimensions"] = "POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS"
 	}
 	return nil
 }
 
 func deploymentSourceKey(name string) string {
-	return strings.ToLower(strings.TrimPrefix(name, "KATA_"))
+	return strings.ToLower(strings.TrimPrefix(name, "POOMSAE_"))
 }
 
 func initializeDeploymentSources(cfg *DaemonConfig) {

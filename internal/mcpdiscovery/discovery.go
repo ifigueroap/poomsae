@@ -7,12 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.kenn.io/kata/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 	"go.kenn.io/kit/safefileio"
 )
 
-const service = "kata-mcp"
+const service = "poomsae-mcp"
 
 // Endpoint describes an existing listener. TokenPath locates a private file;
 // status output never includes the bearer token itself.

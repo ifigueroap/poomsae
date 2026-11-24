@@ -2,14 +2,14 @@ import { expect, test } from './fixtures'
 
 test('empty task sections stay on one line and share their add action style', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Compact example task',
     metadata: { checklist: [] },
   })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   for (const name of ['Checklist', 'Comments']) {
     const section = page.getByRole('region', { name })

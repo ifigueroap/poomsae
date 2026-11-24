@@ -3,8 +3,8 @@ package dbtest
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkFederatedMoveAuthorBaseline(t *testing.T, hub db.Storage, backend Backend) error {

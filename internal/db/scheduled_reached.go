@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // ScheduledReachedEventType records that an open issue's scheduled_on was

@@ -18,19 +18,19 @@ import (
 	"testing/synctest"
 	"time"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 const projectAccessCanary = "relay-private-canary"
@@ -41,7 +41,7 @@ func projectAccessBackends(t *testing.T, check func(*testing.T, db.Storage)) {
 		t.Run(backend, func(t *testing.T) {
 			var store db.Storage
 			if backend == "sqlite" {
-				s, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+				s, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 				require.NoError(t, err)
 				store = s
 			} else {
@@ -341,7 +341,7 @@ func TestProjectAccessRechecksMetadataDeleteAndRestoreAfterIssueMove(t *testing.
 				case "delete":
 					status, _, body = f.request(t, http.MethodPost, path+"/actions/delete", "member",
 						map[string]any{"actor": "member"}, map[string]string{
-							"X-Kata-Confirm": "DELETE " + f.public.Name + "#" + f.visible.ShortID,
+							"X-Poomsae-Confirm": "DELETE " + f.public.Name + "#" + f.visible.ShortID,
 						})
 				case "restore":
 					status, _, body = f.request(t, http.MethodPost, path+"/actions/restore", "member",
@@ -1326,7 +1326,7 @@ func TestMountedAdministratorsCanManageArchivedProjectsWithinProjectPolicy(t *te
 					request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, strings.NewReader(body))
 					if operation == "purgeProject" {
 						request.Header.Set("Content-Type", "application/json")
-						request.Header.Set("X-Kata-Confirm", "PURGE archived-managed-project")
+						request.Header.Set("X-Poomsae-Confirm", "PURGE archived-managed-project")
 					}
 					request = request.WithContext(daemon.WithPrincipal(request.Context(), daemon.Principal{
 						Kind: daemon.PrincipalHost, Actor: actor, Subject: "mounted-user",
@@ -1547,7 +1547,7 @@ func TestProjectAccessGatewayPreservesSourceAuthority(t *testing.T) {
 		assert.Equal(t, http.StatusOK, status, string(body))
 		assert.NotContains(t, string(body), remote.URL, "a restricted source cannot enumerate credentialed target authority")
 		assert.Equal(t, 0, calls, "roster probes cannot borrow a configured target credential")
-		status, _, body = f.request(t, http.MethodGet, "/api/v1/ui/proxy/api/v1/ui/snapshot", "nonmember", nil, map[string]string{"X-Kata-Web-Daemon": "remote-example"})
+		status, _, body = f.request(t, http.MethodGet, "/api/v1/ui/proxy/api/v1/ui/snapshot", "nonmember", nil, map[string]string{"X-Poomsae-Web-Daemon": "remote-example"})
 		assert.Equal(t, http.StatusForbidden, status, string(body))
 		assert.NotContains(t, string(body), projectAccessCanary)
 		assert.Zero(t, calls, "source policy must be checked before any remote read")
@@ -1634,7 +1634,7 @@ func TestProjectAccessArchivedProjectHintFollowsReadAccess(t *testing.T) {
 		status, _, body := f.request(t, http.MethodGet, path, "member", nil, nil)
 		assert.Equal(t, http.StatusNotFound, status, string(body))
 		assert.Contains(t, string(body), `"code":"project_not_found"`)
-		assert.Contains(t, string(body), "kata projects restore "+f.private.Name)
+		assert.Contains(t, string(body), "poomsae projects restore "+f.private.Name)
 
 		status, _, body = f.request(t, http.MethodGet, path, "nonmember", nil, nil)
 		assert.Equal(t, http.StatusNotFound, status, string(body))

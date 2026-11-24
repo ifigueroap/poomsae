@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // FederationRootKeyRepinInput selects a root project to repin or preview.

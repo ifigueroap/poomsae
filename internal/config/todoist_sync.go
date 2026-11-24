@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // TodoistSyncConfig selects daemon-owned credentials. Bindings contain no secrets.
@@ -23,7 +23,7 @@ var todoistTokenEnvPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func NormalizeTodoistSyncConfig(c TodoistSyncConfig) (TodoistSyncConfig, error) {
 	c.TokenEnv = strings.TrimSpace(c.TokenEnv)
 	if c.TokenEnv == "" {
-		c.TokenEnv = "KATA_TODOIST_TOKEN"
+		c.TokenEnv = "POOMSAE_TODOIST_TOKEN"
 	}
 	if !todoistTokenEnvPattern.MatchString(c.TokenEnv) {
 		return TodoistSyncConfig{}, errors.New("todoist_sync.token_env must be a valid environment variable name")

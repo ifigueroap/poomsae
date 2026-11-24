@@ -1,0 +1,894 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"maps"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+)
+
+func newCreateCmd() *cobra.Command {
+	var src BodySources
+	var (
+		labels         []string
+		parentRefSlice []string
+		blocks         []string
+		blockedBy      []string
+		related        []string
+		owner          string
+		priority       string
+		meta           []string
+	)
+	cmd := &cobra.Command{
+		Use:   "create <title>",
+		Short: "create an issue (search first; use --idempotency-key)",
+		Long: `Create an issue in the bound project (or --project). Search first.
+--idempotency-key makes retries safe for seven days: the same key returns
+the original issue; the same key with different fields fails with conflict (exit 5). Use a
+key that is stable for this piece of work, such as "<task>-<date>".
+A title and body that look like an open or closed issue may be refused with
+the matching refs (conflict, exit 5); pass --force-new only after reading them.
+Relationship flags take refs. --parent groups work and does not gate
+readiness; --blocked-by does. --meta key=value stores a string.
+When --priority is omitted, [create].default_priority in the invoking client's
+<POOMSAE_HOME>/config.toml supplies the priority. Without either setting, priority
+stays unset.
+--agent prints "OK create <ref>"; --json has .issue.short_id.`,
+		Example: `  poomsae create "fix login race" --body "Safari double-submits the callback." --idempotency-key login-race-2026-10-09 --agent
+  poomsae create "write retry test" --parent abc4 --blocked-by d4ex --idempotency-key retry-test-abc4 --agent
+  poomsae create "audit tokens" --label security --priority 1 --meta work.branch=audit-tokens --agent`,
+		Args: cobra.ExactArgs(1),
+	}
+	var idempotencyKey string
+	var forceNew bool
+	cmd.Flags().StringVar(&src.Body, "body", "", "issue body")
+	cmd.Flags().StringVar(&src.File, "body-file", "", "read body from file")
+	cmd.Flags().BoolVar(&src.Stdin, "body-stdin", false, "read body from stdin")
+	cmd.Flags().StringSliceVar(&labels, "label", nil, "initial label (repeatable)")
+	// --parent is at-most-one. We accept it as a slice so duplicate flags
+	// produce a parseable error (singletonRefValue) instead of cobra's
+	// silent last-wins on StringVar; collapseSingletonRef rejects multiple
+	// distinct values explicitly.
+	cmd.Flags().Var(newRefSliceValue(&parentRefSlice), "parent",
+		"initial parent (containment only; does not gate readiness; ≤1; "+issueRefHelp+")")
+	cmd.Flags().Var(newRefSliceValue(&blocks), "blocks",
+		"this issue blocks <ref> (this must finish before <ref> can; repeatable; "+issueRefHelp+")")
+	cmd.Flags().Var(newRefSliceValue(&blockedBy), "blocked-by",
+		"this issue is blocked by <ref> (<ref> must finish before this; repeatable; "+issueRefHelp+")")
+	cmd.Flags().Var(newRefSliceValue(&related), "related",
+		"this issue is related to <ref> (symmetric, no ordering; repeatable; "+issueRefHelp+")")
+	cmd.Flags().StringVar(&owner, "owner", "", "initial owner")
+	cmd.Flags().StringVar(&priority, "priority", "", "initial priority (0..4; 0 = highest; none = unset); defaults to [create].default_priority when omitted")
+	cmd.Flags().StringArrayVar(&meta, "meta", nil,
+		"initial metadata key=value (repeatable; value stored as a JSON string)")
+	cmd.Flags().StringVar(&idempotencyKey, "idempotency-key", "", "send Idempotency-Key header for safe retry")
+	cmd.Flags().BoolVar(&forceNew, "force-new", false, "bypass look-alike soft-block (idempotency still wins)")
+
+	// RunE is set after flag registration so we can reference cmd.Flags().Changed.
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		src.BodySet = cmd.Flags().Changed("body")
+		src.FileSet = cmd.Flags().Changed("body-file")
+
+		title := args[0]
+		if strings.TrimSpace(title) == "" {
+			return &cliError{Message: "title must not be empty", Kind: kindValidation, ExitCode: ExitValidation}
+		}
+		if err := validateCreateLabels(labels); err != nil {
+			return err
+		}
+		metaMap, err := parseCreateMeta(meta)
+		if err != nil {
+			return err
+		}
+		var initialPriority *int64
+		if cmd.Flags().Changed("priority") {
+			if priority != "none" {
+				value, err := strconv.ParseInt(priority, 0, strconv.IntSize)
+				if err != nil {
+					return &cliError{Message: "--priority must be an integer or none", Kind: kindUsage, ExitCode: ExitUsage}
+				}
+				if value < 0 || value > 4 {
+					return &cliError{Message: "--priority must be between 0 and 4, or none", Kind: kindValidation, ExitCode: ExitValidation}
+				}
+				initialPriority = &value
+			}
+		} else {
+			defaults, err := config.ReadCreateConfig()
+			if err != nil {
+				if _, ok := errors.AsType[*os.PathError](err); ok {
+					return err
+				}
+				return &cliError{Message: err.Error(), Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			initialPriority = defaults.DefaultPriority
+		}
+
+		handle, err := resolveTeammate(cmd)
+		if err != nil {
+			return err
+		}
+		initialMetadata, err := teammate.Stamp(metaMap, handle)
+		if err != nil {
+			return &cliError{Message: err.Error(), Kind: kindValidation, ExitCode: ExitValidation}
+		}
+		ctx := cmd.Context()
+		start, err := resolveStartPath(flags.Workspace)
+		if err != nil {
+			return err
+		}
+		a, err := dialDaemon(ctx)
+		if err != nil {
+			return err
+		}
+		withLinks := len(parentRefSlice)+len(blocks)+len(blockedBy)+len(related) > 0
+		project, err := prepareProjectMutation(a, start, withLinks)
+		if err != nil {
+			return err
+		}
+		projectName := project.name
+		body, err := resolveBody(src, cmd.InOrStdin())
+		if err != nil {
+			return err
+		}
+		actor, _ := resolveActor(ctx, flags.As, nil)
+
+		req := &generated.CreateIssueBody{Actor: &actor, Title: title, Body: &body, Priority: initialPriority}
+		if cmd.Flags().Changed("owner") {
+			req.Owner = &owner
+		}
+		if len(labels) > 0 {
+			req.Labels = labels
+		}
+		if len(initialMetadata) > 0 {
+			req.Metadata = maps.Clone(initialMetadata)
+		}
+		// Resolve every link-target ref to its wire ref string before
+		// building the payload. Refs accept the same forms as `poomsae show`:
+		// bare short_id, qualified ("poomsae#abc4"), or full ULID. The daemon
+		// resolves each ref against the project at request time.
+		var links []generated.CreateInitialLinkBody
+		var parentRef string
+		if cmd.Flags().Changed("parent") {
+			r, err := singletonRefToWire(parentRefSlice, "--parent", projectName)
+			if err != nil {
+				return err
+			}
+			parentRef = r
+			links = append(links, generated.CreateInitialLinkBody{Type: "parent", ToRef: r})
+		}
+		blocksRefs, err := refsToWire(blocks, "--blocks", projectName)
+		if err != nil {
+			return err
+		}
+		for _, r := range blocksRefs {
+			links = append(links, generated.CreateInitialLinkBody{Type: "blocks", ToRef: r})
+		}
+		blockedByRefs, err := refsToWire(blockedBy, "--blocked-by", projectName)
+		if err != nil {
+			return err
+		}
+		for _, r := range blockedByRefs {
+			links = append(links, generated.CreateInitialLinkBody{Type: "blocks", ToRef: r, Incoming: new(true)})
+		}
+		relatedRefs, err := refsToWire(related, "--related", projectName)
+		if err != nil {
+			return err
+		}
+		for _, r := range relatedRefs {
+			links = append(links, generated.CreateInitialLinkBody{Type: "related", ToRef: r})
+		}
+		if len(links) > 0 {
+			req.Links = links
+		}
+		if forceNew {
+			req.ForceNew = &forceNew
+		}
+		apiClient, err := project.generatedClient()
+		if err != nil {
+			return err
+		}
+		options := &generated.CreateIssueRequestOptions{
+			PathParams: &generated.CreateIssuePath{ProjectID: project.selector}, Body: req,
+			Header: &generated.CreateIssueHeaders{},
+		}
+		if idempotencyKey != "" {
+			options.Header.IdempotencyKey = &idempotencyKey
+		}
+		if reportsCLIUse(cmd) {
+			options.Header.XPoomsaeSurface = new("cli")
+		}
+		response, callErr := apiClient.CreateIssueWithResponse(ctx, options)
+		if err := externalCLITransportError(response, callErr); err != nil {
+			return createRequestError(err, forceNew)
+		}
+		bs, err := project.finishMutation(response.HTTPResponse, response.Body, callErr)
+		if err != nil {
+			return createRequestError(err, forceNew)
+		}
+		// The /issues create response doesn't carry a `changes` block (it
+		// lives on the PATCH path). Synthesize one from the resolved
+		// initial-link refs so human-mode `poomsae create` echoes a
+		// `links: +parent <ref>, +blocks <ref>, ...` summary, mirroring
+		// the per-link diff a `poomsae edit` PATCH produces. Reverse
+		// direction (`--blocked-by` adding to `blocked_by_added` rather
+		// than `blocks_added`) preserves the user's POV.
+		applied := initialLinksAsChanges(parentRef, blocksRefs, blockedByRefs, relatedRefs)
+		return printMutationWithApplied(cmd, bs, applied, project.name)
+	}
+	return cmd
+}
+
+func createRequestError(err error, forceNew bool) error {
+	if err == nil {
+		return err
+	}
+	transportErr, selectedDaemon := errors.AsType[*daemonTransportError](err)
+	if selectedDaemon && !transportErr.mutationOutcomeUnknown() {
+		return err
+	}
+	reason := ""
+	switch {
+	case requestTimedOut(err):
+		reason = "request timed out"
+	case errors.Is(err, context.Canceled):
+		reason = "request canceled before the response arrived"
+	case responseBodyWasCut(err):
+		reason = "the response was cut off before it completed"
+	case connectionDroppedBeforeResponse(err):
+		reason = "the connection dropped before the response arrived"
+	default:
+		return err
+	}
+	message := "create outcome unknown: " + reason +
+		"; check whether the issue was created before retrying"
+	if !forceNew {
+		message += "; use --force-new only after confirming no issue exists"
+	}
+	kind := kindInternal
+	exitCode := ExitInternal
+	if selectedDaemon {
+		kind = kindDaemonUnavail
+		exitCode = ExitDaemonUnavail
+	}
+	return &cliError{
+		Message:  message,
+		Kind:     kind,
+		Code:     "create_outcome_unknown",
+		ExitCode: exitCode,
+	}
+}
+
+func requestTimedOut(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	// netErr != nil is guaranteed when errors.As returns true; the explicit
+	// check exists to satisfy NilAway (same idiom as internal/federation).
+	return errors.As(err, &netErr) && netErr != nil && netErr.Timeout()
+}
+
+func responseBodyWasCut(err error) bool {
+	var readErr *responseBodyReadError
+	return errors.As(err, &readErr)
+}
+
+func connectionDroppedBeforeResponse(err error) bool {
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		connDroppedErrno(err)
+}
+
+// initialLinksAsChanges builds a synthetic mutationChanges from the
+// resolved initial-link refs so create's human output can mirror
+// edit's `links: +parent <ref>` diff format. parentRef is "" when no
+// `--parent` was passed; the other slices may be nil/empty. Returns
+// nil when no link flags were used.
+//
+// Dedupes each slice before storing so a request like
+// `--blocks abc4 --blocks abc4` summarizes as a single `+blocks abc4`,
+// matching the daemon's CreateIssue path which dedupes initial links
+// before persisting. Without this, the human-mode summary would
+// over-report what actually landed.
+func initialLinksAsChanges(parentRef string, blocks, blockedBy, related []string) *mutationChanges {
+	if parentRef == "" && len(blocks) == 0 && len(blockedBy) == 0 && len(related) == 0 {
+		return nil
+	}
+	c := &mutationChanges{}
+	if parentRef != "" {
+		c.ParentSet = &linkPeerForCLI{ShortID: parentRef}
+	}
+	c.BlocksAdded = stringSliceToPeers(dedupeStrings(blocks))
+	c.BlockedByAdded = stringSliceToPeers(dedupeStrings(blockedBy))
+	c.RelatedAdded = stringSliceToPeers(dedupeStrings(related))
+	return c
+}
+
+// dedupeStrings returns a copy of in with duplicate entries dropped,
+// preserving first-occurrence order. Returns nil for empty input so
+// the caller's omitempty JSON tags do the right thing.
+func dedupeStrings(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}
+
+// stringSliceToPeers wraps each ref into a linkPeerForCLI with ShortID set;
+// used by initialLinksAsChanges so create's synthetic changes shape matches
+// the daemon's edit-response shape. The create path passes wire refs that are
+// already qualified when cross-project (e.g. "spoke-project#abc4"), so they
+// render correctly even without project/qualified_id being set — peerRefForDisplay
+// falls back to ShortID when Project is empty.
+func stringSliceToPeers(refs []string) []linkPeerForCLI {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := make([]linkPeerForCLI, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, linkPeerForCLI{ShortID: r})
+	}
+	return out
+}
+
+// parseCreateMeta turns repeatable --meta key=value flags into a metadata map
+// for the create body. Each entry must contain "=" (first "=" splits) with a
+// non-empty key; the value is sent as a JSON string. Complex JSON values are
+// out of scope for this flag (use `poomsae meta set --json-value`). Returns nil
+// for no flags so the caller's omitempty does the right thing.
+func parseCreateMeta(meta []string) (map[string]any, error) {
+	if len(meta) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]any, len(meta))
+	for _, entry := range meta {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok || key == "" {
+			return nil, &cliError{
+				Message:  fmt.Sprintf("--meta %q must be key=value with a non-empty key", entry),
+				Kind:     kindUsage,
+				ExitCode: ExitUsage,
+			}
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+func validateCreateLabels(labels []string) error {
+	// Reject blank labels client-side so a typo or accidental "--label ''"
+	// doesn't silently succeed-with-no-label (hammer-test finding #8). This
+	// must run before daemon resolution so validation failures are local.
+	for _, l := range labels {
+		if strings.TrimSpace(l) == "" {
+			return &cliError{
+				Message:  "--label must not be empty",
+				Kind:     kindValidation,
+				ExitCode: ExitValidation,
+			}
+		}
+	}
+	return nil
+}
+
+// resolveProjectID resolves the project ID by calling
+// POST /api/v1/projects/resolve on the daemon.
+//
+// A global --project value wins and is sent as the project name, allowing
+// project-scoped commands to target any project from any directory. Otherwise,
+// start_path lets the daemon resolve by alias first and repair stale .poomsae.toml
+// bindings after project rename/merge. A readable local .poomsae.toml is still
+// parsed before the daemon call so malformed config fails with a direct fix-it
+// error instead of being hidden behind daemon-side path resolution.
+func resolveProjectID(ctx context.Context, baseURL, startPath string) (int64, error) {
+	id, _, err := resolveProjectIDAndName(ctx, baseURL, startPath)
+	return id, err
+}
+
+// resolveProjectIDAndName is resolveProjectID plus the project's canonical
+// name. Used by ref-consuming commands that need the project name to format
+// qualified IDs ("<project>#<short_id>") for display or for the destructive
+// confirmation header.
+//
+// Wire shape is chosen client-side so configured remote daemons never have
+// to stat the client's filesystem (issues #35 and #521). Priority order:
+//
+//  1. --project X → {name: X}. Explicit target — alias-first repair
+//     would risk redirecting to a different project.
+//  2. .poomsae.toml readable → {name, alias?}. Daemon does alias-first
+//     repair; on rename the client rewrites .poomsae.toml to the
+//     canonical name returned in the response.
+//  3. Git workspace, no .poomsae.toml → {alias}. Daemon does strict
+//     alias lookup; unknown alias is 404 (init owns create-by-
+//     convention from git remotes — resolve never creates).
+//  4. Neither → project_not_initialized for configured remotes and hubs;
+//     {start_path} remains the legacy local-daemon fallback.
+func resolveProjectIDAndName(ctx context.Context, baseURL, startPath string) (int64, string, error) {
+	client, err := httpClientFor(ctx, baseURL)
+	if err != nil {
+		return 0, "", err
+	}
+	return resolveProjectIDAndNameWithClient(
+		daemonAPI{ctx: ctx, client: client, baseURL: baseURL}, startPath)
+}
+
+func resolveProjectIDAndNameWithClient(
+	a daemonAPI,
+	startPath string,
+) (int64, string, error) {
+	return resolveProjectIDAndNameWithDaemonHeaders(a, startPath, nil)
+}
+
+func resolveProjectIDAndNameWithClientHeaders(
+	ctx context.Context,
+	client *http.Client,
+	baseURL string,
+	startPath string,
+	headers map[string]string,
+) (int64, string, error) {
+	return resolveProjectIDAndNameWithDaemonHeaders(
+		daemonAPI{ctx: ctx, client: client, baseURL: baseURL}, startPath, headers)
+}
+
+func resolveProjectIDAndNameWithDaemonHeaders(
+	a daemonAPI,
+	startPath string,
+	headers map[string]string,
+) (int64, string, error) {
+	body, repair, err := buildResolveRequest(a.ctx, startPath)
+	if err != nil {
+		return 0, "", err
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return 0, "", err
+	}
+	var payload generated.ResolveProjectBody
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		return 0, "", err
+	}
+	apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+	if err != nil {
+		return 0, "", err
+	}
+	response, callErr := apiClient.ResolveProjectWithResponse(a.ctx, &generated.ResolveProjectRequestOptions{Body: &payload},
+		func(_ context.Context, request *http.Request) error {
+			for key, value := range headers {
+				request.Header.Set(key, value)
+			}
+			return nil
+		})
+	if response == nil {
+		return 0, "", externalCLITransportError(response, callErr)
+	}
+	if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+		return 0, "", err
+	}
+	bs := response.Body
+	var b struct {
+		Project struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"project"`
+	}
+	if err := json.Unmarshal(bs, &b); err != nil {
+		return 0, "", err
+	}
+	if repair != nil {
+		if err := repair(b.Project.Name); err != nil {
+			return 0, "", err
+		}
+	}
+	return b.Project.ID, b.Project.Name, nil
+}
+
+// buildResolveRequest selects the wire shape for a resolve and returns
+// an optional callback for client-side .poomsae.toml repair on rename.
+func buildResolveRequest(ctx context.Context, startPath string) (map[string]any, func(string) error, error) {
+	body := map[string]any{}
+
+	if project := strings.TrimSpace(flags.Project); project != "" {
+		body["name"] = project
+		return body, nil, nil
+	}
+
+	disc, err := config.DiscoverPaths(startPath)
+	if err != nil {
+		// Local clients retain daemon-side validation for a missing
+		// --workspace; remote clients report it here because the daemon
+		// cannot see client paths. Other stat failures (permission,
+		// etc.) propagate.
+		if errors.Is(err, os.ErrNotExist) {
+			if resolvesPathFree(ctx) {
+				return nil, nil, &cliError{
+					Message:  fmt.Sprintf("workspace path %q does not exist", startPath),
+					Kind:     kindValidation,
+					ExitCode: ExitValidation,
+				}
+			}
+			return map[string]any{"start_path": startPath}, nil, nil
+		}
+		return nil, nil, &cliError{
+			Message:  err.Error(),
+			Kind:     kindValidation,
+			ExitCode: ExitValidation,
+		}
+	}
+
+	var tomlCfg *config.ProjectConfig
+	if disc.WorkspaceRoot != "" {
+		cfg, err := config.ReadProjectConfig(disc.WorkspaceRoot)
+		switch {
+		case err == nil:
+			tomlCfg = cfg
+		case errors.Is(err, config.ErrProjectConfigMissing):
+			// no .poomsae.toml here
+		default:
+			return nil, nil, &cliError{
+				Message:  "read .poomsae.toml: " + err.Error(),
+				Kind:     kindValidation,
+				ExitCode: ExitValidation,
+			}
+		}
+	}
+
+	// Alias derivation is best-effort: a broken git config shouldn't
+	// block resolve when .poomsae.toml supplies a name. Without a name to
+	// fall back to, the derivation error must surface so the user can
+	// fix it instead of seeing an opaque daemon stat error.
+	var alias *config.AliasInfo
+	if disc.GitRoot != "" || disc.WorkspaceRoot != "" {
+		info, derr := config.ComputeAliasIdentity(ctx, disc)
+		switch {
+		case derr == nil:
+			alias = &info
+		case tomlCfg == nil:
+			return nil, nil, &cliError{
+				Message:  derr.Error(),
+				Kind:     kindValidation,
+				ExitCode: ExitValidation,
+			}
+		}
+	}
+
+	if tomlCfg != nil && tomlCfg.Project.Name != "" {
+		body["name"] = tomlCfg.Project.Name
+		if alias != nil {
+			body["alias"] = aliasInputBody(*alias)
+		}
+		workspaceRoot := disc.WorkspaceRoot
+		current := tomlCfg.Project.Name
+		repair := func(canonical string) error {
+			if canonical == "" || canonical == current {
+				return nil
+			}
+			if err := config.WriteProjectConfig(workspaceRoot, canonical); err != nil {
+				return fmt.Errorf("rewrite .poomsae.toml: %w", err)
+			}
+			return nil
+		}
+		return body, repair, nil
+	}
+
+	if alias != nil {
+		body["alias"] = aliasInputBody(*alias)
+		return body, nil, nil
+	}
+
+	return buildPathResolveRequest(ctx, startPath)
+}
+
+// resolvesPathFree reports whether the target daemon cannot see this
+// client's filesystem: a configured remote daemon or a federation hub.
+func resolvesPathFree(ctx context.Context) bool {
+	if pathFree, _ := ctx.Value(pathFreeProjectContextKey{}).(bool); pathFree {
+		return true
+	}
+	resolved, ok := ctx.Value(resolvedDaemonContextKey{}).(client.ResolvedDaemon)
+	return ok && resolved.ConfiguredRemote()
+}
+
+func buildPathResolveRequest(ctx context.Context, startPath string) (map[string]any, func(string) error, error) {
+	if resolvesPathFree(ctx) {
+		return nil, nil, &cliError{
+			Message:  "no .poomsae.toml ancestor and no git ancestor",
+			Hint:     `run "poomsae init --project <name>" in the workspace root, or pass --project <name>`,
+			Kind:     kindNotFound,
+			Code:     "project_not_initialized",
+			ExitCode: ExitNotFound,
+		}
+	}
+	return map[string]any{"start_path": startPath}, nil, nil
+}
+
+// aliasInputBody marshals an AliasInfo into the wire shape the daemon
+// expects (mirrors api.AliasInput).
+func aliasInputBody(info config.AliasInfo) map[string]any {
+	return map[string]any{
+		"identity": info.Identity,
+		"kind":     info.Kind,
+	}
+}
+
+const closeReminderText = "closing asserts this issue is complete; verify the message and evidence are specific to this issue."
+
+func shouldPrintCloseReminder(verb string, changed bool) bool {
+	return verb == "close" && changed
+}
+
+// printMutationWithApplied formats a mutation response with an optional
+// synthetic changes block for the create path. applied is a fallback `changes`
+// block used when the wire response carries none (create path); nil elsewhere.
+// subjectProject is the resolved requested project. The issue and foreign peers
+// render qualified when their current project differs from that context.
+func printMutationWithApplied(cmd *cobra.Command, bs []byte, applied *mutationChanges, subjectProject string) error {
+	mode := currentOutputMode()
+	var b struct {
+		Issue struct {
+			ShortID string `json:"short_id"`
+			Title   string `json:"title"`
+			Status  string `json:"status"`
+		} `json:"issue"`
+		Changed bool             `json:"changed"`
+		Changes *mutationChanges `json:"changes,omitempty"`
+	}
+	if err := json.Unmarshal(bs, &b); err != nil {
+		return err
+	}
+	verb := commandLeaf(cmd)
+	if mode == outputJSON {
+		var buf bytes.Buffer
+		if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+		return err
+	}
+	displayRef, err := mutationIssueRefForOutput(cmd, bs, subjectProject)
+	if err != nil {
+		return err
+	}
+	b.Issue.ShortID = displayRef
+	if mode == outputAgent {
+		var m agentIssueMutation
+		if err := json.Unmarshal(bs, &m); err != nil {
+			return err
+		}
+		m.Issue.ShortID = displayRef
+		includeChangedTrue := verb == "edit"
+		return printAgentMutationDecoded(cmd.OutOrStdout(), verb, m, includeChangedTrue, func(w io.Writer, m agentIssueMutation) error {
+			if m.Issue.ClosedReason != nil {
+				if err := writeAgentField(w, "Reason", agentValue(*m.Issue.ClosedReason)); err != nil {
+					return err
+				}
+			}
+			if verb == "close" {
+				for _, evidence := range agentEvidenceSummaries(m) {
+					if err := writeAgentField(w, "Evidence", agentValue(evidence)); err != nil {
+						return err
+					}
+				}
+				if shouldPrintCloseReminder(verb, m.Changed) {
+					if err := writeAgentField(w, "Reminder", agentValue(closeReminderText)); err != nil {
+						return err
+					}
+				}
+			}
+			if verb == "edit" && m.Changed {
+				if changes := agentEditChangeNames(cmd, b.Changes); len(changes) > 0 {
+					if err := writeAgentField(w, "Changes", strings.Join(changes, ", ")); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+	}
+	if flags.Quiet {
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), b.Issue.ShortID)
+		return err
+	}
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s %s [%s]",
+		b.Issue.ShortID, textsafe.Line(b.Issue.Title), b.Issue.Status); err != nil {
+		return err
+	}
+	changes := b.Changes
+	changed := b.Changed
+	if changes == nil && applied != nil && b.Changed {
+		// Create-path fallback: the wire response lacks a changes block,
+		// but the caller passed the resolved initial-link state. Only
+		// fall back when the daemon also flagged the response as
+		// changed=true — an idempotent-reuse response (changed=false,
+		// returned when an Idempotency-Key matched a prior create)
+		// must not synthesize a "links: ..." summary because nothing
+		// was applied THIS call. The original create's links surfaced
+		// in its OWN response.
+		changes = applied
+	}
+	if summary := summarizeChanges(changes, changed, subjectProject); summary != "" {
+		if _, err := fmt.Fprint(cmd.OutOrStdout(), " "+summary); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(cmd.OutOrStdout()); err != nil {
+		return err
+	}
+	if shouldPrintCloseReminder(verb, changed) {
+		_, err := fmt.Fprintf(cmd.OutOrStdout(), "Reminder: %s\n", closeReminderText)
+		return err
+	}
+	return nil
+}
+
+// mutationChanges mirrors the wire `changes` block produced by `poomsae edit`
+// for link mutations. Each entry is a linkPeerForCLI (uid, short_id, project,
+// qualified_id) so the human renderer can show the bare or qualified form
+// depending on whether the peer belongs to the same project as the subject.
+type mutationChanges struct {
+	ParentSet        *linkPeerForCLI  `json:"parent_set,omitempty"`
+	ParentRemoved    *linkPeerForCLI  `json:"parent_removed,omitempty"`
+	BlocksAdded      []linkPeerForCLI `json:"blocks_added,omitempty"`
+	BlocksRemoved    []linkPeerForCLI `json:"blocks_removed,omitempty"`
+	BlockedByAdded   []linkPeerForCLI `json:"blocked_by_added,omitempty"`
+	BlockedByRemoved []linkPeerForCLI `json:"blocked_by_removed,omitempty"`
+	RelatedAdded     []linkPeerForCLI `json:"related_added,omitempty"`
+	RelatedRemoved   []linkPeerForCLI `json:"related_removed,omitempty"`
+}
+
+// summarizeChanges renders a human-mode tail for the printMutation one-liner.
+// subjectProject is the canonical name of the issue being mutated; foreign peers
+// (project != subjectProject) are rendered qualified ("project#short_id") while
+// same-project peers stay bare. Returns "" when this response has no link
+// information to surface (e.g. plain title-edit, plain create, comment, close).
+func summarizeChanges(c *mutationChanges, changed bool, subjectProject string) string {
+	if c == nil {
+		return ""
+	}
+	ref := func(p linkPeerForCLI) string { return peerRefForDisplay(p, subjectProject) }
+	parts := make([]string, 0, 8)
+	if c.ParentSet != nil && c.ParentRemoved != nil {
+		parts = append(parts, fmt.Sprintf("parent %s→%s", ref(*c.ParentRemoved), ref(*c.ParentSet)))
+	} else if c.ParentSet != nil {
+		parts = append(parts, fmt.Sprintf("+parent %s", ref(*c.ParentSet)))
+	} else if c.ParentRemoved != nil {
+		parts = append(parts, fmt.Sprintf("-parent %s", ref(*c.ParentRemoved)))
+	}
+	for _, p := range c.BlocksAdded {
+		parts = append(parts, fmt.Sprintf("+blocks %s", ref(p)))
+	}
+	for _, p := range c.BlocksRemoved {
+		parts = append(parts, fmt.Sprintf("-blocks %s", ref(p)))
+	}
+	for _, p := range c.BlockedByAdded {
+		parts = append(parts, fmt.Sprintf("+blocked_by %s", ref(p)))
+	}
+	for _, p := range c.BlockedByRemoved {
+		parts = append(parts, fmt.Sprintf("-blocked_by %s", ref(p)))
+	}
+	for _, p := range c.RelatedAdded {
+		parts = append(parts, fmt.Sprintf("+related %s", ref(p)))
+	}
+	for _, p := range c.RelatedRemoved {
+		parts = append(parts, fmt.Sprintf("-related %s", ref(p)))
+	}
+	if len(parts) == 0 {
+		// `changes` was present but every entry was an idempotent no-op.
+		// Make the no-op explicit so callers don't confuse it with a
+		// successful mutation.
+		if !changed {
+			return "(no changes applied)"
+		}
+		return ""
+	}
+	return "links: " + strings.Join(parts, ", ")
+}
+
+func agentEditChangeNames(cmd *cobra.Command, changes *mutationChanges) []string {
+	names := make([]string, 0, 5)
+	for _, item := range []struct {
+		flag string
+		name string
+	}{
+		{"title", "title"},
+		{"body", "body"},
+		{"owner", "owner"},
+		{"priority", "priority"},
+	} {
+		if cmd.Flags().Changed(item.flag) {
+			names = append(names, item.name)
+		}
+	}
+	if agentHasLinkChanges(cmd, changes) {
+		names = append(names, "links")
+	}
+	return names
+}
+
+func agentHasLinkChanges(cmd *cobra.Command, changes *mutationChanges) bool {
+	if changes != nil {
+		return changes.ParentSet != nil || changes.ParentRemoved != nil ||
+			len(changes.BlocksAdded) > 0 || len(changes.BlocksRemoved) > 0 ||
+			len(changes.BlockedByAdded) > 0 || len(changes.BlockedByRemoved) > 0 ||
+			len(changes.RelatedAdded) > 0 || len(changes.RelatedRemoved) > 0
+	}
+	for _, flag := range []string{
+		"parent", "blocks", "blocked-by", "related",
+		"remove-parent", "remove-blocks", "remove-blocked-by", "remove-related",
+	} {
+		if cmd.Flags().Changed(flag) {
+			return true
+		}
+	}
+	return false
+}
+
+func agentEvidenceSummaries(m agentIssueMutation) []string {
+	if m.Event == nil || m.Event.Payload == "" {
+		return nil
+	}
+	var payload struct {
+		Evidence []struct {
+			Type         string   `json:"type"`
+			AttachmentID string   `json:"attachment_id,omitempty"`
+			SHA          string   `json:"sha,omitempty"`
+			URL          string   `json:"url,omitempty"`
+			Command      string   `json:"command,omitempty"`
+			Paths        []string `json:"paths,omitempty"`
+			Account      string   `json:"account,omitempty"`
+			Rationale    string   `json:"rationale,omitempty"`
+			IssueRef     string   `json:"issue_ref,omitempty"`
+		} `json:"evidence,omitempty"`
+	}
+	if err := json.Unmarshal([]byte(m.Event.Payload), &payload); err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(payload.Evidence))
+	for _, ev := range payload.Evidence {
+		switch ev.Type {
+		case "attachment":
+			out = append(out, "attachment:"+ev.AttachmentID)
+		case "commit":
+			out = append(out, "commit:"+ev.SHA)
+		case "pr":
+			out = append(out, "pr:"+ev.URL)
+		case "test":
+			out = append(out, "test:"+ev.Command)
+		case "reviewed-paths":
+			out = append(out, "reviewed-paths:"+strings.Join(ev.Paths, ","))
+		case "external":
+			out = append(out, "external:"+ev.Account)
+		case "no-change-audit":
+			out = append(out, "no-change-audit:"+ev.Rationale)
+		case "duplicate-of":
+			out = append(out, "duplicate-of:"+ev.IssueRef)
+		case "superseded-by":
+			out = append(out, "superseded-by:"+ev.IssueRef)
+		}
+	}
+	return out
+}

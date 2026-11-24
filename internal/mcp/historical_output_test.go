@@ -3,9 +3,9 @@ package mcpserver
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func historicalOutputMove(t *testing.T, store db.Storage, source, target db.Project, issue db.Issue) (db.Issue, db.Issue) {
@@ -25,26 +25,26 @@ func historicalOutputMove(t *testing.T, store db.Storage, source, target db.Proj
 }
 
 func TestHistoricalMCPOutputsUseCurrentProject(t *testing.T) {
-	for _, tool := range []string{"kata.show", "kata.edit", "kata.comment", "kata.edit_comment", "kata.set_label", "kata.restore"} {
+	for _, tool := range []string{"poomsae.show", "poomsae.edit", "poomsae.comment", "poomsae.edit_comment", "poomsae.set_label", "poomsae.restore"} {
 		t.Run(tool, func(t *testing.T) {
 			store, _, session, source, target, _, issue := mcpFixedScopeFixture(t)
 			moved, collision := historicalOutputMove(t, store, source, target, issue)
 			args := map[string]any{"ref": source.Name + "#" + issue.ShortID}
 			switch tool {
-			case "kata.edit":
+			case "poomsae.edit":
 				args["title"] = "Updated after move"
-			case "kata.comment":
+			case "poomsae.comment":
 				args["body"] = "Continue in destination"
 				args["idempotency_key"] = "historical-output-comment"
-			case "kata.edit_comment":
+			case "poomsae.edit_comment":
 				comment, _, err := store.CreateComment(t.Context(), db.CreateCommentParams{IssueID: issue.ID, Author: "worker", Body: "Original note"})
 				require.NoError(t, err)
 				args["comment_ref"] = comment.UID
 				args["body"] = "Updated note"
-			case "kata.set_label":
+			case "poomsae.set_label":
 				args["label"] = "example-label"
 				args["present"] = true
-			case "kata.restore":
+			case "poomsae.restore":
 				_, _, _, err := store.SoftDeleteIssue(t.Context(), issue.ID, "worker")
 				require.NoError(t, err)
 			}
@@ -55,7 +55,7 @@ func TestHistoricalMCPOutputsUseCurrentProject(t *testing.T) {
 			summary := output["issue"].(map[string]any)
 			canonical := target.Name + "#" + moved.ShortID
 			require.Equal(t, canonical, summary["qualified_ref"])
-			shown := callWorkflowTool(t, session, "kata.show", map[string]any{"ref": canonical})
+			shown := callWorkflowTool(t, session, "poomsae.show", map[string]any{"ref": canonical})
 			require.Equal(t, issue.UID, shown["issue"].(map[string]any)["uid"])
 			untouched, err := store.IssueByID(t.Context(), collision.ID)
 			require.NoError(t, err)
@@ -65,12 +65,12 @@ func TestHistoricalMCPOutputsUseCurrentProject(t *testing.T) {
 }
 
 func TestHistoricalMCPDestructiveConfirmationUsesCurrentProject(t *testing.T) {
-	for _, tool := range []string{"kata.delete", "kata.purge"} {
+	for _, tool := range []string{"poomsae.delete", "poomsae.purge"} {
 		t.Run(tool, func(t *testing.T) {
 			store, _, session, source, target, _, issue := mcpFixedScopeFixture(t)
 			moved, collision := historicalOutputMove(t, store, source, target, issue)
 			verb := "DELETE"
-			if tool == "kata.purge" {
+			if tool == "poomsae.purge" {
 				verb = "PURGE"
 				_, _, _, err := store.SoftDeleteIssue(t.Context(), issue.ID, "worker")
 				require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestHistoricalMCPDestructiveConfirmationUsesCurrentProject(t *testing.T) {
 			args["confirm"] = verb + " " + canonical
 			output := callWorkflowTool(t, session, tool, args)
 			require.Equal(t, target.Name, output["project"].(map[string]any)["name"])
-			if tool == "kata.delete" {
+			if tool == "poomsae.delete" {
 				require.Equal(t, canonical, output["issue"].(map[string]any)["qualified_ref"])
 			} else {
 				require.Equal(t, canonical, output["ref"])
@@ -104,12 +104,12 @@ func TestHistoricalMCPDestructiveConfirmationUsesCurrentProject(t *testing.T) {
 }
 
 func TestHistoricalMCPDestructiveConfirmationCannotCrossStartupScope(t *testing.T) {
-	for _, tool := range []string{"kata.delete", "kata.purge"} {
+	for _, tool := range []string{"poomsae.delete", "poomsae.purge"} {
 		t.Run(tool, func(t *testing.T) {
 			store, _, session, source, _, excluded, issue := mcpFixedScopeFixture(t)
 			mcpMoveOutside(t, store, source, excluded, issue)
 			verb := "DELETE"
-			if tool == "kata.purge" {
+			if tool == "poomsae.purge" {
 				verb = "PURGE"
 				_, _, _, err := store.SoftDeleteIssue(t.Context(), issue.ID, "worker")
 				require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestHistoricalMCPDestructiveConfirmationCannotCrossStartupScope(t *testing.
 func TestHistoricalMCPWaitUsesCurrentReference(t *testing.T) {
 	store, _, session, source, target, _, issue := mcpFixedScopeFixture(t)
 	moved, _ := historicalOutputMove(t, store, source, target, issue)
-	output := callWorkflowTool(t, session, "kata.wait", map[string]any{"refs": []string{source.Name + "#" + issue.ShortID}, "status": "open", "timeout_seconds": 1})
+	output := callWorkflowTool(t, session, "poomsae.wait", map[string]any{"refs": []string{source.Name + "#" + issue.ShortID}, "status": "open", "timeout_seconds": 1})
 	state := output["states"].([]any)[0].(map[string]any)
 	require.Equal(t, target.Name+"#"+moved.ShortID, state["ref"])
 }
@@ -139,7 +139,7 @@ func TestHistoricalMCPWaitUsesCurrentReference(t *testing.T) {
 func TestHistoricalMCPStatusUsesCurrentReference(t *testing.T) {
 	store, _, session, source, target, _, issue := mcpFixedScopeFixture(t)
 	moved, _ := historicalOutputMove(t, store, source, target, issue)
-	output := callWorkflowTool(t, session, "kata.status", map[string]any{"ref": source.Name + "#" + issue.ShortID})
+	output := callWorkflowTool(t, session, "poomsae.status", map[string]any{"ref": source.Name + "#" + issue.ShortID})
 	require.Equal(t, target.Name, output["project"].(map[string]any)["name"])
 	require.Equal(t, target.Name+"#"+moved.ShortID, output["qualified_ref"])
 }
@@ -157,7 +157,7 @@ func TestHistoricalMCPMoveUsesCurrentSourceIdentity(t *testing.T) {
 			if mode == "stale" {
 				args["revision"] = issue.Revision
 			}
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: args})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: args})
 			require.NoError(t, err)
 			if mode == "stale" {
 				require.True(t, result.IsError, "caller revision must not be overwritten during preflight")

@@ -10,7 +10,7 @@ export interface DevRuntimePaths {
 }
 
 export function developmentKataBuildArguments(binary: string): string[] {
-  return ['build', '-trimpath', '-buildvcs=false', '-o', binary, './cmd/kata']
+  return ['build', '-trimpath', '-buildvcs=false', '-o', binary, './cmd/poomsae']
 }
 
 export interface BrowserTestRuntime {
@@ -29,11 +29,11 @@ export type BrowserTestCommandRunner = (cmd: string[], cwd: string, env: NodeJS.
 export async function prepareBrowserTestRuntime(
   options: BrowserTestRuntimeOptions,
 ): Promise<BrowserTestRuntime> {
-  const root = await mkdtemp(join(tmpdir(), 'kata-web-browser-e2e-build-'))
+  const root = await mkdtemp(join(tmpdir(), 'poomsae-web-browser-e2e-build-'))
   const home = join(root, 'home')
   const workspace = join(root, 'workspace')
   const binaryDirectory = join(root, 'bin')
-  const binary = join(binaryDirectory, process.platform === 'win32' ? 'kata.exe' : 'kata')
+  const binary = join(binaryDirectory, process.platform === 'win32' ? 'poomsae.exe' : 'poomsae')
   const runCommand = options.runCommand ?? runChecked
   let restoreRequired = false
   try {
@@ -45,7 +45,7 @@ export async function prepareBrowserTestRuntime(
     const environment = createDevChildEnvironment(options.inheritedEnvironment, {
       home,
       workspace,
-      database: join(home, 'kata.db'),
+      database: join(home, 'poomsae.db'),
     })
 
     runCommand(['make', 'web-build', 'web-assets-check'], options.repositoryRoot, environment)
@@ -82,7 +82,7 @@ export async function prepareBrowserTestRuntime(
         const environment = createDevChildEnvironment(options.inheritedEnvironment, {
           home,
           workspace,
-          database: join(home, 'kata.db'),
+          database: join(home, 'poomsae.db'),
         })
         runCommand(restoreWebStubCommand(), join(options.repositoryRoot, 'web'), environment)
       }
@@ -160,10 +160,10 @@ export function createDevChildEnvironment(
   if (goFlags) environment.GOFLAGS = goFlags
   return {
     ...environment,
-    KATA_HOME: paths.home,
-    KATA_DB: paths.database,
-    KATA_WORKSPACE: paths.workspace,
-    KATA_AUTHOR: 'user-a',
+    POOMSAE_HOME: paths.home,
+    POOMSAE_DB: paths.database,
+    POOMSAE_WORKSPACE: paths.workspace,
+    POOMSAE_AUTHOR: 'user-a',
   }
 }
 

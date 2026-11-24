@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
 )
 
 // TestJSONRawObjectRoundTripsVerbatim pins that the opaque raw-object wire

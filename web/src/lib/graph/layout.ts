@@ -1,14 +1,14 @@
 import { MarkerType, Position, type Edge, type Node } from '@xyflow/svelte'
 
 import type {
-  KataReachableGraphEdge,
-  KataReachableGraphEdgeKind,
-  KataReachableGraphResponse,
-  KataReachableGraphUnresolvedRef,
-  KataTaskSummary,
-} from '../kata/types'
+  PoomsaeReachableGraphEdge,
+  PoomsaeReachableGraphEdgeKind,
+  PoomsaeReachableGraphResponse,
+  PoomsaeReachableGraphUnresolvedRef,
+  PoomsaeTaskSummary,
+} from '../poomsae/types'
 
-export interface KataGraphNodeData extends Record<string, unknown> {
+export interface PoomsaeGraphNodeData extends Record<string, unknown> {
   label: string
   title: string
   idLabel: string
@@ -18,38 +18,38 @@ export interface KataGraphNodeData extends Record<string, unknown> {
   projectLabel: string
   qualifiedLabel: string
   accessibleLabel: string
-  status: KataTaskSummary['status'] | 'uncached'
-  closedReason?: KataTaskSummary['closed_reason'] | undefined
+  status: PoomsaeTaskSummary['status'] | 'uncached'
+  closedReason?: PoomsaeTaskSummary['closed_reason'] | undefined
   priorityLabel: string | null
   isSource: boolean
   selectable: boolean
   isDepthContext: boolean
   onSelect?: ((uid: string) => void) | undefined
-  layoutDirection: KataGraphLayoutDirection
+  layoutDirection: PoomsaeGraphLayoutDirection
 }
 
-export type KataGraphAdjacentRelation =
+export type PoomsaeGraphAdjacentRelation =
   | 'blocks'
   | 'blockedBy'
   | 'child'
   | 'parent'
   | 'related'
   | null
-export type KataGraphDepthLimit = 'full' | '1' | '2' | '3'
-export type KataGraphContextDepth = 'all' | '1' | '2' | '3'
-export type KataGraphLayoutDirection = 'LR' | 'TB'
-export type KataGraphNode = Node<KataGraphNodeData, 'kataTask'>
-export type KataGraphEdge = Edge<KataGraphEdgeData>
+export type PoomsaeGraphDepthLimit = 'full' | '1' | '2' | '3'
+export type PoomsaeGraphContextDepth = 'all' | '1' | '2' | '3'
+export type PoomsaeGraphLayoutDirection = 'LR' | 'TB'
+export type PoomsaeGraphNode = Node<PoomsaeGraphNodeData, 'poomsaeTask'>
+export type PoomsaeGraphEdge = Edge<PoomsaeGraphEdgeData>
 
-export interface KataGraphMissingRef {
+export interface PoomsaeGraphMissingRef {
   uid: string
   side: 'from' | 'to'
-  kind: KataReachableGraphEdgeKind
+  kind: PoomsaeReachableGraphEdgeKind
   otherUID: string
 }
 
-interface KataGraphEdgeData extends Record<string, unknown> {
-  kind: KataReachableGraphEdgeKind
+interface PoomsaeGraphEdgeData extends Record<string, unknown> {
+  kind: PoomsaeReachableGraphEdgeKind
   layout: boolean
   isDepthContext?: boolean | undefined
   isSelectedAdjacent?: boolean | undefined
@@ -57,36 +57,36 @@ interface KataGraphEdgeData extends Record<string, unknown> {
 
 export interface BuildKataReachableGraphInput {
   sourceUID: string
-  graph: KataReachableGraphResponse | null | undefined
-  contextDepth?: KataGraphContextDepth | undefined
-  layoutDirection?: KataGraphLayoutDirection | undefined
+  graph: PoomsaeReachableGraphResponse | null | undefined
+  contextDepth?: PoomsaeGraphContextDepth | undefined
+  layoutDirection?: PoomsaeGraphLayoutDirection | undefined
 }
 
 // A node fits its two text rows, and the gaps between nodes follow the
 // accepted graph: about a seventh of a node's width between layers and a
 // narrow gap between siblings.
-const KATA_GRAPH_NODE_WIDTH = 250
-const KATA_GRAPH_NODE_HEIGHT = 62
-const KATA_GRAPH_X_SPACING = 285
-const KATA_GRAPH_Y_SPACING = 76
+const POOMSAE_GRAPH_NODE_WIDTH = 250
+const POOMSAE_GRAPH_NODE_HEIGHT = 62
+const POOMSAE_GRAPH_X_SPACING = 285
+const POOMSAE_GRAPH_Y_SPACING = 76
 
 function priorityLabel(priority: number | undefined): string | null {
   if (priority === undefined) return null
   return `P${priority}`
 }
 
-function maxContextDepth(limit: KataGraphContextDepth | undefined): number {
+function maxContextDepth(limit: PoomsaeGraphContextDepth | undefined): number {
   return limit === undefined || limit === 'all' ? Number.POSITIVE_INFINITY : Number(limit)
 }
 
-function missingRefKey(ref: KataReachableGraphUnresolvedRef): string {
+function missingRefKey(ref: PoomsaeReachableGraphUnresolvedRef): string {
   return `${ref.side}:${ref.kind}:${ref.uid}:${ref.other_uid}`
 }
 
 function missingRefsByUID(
-  refs: readonly KataReachableGraphUnresolvedRef[],
-): Map<string, KataGraphMissingRef> {
-  const out = new Map<string, KataGraphMissingRef>()
+  refs: readonly PoomsaeReachableGraphUnresolvedRef[],
+): Map<string, PoomsaeGraphMissingRef> {
+  const out = new Map<string, PoomsaeGraphMissingRef>()
   for (const ref of refs) {
     if (!ref.uid) continue
     out.set(ref.uid, {
@@ -100,29 +100,29 @@ function missingRefsByUID(
 }
 
 function nodeClass(
-  task: KataTaskSummary | undefined,
+  task: PoomsaeTaskSummary | undefined,
   sourceUID: string,
   isDepthContext: boolean,
 ): string {
   return [
-    'kata-graph-node',
-    task?.status === 'closed' ? 'kata-graph-node--closed' : 'kata-graph-node--open',
-    task?.uid === sourceUID ? 'kata-graph-node--source' : '',
-    task ? '' : 'kata-graph-node--uncached',
-    isDepthContext ? 'kata-graph-node--depth-context' : '',
+    'poomsae-graph-node',
+    task?.status === 'closed' ? 'poomsae-graph-node--closed' : 'poomsae-graph-node--open',
+    task?.uid === sourceUID ? 'poomsae-graph-node--source' : '',
+    task ? '' : 'poomsae-graph-node--uncached',
+    isDepthContext ? 'poomsae-graph-node--depth-context' : '',
   ]
     .filter(Boolean)
     .join(' ')
 }
 
-function graphNodeSortKey(id: string, task: KataTaskSummary | undefined): string {
+function graphNodeSortKey(id: string, task: PoomsaeTaskSummary | undefined): string {
   if (!task) return `1:${id}`
   return `0:${task.project_name}:${task.short_id}:${task.title}:${task.uid}`
 }
 
 function compareGraphNodeEntries(
-  [leftID, leftTask]: [string, KataTaskSummary | undefined],
-  [rightID, rightTask]: [string, KataTaskSummary | undefined],
+  [leftID, leftTask]: [string, PoomsaeTaskSummary | undefined],
+  [rightID, rightTask]: [string, PoomsaeTaskSummary | undefined],
 ): number {
   return graphNodeSortKey(leftID, leftTask).localeCompare(
     graphNodeSortKey(rightID, rightTask),
@@ -134,13 +134,13 @@ function compareGraphNodeEntries(
   )
 }
 
-function makeEdge(edge: KataReachableGraphEdge): KataGraphEdge {
+function makeEdge(edge: PoomsaeReachableGraphEdge): PoomsaeGraphEdge {
   return {
     id: `${edge.kind}:${edge.from_uid}:${edge.to_uid}`,
     source: edge.from_uid,
     target: edge.to_uid,
     type: 'smoothstep',
-    class: `kata-graph-edge kata-graph-edge--${edge.kind}`,
+    class: `poomsae-graph-edge poomsae-graph-edge--${edge.kind}`,
     data: { kind: edge.kind, layout: edge.layout },
     ...(edge.kind === 'blocks' || edge.kind === 'parent'
       ? {
@@ -148,8 +148,8 @@ function makeEdge(edge: KataReachableGraphEdge): KataGraphEdge {
             type: MarkerType.ArrowClosed,
             color:
               edge.kind === 'blocks'
-                ? 'var(--kata-graph-edge-blocks)'
-                : 'var(--kata-graph-edge-ambient)',
+                ? 'var(--poomsae-graph-edge-blocks)'
+                : 'var(--poomsae-graph-edge-ambient)',
             width: 18,
             height: 18,
           },
@@ -162,13 +162,13 @@ function makeEdge(edge: KataReachableGraphEdge): KataGraphEdge {
   }
 }
 
-function edgeID(edge: KataGraphEdge): string {
+function edgeID(edge: PoomsaeGraphEdge): string {
   return edge.id
 }
 
-function dedupeEdges(edges: readonly KataGraphEdge[]): KataGraphEdge[] {
+function dedupeEdges(edges: readonly PoomsaeGraphEdge[]): PoomsaeGraphEdge[] {
   const seen = new Set<string>()
-  const out: KataGraphEdge[] = []
+  const out: PoomsaeGraphEdge[] = []
   for (const edge of edges) {
     const id = edgeID(edge)
     if (seen.has(id)) continue
@@ -180,14 +180,14 @@ function dedupeEdges(edges: readonly KataGraphEdge[]): KataGraphEdge[] {
 
 function nodeData(
   id: string,
-  task: KataTaskSummary | undefined,
+  task: PoomsaeTaskSummary | undefined,
   sourceUID: string,
-  adjacentRelation: KataGraphAdjacentRelation,
+  adjacentRelation: PoomsaeGraphAdjacentRelation,
   projectLabel: string,
-  missingRef: KataGraphMissingRef | undefined,
-  layoutDirection: KataGraphLayoutDirection,
+  missingRef: PoomsaeGraphMissingRef | undefined,
+  layoutDirection: PoomsaeGraphLayoutDirection,
   isDepthContext: boolean,
-): KataGraphNodeData {
+): PoomsaeGraphNodeData {
   if (!task) {
     const label = missingRef?.uid.slice(-4) || id.slice(-4) || id
     return {
@@ -238,10 +238,10 @@ function nodeData(
 }
 
 function selectedAdjacentRelation(
-  edge: KataGraphEdge,
+  edge: PoomsaeGraphEdge,
   nodeID: string,
   selectedUID: string,
-): KataGraphAdjacentRelation {
+): PoomsaeGraphAdjacentRelation {
   if (edge.source !== selectedUID && edge.target !== selectedUID) return null
   if (nodeID !== edge.source && nodeID !== edge.target) return null
   if (nodeID === selectedUID) return null
@@ -256,10 +256,10 @@ function selectedAdjacentRelation(
 }
 
 function selectedAdjacentRelations(
-  edges: readonly KataGraphEdge[],
+  edges: readonly PoomsaeGraphEdge[],
   selectedUID: string,
-): Map<string, KataGraphAdjacentRelation> {
-  const relations = new Map<string, KataGraphAdjacentRelation>()
+): Map<string, PoomsaeGraphAdjacentRelation> {
+  const relations = new Map<string, PoomsaeGraphAdjacentRelation>()
   for (const edge of edges) {
     if (edge.source === selectedUID) {
       mergeAdjacentRelation(
@@ -278,7 +278,7 @@ function selectedAdjacentRelations(
   return relations
 }
 
-function adjacentRelationPriority(relation: KataGraphAdjacentRelation): number {
+function adjacentRelationPriority(relation: PoomsaeGraphAdjacentRelation): number {
   if (relation === 'blockedBy') return 5
   if (relation === 'blocks') return 4
   if (relation === 'parent') return 3
@@ -288,9 +288,9 @@ function adjacentRelationPriority(relation: KataGraphAdjacentRelation): number {
 }
 
 function mergeAdjacentRelation(
-  relations: Map<string, KataGraphAdjacentRelation>,
+  relations: Map<string, PoomsaeGraphAdjacentRelation>,
   nodeID: string,
-  relation: KataGraphAdjacentRelation,
+  relation: PoomsaeGraphAdjacentRelation,
 ): void {
   const current = relations.get(nodeID) ?? null
   if (adjacentRelationPriority(relation) > adjacentRelationPriority(current)) {
@@ -300,20 +300,20 @@ function mergeAdjacentRelation(
 
 function layoutNode(
   id: string,
-  task: KataTaskSummary | undefined,
+  task: PoomsaeTaskSummary | undefined,
   position: { x: number; y: number },
   sourceUID: string,
-  adjacentRelation: KataGraphAdjacentRelation,
+  adjacentRelation: PoomsaeGraphAdjacentRelation,
   projectLabel: string,
-  missingRef: KataGraphMissingRef | undefined,
-  layoutDirection: KataGraphLayoutDirection,
+  missingRef: PoomsaeGraphMissingRef | undefined,
+  layoutDirection: PoomsaeGraphLayoutDirection,
   isDepthContext: boolean,
-): KataGraphNode {
+): PoomsaeGraphNode {
   const sourcePosition = layoutDirection === 'TB' ? Position.Bottom : Position.Right
   const targetPosition = layoutDirection === 'TB' ? Position.Top : Position.Left
   return {
     id,
-    type: 'kataTask',
+    type: 'poomsaeTask',
     position,
     data: nodeData(
       id,
@@ -330,15 +330,15 @@ function layoutNode(
     selectable: task !== undefined,
     sourcePosition,
     targetPosition,
-    width: KATA_GRAPH_NODE_WIDTH,
-    height: KATA_GRAPH_NODE_HEIGHT,
+    width: POOMSAE_GRAPH_NODE_WIDTH,
+    height: POOMSAE_GRAPH_NODE_HEIGHT,
   }
 }
 
 function graphPositions(
-  entries: readonly [string, KataTaskSummary | undefined][],
-  edges: readonly KataGraphEdge[],
-  layoutDirection: KataGraphLayoutDirection,
+  entries: readonly [string, PoomsaeTaskSummary | undefined][],
+  edges: readonly PoomsaeGraphEdge[],
+  layoutDirection: PoomsaeGraphLayoutDirection,
 ): Map<string, { x: number; y: number }> {
   const ids = entries.map(([id]) => id)
   const idSet = new Set(ids)
@@ -427,18 +427,18 @@ function graphPositions(
   for (const [depth, layerIDs] of layers) {
     const layerOffset =
       layoutDirection === 'TB'
-        ? -((layerIDs.length - 1) * KATA_GRAPH_X_SPACING) / 2
-        : -((layerIDs.length - 1) * KATA_GRAPH_Y_SPACING) / 2
+        ? -((layerIDs.length - 1) * POOMSAE_GRAPH_X_SPACING) / 2
+        : -((layerIDs.length - 1) * POOMSAE_GRAPH_Y_SPACING) / 2
     layerIDs.forEach((id, index) => {
       if (layoutDirection === 'TB') {
         positions.set(id, {
-          x: layerOffset + index * KATA_GRAPH_X_SPACING,
-          y: depth * KATA_GRAPH_Y_SPACING,
+          x: layerOffset + index * POOMSAE_GRAPH_X_SPACING,
+          y: depth * POOMSAE_GRAPH_Y_SPACING,
         })
       } else {
         positions.set(id, {
-          x: depth * KATA_GRAPH_X_SPACING,
-          y: layerOffset + index * KATA_GRAPH_Y_SPACING,
+          x: depth * POOMSAE_GRAPH_X_SPACING,
+          y: layerOffset + index * POOMSAE_GRAPH_Y_SPACING,
         })
       }
     })
@@ -447,7 +447,7 @@ function graphPositions(
 }
 
 function visibleProjectLabels(
-  entries: readonly [string, KataTaskSummary | undefined][],
+  entries: readonly [string, PoomsaeTaskSummary | undefined][],
 ): Map<string, string> {
   const projectUIDs = new Set<string>()
   const shortIDCounts = new Map<string, number>()
@@ -467,17 +467,17 @@ function visibleProjectLabels(
 }
 
 function missingProjectLabel(
-  ref: KataGraphMissingRef | undefined,
+  ref: PoomsaeGraphMissingRef | undefined,
   projectLabels: Map<string, string>,
 ): string {
   return projectLabels.size > 0 ? (ref?.uid.slice(-4) ?? '') : ''
 }
 
 function graphEdgeData(
-  edge: KataGraphEdge,
-  kind: KataReachableGraphEdgeKind,
-  overrides: Partial<Pick<KataGraphEdgeData, 'isDepthContext' | 'isSelectedAdjacent'>>,
-): KataGraphEdgeData {
+  edge: PoomsaeGraphEdge,
+  kind: PoomsaeReachableGraphEdgeKind,
+  overrides: Partial<Pick<PoomsaeGraphEdgeData, 'isDepthContext' | 'isSelectedAdjacent'>>,
+): PoomsaeGraphEdgeData {
   return {
     kind,
     layout: edge.data?.layout ?? true,
@@ -491,42 +491,42 @@ function graphEdgeData(
   }
 }
 
-function depthContextEdge(edge: KataGraphEdge): KataGraphEdge {
+function depthContextEdge(edge: PoomsaeGraphEdge): PoomsaeGraphEdge {
   const kind = edge.data?.kind
   if (!kind) return edge
   const className = typeof edge.class === 'string' ? edge.class : ''
-  const next: KataGraphEdge = {
+  const next: PoomsaeGraphEdge = {
     ...edge,
-    class: `${className} kata-graph-edge--depth-context`.trim(),
+    class: `${className} poomsae-graph-edge--depth-context`.trim(),
     data: graphEdgeData(edge, kind, { isDepthContext: true }),
     zIndex: 0,
   }
   if (!edge.markerEnd || typeof edge.markerEnd !== 'object') return next
   return {
     ...next,
-    markerEnd: { ...edge.markerEnd, color: 'var(--kata-graph-edge-context)' },
-  } as KataGraphEdge
+    markerEnd: { ...edge.markerEnd, color: 'var(--poomsae-graph-edge-context)' },
+  } as PoomsaeGraphEdge
 }
 
-function ambientActiveEdge(edge: KataGraphEdge): KataGraphEdge {
+function ambientActiveEdge(edge: PoomsaeGraphEdge): PoomsaeGraphEdge {
   const kind = edge.data?.kind
   if (!kind) return edge
   const className = typeof edge.class === 'string' ? edge.class : ''
   return {
     ...edge,
-    class: `${className} kata-graph-edge--ambient`.trim(),
+    class: `${className} poomsae-graph-edge--ambient`.trim(),
     data: graphEdgeData(edge, kind, { isSelectedAdjacent: false }),
     zIndex: 1,
   }
 }
 
-function selectedActiveEdge(edge: KataGraphEdge): KataGraphEdge {
+function selectedActiveEdge(edge: PoomsaeGraphEdge): PoomsaeGraphEdge {
   const kind = edge.data?.kind
   if (!kind) return edge
   const className = typeof edge.class === 'string' ? edge.class : ''
-  const next: KataGraphEdge = {
+  const next: PoomsaeGraphEdge = {
     ...edge,
-    class: `${className} kata-graph-edge--selected-adjacent`.trim(),
+    class: `${className} poomsae-graph-edge--selected-adjacent`.trim(),
     data: graphEdgeData(edge, kind, { isSelectedAdjacent: true }),
     zIndex: 4,
   }
@@ -537,13 +537,13 @@ function selectedActiveEdge(edge: KataGraphEdge): KataGraphEdge {
       ...edge.markerEnd,
       color:
         kind === 'blocks'
-          ? 'var(--kata-graph-edge-selected-blocks)'
-          : 'var(--kata-graph-edge-selected)',
+          ? 'var(--poomsae-graph-edge-selected-blocks)'
+          : 'var(--poomsae-graph-edge-selected)',
     },
-  } as KataGraphEdge
+  } as PoomsaeGraphEdge
 }
 
-function activeEdge(edge: KataGraphEdge, selectedUID: string | null): KataGraphEdge {
+function activeEdge(edge: PoomsaeGraphEdge, selectedUID: string | null): PoomsaeGraphEdge {
   if (selectedUID && (edge.source === selectedUID || edge.target === selectedUID)) {
     return selectedActiveEdge(edge)
   }
@@ -552,13 +552,13 @@ function activeEdge(edge: KataGraphEdge, selectedUID: string | null): KataGraphE
 
 function visibleContextIDs(
   rootID: string,
-  edges: readonly KataGraphEdge[],
+  edges: readonly PoomsaeGraphEdge[],
   maxDepth: number,
 ): { nodeIDs: Set<string>; edgeIDs: Set<string> } {
   const nodeIDs = new Set<string>([rootID])
   const edgeIDs = new Set<string>()
   const distances = new Map<string, number>([[rootID, 0]])
-  const adjacency = new Map<string, KataGraphEdge[]>()
+  const adjacency = new Map<string, PoomsaeGraphEdge[]>()
   for (const edge of edges) {
     const sourceEdges = adjacency.get(edge.source)
     if (sourceEdges) sourceEdges.push(edge)
@@ -586,7 +586,7 @@ function visibleContextIDs(
   return { nodeIDs, edgeIDs }
 }
 
-function compareGraphEdges(left: KataGraphEdge, right: KataGraphEdge): number {
+function compareGraphEdges(left: PoomsaeGraphEdge, right: PoomsaeGraphEdge): number {
   const leftDepthContext = left.data?.isDepthContext ? 0 : 1
   const rightDepthContext = right.data?.isDepthContext ? 0 : 1
   return (
@@ -596,10 +596,10 @@ function compareGraphEdges(left: KataGraphEdge, right: KataGraphEdge): number {
 }
 
 function nodeEntriesFromGraph(
-  graph: KataReachableGraphResponse,
-  edges: readonly KataGraphEdge[],
-): [string, KataTaskSummary | undefined][] {
-  const nodeTasks = new Map<string, KataTaskSummary | undefined>()
+  graph: PoomsaeReachableGraphResponse,
+  edges: readonly PoomsaeGraphEdge[],
+): [string, PoomsaeTaskSummary | undefined][] {
+  const nodeTasks = new Map<string, PoomsaeTaskSummary | undefined>()
   for (const task of graph.nodes) {
     nodeTasks.set(task.uid, task)
   }
@@ -611,10 +611,10 @@ function nodeEntriesFromGraph(
 }
 
 export function buildKataReachableGraph(input: BuildKataReachableGraphInput): {
-  nodes: KataGraphNode[]
-  edges: KataGraphEdge[]
-  layoutEdges: KataGraphEdge[]
-  missingRefs: KataGraphMissingRef[]
+  nodes: PoomsaeGraphNode[]
+  edges: PoomsaeGraphEdge[]
+  layoutEdges: PoomsaeGraphEdge[]
+  missingRefs: PoomsaeGraphMissingRef[]
 } {
   const graph = input.graph
   if (!graph) return { nodes: [], edges: [], layoutEdges: [], missingRefs: [] }

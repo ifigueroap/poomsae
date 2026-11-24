@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func streamExportRows[T any](
@@ -421,7 +421,7 @@ WHERE s.mapping_id = m.id AND b.project_id = $1`
 			var record db.ExternalFieldMappingExport
 			var acceptedKinds, createdAt, updatedAt string
 			var nullable, writable, active int
-			if err := rows.Scan(&record.ConnectorInstance, &record.KataField,
+			if err := rows.Scan(&record.ConnectorInstance, &record.PoomsaeField,
 				&record.ExternalFieldID, &record.ExternalFieldName, &acceptedKinds,
 				&nullable, &writable, &record.SchemaRevision, &active,
 				&createdAt, &updatedAt); err != nil {

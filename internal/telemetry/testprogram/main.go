@@ -1,11 +1,11 @@
-// Command testprogram reports whether the Kata telemetry wrapper is enabled.
+// Command testprogram reports whether the Poomsae telemetry wrapper is enabled.
 package main
 
 import (
 	"flag"
 	"fmt"
 
-	"go.kenn.io/kata/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
 )
 
 func main() {

@@ -1,4 +1,4 @@
- Project: kata                                                                                       kata カタ · v0.1.0
+ Project: poomsae                                                                                 poomsae カタ · v0.1.0
  / search                                                                                  open: 1 · closed: 1 · all: 3
     #     prio status    title                                                           kids    owner         updated
     #aaa1 P1   open      fix login bug on Safari                                                 claude-4.7    3h ago
@@ -10,7 +10,7 @@
 
                                           ╭──────────────────────────────────╮
                                           │                                  │
-                                          │  Quit kata?                      │
+                                          │  Quit poomsae?                   │
                                           │                                  │
                                           │  Are you sure you want to quit?  │
                                           │                                  │
@@ -26,5 +26,5 @@
 
 
 
- [kata カタ] jobs runs workflows                                                                                  [2/3]
+ [poomsae カタ] jobs runs workflows                                                                               [2/3]
  y confirm▕ n/esc cancel

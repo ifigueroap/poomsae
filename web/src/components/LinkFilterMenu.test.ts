@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createKataLinkFilters } from '../lib/kata/linkFilters'
+import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
 import LinkFilterMenu from './LinkFilterMenu.svelte'
 
 describe('LinkFilterMenu', () => {

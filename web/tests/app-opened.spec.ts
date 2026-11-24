@@ -8,7 +8,7 @@ const telemetryPath = '/api/v1/ui/telemetry'
 
 test('the web UI reports app_opened once per UTC day to the serving daemon', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   const requests: Request[] = []
   page.on('request', (request) => {
@@ -27,7 +27,7 @@ test('the web UI reports app_opened once per UTC day to the serving daemon', asy
   await page.clock.install({ time: Date.now() })
 
   const firstResponse = page.waitForResponse(isTelemetry)
-  await kata.launch(page)
+  await poomsae.launch(page)
   const first = await firstResponse
   expect(first.status()).toBe(202)
   expect(await first.json()).toEqual({ status: 'disabled' })
@@ -35,14 +35,14 @@ test('the web UI reports app_opened once per UTC day to the serving daemon', asy
     event: 'app_opened',
     properties: { surface: 'web' },
   })
-  expect(new URL(first.url()).origin).toBe(kata.origin)
+  expect(new URL(first.url()).origin).toBe(poomsae.origin)
 
   const reloadedSnapshot = page.waitForResponse((response) =>
     new URL(response.url()).pathname.endsWith('/api/v1/ui/snapshot'),
   )
   await page.reload()
   await reloadedSnapshot
-  await expect(page.getByRole('region', { name: 'Kata workspace' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Poomsae workspace' })).toBeVisible()
   expect(requests).toHaveLength(1)
 
   const now = new Date(await page.evaluate(() => Date.now()))

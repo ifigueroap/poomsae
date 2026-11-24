@@ -5,8 +5,8 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunCreateRelayResetAfterCompaction exercises create relay reset after compaction on the supplied native store.

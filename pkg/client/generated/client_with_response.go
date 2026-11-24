@@ -1058,9 +1058,9 @@ func (c *Client) PollEventsWithResponse(ctx context.Context, options *PollEvents
 			}
 		}
 		out.Headers200 = &PollEventsResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataEventsIssueUID:        resp.Headers.Get("X-Kata-Events-Issue-UID"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeEventsIssueUID:        resp.Headers.Get("X-Poomsae-Events-Issue-UID"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -3150,7 +3150,7 @@ func (c *Client) GetCronCapabilitiesWithResponse(ctx context.Context, options *G
 			}
 		}
 		out.Headers200 = &GetCronCapabilitiesResp200Headers{
-			XKataEventFeatures: resp.Headers.Get("X-Kata-Event-Features"),
+			XPoomsaeEventFeatures: resp.Headers.Get("X-Poomsae-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4097,9 +4097,9 @@ func (c *Client) PollProjectEventsWithResponse(ctx context.Context, options *Pol
 			}
 		}
 		out.Headers200 = &PollProjectEventsResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataEventsIssueUID:        resp.Headers.Get("X-Kata-Events-Issue-UID"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeEventsIssueUID:        resp.Headers.Get("X-Poomsae-Events-Issue-UID"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4157,8 +4157,8 @@ func (c *Client) GetProjectFederationWithResponse(ctx context.Context, options *
 			}
 		}
 		out.Headers200 = &GetProjectFederationResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4443,8 +4443,8 @@ func (c *Client) EnableProjectFederationWithResponse(ctx context.Context, option
 			}
 		}
 		out.Headers200 = &EnableProjectFederationResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4502,10 +4502,10 @@ func (c *Client) PollFederationProjectEventsWithResponse(ctx context.Context, op
 			}
 		}
 		out.Headers200 = &PollFederationProjectEventsResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataEventsIssueUID:        resp.Headers.Get("X-Kata-Events-Issue-UID"),
-			XKataFederationPollWaitMax: resp.Headers.Get("X-Kata-Federation-Poll-Wait-Max"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeEventsIssueUID:        resp.Headers.Get("X-Poomsae-Events-Issue-UID"),
+			XPoomsaeFederationPollWaitMax: resp.Headers.Get("X-Poomsae-Federation-Poll-Wait-Max"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4564,8 +4564,8 @@ func (c *Client) IngestFederationProjectEventsWithResponse(ctx context.Context, 
 			}
 		}
 		out.Headers200 = &IngestFederationProjectEventsResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4623,8 +4623,8 @@ func (c *Client) GetFederationProjectMetadataWithResponse(ctx context.Context, o
 			}
 		}
 		out.Headers200 = &GetFederationProjectMetadataResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4794,8 +4794,8 @@ func (c *Client) OfferRelayDeliveriesWithResponse(ctx context.Context, options *
 			}
 		}
 		out.Headers200 = &OfferRelayDeliveriesResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -4853,8 +4853,8 @@ func (c *Client) GetRelayResetWithResponse(ctx context.Context, options *GetRela
 			}
 		}
 		out.Headers200 = &GetRelayResetResp200Headers{
-			XKataEventFeatures:         resp.Headers.Get("X-Kata-Event-Features"),
-			XKataRequiredEventFeatures: resp.Headers.Get("X-Kata-Required-Event-Features"),
+			XPoomsaeEventFeatures:         resp.Headers.Get("X-Poomsae-Event-Features"),
+			XPoomsaeRequiredEventFeatures: resp.Headers.Get("X-Poomsae-Required-Event-Features"),
 		}
 		return out, nil
 	default:
@@ -5526,7 +5526,7 @@ func (c *Client) CreateIssueWithResponse(ctx context.Context, options *CreateIss
 			}
 		}
 		out.Headers200 = &CreateIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -5640,7 +5640,7 @@ func (c *Client) EditIssueWithResponse(ctx context.Context, options *EditIssueRe
 			}
 		}
 		out.Headers200 = &EditIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -5699,7 +5699,7 @@ func (c *Client) AssignIssueWithResponse(ctx context.Context, options *AssignIss
 			}
 		}
 		out.Headers200 = &AssignIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -5814,7 +5814,7 @@ func (c *Client) CloseIssueWithResponse(ctx context.Context, options *CloseIssue
 			}
 		}
 		out.Headers200 = &CloseIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -5873,7 +5873,7 @@ func (c *Client) DeleteIssueWithResponse(ctx context.Context, options *DeleteIss
 			}
 		}
 		out.Headers200 = &DeleteIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -5991,7 +5991,7 @@ func (c *Client) SetIssuePriorityWithResponse(ctx context.Context, options *SetI
 			}
 		}
 		out.Headers200 = &SetIssuePriorityResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -6106,7 +6106,7 @@ func (c *Client) ReopenIssueWithResponse(ctx context.Context, options *ReopenIss
 			}
 		}
 		out.Headers200 = &ReopenIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -6165,7 +6165,7 @@ func (c *Client) RestoreIssueWithResponse(ctx context.Context, options *RestoreI
 			}
 		}
 		out.Headers200 = &RestoreIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -6224,7 +6224,7 @@ func (c *Client) UnassignIssueWithResponse(ctx context.Context, options *Unassig
 			}
 		}
 		out.Headers200 = &UnassignIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -6900,7 +6900,7 @@ func (c *Client) CreateCommentWithResponse(ctx context.Context, options *CreateC
 			}
 		}
 		out.Headers200 = &CreateCommentResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -6959,7 +6959,7 @@ func (c *Client) EditCommentWithResponse(ctx context.Context, options *EditComme
 			}
 		}
 		out.Headers200 = &EditCommentResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -7073,7 +7073,7 @@ func (c *Client) AddLabelWithResponse(ctx context.Context, options *AddLabelRequ
 			}
 		}
 		out.Headers200 = &AddLabelResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -7131,7 +7131,7 @@ func (c *Client) RemoveLabelWithResponse(ctx context.Context, options *RemoveLab
 			}
 		}
 		out.Headers200 = &RemoveLabelResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -7524,7 +7524,7 @@ func (c *Client) DeleteLinkWithResponse(ctx context.Context, options *DeleteLink
 			}
 		}
 		out.Headers200 = &DeleteLinkResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -7697,7 +7697,7 @@ func (c *Client) NotifyIssueWithResponse(ctx context.Context, options *NotifyIss
 			}
 		}
 		out.Headers200 = &NotifyIssueResp200Headers{
-			XKataProjectName: resp.Headers.Get("X-Kata-Project-Name"),
+			XPoomsaeProjectName: resp.Headers.Get("X-Poomsae-Project-Name"),
 		}
 		return out, nil
 	default:
@@ -8356,7 +8356,7 @@ func (c *Client) SearchIssuesWithResponse(ctx context.Context, options *SearchIs
 			}
 		}
 		out.Headers200 = &SearchIssuesResp200Headers{
-			XKataEmbeddingsConfigured: resp.Headers.Get("X-Kata-Embeddings-Configured"),
+			XPoomsaeEmbeddingsConfigured: resp.Headers.Get("X-Poomsae-Embeddings-Configured"),
 		}
 		return out, nil
 	case 400:

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // collectExport drains an export iterator, failing on the first error.
@@ -465,7 +465,7 @@ func TestExportIssues(t *testing.T) {
 	require.NotNil(t, all[1].DeletedAt)
 }
 
-// TestExportEvents_MovedIssueEventsSurvive pins the moved-issue rule: kata
+// TestExportEvents_MovedIssueEventsSurvive pins the moved-issue rule: poomsae
 // move rehomes the issue row while its historical events stay in the source
 // project, so the subject join must match by row id / UID alone. Requiring
 // subject_issue.project_id = events.project_id made the orphan filter drop

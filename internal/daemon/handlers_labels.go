@@ -7,8 +7,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // registerLabelsHandlers installs POST/DELETE /labels and GET /labels (counts).
@@ -53,7 +53,7 @@ func addLabelHandler(cfg ServerConfig) func(context.Context, *api.AddLabelReques
 			if err != nil {
 				return nil, err
 			}
-			return nil, api.NewError(400, "validation", "use the priority field: kata edit "+qualifiedID(project.Name, issue.ShortID)+" --priority N or kata.edit with priority", "", nil)
+			return nil, api.NewError(400, "validation", "use the priority field: poomsae edit "+qualifiedID(project.Name, issue.ShortID)+" --priority N or poomsae.edit with priority", "", nil)
 		}
 
 		ev := db.LabelEventParams{

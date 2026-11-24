@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func movedForceReleaseFixture(t *testing.T, sourceFederated bool) (*testenv.Env, db.Project, db.Project, db.Issue) {
@@ -83,7 +83,7 @@ func TestMovedIssueLeaseStealThroughHistoricalRef(t *testing.T) {
 func TestMovedIssueForceReleaseRecoversSoftDeletedHardLease(t *testing.T) {
 	env, source, target, issue := movedForceReleaseFixture(t, false)
 	headers := bearer("owner-token")
-	headers["X-Kata-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
+	headers["X-Poomsae-Confirm"] = "DELETE " + target.Name + "#" + issue.ShortID
 	response, raw := envDoRaw(t, env, http.MethodPost, issuePathRef(target.ID, issue.UID, "actions/delete"),
 		map[string]string{"actor": "other-holder"}, headers)
 	require.Equal(t, http.StatusOK, response.StatusCode, string(raw))

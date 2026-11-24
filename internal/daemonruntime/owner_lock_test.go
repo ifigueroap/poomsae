@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 )
 
 func TestStoreOwnerLockedReportsHeldLock(t *testing.T) {
-	paths := []string{filepath.Join(t.TempDir(), "kata.db.owner.lock")}
+	paths := []string{filepath.Join(t.TempDir(), "poomsae.db.owner.lock")}
 	require.False(t, daemonruntime.StoreOwnerLocked(paths), "a missing lock file has no owner")
 	release, err := daemonruntime.AcquireStoreOwnerLock(t.Context(), paths)
 	require.NoError(t, err)
@@ -41,12 +41,12 @@ func TestStoreOwnerLockCoversIntermediateSymlink(t *testing.T) {
 	require.True(t, daemonruntime.StoreOwnerLocked(daemonruntime.StoreOwnerLockPaths(dir, inner)))
 }
 
-// linked.db -> alias/../kata.db with alias a directory symlink opens the file
+// linked.db -> alias/../poomsae.db with alias a directory symlink opens the file
 // beside alias's target, so an owner through the link must own that file.
 func TestStoreOwnerLockFollowsDirectorySymlinkInsideRelativeTarget(t *testing.T) {
 	storage := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(storage, "nested"), 0o700))
-	target := filepath.Join(storage, "kata.db")
+	target := filepath.Join(storage, "poomsae.db")
 	require.NoError(t, os.WriteFile(target, nil, 0o600))
 	links := t.TempDir()
 	if err := os.Symlink(filepath.Join(storage, "nested"), filepath.Join(links, "alias")); err != nil {
@@ -54,7 +54,7 @@ func TestStoreOwnerLockFollowsDirectorySymlinkInsideRelativeTarget(t *testing.T)
 	}
 	link := filepath.Join(links, "linked.db")
 	sep := string(filepath.Separator)
-	require.NoError(t, os.Symlink("alias"+sep+".."+sep+"kata.db", link))
+	require.NoError(t, os.Symlink("alias"+sep+".."+sep+"poomsae.db", link))
 	release, err := daemonruntime.AcquireStoreOwnerLock(t.Context(), daemonruntime.StoreOwnerLockPaths(links, link))
 	require.NoError(t, err)
 	defer release()
@@ -66,7 +66,7 @@ func TestStoreOwnerLockFollowsDirectorySymlinkInsideRelativeTarget(t *testing.T)
 // daemon that may be releasing the store, so the caller's normal wait applies.
 func TestRefuseForeignStoreOwnerIgnoresLocalOwner(t *testing.T) {
 	dataDir := t.TempDir()
-	paths := []string{filepath.Join(dataDir, "kata.db.owner.lock")}
+	paths := []string{filepath.Join(dataDir, "poomsae.db.owner.lock")}
 	release, err := daemonruntime.AcquireStoreOwnerLock(t.Context(), paths)
 	require.NoError(t, err)
 	defer release()

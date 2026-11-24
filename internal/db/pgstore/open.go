@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // statementTimeout bounds each ordinary statement on a store connection.
@@ -110,7 +110,7 @@ func openInternal(
 	// RuntimeParams ship to every new connection via the startup packet, so
 	// these GUCs are guaranteed on every pooled connection — not just the
 	// one that handled an out-of-band SET ExecContext.
-	connConfig.RuntimeParams["application_name"] = "kata"
+	connConfig.RuntimeParams["application_name"] = "poomsae"
 	connConfig.RuntimeParams["statement_timeout"] = statementTimeout
 	connConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
 	connConfig.RuntimeParams["search_path"] = quoteIdentifier(pgConfig.Schema)
@@ -261,7 +261,7 @@ func (s *Store) acquireServingLease(ctx context.Context) error {
 	}
 	if _, err := conn.ExecContext(ctx,
 		`SELECT pg_advisory_lock_shared(hashtextextended($1, 0))`,
-		"kata:pgstore:serving:"+s.schema); err != nil {
+		"poomsae:pgstore:serving:"+s.schema); err != nil {
 		_ = conn.Close()
 		return fmt.Errorf("acquire postgres serving lease: %w", mapSQLError(err, nil))
 	}
@@ -272,7 +272,7 @@ func (s *Store) acquireServingLease(ctx context.Context) error {
 func acquireExclusiveServingLease(ctx context.Context, tx *sql.Tx, schema string) error {
 	_, err := tx.ExecContext(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
-		"kata:pgstore:serving:"+schema)
+		"poomsae:pgstore:serving:"+schema)
 	return mapSQLError(err, nil)
 }
 
@@ -347,7 +347,7 @@ func (s *Store) bootstrap(ctx context.Context) (bool, error) {
 		}
 	}
 	// Inspect metadata with pg_catalog first. A pre-existing schema is not
-	// trusted until its Kata migration metadata has been validated below.
+	// trusted until its Poomsae migration metadata has been validated below.
 	if _, err := tx.ExecContext(ctx,
 		`SET LOCAL search_path TO pg_catalog, `+quoteIdentifier(s.schema)+`, pg_temp`); err != nil {
 		return false, fmt.Errorf("select postgres schema %q: %w", s.schema, err)
@@ -384,7 +384,7 @@ func (s *Store) bootstrap(ctx context.Context) (bool, error) {
 	}
 	// Unqualified CREATE statements target the first search-path schema. At
 	// this point the application schema is trusted: this transaction created
-	// it, or it already carries valid Kata migration metadata. This also pins
+	// it, or it already carries valid Poomsae migration metadata. This also pins
 	// the SECURITY DEFINER adoption helper's captured path with pg_temp last.
 	if _, err := tx.ExecContext(ctx,
 		`SET LOCAL search_path TO `+quoteIdentifier(s.schema)+`, pg_catalog, pg_temp`); err != nil {
@@ -432,7 +432,7 @@ func prepareOptionalVectorSchema(ctx context.Context, tx *sql.Tx, schema string)
 	}
 	if extensionSchema.Valid && extensionSchema.String != "public" {
 		return fmt.Errorf(
-			"postgres extension %q is installed in schema %q; move it to %q before installing kata",
+			"postgres extension %q is installed in schema %q; move it to %q before installing poomsae",
 			"vector", extensionSchema.String, "public",
 		)
 	}
@@ -482,7 +482,7 @@ func recordSchemaVersion(ctx context.Context, tx *sql.Tx, version int, source st
 
 func acquireSchemaMigrationLock(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('kata:pgstore:migrations', 0))`)
+		`SELECT pg_advisory_xact_lock(hashtextextended('poomsae:pgstore:migrations', 0))`)
 	return err
 }
 
@@ -733,7 +733,7 @@ func (s *Store) ensureInstanceUID(ctx context.Context) error {
 	if !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("read instance_uid: %w", err)
 	}
-	fresh, err := katauid.New()
+	fresh, err := poomsaeuid.New()
 	if err != nil {
 		return fmt.Errorf("generate instance_uid: %w", err)
 	}

@@ -71,11 +71,11 @@ func TestDiscoveryRedirectPolicyIsSpecificToDoctor(t *testing.T) {
 			return
 		}
 		redirected.Add(1)
-		_, _ = fmt.Fprint(w, `{"ok":true,"service":"kata","version":"test"}`)
+		_, _ = fmt.Fprint(w, `{"ok":true,"service":"poomsae","version":"test"}`)
 	}))
 	t.Cleanup(server.Close)
 	dir := t.TempDir()
-	_, err := (kitdaemon.RuntimeStore{Dir: dir}).Write(kitdaemon.NewRuntimeRecord("kata", "test", kitdaemon.Endpoint{
+	_, err := (kitdaemon.RuntimeStore{Dir: dir}).Write(kitdaemon.NewRuntimeRecord("poomsae", "test", kitdaemon.Endpoint{
 		Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"),
 	}))
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestDiscoveryRedirectPolicyIsSpecificToDoctor(t *testing.T) {
 func TestReadRuntimeRecordsFindsKitRuntimeStoreRecord(t *testing.T) {
 	dir := t.TempDir()
 	store := kitdaemon.RuntimeStore{Dir: dir}
-	written, err := store.Write(kitdaemon.NewRuntimeRecord("kata", "test", kitdaemon.Endpoint{
+	written, err := store.Write(kitdaemon.NewRuntimeRecord("poomsae", "test", kitdaemon.Endpoint{
 		Network: "tcp", Address: "127.0.0.1:7777",
 	}))
 	require.NoError(t, err)

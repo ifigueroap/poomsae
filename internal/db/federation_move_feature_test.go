@@ -3,8 +3,8 @@ package db_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // Move payloads carry a projection snapshot that older peers cannot apply.

@@ -16,13 +16,13 @@ import (
 	"strings"
 	"testing"
 	"time"
-	// Embed zones as the kata binary does: trimmed test binaries cannot
+	// Embed zones as the poomsae binary does: trimmed test binaries cannot
 	// fall back to the Go installation's copy.
 	_ "time/tzdata"
 
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestRun(t *testing.T) {
@@ -111,7 +111,7 @@ func TestTranscriptConditionalWritesFollowAdvertisedCapabilities(t *testing.T) {
 		"steps": map[string]any{},
 	}}
 	step := protocolTranscriptStep{Request: jsontext.Value(`{
-		"protocol":"kata.connector.v1",
+		"protocol":"poomsae.connector.v1",
 		"id":"conditional-write",
 		"method":"write_fields",
 		"instance":"example-instance",
@@ -293,7 +293,7 @@ func TestRunRejectsBrokenWireExchanges(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestBrokenWireExchangeProbe$") // #nosec G204,G702 -- the current test executable is fixed by the Go test runner.
-			command.Env = append(os.Environ(), "KATA_CONFORMANCE_WIRE_PROBE="+test.mode)
+			command.Env = append(os.Environ(), "POOMSAE_CONFORMANCE_WIRE_PROBE="+test.mode)
 			output, err := command.CombinedOutput()
 			if err == nil {
 				t.Fatalf("Run accepted broken exchange %q:\n%s", test.mode, output)
@@ -306,7 +306,7 @@ func TestRunRejectsBrokenWireExchanges(t *testing.T) {
 }
 
 func TestBrokenWireExchangeProbe(t *testing.T) {
-	mode := os.Getenv("KATA_CONFORMANCE_WIRE_PROBE")
+	mode := os.Getenv("POOMSAE_CONFORMANCE_WIRE_PROBE")
 	if mode == "" {
 		t.Skip("subprocess probe")
 	}
@@ -315,7 +315,7 @@ func TestBrokenWireExchangeProbe(t *testing.T) {
 		var request connector.Request
 		if err := json.Unmarshal(raw, &request); err != nil {
 			if mode == "accept-malformed" {
-				return []byte(`{"protocol":"kata.connector.v1","id":"accepted","result":{}}` + "\n"), nil
+				return []byte(`{"protocol":"poomsae.connector.v1","id":"accepted","result":{}}` + "\n"), nil
 			}
 			return nil, err
 		}
@@ -407,7 +407,7 @@ func TestProtocolV1TranscriptFixturesAreDeclarative(t *testing.T) {
 		if err := json.Unmarshal(encoded, &document); err != nil {
 			t.Fatalf("decode %s: %v", entry.Name(), err)
 		}
-		if document.Schema != "kata.connector.conformance/v1" {
+		if document.Schema != "poomsae.connector.conformance/v1" {
 			t.Errorf("%s schema = %q, want declarative conformance schema", entry.Name(), document.Schema)
 		}
 		for index, step := range document.Steps {
@@ -489,7 +489,7 @@ func TestProtocolV1TranscriptsRejectEveryRunBehavior(t *testing.T) {
 	} {
 		for _, runner := range []string{"run", "transcripts"} {
 			command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestBrokenDeclarativeContractProbe$") // #nosec G204,G702 -- the current test executable is fixed by the Go test runner.
-			command.Env = append(os.Environ(), "KATA_CONFORMANCE_DECLARATIVE_PROBE="+mode, "KATA_CONFORMANCE_DECLARATIVE_RUNNER="+runner)
+			command.Env = append(os.Environ(), "POOMSAE_CONFORMANCE_DECLARATIVE_PROBE="+mode, "POOMSAE_CONFORMANCE_DECLARATIVE_RUNNER="+runner)
 			output, err := command.CombinedOutput()
 			if err == nil {
 				t.Fatalf("%s accepted broken connector mode %q:\n%s", runner, mode, output)
@@ -499,11 +499,11 @@ func TestProtocolV1TranscriptsRejectEveryRunBehavior(t *testing.T) {
 }
 
 func TestBrokenDeclarativeContractProbe(t *testing.T) {
-	if os.Getenv("KATA_CONFORMANCE_DECLARATIVE_PROBE") == "" {
+	if os.Getenv("POOMSAE_CONFORMANCE_DECLARATIVE_PROBE") == "" {
 		t.Skip("subprocess probe")
 	}
 	fixture := newFixture()
-	switch os.Getenv("KATA_CONFORMANCE_DECLARATIVE_PROBE") {
+	switch os.Getenv("POOMSAE_CONFORMANCE_DECLARATIVE_PROBE") {
 	case "unstable-description":
 		fixture.unstableDescription = true
 	case "unstable-reset-identity":
@@ -553,7 +553,7 @@ func TestBrokenDeclarativeContractProbe(t *testing.T) {
 	default:
 		t.Fatal("unknown declarative contract probe")
 	}
-	if os.Getenv("KATA_CONFORMANCE_DECLARATIVE_RUNNER") == "transcripts" {
+	if os.Getenv("POOMSAE_CONFORMANCE_DECLARATIVE_RUNNER") == "transcripts" {
 		invocation := fixture.Invocation()
 		settings, err := decodeTranscriptJSON(invocation.Settings)
 		if err != nil {
@@ -589,18 +589,18 @@ func TestRunReadsProviderStateAndValidatesFrontiers(t *testing.T) {
 		{name: "camel work attention", mode: "forbidden-work-attention", subtest: "language-neutral protocol transcripts"},
 		{name: "kebab issue ID", mode: "forbidden-kebab-issue-id", subtest: "language-neutral protocol transcripts"},
 		{name: "dotted child root", mode: "forbidden-dotted-child-root", subtest: "language-neutral protocol transcripts"},
-		{name: "camel Kata UID", mode: "forbidden-kata-uid", subtest: "language-neutral protocol transcripts"},
-		{name: "kebab Kata ref", mode: "forbidden-kata-ref", subtest: "language-neutral protocol transcripts"},
-		{name: "dotted Kata project ID", mode: "forbidden-kata-project-id", subtest: "language-neutral protocol transcripts"},
-		{name: "camel Kata binding ID", mode: "forbidden-kata-binding-id", subtest: "language-neutral protocol transcripts"},
-		{name: "camel Kata work branch", mode: "forbidden-kata-work-branch", subtest: "language-neutral protocol transcripts"},
-		{name: "arbitrary Kata owner", mode: "forbidden-arbitrary-kata", subtest: "language-neutral protocol transcripts"},
+		{name: "camel Poomsae UID", mode: "forbidden-poomsae-uid", subtest: "language-neutral protocol transcripts"},
+		{name: "kebab Poomsae ref", mode: "forbidden-poomsae-ref", subtest: "language-neutral protocol transcripts"},
+		{name: "dotted Poomsae project ID", mode: "forbidden-poomsae-project-id", subtest: "language-neutral protocol transcripts"},
+		{name: "camel Poomsae binding ID", mode: "forbidden-poomsae-binding-id", subtest: "language-neutral protocol transcripts"},
+		{name: "camel Poomsae work branch", mode: "forbidden-poomsae-work-branch", subtest: "language-neutral protocol transcripts"},
+		{name: "arbitrary Poomsae owner", mode: "forbidden-arbitrary-poomsae", subtest: "language-neutral protocol transcripts"},
 		{name: "wrong mutation value type", mode: "wrong-mutation-type", subtest: "language-neutral protocol transcripts"},
 		{name: "trailing mutation JSON", mode: "trailing-mutation", subtest: "language-neutral protocol transcripts"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestBrokenProviderStateProbe$") // #nosec G204,G702 -- the current test executable is fixed by the Go test runner.
-			command.Env = append(os.Environ(), "KATA_CONFORMANCE_STATE_PROBE="+test.mode)
+			command.Env = append(os.Environ(), "POOMSAE_CONFORMANCE_STATE_PROBE="+test.mode)
 			output, err := command.CombinedOutput()
 			if err == nil {
 				t.Fatalf("Run accepted broken fixture %q:\n%s", test.mode, output)
@@ -613,7 +613,7 @@ func TestRunReadsProviderStateAndValidatesFrontiers(t *testing.T) {
 }
 
 func TestBrokenProviderStateProbe(t *testing.T) {
-	mode := os.Getenv("KATA_CONFORMANCE_STATE_PROBE")
+	mode := os.Getenv("POOMSAE_CONFORMANCE_STATE_PROBE")
 	if mode == "" {
 		t.Skip("subprocess probe")
 	}
@@ -655,18 +655,18 @@ func TestBrokenProviderStateProbe(t *testing.T) {
 		fixture.forbiddenMutationKey = "issue-id"
 	case "forbidden-dotted-child-root":
 		fixture.forbiddenMutationKey = "child.root"
-	case "forbidden-kata-uid":
-		fixture.forbiddenFieldValueKey = "kataUid"
-	case "forbidden-kata-ref":
-		fixture.forbiddenFieldValueKey = "kata-ref"
-	case "forbidden-kata-project-id":
-		fixture.forbiddenFieldValueKey = "kata.project.id"
-	case "forbidden-kata-binding-id":
-		fixture.forbiddenFieldValueKey = "kataBindingId"
-	case "forbidden-kata-work-branch":
-		fixture.forbiddenFieldValueKey = "kataWorkBranch"
-	case "forbidden-arbitrary-kata":
-		fixture.forbiddenFieldValueKey = "kataOwnerId"
+	case "forbidden-poomsae-uid":
+		fixture.forbiddenFieldValueKey = "poomsaeUid"
+	case "forbidden-poomsae-ref":
+		fixture.forbiddenFieldValueKey = "poomsae-ref"
+	case "forbidden-poomsae-project-id":
+		fixture.forbiddenFieldValueKey = "poomsae.project.id"
+	case "forbidden-poomsae-binding-id":
+		fixture.forbiddenFieldValueKey = "poomsaeBindingId"
+	case "forbidden-poomsae-work-branch":
+		fixture.forbiddenFieldValueKey = "poomsaeWorkBranch"
+	case "forbidden-arbitrary-poomsae":
+		fixture.forbiddenFieldValueKey = "poomsaeOwnerId"
 	case "wrong-mutation-type":
 		fixture.wrongMutationType = true
 	case "trailing-mutation":
@@ -696,7 +696,7 @@ func TestRunAllowsDateOnlyFieldsFixture(t *testing.T) {
 }
 
 func TestMutationAuditTreatsFieldIDsAsOpaque(t *testing.T) {
-	raw := jsontext.Value(`{"root_key":"root-example","fields":{"issueId":{"kind":"date","value":"2026-08-26"},"katakana_start":{"kind":"null"},"kata_uid":{"kind":"null"}},"expected":{"issueId":{"kind":"null"},"katakana_start":{"kind":"null"},"kata_uid":{"kind":"null"}}}`)
+	raw := jsontext.Value(`{"root_key":"root-example","fields":{"issueId":{"kind":"date","value":"2026-08-26"},"poomsaekana_start":{"kind":"null"},"kata_uid":{"kind":"null"}},"expected":{"issueId":{"kind":"null"},"poomsaekana_start":{"kind":"null"},"kata_uid":{"kind":"null"}}}`)
 	if err := auditMutationParams("write_fields", raw, "root-example"); err != nil {
 		t.Fatalf("opaque external field IDs were treated as structural identity channels: %v", err)
 	}
@@ -704,11 +704,11 @@ func TestMutationAuditTreatsFieldIDsAsOpaque(t *testing.T) {
 
 func TestMutationAuditRejectsForbiddenKataKeysInsideFieldValues(t *testing.T) {
 	for _, key := range []string{
-		"kata_uid", "kataUid", "kata-uid", "kata.uid",
-		"kata_ref", "kataRef", "kata-ref", "kata.ref",
-		"kata_project_id", "kataProjectId", "kata-project-id", "kata.project.id",
-		"kata_binding_id", "kataBindingId", "kata-binding-id", "kata.binding.id",
-		"kata_work_branch", "kataWorkBranch", "kata-work-branch", "kata.work.branch",
+		"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+		"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+		"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+		"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+		"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 	} {
 		raw, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
@@ -729,7 +729,7 @@ func TestMutationAuditRejectsWrongTypesAndArbitraryKataChannels(t *testing.T) {
 	for _, raw := range []jsontext.Value{
 		jsontext.Value(`{"root_key":"root-example","body":{}}`),
 		jsontext.Value(`{"root_key":"root-example","fields":"field-example"}`),
-		jsontext.Value(`{"root_key":"root-example","fields":{"katakana_start":{"kind":"date","value":"2026-08-20","kataOwnerId":"neutral-forbidden"}}}`),
+		jsontext.Value(`{"root_key":"root-example","fields":{"poomsaekana_start":{"kind":"date","value":"2026-08-20","poomsaeOwnerId":"neutral-forbidden"}}}`),
 	} {
 		method := "write_fields"
 		if bytes.Contains(raw, []byte(`"body"`)) {
@@ -765,7 +765,7 @@ func TestRunRejectsUnsafeDiagnosticErrors(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestUnsafeDiagnosticErrorProbe$") // #nosec G204,G702 -- fixed current test executable.
-			command.Env = append(os.Environ(), "KATA_CONFORMANCE_ERROR_METHOD="+test.method, "KATA_CONFORMANCE_ERROR_MESSAGE="+test.message)
+			command.Env = append(os.Environ(), "POOMSAE_CONFORMANCE_ERROR_METHOD="+test.method, "POOMSAE_CONFORMANCE_ERROR_MESSAGE="+test.message)
 			output, err := command.CombinedOutput()
 			if err == nil {
 				t.Fatalf("Run accepted unsafe diagnostic for %s:\n%s", test.method, output)
@@ -778,13 +778,13 @@ func TestRunRejectsUnsafeDiagnosticErrors(t *testing.T) {
 }
 
 func TestUnsafeDiagnosticErrorProbe(t *testing.T) {
-	method := os.Getenv("KATA_CONFORMANCE_ERROR_METHOD")
+	method := os.Getenv("POOMSAE_CONFORMANCE_ERROR_METHOD")
 	if method == "" {
 		t.Skip("subprocess probe")
 	}
 	fixture := newFixture()
 	fixture.errorMethod = method
-	fixture.errorMessage = os.Getenv("KATA_CONFORMANCE_ERROR_MESSAGE")
+	fixture.errorMessage = os.Getenv("POOMSAE_CONFORMANCE_ERROR_MESSAGE")
 	Run(t, fixture)
 }
 
@@ -816,13 +816,13 @@ func (f *memoryFixture) Reset(context.Context) error {
 		Key: "root-example", IdentityKey: "account-example", Title: "Example root", Body: "Example body",
 		State: "open", Revision: "revision-1", UpdatedAt: base, ObservedAt: observed,
 		Fields: map[string]connector.FieldValue{
-			"katakana_start":  {Kind: "date", Value: "2026-08-20"},
-			"field-read-only": {Kind: "date", Value: "2026-08-19"},
-			"field-local":     {Kind: "local_datetime", Value: "2026-08-20T11:30:00", Timezone: "Europe/Paris"},
-			"field-instant":   {Kind: "instant", Value: "2026-08-20T09:30:00Z"},
-			"field-null":      {Kind: "null"},
-			"field-string":    {Kind: "string", Value: "initial text"},
-			"field-set":       {Kind: "string_set", Values: []string{"initial set"}},
+			"poomsaekana_start": {Kind: "date", Value: "2026-08-20"},
+			"field-read-only":   {Kind: "date", Value: "2026-08-19"},
+			"field-local":       {Kind: "local_datetime", Value: "2026-08-20T11:30:00", Timezone: "Europe/Paris"},
+			"field-instant":     {Kind: "instant", Value: "2026-08-20T09:30:00Z"},
+			"field-null":        {Kind: "null"},
+			"field-string":      {Kind: "string", Value: "initial text"},
+			"field-set":         {Kind: "string_set", Values: []string{"initial set"}},
 		},
 	}
 	if f.unstableResetIdentity {
@@ -834,7 +834,7 @@ func (f *memoryFixture) Reset(context.Context) error {
 		f.root.IdentityKey = f.description.AccountIdentity
 	}
 	if f.fieldBaselineMatchesSamples {
-		f.root.Fields["katakana_start"] = connector.FieldValue{Kind: "date", Value: "2026-08-21"}
+		f.root.Fields["poomsaekana_start"] = connector.FieldValue{Kind: "date", Value: "2026-08-21"}
 		f.root.Fields["field-local"] = connector.FieldValue{Kind: "local_datetime", Value: "2026-08-21T14:45:00", Timezone: "Asia/Tokyo"}
 		f.root.Fields["field-instant"] = connector.FieldValue{Kind: "instant", Value: "2026-08-21T05:45:00Z"}
 	}
@@ -891,7 +891,7 @@ func (f *memoryFixture) Reset(context.Context) error {
 	f.providerFields = make(map[string]connector.FieldValue, len(f.root.Fields))
 	maps.Copy(f.providerFields, f.root.Fields)
 	f.descriptors = []connector.FieldDescriptor{
-		{ID: "katakana_start", DisplayName: "Date", AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "schema-1"},
+		{ID: "poomsaekana_start", DisplayName: "Date", AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "schema-1"},
 		{ID: "field-read-only", DisplayName: "Read only date", AcceptedKinds: []string{"date"}, Nullable: false, Writable: false, SchemaRevision: "schema-1"},
 		{ID: "field-local", DisplayName: "Local", AcceptedKinds: []string{"local_datetime"}, Nullable: true, Writable: true, SchemaRevision: "schema-1"},
 		{ID: "field-instant", DisplayName: "Instant", AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true, SchemaRevision: "schema-1"},

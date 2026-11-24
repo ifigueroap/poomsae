@@ -13,9 +13,9 @@ import (
 // remains visible.
 func renderEmpty(width, height int) string {
 	body := strings.Join([]string{
-		titleStyle.Render("no kata projects registered yet"),
+		titleStyle.Render("no poomsae projects registered yet"),
 		"",
-		subtleStyle.Render("run `kata init` in a repo to get started."),
+		subtleStyle.Render("run `poomsae init` in a repo to get started."),
 		subtleStyle.Render("press q to quit."),
 	}, "\n")
 	if width <= 0 || height <= 0 {
@@ -31,7 +31,7 @@ func renderEmpty(width, height int) string {
 // can quit from the hint screen without resizing first.
 func renderTooNarrow(width, height int) string {
 	msg := strings.Join([]string{
-		"kata tui needs more space",
+		"poomsae tui needs more space",
 		"",
 		">=80 columns wide",
 		"resize your terminal and try again",

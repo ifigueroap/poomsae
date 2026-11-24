@@ -1,11 +1,11 @@
 package api //nolint:revive // package name "api" is the public wire namespace.
 
-// UILaunchTargetRequest identifies one Kata issue by its stable UID.
+// UILaunchTargetRequest identifies one Poomsae issue by its stable UID.
 type UILaunchTargetRequest struct {
 	IssueUID string `query:"issue_uid" required:"true"`
 }
 
-// UILaunchTargetUnavailableReason explains why Kata cannot provide a safe
+// UILaunchTargetUnavailableReason explains why Poomsae cannot provide a safe
 // browser destination for an otherwise valid issue.
 type UILaunchTargetUnavailableReason string
 

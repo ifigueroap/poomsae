@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 	gitcmd "go.kenn.io/kit/git/cmd"
 	"pgregory.net/rapid"
 )
@@ -772,26 +772,26 @@ func assertNoDuplicateLiveClaimsOnNode(t federationStressTB, node *federationStr
 }
 
 func federationStressPullIntervalEnv() string {
-	return "KATA_FEDERATION_PULL_INTERVAL_MS=" + strconv.FormatInt(federationStressPullInterval.Milliseconds(), 10)
+	return "POOMSAE_FEDERATION_PULL_INTERVAL_MS=" + strconv.FormatInt(federationStressPullInterval.Milliseconds(), 10)
 }
 
 func newFederationStressDirs(t federationStressTB) e2eDirs {
 	t.Helper()
-	home, err := os.MkdirTemp("", "kata-federation-stress-home-")
+	home, err := os.MkdirTemp("", "poomsae-federation-stress-home-")
 	require.NoError(t, err)
-	repoDir, err := os.MkdirTemp("", "kata-federation-stress-repo-")
+	repoDir, err := os.MkdirTemp("", "poomsae-federation-stress-repo-")
 	require.NoError(t, err)
-	xdg, err := os.MkdirTemp("/tmp", "kata-e2e-xdg-")
+	xdg, err := os.MkdirTemp("/tmp", "poomsae-e2e-xdg-")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(home) })
 	t.Cleanup(func() { _ = os.RemoveAll(repoDir) })
 	t.Cleanup(func() { _ = os.RemoveAll(xdg) })
 	runFederationStressGit(t, repoDir, "init", "--quiet")
-	runFederationStressGit(t, repoDir, "remote", "add", "origin", "https://github.com/wesm/kata-e2e.git")
+	runFederationStressGit(t, repoDir, "remote", "add", "origin", "https://github.com/wesm/poomsae-e2e.git")
 	return e2eDirs{
 		home:    home,
 		repoDir: repoDir,
-		dbPath:  filepath.Join(home, "kata.db"),
+		dbPath:  filepath.Join(home, "poomsae.db"),
 		marker:  filepath.Join(home, "marker.txt"),
 		script:  filepath.Join(home, "hook.sh"),
 		xdgDir:  xdg,
@@ -816,7 +816,7 @@ func stressConnectDaemon(t federationStressTB, d e2eDirs, daemonStderr *safeBuff
 				Timeout:   5 * time.Second,
 			}
 			if pingDaemon(client) {
-				return "http://kata.invalid", client
+				return "http://poomsae.invalid", client
 			}
 		}
 		time.Sleep(50 * time.Millisecond)

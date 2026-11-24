@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/teammate"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ReplayEventProjectName selects the durable name covered by an event's
@@ -168,7 +168,7 @@ func validateReplayStatusIntent(records []ImportRecord) error {
 func validateReplayExternalFieldMappingIdentities(records []ImportRecord) error {
 	type portableIdentity struct {
 		connectorInstance string
-		kataField         string
+		poomsaeField      string
 		externalFieldID   string
 		schemaRevision    string
 		createdAt         string
@@ -185,7 +185,7 @@ func validateReplayExternalFieldMappingIdentities(records []ImportRecord) error 
 		}
 		identity := portableIdentity{
 			connectorInstance: normalized.ConnectorInstance,
-			kataField:         normalized.KataField,
+			poomsaeField:      normalized.PoomsaeField,
 			externalFieldID:   normalized.ExternalFieldID,
 			schemaRevision:    normalized.SchemaRevision,
 			createdAt:         normalized.CreatedAt.UTC().Format(time.RFC3339Nano),

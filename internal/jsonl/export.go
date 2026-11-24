@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ExportOptions controls which rows are exported.
@@ -1256,7 +1256,7 @@ func exportExternalFieldMappings(ctx context.Context, d exportQuerier, enc *Enco
 		var rec db.ExternalFieldMappingExport
 		var accepted string
 		var nullable, writable, active int
-		if err := rows.Scan(&rec.ConnectorInstance, &rec.KataField, &rec.ExternalFieldID,
+		if err := rows.Scan(&rec.ConnectorInstance, &rec.PoomsaeField, &rec.ExternalFieldID,
 			&rec.ExternalFieldName, &accepted, &nullable, &writable,
 			&rec.SchemaRevision, &active, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
 			return db.ExternalFieldMappingExport{}, err
@@ -2345,7 +2345,7 @@ func linkExportWhere(opts ExportOptions) (string, []any) {
 	return whereClause(clauses), args
 }
 
-// eventOrphanPolicy is the kata#1 peer-reference disposition: which events
+// eventOrphanPolicy is the poomsae#1 peer-reference disposition: which events
 // survive export, and which related_* columns are NULL-scrubbed on the way
 // out. Both halves live here because they must agree -- a fully-missing peer
 // must pass the WHERE filter so the SELECT-side CASE can scrub it, while a
@@ -2353,7 +2353,7 @@ func linkExportWhere(opts ExportOptions) (string, []any) {
 // version-gated event projections differ only by column list and each apply
 // this same rule.
 //
-// Design call (kata#1): live-only export keeps aggregated
+// Design call (poomsae#1): live-only export keeps aggregated
 // issue.links_changed events whose related_issue_id points at a
 // now-soft-deleted peer, but the peer's row is omitted from the export -- so
 // the FK is scrubbed at emit time and the JSONL round-trips. The payload's

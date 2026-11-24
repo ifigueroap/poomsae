@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
 
-import { expect, test, type BrowserCredentials, type KataFixture } from './fixtures'
+import { expect, test, type BrowserCredentials, type PoomsaeFixture } from './fixtures'
 
 test.use({ trace: 'off', video: 'off', screenshot: 'off' })
 
@@ -23,13 +23,13 @@ const daemons = [
 for (const { daemon, roundTripMilliseconds } of daemons) {
   test(`switching projects on ${daemon} shows the whole list within the budget`, async ({
     page,
-    kata,
+    poomsae,
   }) => {
     test.setTimeout(300_000)
-    const credentials = await kata.launch(page, '/kata?view=inbox')
-    const names = await seedProjects(page, kata, credentials, daemon)
+    const credentials = await poomsae.launch(page, '/poomsae?view=inbox')
+    const names = await seedProjects(page, poomsae, credentials, daemon)
     if (daemon !== 'example-local') {
-      await page.getByRole('button', { name: 'Switch Kata daemon: example-local' }).click()
+      await page.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }).click()
       await page.getByRole('menuitemradio', { name: new RegExp(daemon) }).click()
     } else {
       await page.reload()
@@ -130,18 +130,18 @@ async function switchTo(page: Page, name: string): Promise<number> {
 
 async function seedProjects(
   page: Page,
-  kata: KataFixture,
+  poomsae: PoomsaeFixture,
   credentials: BrowserCredentials,
   daemon: string,
 ): Promise<string[]> {
   // The browser gateway forwards requests for another configured daemon.
   const prefix = daemon === 'example-local' ? '' : '/api/v1/ui/proxy'
-  const headers = daemon === 'example-local' ? {} : { 'X-Kata-Web-Daemon': daemon }
+  const headers = daemon === 'example-local' ? {} : { 'X-Poomsae-Web-Daemon': daemon }
   const names: string[] = []
   for (const [index, size] of projectSizes.entries()) {
     const name = `example-area-${String(index + 1).padStart(2, '0')}`
     names.push(name)
-    const created = await kata.request(
+    const created = await poomsae.request(
       page,
       credentials,
       'POST',
@@ -153,7 +153,7 @@ async function seedProjects(
     const { project } = (await created.json()) as { project: { id: number } }
     let parentUID: string | undefined
     const create = async (task: number): Promise<void> => {
-      const response = await kata.request(
+      const response = await poomsae.request(
         page,
         credentials,
         'POST',

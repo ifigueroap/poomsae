@@ -1,6 +1,6 @@
 ---
 title: Share projects between hubs
-description: Connect a selected project to another Kata daemon, relay it to your devices, and understand sync and recovery.
+description: Connect a selected project to another Poomsae daemon, relay it to your devices, and understand sync and recovery.
 last_edited: 2026-11-21
 ---
 
@@ -11,7 +11,7 @@ project on to your other devices. Each daemon keeps its own database. You can
 read and edit locally while disconnected, and changes synchronize once the
 daemons can reach each other again.
 
-Project relays require Kata 0.19.0 or later on every participating daemon. The
+Project relays require Poomsae 0.19.0 or later on every participating daemon. The
 connection preview checks whether the upstream daemon supports the protocol.
 
 ## Choose the shape you need
@@ -50,10 +50,10 @@ If every client needs to read and write one central copy, use a
 Make sure you have the following before you start:
 
 - **An existing, federation-enabled project on the upstream hub.** The hub's
-  operator can enable it with `kata federation enable --project shared-project`,
+  operator can enable it with `poomsae federation enable --project shared-project`,
   using an ordinary account with project access in identity mode.
 - **A writable ordinary account token from that hub.** Issue it with
-  `kata tokens create` for an account that has access to the project. Expiring
+  `poomsae tokens create` for an account that has access to the project. Expiring
   account tokens work while valid, and expiry suspends sync until you replace
   the credential. A daemon bootstrap token, an issue-scoped token, or an
   existing enrollment token cannot take its place. See
@@ -63,7 +63,7 @@ Make sure you have the following before you start:
   uses the owner CLI or API; an ordinary browser session cannot connect a
   bridge.
 - **An unused local project name.** Connecting creates the replica. Do not run
-  `kata init` with that name first. An unrelated project with the same name is
+  `poomsae init` with that name first. An unrelated project with the same name is
   a collision, even if its issues look identical.
 
 Before you choose a relay for a large, long-lived project, check
@@ -86,23 +86,23 @@ distinct, especially when you administer a remote daemon.
 
 ### 1. Configure the upstream account
 
-Add this entry to the receiving daemon's `<KATA_HOME>/config.toml`:
+Add this entry to the receiving daemon's `<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [[daemon]]
 name = "team-hub"
 url = "https://hub.example"
-token_file = "~/.config/kata/tokens/team-hub"
+token_file = "~/.config/poomsae/tokens/team-hub"
 ```
 
 On a device, store the account token in that file, owned by the user running
 the receiving daemon, and run `chmod 600` to make it owner-only. The
 **daemon process** must be able to read the file. Restart the daemon to load
-the catalog; Kata reads the token file when you connect. After you connect,
+the catalog; Poomsae reads the token file when you connect. After you connect,
 sync uses the saved project-scoped credential.
 
 For containers and service managers that already inject secrets, use
-`token_env = "KATA_TEAM_HUB_TOKEN"` instead. Supply the variable to the
+`token_env = "POOMSAE_TEAM_HUB_TOKEN"` instead. Supply the variable to the
 receiving daemon's service environment. Exporting it only in a CLI shell does
 not update a daemon that is already running. Keep the actual token out of
 repository files and agent transcripts. Catalog credentials follow the
@@ -111,13 +111,13 @@ fails, the connection stops without falling back.
 
 Use a root HTTP(S) origin with no path prefix. Non-loopback plain HTTP needs
 the catalog's explicit `allow_insecure` opt-in for a trusted private network,
-and Kata rejects redirects. See
+and Poomsae rejects redirects. See
 [Daemon configuration](../reference/configuration.md#daemon-config).
 
 ### 2. Preview the connection
 
 ```sh
-kata federation bridge connect --project shared-replica \
+poomsae federation bridge connect --project shared-replica \
   --hub-daemon team-hub --hub-project shared-project \
   --serve-downstream --as local-member --preflight
 ```
@@ -136,7 +136,7 @@ for the flags and registration order.
 ### 3. Connect with the same choices
 
 ```sh
-kata federation bridge connect --project shared-replica \
+poomsae federation bridge connect --project shared-replica \
   --hub-daemon team-hub --hub-project shared-project \
   --serve-downstream --as local-member
 ```
@@ -149,8 +149,8 @@ repeat the same command to resume the retained enrollment.
 ### 4. Check progress
 
 ```sh
-kata federation bridge status --project shared-replica --json
-kata federation status --json
+poomsae federation bridge status --project shared-replica --json
+poomsae federation status --json
 ```
 
 Bridge status reads locally recorded state, and a `connected` status is not a
@@ -162,7 +162,7 @@ visible and when you return to it. Open the sync chip in the project header and
 click **Refresh** in its panel to read it now.
 
 To bind a workspace to the replica after connecting, run
-`kata init --project shared-replica` in that workspace. In identity mode, use
+`poomsae init --project shared-replica` in that workspace. In identity mode, use
 an ordinary account with project access for this command and for issue work;
 the bootstrap credential used for administration cannot perform attributed
 writes.
@@ -176,10 +176,10 @@ catalog entry named `personal-hub` with that token and the personal hub's URL.
 Then repeat the preview and connect steps with the updated selectors:
 
 ```sh
-kata federation bridge connect --project work-project \
+poomsae federation bridge connect --project work-project \
   --hub-daemon personal-hub --hub-project shared-replica \
   --as device-member --preflight
-kata federation bridge connect --project work-project \
+poomsae federation bridge connect --project work-project \
   --hub-daemon personal-hub --hub-project shared-replica \
   --as device-member
 ```
@@ -230,7 +230,7 @@ embedding provider.
 
 A bridge status of `revoked` means the hub refused its credential, and it can
 clear when access returns. Explicit enrollment revocation on the hub, such as
-`kata federation revoke <id>`, is permanent; the status label alone does not
+`poomsae federation revoke <id>`, is permanent; the status label alone does not
 establish that it happened.
 
 | Situation | Next step |
@@ -247,8 +247,8 @@ For a normal disconnect, finish pending deliveries and disconnect or revoke
 downstream enrollments first. Preview the disconnect, then detach:
 
 ```sh
-kata federation bridge disconnect --project shared-replica --preflight
-kata federation bridge disconnect --project shared-replica
+poomsae federation bridge disconnect --project shared-replica --preflight
+poomsae federation bridge disconnect --project shared-replica
 ```
 
 Disconnecting revokes the saved upstream enrollment and keeps the local project

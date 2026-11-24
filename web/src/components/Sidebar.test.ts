@@ -3,11 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import type { ComponentProps } from 'svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { KataProjectSummary, KataTaskSearchFilters } from '../lib/kata/types'
-import type { KataAreaSummary, KataCurrentView } from '../lib/kata/authority'
+import type { PoomsaeProjectSummary, PoomsaeTaskSearchFilters } from '../lib/poomsae/types'
+import type { PoomsaeAreaSummary, PoomsaeCurrentView } from '../lib/poomsae/authority'
 import Sidebar from './Sidebar.svelte'
 
-const projects: KataProjectSummary[] = [
+const projects: PoomsaeProjectSummary[] = [
   project({
     id: 1,
     uid: 'project-inbox',
@@ -31,18 +31,18 @@ const projects: KataProjectSummary[] = [
   }),
 ]
 
-const areas: KataAreaSummary[] = [
+const areas: PoomsaeAreaSummary[] = [
   { name: 'Personal', projects: [projects[1]!] },
   { name: 'Work', projects: [projects[2]!] },
 ]
 
-const currentView: KataCurrentView = {
+const currentView: PoomsaeCurrentView = {
   name: 'today',
   fetched_at: '2026-05-16T10:00:00Z',
   groups: [{ id: 'today', title: 'Today', issues: [] }],
 }
 
-const allScopeFilters: KataTaskSearchFilters = {
+const allScopeFilters: PoomsaeTaskSearchFilters = {
   scope: { kind: 'all' },
   status: 'open',
   owner: '',
@@ -76,7 +76,7 @@ describe('Sidebar', () => {
   it('renders system views, expanded area groups, and project creation in order', () => {
     renderSidebar()
 
-    const navigation = screen.getByRole('region', { name: 'Kata navigation' })
+    const navigation = screen.getByRole('region', { name: 'Poomsae navigation' })
     const systemViewLabels = ['Inbox', 'Today 0', 'Scheduled', 'Delegated', 'All open', 'Logbook']
     const systemViewButtons = systemViewLabels.map((name) =>
       within(navigation).getByRole('button', { name }),
@@ -305,7 +305,7 @@ describe('Sidebar', () => {
   })
 })
 
-function project(overrides: Partial<KataProjectSummary>): KataProjectSummary {
+function project(overrides: Partial<PoomsaeProjectSummary>): PoomsaeProjectSummary {
   return {
     id: 1,
     uid: 'project',

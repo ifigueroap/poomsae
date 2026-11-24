@@ -9,20 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 func standardMetadata(t *testing.T, w http.ResponseWriter, r *http.Request, workspace string, fields []map[string]any) {
 	t.Helper()
 	query, _ := metadataOperation(t, r)
 	switch {
-	case strings.Contains(query, "KataTwentyWorkspace"):
+	case strings.Contains(query, "PoomsaeTwentyWorkspace"):
 		workspaceResponse(t, w, workspace)
-	case strings.Contains(query, "KataTwentyObjects"):
+	case strings.Contains(query, "PoomsaeTwentyObjects"):
 		writeJSON(t, w, map[string]any{"data": map[string]any{"objects": connection([]map[string]any{{"id": "55555555-5555-4555-8555-555555555552", "nameSingular": "task", "isActive": true}}, false, "")}})
-	case strings.Contains(query, "KataTwentyFields"):
+	case strings.Contains(query, "PoomsaeTwentyFields"):
 		writeJSON(t, w, map[string]any{"data": map[string]any{"object": map[string]any{"id": "55555555-5555-4555-8555-555555555552", "nameSingular": "task", "isActive": true, "fields": connection(fields, false, "")}}})
 	default:
 		t.Errorf("unexpected query: %s", query)

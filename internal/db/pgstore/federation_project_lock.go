@@ -53,7 +53,7 @@ func (s *Store) acquireFederationProjectLock(
 				pg_catalog.hashtextextended(pg_catalog.current_database() || ':' || $1, 0)
 			)`
 	}
-	lockIdentity := fmt.Sprintf("kata:federation:project:%s:%d", s.schema, projectID)
+	lockIdentity := fmt.Sprintf("poomsae:federation:project:%s:%d", s.schema, projectID)
 	if _, err := tx.ExecContext(ctx, lockQuery, lockIdentity); err != nil {
 		_ = tx.Rollback()
 		releaseSlot()
@@ -113,7 +113,7 @@ func (s *Store) TryAcquireFederationProjectSharedLock(ctx context.Context, proje
 		releaseSlot()
 		return nil, false, fmt.Errorf("begin postgres federation project lock: %w", err)
 	}
-	identity := fmt.Sprintf("kata:federation:project:%s:%d", s.schema, projectID)
+	identity := fmt.Sprintf("poomsae:federation:project:%s:%d", s.schema, projectID)
 	var acquired bool
 	err = tx.QueryRowContext(ctx, `SELECT pg_catalog.pg_try_advisory_xact_lock_shared(
 pg_catalog.hashtextextended(pg_catalog.current_database() || ':' || $1, 0))`, identity).Scan(&acquired)

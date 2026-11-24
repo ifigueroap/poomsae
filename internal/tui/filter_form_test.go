@@ -38,7 +38,7 @@ func filterFormFixture() Model {
 	return Model{
 		view:   viewList,
 		keymap: newKeymap(),
-		scope:  scope{projectID: 7, projectName: "kata"},
+		scope:  scope{projectID: 7, projectName: "poomsae"},
 		list:   listModel{actor: "tester"},
 		cache:  newIssueCache(),
 	}
@@ -555,7 +555,7 @@ func TestSnapshot_List_WithFilterChipsFromModal(t *testing.T) {
 		Labels: []string{"bug"},
 	}
 	chrome := viewChrome{
-		scope:     scope{projectID: 7, projectName: "kata"},
+		scope:     scope{projectID: 7, projectName: "poomsae"},
 		sseStatus: sseConnected,
 		version:   "v0.1.0",
 	}

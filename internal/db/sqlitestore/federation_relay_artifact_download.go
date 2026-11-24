@@ -7,8 +7,8 @@ import (
 	"errors"
 	"reflect"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 // RelayArtifactPayloads downloads complete misses, never index approximations.

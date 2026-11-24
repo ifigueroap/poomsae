@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { KataReachableGraphResponse } from '../kata/types'
+import type { PoomsaeReachableGraphResponse } from '../poomsae/types'
 import { task } from '../../test/task'
 import { buildKataReachableGraph } from './layout'
 
-function graph(overrides: Partial<KataReachableGraphResponse> = {}): KataReachableGraphResponse {
+function graph(overrides: Partial<PoomsaeReachableGraphResponse> = {}): PoomsaeReachableGraphResponse {
   return {
     source_uid: overrides.source_uid ?? 'issue-root',
     depth: overrides.depth ?? 'full',

@@ -5,7 +5,7 @@ package config
 import (
 	"os"
 
-	"go.kenn.io/kata/internal/credentialfile"
+	"github.com/ifigueroap/poomsae/internal/credentialfile"
 )
 
 func openEmbeddingCredentialFile(path string) (*os.File, error) {

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const (
@@ -288,7 +288,7 @@ func TrustPrivateNetworkWarning(listen string, auth config.AuthConfig) (string, 
 	if !isNonLoopbackTCP(listen) || auth.Token == "" || !auth.TrustPrivateNetwork {
 		return "", false
 	}
-	return "kata daemon: WARNING: listening on non-loopback TCP with bearer auth; " +
+	return "poomsae daemon: WARNING: listening on non-loopback TCP with bearer auth; " +
 		"operator has asserted private-network confidentiality.", true
 }
 
@@ -299,7 +299,7 @@ func UnauthenticatedPrivateNetworkWritesWarning(listen string, auth config.AuthC
 	if auth.Token != "" || !auth.AllowUnauthenticatedPrivateNetworkWrites || !isLiteralPrivateNetworkTCP(listen) {
 		return "", false
 	}
-	return "kata daemon: WARNING: listening on private-network TCP with unauthenticated writes; " +
+	return "poomsae daemon: WARNING: listening on private-network TCP with unauthenticated writes; " +
 		"any device that can reach this address can mutate data, open the event stream, " +
 		"and assert client-supplied actors. Token administration remains blocked.", true
 }

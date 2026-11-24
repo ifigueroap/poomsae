@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultRoute = "/kata"
+	defaultRoute = "/poomsae"
 	// Shiki's regex engine compiles WebAssembly. This permission keeps
 	// JavaScript eval and inline scripts blocked.
 	webCSP = "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'"
@@ -96,7 +96,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == defaultRoute+"/" {
 		// Relative assets must resolve from the origin root on standalone pages.
-		location := (&url.URL{Path: "../kata", RawQuery: r.URL.RawQuery}).String()
+		location := (&url.URL{Path: "../poomsae", RawQuery: r.URL.RawQuery}).String()
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Location", location)
 		w.WriteHeader(http.StatusPermanentRedirect)

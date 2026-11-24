@@ -1,0 +1,377 @@
+import { describe, expect, it } from 'vitest'
+
+import type { ShowIssueResponseBody } from '../../../web/src/lib/api/generated/models/showIssueResponseBody.ts'
+import { projectIssueDetail } from './projectIssueDetail.js'
+import type { PoomsaeIssueDetailWire } from './types.js'
+
+const versionID = '6f1c2e8a-2222-4222-8222-222222222222'
+const attachment = {
+  name: 'shot.png',
+  media_type: 'image/png',
+  size: 12,
+  docbank_version: versionID,
+}
+
+function acceptCanonicalWire(wire: ShowIssueResponseBody): PoomsaeIssueDetailWire {
+  return wire
+}
+
+describe('projectIssueDetail', () => {
+  it.each([
+    ['non-object entry', 'junk'],
+    ['missing name', { ...attachment, name: undefined }],
+    ['wrong media_type type', { ...attachment, media_type: 12 }],
+    ['wrong size type', { ...attachment, size: '12' }],
+    ['missing docbank_version', { ...attachment, docbank_version: undefined }],
+  ])('skips malformed attachment shape: %s', (_rule, invalid) => {
+    const detail = projectIssueDetail({
+      issue: {
+        uid: '01TASK',
+        title: 'Files',
+        status: 'open',
+        metadata: {
+          'attachment.file': invalid,
+        },
+      },
+    })
+    expect(detail.issue.attachments).toEqual({})
+  })
+
+  it('projects attachment keys', () => {
+    const detail = projectIssueDetail({
+      issue: {
+        uid: '01TASK',
+        title: 'Files',
+        status: 'open',
+        metadata: {
+          'attachment.file': attachment,
+          'work.branch': 'feature',
+        },
+      },
+    })
+    expect(detail.issue.attachments).toEqual({
+      file: attachment,
+    })
+  })
+
+  it.each(['verified', 'pending', 'legacy'])(
+    'preserves %s creation attribution without inventing accountability',
+    (verification) => {
+      const wire = {
+        issue: {
+          uid: '01TASK',
+          title: 'Example issue',
+          status: 'open',
+          author: 'source-agent',
+          source_actor: 'source-agent',
+          teammate: 'example-worker',
+          verification,
+          accountable_actor: 'member-one',
+        },
+        comments: [
+          {
+            id: 1,
+            author: 'comment-agent',
+            source_actor: 'comment-agent',
+            teammate: 'comment-worker',
+            verification,
+            accountable_actor: 'member-two',
+            body: 'Example comment',
+            created_at: '2026-08-01T12:00:00Z',
+          },
+        ],
+      }
+      const model = projectIssueDetail(wire)
+      expect(model.issue).toHaveProperty('creation', {
+        verification,
+        sourceActor: 'source-agent',
+        teammate: 'example-worker',
+        ...(verification === 'verified' ? { accountableActor: 'member-one' } : {}),
+      })
+      expect(model.comments[0]).toHaveProperty('creation', {
+        verification,
+        sourceActor: 'comment-agent',
+        teammate: 'comment-worker',
+        ...(verification === 'verified' ? { accountableActor: 'member-two' } : {}),
+      })
+    },
+  )
+
+  it('does not assert proof for older daemons and treats unknown states as legacy', () => {
+    const wire = {
+      issue: {
+        uid: '01TASK',
+        title: 'Example issue',
+        status: 'open',
+        author: 'source-agent',
+      },
+    }
+    expect(projectIssueDetail(wire).issue).not.toHaveProperty('creation')
+    const unknown = {
+      issue: {
+        ...wire.issue,
+        verification: 'unknown',
+        accountable_actor: 'unverified-account',
+      },
+    }
+    expect(projectIssueDetail(unknown).issue).toHaveProperty('creation', {
+      verification: 'legacy',
+      sourceActor: 'source-agent',
+    })
+  })
+
+  it('accepts the generated canonical issue-detail response type', () => {
+    expect(acceptCanonicalWire).toBeTypeOf('function')
+  })
+
+  it('projects an optional teammate without inventing one for legacy comments', () => {
+    const model = projectIssueDetail({
+      issue: { uid: '01TASK', title: 'Review retries', status: 'open' },
+      comments: [
+        {
+          id: 1,
+          author: 'coordinator',
+          teammate: 'teammate-1',
+          body: 'Checked retries',
+          created_at: '2026-09-13T12:00:00Z',
+        },
+        {
+          id: 2,
+          author: 'coordinator',
+          body: 'Coordinator summary',
+          created_at: '2026-09-13T12:01:00Z',
+        },
+      ],
+    })
+
+    expect(model.comments[0]).toMatchObject({
+      author: 'coordinator',
+      teammate: 'teammate-1',
+    })
+    expect(model.comments[1]).toEqual({
+      id: '2',
+      author: 'coordinator',
+      body: 'Coordinator summary',
+      createdAt: '2026-09-13T12:01:00Z',
+    })
+  })
+
+  it('accepts a canonical issue without optional project identity', () => {
+    const wire: PoomsaeIssueDetailWire = {
+      issue: {
+        uid: '01TASK',
+        title: 'Older daemon issue',
+        status: 'open',
+      },
+    }
+
+    expect(projectIssueDetail(wire).issue.projectUID).toBe('')
+  })
+
+  it('defaults optional fields and ignores additive response fields', () => {
+    const wire = {
+      issue: {
+        uid: '01TASK',
+        project_uid: '01PROJECT',
+        project_name: 'Roadmap',
+        short_id: 'abc4',
+        qualified_id: 'roadmap#abc4',
+        title: 'Ship shared detail',
+        status: 'open',
+      },
+      future_field: { ignored: true },
+    } as unknown as PoomsaeIssueDetailWire
+
+    expect(projectIssueDetail(wire)).toMatchObject({
+      issue: {
+        uid: '01TASK',
+        body: '',
+        checklist: [],
+        labels: [],
+      },
+      comments: [],
+      links: [],
+      children: [],
+      pendingClaims: [],
+    })
+  })
+
+  it('projects checklist, relationships, comments, and claim state', () => {
+    const model = projectIssueDetail({
+      issue: {
+        uid: '01TASK',
+        project_uid: '01PROJECT',
+        project_name: 'Roadmap',
+        short_id: 'abc4',
+        qualified_id: 'roadmap#abc4',
+        title: 'Ship shared detail',
+        body: 'Shared **body**',
+        status: 'open',
+        owner: 'agent-a',
+        priority: 1,
+        metadata: {
+          scheduled_on: '2026-08-09',
+          deadline_on: '2026-08-10',
+          checklist: [{ id: 'item-1', text: 'Publish package', done: true }],
+        },
+        labels: ['integration'],
+        updated_at: '2026-08-08T20:00:00Z',
+      },
+      comments: [
+        {
+          id: 1,
+          issue_id: 1,
+          author: 'alice',
+          body: 'Ready',
+          created_at: '2026-08-08T20:01:00Z',
+        },
+      ],
+      labels: [
+        {
+          issue_id: 1,
+          label: 'integration',
+          author: 'alice',
+          created_at: '2026-08-08T20:00:00Z',
+        },
+      ],
+      links: [
+        {
+          id: 1,
+          project_id: 1,
+          from: {
+            uid: '01TASK',
+            short_id: 'abc4',
+            qualified_id: 'roadmap#abc4',
+            status: 'open',
+          },
+          to: {
+            uid: '01PEER',
+            short_id: 'def5',
+            qualified_id: 'roadmap#def5',
+            status: 'closed',
+          },
+          type: 'blocks',
+          author: 'alice',
+          created_at: '2026-08-08T20:00:00Z',
+        },
+        {
+          id: 2,
+          from: {
+            uid: '01TASK',
+            short_id: 'abc4',
+            qualified_id: 'roadmap#abc4',
+            status: 'open',
+          },
+          to: {
+            uid: '01PARENT',
+            short_id: 'par1',
+            qualified_id: 'roadmap#par1',
+            status: 'open',
+          },
+          type: 'parent',
+        },
+        {
+          id: 3,
+          from: {
+            uid: '01CHILD',
+            short_id: 'chi1',
+            qualified_id: 'roadmap#chi1',
+            status: 'open',
+          },
+          to: {
+            uid: '01TASK',
+            short_id: 'abc4',
+            qualified_id: 'roadmap#abc4',
+            status: 'open',
+          },
+          type: 'parent',
+        },
+      ],
+      parent: {
+        uid: '01PARENT',
+        short_id: 'par1',
+        qualified_id: 'roadmap#par1',
+        title: 'Parent',
+        status: 'open',
+      },
+      children: [
+        {
+          uid: '01CHILD',
+          project_uid: '01PROJECT',
+          project_name: 'Roadmap',
+          short_id: 'chi1',
+          qualified_id: 'roadmap#chi1',
+          title: 'Child',
+          status: 'open',
+        },
+      ],
+      claim: {
+        claim_uid: '01CLAIM',
+        holder: 'agent-a',
+        claim_kind: 'work',
+        purpose: 'implement',
+        acquired_at: '2026-08-08T20:00:00Z',
+        revision: 1,
+        updated_at: '2026-08-08T20:00:00Z',
+        project_id: 1,
+        issue_uid: '01TASK',
+        holder_instance_uid: '01INSTANCE',
+        client_kind: 'cli',
+      },
+      pending_claims: [
+        {
+          request_uid: '01PENDING',
+          holder: 'agent-b',
+          holder_instance_uid: '01OTHER',
+          client_kind: 'cli',
+          claim_kind: 'work',
+          requested_at: '2026-08-08T20:02:00Z',
+        },
+      ],
+    } as unknown as PoomsaeIssueDetailWire)
+
+    expect(model.issue.checklist).toEqual([{ id: 'item-1', text: 'Publish package', done: true }])
+    expect(model.issue.labels).toEqual(['integration'])
+    expect(model.links).toEqual([
+      expect.objectContaining({ relation: 'blocks', peerUID: '01PEER' }),
+    ])
+    expect(model.parent?.title).toBe('Parent')
+    expect(model.children[0]?.title).toBe('Child')
+    expect(model.claim?.holder).toBe('agent-a')
+    expect(model.pendingClaims[0]?.holder).toBe('agent-b')
+  })
+})
+
+it('preserves canonical comment links and edit state for navigation', () => {
+  const reply = {
+    uid: 'target-comment',
+    issue_uid: 'other-issue',
+    handle: 'abcd:abc123',
+    kind: 'reply',
+    author: 'finder',
+    target_edited: true,
+  }
+  const model = projectIssueDetail({
+    issue: { uid: 'source-issue', title: 'Source', status: 'open' },
+    comments: [
+      {
+        id: 1,
+        uid: 'source-comment',
+        author: 'worker',
+        body: 'Answer',
+        created_at: '2030-01-01T00:00:00Z',
+        handle: 'c:def456',
+        reply,
+        backlinks: [],
+        edited_at: '2030-01-02T00:00:00Z',
+      },
+    ],
+  })
+  expect(model.comments[0]).toMatchObject({
+    uid: 'source-comment',
+    handle: 'c:def456',
+    reply,
+    backlinks: [],
+    editedAt: '2030-01-02T00:00:00Z',
+  })
+})

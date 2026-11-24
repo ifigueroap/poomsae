@@ -3,8 +3,8 @@ package federation
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestSyncFederationMoveAckRetryAfterSourceTeardown(t *testing.T) {
@@ -22,9 +22,9 @@ func TestSyncFederationMoveAckRetryAfterSourceTeardown(t *testing.T) {
 			spoke.move(t, local, 0, 1)
 			before, err := spoke.env.DB.FederationBindingByProject(t.Context(), spoke.projects[1].ID)
 			require.NoError(t, err)
-			t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=error")
+			t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "before_spoke_push_cursor_advance=error")
 			require.Error(t, spoke.sync(t, 1), "simulate losing a committed move acknowledgement before storing its cursor")
-			t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+			t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 			committed, err := hub.DB.IssueByUID(t.Context(), issue.UID, db.IncludeDeletedNo)
 			require.NoError(t, err)
 			require.Equal(t, projects[1].ID, committed.ProjectID)

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/notification"
 
-	katauid "go.kenn.io/kata/internal/uid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 type claimStore interface {
@@ -65,7 +65,7 @@ func (d *Store) AcquireClaim(ctx context.Context, p db.AcquireClaimParams) (db.L
 			return leaseOutcome{}, err
 		}
 
-		claimUID, err := katauid.New()
+		claimUID, err := poomsaeuid.New()
 		if err != nil {
 			return leaseOutcome{}, fmt.Errorf("generate claim uid: %w", err)
 		}
@@ -363,7 +363,7 @@ func (d *Store) EnqueuePendingClaim(ctx context.Context, p db.PendingClaimParams
 		if !errors.Is(err, db.ErrNotFound) {
 			return err
 		}
-		requestUID, err := katauid.New()
+		requestUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate pending claim request uid: %w", err)
 		}
@@ -1497,7 +1497,7 @@ func (d *Store) insertClaimEventTx(ctx context.Context, tx claimStore, in claimE
 	if err != nil {
 		return db.Event{}, fmt.Errorf("marshal claim event payload: %w", err)
 	}
-	eventUID, err := katauid.New()
+	eventUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Event{}, fmt.Errorf("generate event uid: %w", err)
 	}

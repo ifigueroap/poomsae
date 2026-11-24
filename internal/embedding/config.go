@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	"go.kenn.io/kit/embedlocal"
 	kitvec "go.kenn.io/kit/vector"
 )

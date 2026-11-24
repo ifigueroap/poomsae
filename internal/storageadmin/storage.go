@@ -18,11 +18,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/storeopen"
-	"go.kenn.io/kata/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"go.kenn.io/kit/pathresolve"
 )
 
@@ -537,7 +537,7 @@ func (a *Admin) Import(ctx context.Context, options ImportOptions) (ImportResult
 			if same {
 				return ImportResult{}, errors.New("storage import target must differ from the active daemon storage")
 			}
-			return ImportResult{}, errors.New("storage target already contains a Kata schema; PostgreSQL restore requires a fresh target")
+			return ImportResult{}, errors.New("storage target already contains a Poomsae schema; PostgreSQL restore requires a fresh target")
 		}
 		return a.importFresh(ctx, input, targetValue, options, "postgres", &pgConfig)
 	}
@@ -579,7 +579,7 @@ func (a *Admin) Import(ctx context.Context, options ImportOptions) (ImportResult
 			return ImportResult{}, fmt.Errorf("confirm must equal %q", expected)
 		}
 	}
-	privateDirectory, err := os.MkdirTemp("", "kata-mcp-import-*")
+	privateDirectory, err := os.MkdirTemp("", "poomsae-mcp-import-*")
 	if err != nil {
 		return ImportResult{}, err
 	}
@@ -665,7 +665,7 @@ func (a *Admin) importFresh(ctx context.Context, input io.Reader, target string,
 // schema-owner operation that must prepare a fresh target even when the
 // daemon runtime is validation-only.
 func postgresRestoreConfig(ctx context.Context) (pgstore.Config, error) {
-	storageConfig, err := config.KataPostgresStorageConfig(ctx)
+	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
 	if err != nil {
 		return pgstore.Config{}, err
 	}

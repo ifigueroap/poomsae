@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ifigueroap/poomsae"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
 )
 
 type accessIssue struct {
@@ -29,10 +29,10 @@ func TestServiceAccessControllerScopesGlobalAndFilteredReads(t *testing.T) {
 	service, server := newAccessTestServer(t, controller)
 	_ = service
 	project := createProject(t, server.URL, "example-project")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		switch request.Operation.ID {
 		case "listAllIssues", "auditCloses":
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		default:
 			return nil
 		}
@@ -71,9 +71,9 @@ func TestServiceAccessControllerScopesStableUIReferenceHydration(t *testing.T) {
 	secondProject := createProject(t, server.URL, "second-project")
 	firstIssue := createAccessIssue(t, server, firstProject.Project.ID, "first issue")
 	secondIssue := createAccessIssue(t, server, secondProject.Project.ID, "second issue")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "readUIReferences" && request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -128,9 +128,9 @@ func TestServiceAccessControllerScopesFederationEnrollmentBody(t *testing.T) {
 	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+
 		strconv.FormatInt(project.Project.ID, 10)+"/federation/enable",
 		`{"actor":"ignored"}`, nil)
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "createFederationEnrollment" {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -155,9 +155,9 @@ func TestServiceAccessControllerScopesInboxDesignationGlobally(t *testing.T) {
 	controller := &recordingAccessController{}
 	_, server := newAccessTestServer(t, controller)
 	project := createProject(t, server.URL, "example-project")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "patchProjectMetadata" && request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -189,14 +189,14 @@ func TestServiceAccessControllerScopesLookupHydrationAndTraversal(t *testing.T) 
 		strconv.FormatInt(sourceProject.Project.ID, 10)+"/issues/"+source.Issue.ShortID+"/links",
 		`{"actor":"ignored","type":"related","to_ref":"`+target.Issue.UID+`"}`, nil)
 
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "showIssueByUID" && request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		if containsInt64(request.Operation.ProjectIDs, targetProject.Project.ID) {
 			switch request.Operation.ID {
 			case "showIssue", "reachableIssueGraph":
-				return kata.ErrAccessDenied
+				return poomsae.ErrAccessDenied
 			}
 		}
 		return nil
@@ -225,9 +225,9 @@ func TestServiceAccessControllerRequiresAllProjectsBeforeUnboundedOperations(t *
 	project := createProject(t, server.URL, "example-project")
 	first := createAccessIssue(t, server, project.Project.ID, "first issue")
 	_ = createAccessIssue(t, server, project.Project.ID, "second issue")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -306,9 +306,9 @@ func TestServiceAccessControllerDeniesCrossProjectAuthorRewriteBeforeMutation(t 
 	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+
 		strconv.FormatInt(sourceProject.Project.ID, 10)+"/issues/"+source.Issue.ShortID+"/links",
 		`{"actor":"ignored","type":"related","to_ref":"`+target.Issue.UID+`"}`, nil)
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "rewriteAuthorIdentity" && request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -342,7 +342,7 @@ func TestServiceAccessControllerDeniesCrossProjectAuthorRewriteBeforeMutation(t 
 
 func TestServiceAccessControllerDerivesLeaseHolderFromSubject(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
@@ -355,8 +355,8 @@ func TestServiceAccessControllerDerivesLeaseHolderFromSubject(t *testing.T) {
 		case "padded":
 			subject = " user-one "
 		}
-		principal := kata.Principal{Subject: subject, Actor: "Example User"}
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		principal := poomsae.Principal{Subject: subject, Actor: "Example User"}
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -424,17 +424,17 @@ func TestServiceAccessControllerDerivesLeaseHolderFromSubject(t *testing.T) {
 
 func TestServiceAccessControllerRejectsMalformedHostPrincipalBeforeBearerFallback(t *testing.T) {
 	controller := &recordingAccessController{}
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		principal := kata.Principal{Subject: "user-one", Actor: "Example User"}
+		principal := poomsae.Principal{Subject: "user-one", Actor: "Example User"}
 		if r.Header.Get("X-Test-Malformed") != "" {
-			principal = kata.Principal{Subject: " ", Actor: " "}
+			principal = poomsae.Principal{Subject: " ", Actor: " "}
 		}
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -486,11 +486,11 @@ func TestServiceAccessControllerConcealsUnauthorizedLinkTargetState(t *testing.T
 	_ = archiveResponse.Body.Close()
 	require.Equal(t, http.StatusOK, archiveResponse.StatusCode)
 
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "createLink" &&
 			(containsInt64(request.Operation.ProjectIDs, activeProject.Project.ID) ||
 				containsInt64(request.Operation.ProjectIDs, archivedProject.Project.ID)) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -522,9 +522,9 @@ func TestServiceAccessControllerRequiresAllProjectsForParentMutations(t *testing
 	project := createProject(t, server.URL, "example-project")
 	child := createAccessIssue(t, server, project.Project.ID, "child issue")
 	parent := createAccessIssue(t, server, project.Project.ID, "parent issue")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -562,11 +562,11 @@ func TestServiceAccessControllerConcealsLinkDeltaTargetsBeforeValidation(t *test
 	archived := createAccessIssue(t, server, archivedProject.Project.ID, "archived target")
 	_, err := service.ArchiveProject(t.Context(), archivedProject.Project.UID, "Example User")
 	require.NoError(t, err)
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.AllProjects ||
 			containsInt64(request.Operation.ProjectIDs, activeProject.Project.ID) ||
 			containsInt64(request.Operation.ProjectIDs, archivedProject.Project.ID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -620,15 +620,15 @@ func TestServiceAccessControllerAuthorizesDeletedGraphPeerBeforeHidingIt(t *test
 		bytes.NewBufferString(`{"actor":"ignored"}`))
 	require.NoError(t, err)
 	deleteRequest.Header.Set("Content-Type", "application/json")
-	deleteRequest.Header.Set("X-Kata-Confirm", "DELETE target-project#"+target.Issue.ShortID)
+	deleteRequest.Header.Set("X-Poomsae-Confirm", "DELETE target-project#"+target.Issue.ShortID)
 	deleteResponse, err := server.Client().Do(deleteRequest)
 	require.NoError(t, err)
 	_ = deleteResponse.Body.Close()
 	require.Equal(t, http.StatusOK, deleteResponse.StatusCode)
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "reachableIssueGraph" &&
 			containsInt64(request.Operation.ProjectIDs, targetProject.Project.ID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -722,10 +722,10 @@ func TestServiceAccessControllerAuthorizesProjectsContributingChildCounts(t *tes
 	postJSON(t, server.Client(), server.URL+"/api/v1/projects/"+
 		strconv.FormatInt(childProject.Project.ID, 10)+"/issues/"+child.Issue.ShortID+"/links",
 		`{"actor":"ignored","type":"parent","to_ref":"`+parent.Issue.UID+`"}`, nil)
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "listIssues" &&
 			containsInt64(request.Operation.ProjectIDs, childProject.Project.ID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -764,15 +764,15 @@ func TestServiceAccessControllerDenialLeavesCrossProjectLinksUnchangedOnPurge(t 
 		bytes.NewBufferString(`{"actor":"ignored"}`))
 	require.NoError(t, err)
 	deleteRequest.Header.Set("Content-Type", "application/json")
-	deleteRequest.Header.Set("X-Kata-Confirm", "DELETE source-project#"+source.Issue.ShortID)
+	deleteRequest.Header.Set("X-Poomsae-Confirm", "DELETE source-project#"+source.Issue.ShortID)
 	deleteResponse, err := server.Client().Do(deleteRequest)
 	require.NoError(t, err)
 	_ = deleteResponse.Body.Close()
 	require.Equal(t, http.StatusOK, deleteResponse.StatusCode)
 
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "purgeIssue" && request.Operation.AllProjects {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -780,7 +780,7 @@ func TestServiceAccessControllerDenialLeavesCrossProjectLinksUnchangedOnPurge(t 
 		bytes.NewBufferString(`{"actor":"ignored"}`))
 	require.NoError(t, err)
 	purgeRequest.Header.Set("Content-Type", "application/json")
-	purgeRequest.Header.Set("X-Kata-Confirm", "PURGE source-project#"+source.Issue.ShortID)
+	purgeRequest.Header.Set("X-Poomsae-Confirm", "PURGE source-project#"+source.Issue.ShortID)
 	purgeResponse, err := server.Client().Do(purgeRequest)
 	require.NoError(t, err)
 	_ = purgeResponse.Body.Close()
@@ -811,10 +811,10 @@ func TestServiceAccessControllerScopesCrossProjectLinkMutation(t *testing.T) {
 	targetProject := createProject(t, server.URL, "target-project")
 	source := createAccessIssue(t, server, sourceProject.Project.ID, "source issue")
 	target := createAccessIssue(t, server, targetProject.Project.ID, "target issue")
-	controller.authorize = func(request kata.AccessRequest) error {
+	controller.authorize = func(request poomsae.AccessRequest) error {
 		if request.Operation.ID == "createLink" &&
 			containsInt64(request.Operation.ProjectIDs, targetProject.Project.ID) {
-			return kata.ErrAccessDenied
+			return poomsae.ErrAccessDenied
 		}
 		return nil
 	}
@@ -834,16 +834,16 @@ func TestServiceAccessControllerScopesCrossProjectLinkMutation(t *testing.T) {
 func newAccessTestServer(
 	t *testing.T,
 	controller *recordingAccessController,
-) (*kata.Service, *httptest.Server) {
+) (*poomsae.Service, *httptest.Server) {
 	t.Helper()
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	principal := kata.Principal{Subject: "user-123", Actor: "Example User"}
+	principal := poomsae.Principal{Subject: "user-123", Actor: "Example User"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Handler().ServeHTTP(w, r.WithContext(kata.WithPrincipal(r.Context(), principal)))
+		service.Handler().ServeHTTP(w, r.WithContext(poomsae.WithPrincipal(r.Context(), principal)))
 	})
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -869,12 +869,12 @@ func createAccessIssue(t *testing.T, server *httptest.Server, projectID int64, t
 
 func operationRequest(
 	t *testing.T,
-	requests []kata.AccessRequest,
+	requests []poomsae.AccessRequest,
 	operationID string,
 	index int,
-) kata.AccessRequest {
+) poomsae.AccessRequest {
 	t.Helper()
-	matching := make([]kata.AccessRequest, 0)
+	matching := make([]poomsae.AccessRequest, 0)
 	for _, request := range requests {
 		if request.Operation.ID == operationID {
 			matching = append(matching, request)

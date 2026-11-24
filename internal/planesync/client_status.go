@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // StatusSession optionally extends a read session with independently verified

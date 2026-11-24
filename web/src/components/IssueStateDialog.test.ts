@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { KataTaskDetail } from '../lib/kata/types'
+import type { PoomsaeTaskDetail } from '../lib/poomsae/types'
 
 import IssueStateDialog from './IssueStateDialog.svelte'
 
-function makeIssue(status: 'open' | 'closed' = 'open'): KataTaskDetail {
+function makeIssue(status: 'open' | 'closed' = 'open'): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,

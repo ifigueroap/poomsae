@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/version"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/version"
 	kitdaemon "go.kenn.io/kit/daemon"
 	"golang.org/x/mod/semver"
 )
@@ -77,13 +77,13 @@ type RunningDaemon struct {
 }
 
 const (
-	daemonServiceName       = "kata"
-	skipDaemonVersionEnvVar = "KATA_SKIP_DAEMON_VERSION_CHECK"
+	daemonServiceName       = "poomsae"
+	skipDaemonVersionEnvVar = "POOMSAE_SKIP_DAEMON_VERSION_CHECK"
 	daemonStartupWait       = 30 * time.Second
 )
 
 // ErrDaemonManagedExternally means the home's supervisor owns implicit startup.
-var ErrDaemonManagedExternally = errors.New("kata daemon is not ready; it is managed externally (autostart = false)")
+var ErrDaemonManagedExternally = errors.New("poomsae daemon is not ready; it is managed externally (autostart = false)")
 
 // ErrDaemonNotReplaceable means this binary left a live daemon of another
 // version running because it cannot open that daemon's storage or is an older
@@ -116,7 +116,7 @@ var (
 // Test callers can short-circuit discovery by stashing a base URL on ctx
 // under BaseURLKey{}.
 //
-// .kata.local.toml discovery walks upward from CWD. Commands that
+// .poomsae.local.toml discovery walks upward from CWD. Commands that
 // target a specific workspace via --workspace should call
 // EnsureRunningInWorkspace instead so the walk anchors to the
 // targeted workspace.
@@ -133,7 +133,7 @@ func EnsureRunningTarget(ctx context.Context) (RunningDaemon, error) {
 
 // EnsureRunningTargetInWorkspace is the workspace-aware form of
 // EnsureRunningTarget. It preserves endpoint-source metadata while anchoring
-// .kata.local.toml discovery to workspaceStart.
+// .poomsae.local.toml discovery to workspaceStart.
 func EnsureRunningTargetInWorkspace(
 	ctx context.Context, workspaceStart string,
 ) (RunningDaemon, error) {
@@ -142,10 +142,10 @@ func EnsureRunningTargetInWorkspace(
 
 // EnsureRunningInWorkspace is the workspace-aware variant of
 // EnsureRunning. workspaceStart is the absolute path to begin the
-// .kata.local.toml walk from; pass "" to fall back to CWD. Empty is
+// .poomsae.local.toml walk from; pass "" to fall back to CWD. Empty is
 // the right value when no --workspace flag is in play; non-empty is
-// required so that running `kata --workspace /repo create ...` from
-// outside the repo still picks up /repo/.kata.local.toml's [server]
+// required so that running `poomsae --workspace /repo create ...` from
+// outside the repo still picks up /repo/.poomsae.local.toml's [server]
 // override instead of falling through to local auto-start.
 func EnsureRunningInWorkspace(ctx context.Context, workspaceStart string) (string, error) {
 	resolved, err := EnsureResolvedInWorkspace(ctx, workspaceStart)
@@ -158,7 +158,7 @@ func ensureRunningTargetInWorkspace(ctx context.Context, workspaceStart string) 
 }
 
 // EnsureLocalRunning returns a live local daemon's base URL, ignoring
-// KATA_SERVER and .kata.local.toml remote overrides. Named "local" TUI
+// POOMSAE_SERVER and .poomsae.local.toml remote overrides. Named "local" TUI
 // daemon entries use this so selecting local never silently resolves to
 // a configured shared daemon.
 func EnsureLocalRunning(ctx context.Context) (string, error) {
@@ -222,7 +222,7 @@ func externallyManagedVersionError(info PingInfo) error {
 	if err := refuseDaemonDowngrade(info); err != nil {
 		return err
 	}
-	return fmt.Errorf("%w: running kata daemon %s differs from this kata binary %s; restart it with your service manager (autostart = false)", ErrDaemonNotReplaceable, daemonVersionLabel(info), currentVersionForEnsure())
+	return fmt.Errorf("%w: running poomsae daemon %s differs from this poomsae binary %s; restart it with your service manager (autostart = false)", ErrDaemonNotReplaceable, daemonVersionLabel(info), currentVersionForEnsure())
 }
 
 // waitForSupervisedDaemon polls scan for the supervisor's daemon within the
@@ -358,19 +358,19 @@ func checkDaemonReplaceable(ctx context.Context, live PingInfo) error {
 	}
 	inspector, err := installedStorageInspector()
 	if err != nil {
-		return fmt.Errorf("inspect storage before replacing kata daemon %s: %w", daemonVersionLabel(live), err)
+		return fmt.Errorf("inspect storage before replacing poomsae daemon %s: %w", daemonVersionLabel(live), err)
 	}
 	storage, err := peekStorageSchemaForEnsure(ctx, inspector)
 	if err != nil {
-		return fmt.Errorf("inspect storage before replacing kata daemon %s: %w", daemonVersionLabel(live), err)
+		return fmt.Errorf("inspect storage before replacing poomsae daemon %s: %w", daemonVersionLabel(live), err)
 	}
 	binarySchema := inspector.CurrentSchemaVersion()
 	switch {
 	case storage.Version > binarySchema:
-		return fmt.Errorf("%w: kata daemon %s uses storage schema_version %d, which is newer than binary schema %d of this kata binary %s; use a newer kata binary",
+		return fmt.Errorf("%w: poomsae daemon %s uses storage schema_version %d, which is newer than binary schema %d of this poomsae binary %s; use a newer poomsae binary",
 			ErrDaemonNotReplaceable, daemonVersionLabel(live), storage.Version, binarySchema, currentVersionForEnsure())
 	case storage.ValidateOnly && storage.Version != binarySchema:
-		return fmt.Errorf("%w: kata daemon %s uses PostgreSQL schema_version %d, but validate mode starts only on binary schema %d of this kata binary %s; stop the daemon and run this binary's kata storage postgres migrate first",
+		return fmt.Errorf("%w: poomsae daemon %s uses PostgreSQL schema_version %d, but validate mode starts only on binary schema %d of this poomsae binary %s; stop the daemon and run this binary's poomsae storage postgres migrate first",
 			ErrDaemonNotReplaceable, daemonVersionLabel(live), storage.Version, binarySchema, currentVersionForEnsure())
 	}
 	return nil
@@ -392,7 +392,7 @@ func refuseDaemonDowngrade(live PingInfo) error {
 	if !isReleaseVersion(running) || !isReleaseVersion(binary) || semver.Compare(running, binary) <= 0 {
 		return nil
 	}
-	return fmt.Errorf("%w: kata daemon %s is newer than this kata binary %s; use a newer kata binary",
+	return fmt.Errorf("%w: poomsae daemon %s is newer than this poomsae binary %s; use a newer poomsae binary",
 		ErrDaemonNotReplaceable, running, binary)
 }
 
@@ -571,7 +571,7 @@ func stopRunningDaemons(ctx context.Context, dataDir, dbhash string) error {
 
 func autoStart(ctx context.Context, dataDir string) (RunningDaemon, error) {
 	var ownerLocks []string
-	if dsn, err := config.KataDSN(ctx); err == nil {
+	if dsn, err := config.PoomsaeDSN(ctx); err == nil {
 		ownerLocks = daemonruntime.StoreOwnerLockPaths(dataDir, dsn)
 	}
 	return autoStartWithMigration(ctx, dataDir, ownerLocks, append(os.Environ(), daemonruntime.AutoStartMarkerEnv+"=1"), true)
@@ -601,12 +601,12 @@ func autoStartWithMigration(ctx context.Context, dataDir string, ownerLocks, env
 	if err := checkDaemonStateForEnsure(dataDir); err != nil {
 		if errors.Is(err, os.ErrPermission) {
 			return RunningDaemon{}, fmt.Errorf(
-				"auto-start daemon: cannot write Kata state directory %s: %w; "+
+				"auto-start daemon: cannot write Poomsae state directory %s: %w; "+
 					"check filesystem permissions or sandbox access and retry",
 				dataDir, err,
 			)
 		}
-		return RunningDaemon{}, fmt.Errorf("auto-start daemon: cannot write Kata state directory %s: %w", dataDir, err)
+		return RunningDaemon{}, fmt.Errorf("auto-start daemon: cannot write Poomsae state directory %s: %w", dataDir, err)
 	}
 	if logw := daemonLogWriter(dataDir); logw != nil {
 		defer func() { _ = logw.Close() }() // child keeps its own handle after Start

@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func setupKataProjectDir(t *testing.T, body string) string {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, ".kata.toml")
-	require.NoError(t, os.WriteFile(path, []byte(body), 0o644)) //nolint:gosec // test fixture matches production .kata.toml mode
+	path := filepath.Join(dir, ".poomsae.toml")
+	require.NoError(t, os.WriteFile(path, []byte(body), 0o644)) //nolint:gosec // test fixture matches production .poomsae.toml mode
 	return dir
 }
 
@@ -34,13 +34,13 @@ func TestReadProjectConfig_Roundtrip(t *testing.T) {
 	dir := setupKataProjectDir(t, `version = 1
 
 [project]
-name = "kata"
+name = "poomsae"
 `)
 
 	cfg, err := config.ReadProjectConfig(dir)
 	require.NoError(t, err)
 	assert.Equal(t, 1, cfg.Version)
-	assert.Equal(t, "kata", cfg.Project.Name)
+	assert.Equal(t, "poomsae", cfg.Project.Name)
 }
 
 func TestReadProjectConfig_IgnoresLegacyIdentity(t *testing.T) {
@@ -83,7 +83,7 @@ name = "y"
 
 	_, err := config.ReadProjectConfig(dir)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported .kata.toml version")
+	assert.Contains(t, err.Error(), "unsupported .poomsae.toml version")
 }
 
 func TestReadProjectConfig_RejectsBlankName(t *testing.T) {
@@ -105,7 +105,7 @@ func TestWriteProjectConfig_WritesHeaderAndName(t *testing.T) {
 	}{
 		{"write", config.WriteProjectConfig},
 		{"replace hard-linked binding", func(dir, name string) error {
-			return config.ReplaceProjectConfig(filepath.Join(dir, ".kata.toml"), name)
+			return config.ReplaceProjectConfig(filepath.Join(dir, ".poomsae.toml"), name)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -113,16 +113,16 @@ func TestWriteProjectConfig_WritesHeaderAndName(t *testing.T) {
 			other := ""
 			original := []byte("version = 1\n\n[project]\nname = \"notes\"\n")
 			if tc.name == "replace hard-linked binding" {
-				other = filepath.Join(setupKataProjectDir(t, string(original)), ".kata.toml")
-				if err := os.Link(other, filepath.Join(dir, ".kata.toml")); err != nil {
+				other = filepath.Join(setupKataProjectDir(t, string(original)), ".poomsae.toml")
+				if err := os.Link(other, filepath.Join(dir, ".poomsae.toml")); err != nil {
 					t.Skipf("hard links unavailable: %v", err)
 				}
 			}
 			require.NoError(t, tc.write(dir, "foo"))
-			bs, err := os.ReadFile(filepath.Join(dir, ".kata.toml")) //nolint:gosec // test fixture under TempDir
+			bs, err := os.ReadFile(filepath.Join(dir, ".poomsae.toml")) //nolint:gosec // test fixture under TempDir
 			require.NoError(t, err)
 			assert.Contains(t, string(bs), `name = "foo"`)
-			assert.True(t, strings.HasPrefix(string(bs), "# This repository tracks its work in kata.\n# Coding agents: read `kata quickstart --format contract` before changing code here.\n"))
+			assert.True(t, strings.HasPrefix(string(bs), "# This repository tracks its work in poomsae.\n# Coding agents: read `poomsae quickstart --format contract` before changing code here.\n"))
 			assert.NotContains(t, string(bs), "identity")
 
 			cfg, err := config.ReadProjectConfig(dir)
@@ -138,7 +138,7 @@ func TestWriteProjectConfig_WritesHeaderAndName(t *testing.T) {
 }
 
 func TestEnsureProjectConfigHeader(t *testing.T) {
-	header := "# This repository tracks its work in kata.\n# Coding agents: read `kata quickstart --format contract` before changing code here.\n"
+	header := "# This repository tracks its work in poomsae.\n# Coding agents: read `poomsae quickstart --format contract` before changing code here.\n"
 	body := "# Keep this comment.\nversion = 1\n\n[project]\nname = \"spoke-project\"\n\n[server]\nurl = \"http://127.0.0.1:7777\"\n"
 	for _, tc := range []struct {
 		name    string
@@ -150,14 +150,14 @@ func TestEnsureProjectConfigHeader(t *testing.T) {
 		{"UTF-8 BOM", "\xef\xbb\xbf" + body, "\xef\xbb\xbf" + header + body, true},
 		{"CRLF", strings.ReplaceAll(body, "\n", "\r\n"), header + strings.ReplaceAll(body, "\n", "\r\n"), true},
 		{"comment above moved header", "# User comment.\n" + header + body, "# User comment.\n" + header + body, false},
-		{"reworded", "# Read kata quickstart --format contract first.\n" + body, "# Read kata quickstart --format contract first.\n" + body, false},
+		{"reworded", "# Read poomsae quickstart --format contract first.\n" + body, "# Read poomsae quickstart --format contract first.\n" + body, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := setupKataProjectDir(t, tc.content)
-			changed, err := config.EnsureProjectConfigHeader(filepath.Join(dir, ".kata.toml"))
+			changed, err := config.EnsureProjectConfigHeader(filepath.Join(dir, ".poomsae.toml"))
 			require.NoError(t, err)
 			assert.Equal(t, tc.changed, changed)
-			content, err := os.ReadFile(filepath.Join(dir, ".kata.toml")) //nolint:gosec // test fixture under TempDir
+			content, err := os.ReadFile(filepath.Join(dir, ".poomsae.toml")) //nolint:gosec // test fixture under TempDir
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, string(content))
 			cfg, err := config.ReadProjectConfig(dir)
@@ -166,10 +166,10 @@ func TestEnsureProjectConfigHeader(t *testing.T) {
 			if !tc.changed {
 				return
 			}
-			changed, err = config.EnsureProjectConfigHeader(filepath.Join(dir, ".kata.toml"))
+			changed, err = config.EnsureProjectConfigHeader(filepath.Join(dir, ".poomsae.toml"))
 			require.NoError(t, err)
 			assert.False(t, changed)
-			again, err := os.ReadFile(filepath.Join(dir, ".kata.toml")) //nolint:gosec // test fixture under TempDir
+			again, err := os.ReadFile(filepath.Join(dir, ".poomsae.toml")) //nolint:gosec // test fixture under TempDir
 			require.NoError(t, err)
 			assert.Equal(t, content, again)
 		})
@@ -188,10 +188,10 @@ func TestEnsureProjectConfigHeader_WriteFailurePreservesBinding(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o555))       //nolint:gosec // read-only directory blocks the atomic rename
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore so TempDir cleanup can remove it
 
-	changed, err := config.EnsureProjectConfigHeader(filepath.Join(dir, ".kata.toml"))
+	changed, err := config.EnsureProjectConfigHeader(filepath.Join(dir, ".poomsae.toml"))
 	require.Error(t, err)
 	assert.False(t, changed)
-	content, err := os.ReadFile(filepath.Join(dir, ".kata.toml")) //nolint:gosec // test fixture under TempDir
+	content, err := os.ReadFile(filepath.Join(dir, ".poomsae.toml")) //nolint:gosec // test fixture under TempDir
 	require.NoError(t, err)
 	assert.Equal(t, body, string(content))
 }
@@ -209,7 +209,7 @@ func TestProjectConfigWritersRefuseSymlink(t *testing.T) {
 			target := filepath.Join(dir, "other.toml")
 			original := []byte("version = 1\n[project]\nname = \"notes\"\n")
 			require.NoError(t, os.WriteFile(target, original, 0o644)) //nolint:gosec // test fixture matches production binding mode
-			link := filepath.Join(dir, ".kata.toml")
+			link := filepath.Join(dir, ".poomsae.toml")
 			if err := os.Symlink(target, link); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
@@ -265,15 +265,15 @@ func TestProjectConfig_RejectsControlCharactersInName(t *testing.T) {
 }
 
 func TestWriteProjectConfig_PreservesName(t *testing.T) {
-	cfg := writeAndReadConfig(t, "Kata Tracker %20 github.com/example/foo")
-	assert.Equal(t, "Kata Tracker %20 github.com/example/foo", cfg.Project.Name)
+	cfg := writeAndReadConfig(t, "Poomsae Tracker %20 github.com/example/foo")
+	assert.Equal(t, "Poomsae Tracker %20 github.com/example/foo", cfg.Project.Name)
 }
 
 func TestReadProjectConfig_AcceptsOptionalServerBlock(t *testing.T) {
 	dir := setupKataProjectDir(t, `version = 1
 
 [project]
-name = "kata"
+name = "poomsae"
 
 [server]
 url = "http://127.0.0.1:7777"
@@ -287,7 +287,7 @@ func TestReadProjectConfig_NoServerBlockYieldsZeroValue(t *testing.T) {
 	dir := setupKataProjectDir(t, `version = 1
 
 [project]
-name = "kata"
+name = "poomsae"
 `)
 	cfg, err := config.ReadProjectConfig(dir)
 	require.NoError(t, err)
@@ -314,15 +314,15 @@ daemon = "work"
 	assert.Equal(t, "spoke-project", cfg.Project.Name)
 	output, err := os.ReadFile(warnings.Name()) //nolint:gosec // test-owned capture file
 	require.NoError(t, err)
-	assert.Contains(t, string(output), "server.daemon in .kata.toml is ignored")
-	assert.Contains(t, string(output), "move it to .kata.local.toml")
+	assert.Contains(t, string(output), "server.daemon in .poomsae.toml is ignored")
+	assert.Contains(t, string(output), "move it to .poomsae.local.toml")
 }
 
 func TestFindProjectConfig_FromSubdirectory(t *testing.T) {
 	root := setupKataProjectDir(t, `version = 1
 
 [project]
-name = "kata"
+name = "poomsae"
 `)
 	sub := filepath.Join(root, "internal", "tui")
 	require.NoError(t, os.MkdirAll(sub, 0o755)) //nolint:gosec // test fixture under TempDir
@@ -330,19 +330,19 @@ name = "kata"
 	cfg, foundDir, err := config.FindProjectConfig(sub)
 	require.NoError(t, err)
 	assert.Equal(t, root, foundDir)
-	assert.Equal(t, "kata", cfg.Project.Name)
+	assert.Equal(t, "poomsae", cfg.Project.Name)
 }
 
 func TestFindProjectConfig_FromExactDir(t *testing.T) {
 	root := setupKataProjectDir(t, `version = 1
 
 [project]
-name = "kata"
+name = "poomsae"
 `)
 	cfg, foundDir, err := config.FindProjectConfig(root)
 	require.NoError(t, err)
 	assert.Equal(t, root, foundDir)
-	assert.Equal(t, "kata", cfg.Project.Name)
+	assert.Equal(t, "poomsae", cfg.Project.Name)
 }
 
 func TestFindProjectConfig_DoesNotCrossGitRoot(t *testing.T) {

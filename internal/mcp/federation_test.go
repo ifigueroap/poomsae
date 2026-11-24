@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestLeaseToolsArePublished(t *testing.T) {
@@ -20,7 +20,7 @@ func TestLeaseToolsArePublished(t *testing.T) {
 	for _, tool := range result.Tools {
 		names[tool.Name] = true
 	}
-	for _, name := range []string{"kata.lease", "kata.lease_force_release", "kata.lease_status", "kata.lease_steal"} {
+	for _, name := range []string{"poomsae.lease", "poomsae.lease_force_release", "poomsae.lease_status", "poomsae.lease_steal"} {
 		require.True(t, names[name], name)
 	}
 }

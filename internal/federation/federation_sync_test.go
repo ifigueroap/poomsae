@@ -19,17 +19,17 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/testenv"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 func TestSyncFederationOncePullsAndAdvancesCursor(t *testing.T) {
@@ -127,7 +127,7 @@ func TestClientOptsForCredentialPreservesAllowInsecureOptIn(t *testing.T) {
 func TestFederationRunnerUsesBindingEndpointWithStaleCredentialMetadata(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	project, err := spoke.DB.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
 
@@ -168,7 +168,7 @@ func TestFederationRunnerMakesParentDrainAvailableToPulledEventSink(t *testing.T
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	hubProject, err := hub.DB.CreateProject(ctx, "hub")
 	require.NoError(t, err)
 	_, _, err = hub.DB.CreateIssue(ctx, db.CreateIssueParams{
@@ -278,7 +278,7 @@ func TestSyncFederationOnceDuplicateOnlyPullMaterializesStaleProjection(t *testi
 		Token:        created.Token,
 	}
 	var delivered []db.Event
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 	require.Error(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, staleBinding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
 		delivered = append(delivered, events...)
 	}))
@@ -286,7 +286,7 @@ func TestSyncFederationOnceDuplicateOnlyPullMaterializesStaleProjection(t *testi
 	_, err = spoke.DB.IssueByUID(ctx, hubIssue.UID, db.IncludeDeletedYes)
 	require.ErrorIs(t, err, db.ErrNotFound)
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	require.NoError(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, staleBinding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
 		delivered = append(delivered, events...)
 	}))
@@ -1829,12 +1829,12 @@ func TestSyncFederationOnceCanonicalizesLocalAdoptionPushEcho(t *testing.T) {
 	creds := config.FederationCredential{HubURL: hub.URL, HubProjectID: 42, Token: "token"}
 	// The previous implementation could commit the canonical payload/hash,
 	// then stop at this failpoint before repairing its projection.
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 	require.Error(t, SyncFederationOnce(ctx, spoke.DB, binding, creds))
 	// Seed the retained projection state from before the interrupted repair.
 	_, err = spoke.DB.ExecContext(ctx, `UPDATE issues SET author='historical-author' WHERE id=?`, issue.ID)
 	require.NoError(t, err)
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	var delivered []db.Event
 	require.NoError(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, binding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
 		delivered = append(delivered, events...)
@@ -1919,7 +1919,7 @@ func TestSyncFederationOnceResetRetryDeliversReplayedLocalOriginEvent(t *testing
 	t.Cleanup(hub.Close)
 	creds := config.FederationCredential{HubURL: hub.URL, HubProjectID: 42, Token: "token"}
 	var delivered []db.Event
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 	require.Error(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, binding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
 		delivered = append(delivered, events...)
 	}))
@@ -1927,7 +1927,7 @@ func TestSyncFederationOnceResetRetryDeliversReplayedLocalOriginEvent(t *testing
 	_, err = spoke.DB.IssueByUID(ctx, issue.UID, db.IncludeDeletedYes)
 	require.ErrorIs(t, err, db.ErrNotFound)
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	binding, err = spoke.DB.FederationBindingByProject(ctx, project.ID)
 	require.NoError(t, err)
 	require.NoError(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, binding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
@@ -2025,7 +2025,7 @@ func testResetRetryLocalProjectEvent(t *testing.T, acknowledged bool) {
 	t.Cleanup(hub.Close)
 	creds := config.FederationCredential{HubURL: hub.URL, HubProjectID: 42, Token: "token"}
 	var delivered []db.Event
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "during_spoke_pull_apply_before_materialize=unexpected")
 	require.Error(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, binding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
 		delivered = append(delivered, events...)
 	}))
@@ -2043,7 +2043,7 @@ func testResetRetryLocalProjectEvent(t *testing.T, acknowledged bool) {
 		require.NoError(t, err)
 	}
 
-	t.Setenv("KATA_TEST_FEDERATION_FAILPOINTS", "")
+	t.Setenv("POOMSAE_TEST_FEDERATION_FAILPOINTS", "")
 	binding, err = spoke.DB.FederationBindingByProject(ctx, project.ID)
 	require.NoError(t, err)
 	require.NoError(t, SyncFederationOnceWithPulledEvents(ctx, spoke.DB, binding, creds, clientpkg.Opts{}, func(_ int64, events []db.Event) {
@@ -3315,7 +3315,7 @@ func TestFederationRunnerWaitsForCancellationAfterTerminalDrainDenial(t *testing
 func TestFederationRunnerNoBindingsNoNetwork(t *testing.T) {
 	store, _ := openDaemonclientTestDB(t)
 	runner := &Runner{DB: store}
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	requested := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requested = true
@@ -3335,7 +3335,7 @@ func TestFederationRunnerNoBindingsNoNetwork(t *testing.T) {
 func TestFederationRunnerUsesClientTimeout(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	project, err := spoke.DB.CreateProject(ctx, "spoke")
 	require.NoError(t, err)
 	gaveUp := make(chan struct{})
@@ -3386,7 +3386,7 @@ func TestFederationRunnerUsesClientTimeout(t *testing.T) {
 func TestFederationRunnerSkipsArchivedSpokeBindings(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	project, err := spoke.DB.CreateProject(ctx, "archived-spoke")
 	require.NoError(t, err)
 	_, err = spoke.DB.UpsertFederationBinding(ctx, db.FederationBinding{
@@ -3425,7 +3425,7 @@ func TestFederationRunnerRetriesAfterSyncError(t *testing.T) {
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	offlineHubURL := fastFailHubURL(t)
 	hubProject := createFederatedHubForPush(t, hub)
 	created, err := hub.DB.CreateFederationEnrollment(ctx, db.CreateFederationEnrollmentParams{ //nolint:gosec // test-only bearer token
@@ -3504,7 +3504,7 @@ func TestFederationRunnerRunOnceContinuesAfterBindingError(t *testing.T) {
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 
 	badProject, err := spoke.DB.CreateProject(ctx, "bad")
 	require.NoError(t, err)
@@ -3576,7 +3576,7 @@ func TestFederationRunnerRunOnceNoBindingsDoesNotCreateSyncStatus(t *testing.T) 
 func TestFederationRunnerRunOnceMalformedCredentialsRecordsEachSpokeError(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	projectA, err := spoke.DB.CreateProject(ctx, "spoke-a")
 	require.NoError(t, err)
 	projectB, err := spoke.DB.CreateProject(ctx, "spoke-b")
@@ -3611,7 +3611,7 @@ func TestFederationRunnerRunOnceMalformedCredentialsRecordsEachSpokeError(t *tes
 func TestFederationRunnerRunOnceKeepsClaimRetryErrorWhenPullSucceeds(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	project, issue, binding := createPendingClaimRetrySpoke(t, spoke.DB, "retry-error-preserved")
 	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -3647,7 +3647,7 @@ func TestPendingClaimRetryResolvesAfterHubReconnectWithFreshTimedTTL(t *testing.
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	hubProject := createFederatedHubForPush(t, hub)
 	hubIssue, _, err := hub.DB.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: hubProject.ID,
@@ -3775,7 +3775,7 @@ func TestPendingClaimRetryResolvesClaimOnlyResponseFromOlderHub(t *testing.T) {
 func TestPendingClaimRetryKeepsQueuedUpstreamRequestPending(t *testing.T) {
 	ctx := t.Context()
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	project, issue, binding := createPendingClaimRetrySpoke(t, spoke.DB, "pending-upstream-claim")
 	pending, err := spoke.DB.EnqueuePendingClaim(ctx,
 		pendingClaimParams(spoke.DB, project.ID, issue.ShortID, "pending-client"),
@@ -3805,7 +3805,7 @@ func TestPendingClaimRetryUnknownCapabilitiesTransportFailureRetriesAfterReconne
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spoke := testenv.New(t)
-	t.Setenv("KATA_HOME", spoke.Home)
+	t.Setenv("POOMSAE_HOME", spoke.Home)
 	hubProject, err := hub.DB.CreateProject(ctx, "hub")
 	require.NoError(t, err)
 	hubIssue, _, err := hub.DB.CreateIssue(ctx, db.CreateIssueParams{
@@ -3892,7 +3892,7 @@ func TestFederationClaimRetryCapabilityRules(t *testing.T) {
 	ctx := t.Context()
 	t.Run("known credential without claim rejects without claim request", func(t *testing.T) {
 		spoke := testenv.New(t)
-		t.Setenv("KATA_HOME", spoke.Home)
+		t.Setenv("POOMSAE_HOME", spoke.Home)
 		project, issue, binding := createPendingClaimRetrySpoke(t, spoke.DB, "known-no-claim")
 		claimRequests := 0
 		hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -3929,7 +3929,7 @@ func TestFederationClaimRetryCapabilityRules(t *testing.T) {
 
 	t.Run("older credential without capabilities attempts once and records 403", func(t *testing.T) {
 		spoke := testenv.New(t)
-		t.Setenv("KATA_HOME", spoke.Home)
+		t.Setenv("POOMSAE_HOME", spoke.Home)
 		project, issue, binding := createPendingClaimRetrySpoke(t, spoke.DB, "older-no-cap")
 		claimRequests := 0
 		hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -4660,7 +4660,7 @@ func rehashEventEnvelope(t *testing.T, ev *api.EventEnvelope) {
 
 func mustTestUID(t *testing.T) string {
 	t.Helper()
-	uid, err := katauid.New()
+	uid, err := poomsaeuid.New()
 	require.NoError(t, err)
 	return uid
 }
@@ -4674,9 +4674,9 @@ func shortIDForSyncTest(uid string) string {
 
 func openDaemonclientTestDB(t *testing.T) (*sqlitestore.Store, string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	store, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })

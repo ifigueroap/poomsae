@@ -1,14 +1,14 @@
 ---
 title: Linear sync
-description: "Mirror one Linear team or project into Kata and optionally synchronize completion and reopen."
+description: "Mirror one Linear team or project into Poomsae and optionally synchronize completion and reopen."
 last_edited: 2026-11-20
 ---
 
 # Linear sync
 
-Linear sync mirrors issues from one Linear team into one Kata project, and you
+Linear sync mirrors issues from one Linear team into one Poomsae project, and you
 can narrow that team to a single Linear project. If you want to close or reopen
-those Linear issues from Kata, enable two-way status sync. The Kata daemon makes
+those Linear issues from Poomsae, enable two-way status sync. The Poomsae daemon makes
 all API calls to Linear.
 
 ## Configure the daemon
@@ -19,12 +19,12 @@ all API calls to Linear.
    not need Admin, Create issues, or Create comments. Depending on your
    workspace policy, an administrator can be required to permit API keys. For
    details, see [Linear's API permissions](https://linear.app/docs/api-and-webhooks).
-2. Set `KATA_LINEAR_TOKEN` in the environment that starts the Kata daemon. Keep
+2. Set `POOMSAE_LINEAR_TOKEN` in the environment that starts the Poomsae daemon. Keep
    the credential out of workspace files and command-line arguments.
 3. Restart the daemon after changing its environment.
 
 To read the token from a different environment variable, add this block to
-`<KATA_HOME>/config.toml`:
+`<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [linear_sync]
@@ -34,7 +34,7 @@ auth_type = "api-key"
 
 To use an operator-managed OAuth access token instead, set `auth_type = "oauth"`.
 The daemon then uses Bearer authorization. OAuth tokens need the `read` scope,
-plus `write` for two-way status sync. Kata does not acquire or refresh OAuth
+plus `write` for two-way status sync. Poomsae does not acquire or refresh OAuth
 tokens; replace expired tokens in the daemon environment. See
 [Linear OAuth](https://linear.app/developers/oauth-2-0-authentication) for token
 management details. The daemon sends credentials only to
@@ -51,20 +51,20 @@ public GraphQL API. Always pass UUIDs rather than issue identifiers or URLs. See
 usage.
 
 ```sh
-kata sync linear enable --linear-workspace UUID --linear-team UUID
+poomsae sync linear enable --linear-workspace UUID --linear-team UUID
 # Or restrict the source on its first enable:
-kata sync linear enable --linear-workspace UUID --linear-team UUID --linear-project UUID
-kata sync linear once
-kata sync linear status
-kata --agent sync linear status
-kata --json sync linear status
-kata sync linear disable
+poomsae sync linear enable --linear-workspace UUID --linear-team UUID --linear-project UUID
+poomsae sync linear once
+poomsae sync linear status
+poomsae --agent sync linear status
+poomsae --json sync linear status
+poomsae sync linear disable
 ```
 
 If you want to limit sync to one Linear project, pass `--linear-project` the
 first time you enable the binding. Once set, the source identity cannot change.
 Re-enabling keeps any options you omit and refuses a different workspace, team,
-or project. To add or remove a project restriction, use a different Kata
+or project. To add or remove a project restriction, use a different Poomsae
 project. No command imports an entire Linear workspace, and if you use a
 federation spoke, configure Linear sync on its hub instead.
 
@@ -81,41 +81,41 @@ adjust how they pull data with these options:
   original title and add the `linear` label instead.
 
 Imported issue bodies keep their Markdown formatting and include a link back to
-Linear. Private image assets stay hosted and authenticated in Linear, and Kata
+Linear. Private image assets stay hosted and authenticated in Linear, and Poomsae
 does not copy them.
 
 Comments on imported issues arrive with their Linear author and creation time.
-Kata copies each comment once, and later edits or deletions in Linear do not
-update the Kata copy. If a comment has no Linear user as its author, such as an
-integration post, Kata records `linear-unknown` as the author.
+Poomsae copies each comment once, and later edits or deletions in Linear do not
+update the Poomsae copy. If a comment has no Linear user as its author, such as an
+integration post, Poomsae records `linear-unknown` as the author.
 
 ## Synchronize completion and reopen
 
-Enable two-way status sync when you want closes and reopens in Kata to update
+Enable two-way status sync when you want closes and reopens in Poomsae to update
 the matching Linear issue, or switch back to one-way mode:
 
 ```sh
-kata sync linear enable --status-sync two-way
-kata sync linear enable --status-sync two-way --closed-state UUID --open-state UUID
-kata sync linear enable --status-sync one-way
+poomsae sync linear enable --status-sync two-way
+poomsae sync linear enable --status-sync two-way --closed-state UUID --open-state UUID
+poomsae sync linear enable --status-sync one-way
 ```
 
-Two-way delivery updates only `stateId`. Closing an issue in Kata picks a live
+Two-way delivery updates only `stateId`. Closing an issue in Poomsae picks a live
 **completed** state in Linear, and reopening picks a live **unstarted** state.
-If you do not pass state overrides, Kata picks the state with the lowest
+If you do not pass state overrides, Poomsae picks the state with the lowest
 workflow position and breaks ties by UUID. Any override you pass must belong to
 that state type in the selected team. Pass `--closed-state ""` or
 `--open-state ""` to go back to the default. If the Linear issue is already in a
-matching open or closed state, Kata leaves Linear's substate alone.
+matching open or closed state, Poomsae leaves Linear's substate alone.
 
-Kata maps Linear's workflow state types to binary open and closed states.
+Poomsae maps Linear's workflow state types to binary open and closed states.
 Triage, backlog, unstarted, and started states map to open. Completed maps to
 closed with reason `done`, while canceled and duplicate map to closed with
 reason `wontfix`. Status synchronization is binary. In two-way mode, a
 completed-to-canceled change in Linear keeps the existing close reason and
-timestamp on an already-closed Kata issue. In one-way mode, a newer content
+timestamp on an already-closed Poomsae issue. In one-way mode, a newer content
 import refreshes the closure metadata from Linear. For recurring issues, Linear
-assigns a separate UUID to each instance, and Kata imports each one
+assigns a separate UUID to each instance, and Poomsae imports each one
 independently while leaving the recurrence schedule in Linear.
 
 | Data | Ownership |
@@ -123,15 +123,15 @@ independently while leaving the recurrence schedule in Linear.
 | Title, Markdown body, priority, creator, assignee, identifier and link | Linear import |
 | Linear comments | Linear import, copied once |
 | Open/closed | Linear in one-way mode; shared in explicit two-way mode |
-| Native comments, evidence, metadata, other labels | Kata |
+| Native comments, evidence, metadata, other labels | Poomsae |
 | Due dates, cycles, provider labels, project assignment, recurrence | Remain in Linear; never written back |
 
-Kata never creates native issues in Linear when they have no Linear mapping, and
+Poomsae never creates native issues in Linear when they have no Linear mapping, and
 it never uploads native comments or evidence. When you close or reopen an issue
-in Kata, the newest pending local change wins delivery. When there is no pending
+in Poomsae, the newest pending local change wins delivery. When there is no pending
 local change, verified Linear status applies locally. Status updates read from
 Linear do not trigger outbound echoes back to Linear. Local edits to imported
-content follow Kata's existing
+content follow Poomsae's existing
 [import conflict rules](../reference/cli.md#backup-and-import).
 
 ## Recovery and limits
@@ -150,8 +150,8 @@ that Linear can return `RATELIMITED` on HTTP 400 as well as HTTP 429, and other
 applications using the same Linear account share your quota. See
 [Linear rate limits](https://linear.app/developers/rate-limiting) for details.
 
-Kata sends each mutation once and follows it with a fresh verification read. If
-the mutation response is unproven, Kata keeps the pending intent and the run
+Poomsae sends each mutation once and follows it with a fresh verification read. If
+the mutation response is unproven, Poomsae keeps the pending intent and the run
 claim. After the 30-minute stale-claim recovery horizon, a later run reads the
 current state in Linear before deciding whether to send the mutation again.
 Individual requests time out after 30 seconds, and an entire run has a 20-minute
@@ -161,19 +161,19 @@ mappings per pass, so larger collections take multiple passes.
 To save quota, a two-way sweep reuses the status from the previous run's content
 read whenever it is current. It fetches the issue from Linear only when that run
 did not return the issue or the stored status is newer. A close or reopen made
-in Linear can therefore take one extra polling interval to show up in Kata.
+in Linear can therefore take one extra polling interval to show up in Poomsae.
 
 Two-way status sync runs independently of the content cutoff and can keep
 working even when content reads fail. In one-way mode, status updates arrive
 with content imports and follow `--since`. Disabling sync pauses polling while
 keeping your mappings and pending intent, and re-enabling resumes it.
 
-If a Linear issue is archived, trashed, missing, or moved out of scope, Kata
+If a Linear issue is archived, trashed, missing, or moved out of scope, Poomsae
 keeps its last imported local copy and blocks outbound updates until the issue
-is available in the same scope again. Kata never infers deletion, purges the
+is available in the same scope again. Poomsae never infers deletion, purges the
 local issue, restores a remote issue, or unarchives it. A trashed Linear project
 also blocks its selected scope. See
 [Linear deletion and archives](https://linear.app/docs/delete-archive-issues)
 for how Linear handles those states. Authentication and permission failures also keep pending intent. Fix your
-credentials or team access and retry. Run `kata sync linear status` to inspect
+credentials or team access and retry. Run `poomsae sync linear status` to inspect
 scope, progress, pending status changes, and sanitized errors.

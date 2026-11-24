@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestCreateIssue_WithInitialPriority(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCreateIssue_RejectsPriorityOutOfRange(t *testing.T) {
 		})
 		require.Error(t, err, "priority %d should violate CHECK", bad)
 		// The schema CHECK fires at INSERT; surface includes "CHECK" in the
-		// driver-level message regardless of the specific wrapper kata adds.
+		// driver-level message regardless of the specific wrapper poomsae adds.
 		assert.True(t, strings.Contains(strings.ToLower(err.Error()), "check"),
 			"error %q should mention CHECK constraint", err.Error())
 	}

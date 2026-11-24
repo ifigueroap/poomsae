@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 	"go.kenn.io/kit/embedclient"
 	kitvec "go.kenn.io/kit/vector"
 )

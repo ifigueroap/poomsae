@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ListFederationBindings returns every configured federation binding ordered by
@@ -3100,7 +3100,7 @@ func (d *Store) adoptProjectIntoFederation(
 	if actor == "" {
 		actor = "federation"
 	}
-	if !katauid.Valid(p.HubProjectUID) {
+	if !poomsaeuid.Valid(p.HubProjectUID) {
 		return db.AdoptProjectIntoFederationResult{}, fmt.Errorf("invalid hub project uid %q", p.HubProjectUID)
 	}
 	tx, err := d.BeginTx(ctx, nil)

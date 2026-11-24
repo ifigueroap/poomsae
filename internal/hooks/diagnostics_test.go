@@ -140,7 +140,7 @@ func TestDoctorHookHistoryRequiresExactFieldNames(t *testing.T) {
 	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	path := filepath.Join(t.TempDir(), "runs.jsonl")
 	d := &Dispatcher{appender: &runsAppender{path: path, keep: 1}, deps: DispatcherDeps{Now: func() time.Time { return now }}}
-	line := `{"KATA_HOOK_RUNS_VERSION":1,"ENDED_AT":"2026-09-01T12:00:00Z","RESULT":"ok","EXIT_CODE":0}`
+	line := `{"POOMSAE_HOOK_RUNS_VERSION":1,"ENDED_AT":"2026-09-01T12:00:00Z","RESULT":"ok","EXIT_CODE":0}`
 	require.NoError(t, os.WriteFile(path, []byte(line+"\n"), 0600))
 
 	got := d.Diagnostics()

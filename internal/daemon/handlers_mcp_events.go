@@ -7,11 +7,11 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 )
 
-// registerMCPEventsHandlers serves the routes `kata mcp serve` forwards MCP
+// registerMCPEventsHandlers serves the routes `poomsae mcp serve` forwards MCP
 // Events to. Every route derives the subscription owner from the request's
 // authenticated daemon principal, never from the body.
 func registerMCPEventsHandlers(humaAPI huma.API, cfg ServerConfig) {

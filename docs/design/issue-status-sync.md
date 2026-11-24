@@ -5,17 +5,17 @@ four-column storage.
 
 ## Outcome and scope
 
-Closing or reopening an imported issue in Kata updates the corresponding
+Closing or reopening an imported issue in Poomsae updates the corresponding
 Notion task, GitHub issue, or Plane work item. Status changes made upstream continue to arrive
-in Kata. All three providers use the same delivery and recovery rules.
+in Poomsae. All three providers use the same delivery and recovery rules.
 
 The requested scope is open/closed status. Existing incoming imports remain;
 outbound title, body, assignment, labels, comments, dates, relationships, and
-issue creation are excluded. Kata gains no in-progress state. GitHub Projects
+issue creation are excluded. Poomsae gains no in-progress state. GitHub Projects
 board fields and Notion task-database/schema creation are excluded.
 
 Notion's existing workflow groups define completion. Operators should not have
-to enumerate their custom completed options again in Kata. Ordinary setup
+to enumerate their custom completed options again in Poomsae. Ordinary setup
 should require only the existing source selection and an explicit two-way opt-in.
 
 This spec assumes local reopen should also propagate upstream, writes should
@@ -37,7 +37,7 @@ option names. [Task database setup](https://www.notion.com/help/sprints),
 [workflow categories](https://www.notion.com/help/guides/status-property-gives-clarity-on-tasks).
 
 The API returns `status.options` and `status.groups`. Groups contain an ID,
-name, color, and an ordered `option_ids` list. Therefore Kata can classify a
+name, color, and an ordered `option_ids` list. Therefore Poomsae can classify a
 task by its option's membership in the selected Complete group. Group IDs are
 data-source-specific; there is no documented universal group-role ID or role
 enum on the response. Bootstrap uses the documented group names, with explicit
@@ -48,7 +48,7 @@ selection available when those names do not identify the intended groups.
 Database and data-source objects expose `database_type`, including task
 databases. Their documented fields do not identify which property was chosen
 as task status in the setup UI. This is an inference from the published schemas:
-Kata should discover the sole property of type `status`, or use its existing
+Poomsae should discover the sole property of type `status`, or use its existing
 explicit selector when several exist. A `database_type` value alone does not
 resolve that ambiguity. Regular databases with the same Status schema work too.
 [Database object](https://developers.notion.com/reference/database),
@@ -146,11 +146,11 @@ daemon advertises an `issue_status_sync` capability covering all three providers
 CLI capability checks precede requests using the new mode.
 
 ```sh
-kata sync notion enable \
+poomsae sync notion enable \
   --data-source 11111111-1111-4111-8111-111111111111 \
   --status-sync=two-way
 
-kata sync github enable \
+poomsae sync github enable \
   --repo example-org/example-repo --status-sync=two-way
 ```
 
@@ -201,12 +201,12 @@ Concurrent enable and issue mutation are ordered by their storage transactions.
 
 ## Status behavior
 
-| Observation or action | Kata | Notion | GitHub | Plane |
+| Observation or action | Poomsae | Notion | GitHub | Plane |
 | --- | --- | --- | --- | --- |
 | Upstream option is in Complete / issue is closed | Closed | Keep that exact completed option | Keep closed | Preserve completed/cancelled state |
 | Upstream option is outside Complete / issue is open | Open | Keep its existing option, including In progress | Keep open | Preserve current open state |
-| Explicit Kata close, upstream is open | Closed immediately; delivery pending | Write the selected closed target | Write `state: closed` | Write selected completed-state UUID |
-| Explicit Kata reopen, upstream is closed | Open immediately; delivery pending | Write the selected To-do target | Write `state: open` | Write selected unstarted-state UUID |
+| Explicit Poomsae close, upstream is open | Closed immediately; delivery pending | Write the selected closed target | Write `state: closed` | Write selected completed-state UUID |
+| Explicit Poomsae reopen, upstream is closed | Open immediately; delivery pending | Write the selected To-do target | Write `state: open` | Write selected unstarted-state UUID |
 | Desired binary state already matches upstream | Acknowledge without an upstream write | Preserve the current substatus | Preserve the current state | Preserve current state UUID |
 
 A null Notion status reads as open. An unknown non-null option ID triggers a
@@ -219,13 +219,13 @@ Without an explicit target override, writes use the first option in the live
 selected group. Reordering changes the default for future transitions. Existing
 matching tasks receive no normalization writes. An override stays pinned by
 ID; deletion or movement into the wrong group blocks writes with an actionable
-mapping error. The first-option rule is Kata's default policy, not a claim
+mapping error. The first-option rule is Poomsae's default policy, not a claim
 about how Notion's checkbox UI chooses an option.
 
 Every native closed reason counts as closed. The GitHub payload sends only
 `state`; detailed close-reason translation and duplicate identity are excluded.
 Notion writes the chosen completed option regardless of local reason. An
-acknowledgement or same-state upstream observation preserves Kata's local
+acknowledgement or same-state upstream observation preserves Poomsae's local
 closed reason, evidence, and close time. A genuine upstream status transition
 uses the existing provider close-reason mapping and a valid provider close time.
 GitHub `not_planned` maps to `wontfix`; other closures map to `done`. Reopen
@@ -356,7 +356,7 @@ never confer authority; moved objects cannot redirect credentials or writes.
 already come from that field, so Notion leaves `remote_locator` null; the extra
 locator is only for a provider API identifier not already in the mapping.
 
-Pending explicit Kata intent wins until verified acknowledgement. Later
+Pending explicit Poomsae intent wins until verified acknowledgement. Later
 upstream transitions then flow inward. Returning to one-way clears pending
 pointers transactionally while preserving a retiring claim. A new two-way
 opt-in creates no pending pointers for historical local differences.

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 func TestFederationSpokeNameEventRoundTrip(t *testing.T) {

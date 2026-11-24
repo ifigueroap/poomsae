@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // CheckLinkSameServer requires linked spokes to share a canonical hub base URL.

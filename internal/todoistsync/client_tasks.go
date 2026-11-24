@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/todoistsync/todoistapi"
+	"github.com/ifigueroap/poomsae/internal/todoistsync/todoistapi"
 )
 
 // pageLimit is the documented maximum page size for task listings.
 const pageLimit = 200
 
 // taskFrom converts Todoist's task view. Todoist reports unknown creation and
-// update times as null; Kata needs both, so each falls back to the task's
+// update times as null; Poomsae needs both, so each falls back to the task's
 // other known timestamps, and to floor when none are known.
 func taskFrom(v todoistapi.ItemSyncView, floor time.Time) Task {
 	t := Task{

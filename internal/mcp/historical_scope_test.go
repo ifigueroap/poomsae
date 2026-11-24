@@ -10,17 +10,17 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 type mcpMoveBeforeWriteStore struct {
 	db.Storage
-	client      *kataclient.Client
+	client      *poomsaeclient.Client
 	beforeWrite func()
 	afterRead   func()
 	// requests records "METHOD path" for each daemon request.
@@ -50,7 +50,7 @@ func (s *mcpMoveBeforeWriteStore) ReadCommentGraph(ctx context.Context, q db.Com
 
 func mcpFixedScopeFixture(t *testing.T) (*sqlitestore.Store, *mcpMoveBeforeWriteStore, *sdkmcp.ClientSession, db.Project, db.Project, db.Project, db.Issue) {
 	t.Helper()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	source, err := store.CreateProject(t.Context(), "scope-source")
@@ -85,7 +85,7 @@ func mcpFixedScopeFixture(t *testing.T) (*sqlitestore.Store, *mcpMoveBeforeWrite
 		_ = json.NewEncoder(w).Encode(health)
 	}))
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	wrapped.client = client
 	scope, err := NewAllowlistScope([]ProjectIdentity{{ID: source.ID, UID: source.UID, Name: source.Name}, {ID: target.ID, UID: target.UID, Name: target.Name}})
@@ -99,15 +99,15 @@ func mcpMoveOutside(t *testing.T, store db.Storage, source, excluded db.Project,
 	require.NoError(t, err)
 }
 func TestFixedMCPScopeRejectsHistoricalReferenceOutsideCurrentProject(t *testing.T) {
-	for _, tool := range []string{"kata.show", "kata.edit", "kata.comment"} {
+	for _, tool := range []string{"poomsae.show", "poomsae.edit", "poomsae.comment"} {
 		t.Run(tool, func(t *testing.T) {
 			store, _, session, source, _, excluded, issue := mcpFixedScopeFixture(t)
 			mcpMoveOutside(t, store, source, excluded, issue)
 			args := map[string]any{"ref": source.Name + "#" + issue.ShortID}
-			if tool == "kata.edit" {
+			if tool == "poomsae.edit" {
 				args["title"] = "forbidden edit"
 			}
-			if tool == "kata.comment" {
+			if tool == "poomsae.comment" {
 				args["body"] = "forbidden comment"
 				args["idempotency_key"] = "scope-comment"
 			}
@@ -127,7 +127,7 @@ func TestFixedMCPScopeRejectsHistoricalReferenceOutsideCurrentProject(t *testing
 func TestFixedMCPScopeRejectsConcurrentMoveDuringMutation(t *testing.T) {
 	store, wrapped, session, source, _, excluded, issue := mcpFixedScopeFixture(t)
 	wrapped.beforeWrite = func() { mcpMoveOutside(t, store, source, excluded, issue) }
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.edit", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "title": "forbidden edit"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.edit", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "title": "forbidden edit"}})
 	require.NoError(t, err)
 	require.True(t, result.IsError, string(mustJSON(t, result)))
 	got, err := store.IssueByID(t.Context(), issue.ID)
@@ -138,7 +138,7 @@ func TestFixedMCPScopeRejectsConcurrentMoveDuringMutation(t *testing.T) {
 func TestFixedMCPScopeRejectsConcurrentMoveDuringRead(t *testing.T) {
 	store, wrapped, session, source, _, excluded, issue := mcpFixedScopeFixture(t)
 	wrapped.afterRead = func() { mcpMoveOutside(t, store, source, excluded, issue) }
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.show", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.show", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID}})
 	require.NoError(t, err)
 	require.True(t, result.IsError, string(mustJSON(t, result)))
 	require.NotContains(t, string(mustJSON(t, result)), "scope-canary")
@@ -148,7 +148,7 @@ func TestFixedMCPScopeRejectsExcludedMoveDescendant(t *testing.T) {
 	store, _, session, source, target, excluded, issue := mcpFixedScopeFixture(t)
 	child, _, err := store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: excluded.ID, Title: "excluded child", Author: "worker", Links: []db.InitialLink{{Type: "parent", ToNumber: issue.ID}}})
 	require.NoError(t, err)
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name}})
 	require.NoError(t, err)
 	require.True(t, result.IsError, string(mustJSON(t, result)))
 	root, err := store.IssueByID(t.Context(), issue.ID)
@@ -163,7 +163,7 @@ func TestFixedMCPScopeMovesIncludedDescendants(t *testing.T) {
 	store, _, session, source, target, _, issue := mcpFixedScopeFixture(t)
 	child, _, err := store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: source.ID, Title: "included child", Author: "worker", Links: []db.InitialLink{{Type: "parent", ToNumber: issue.ID}}})
 	require.NoError(t, err)
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.move", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID, "to_project": target.Name}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, string(mustJSON(t, result)))
 	for _, id := range []int64{issue.ID, child.ID} {
@@ -197,7 +197,7 @@ func TestFixedMCPScopeLeaseAuthorityRetainsLimits(t *testing.T) {
 				_, err := store.EnableProjectFederation(t.Context(), project.ID, "worker")
 				require.NoError(t, err)
 			}
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.lease_status", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID}})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.lease_status", Arguments: map[string]any{"ref": source.Name + "#" + issue.ShortID}})
 			require.NoError(t, err)
 			require.Equal(t, outside, result.IsError, string(mustJSON(t, result)))
 		})

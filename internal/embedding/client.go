@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 	"go.kenn.io/kit/embedclient"
 	"go.kenn.io/kit/embedconfig"
 	"go.kenn.io/kit/embedmodel"
@@ -126,7 +126,7 @@ func (c *Client) BatchSize() int { return c.options.Batch.Items }
 // Space describes the embedding model and its existing generation fingerprints.
 func (c *Client) Space() embedmodel.Descriptor { return c.space }
 
-// Generation preserves Kata's recipe-aware fingerprint. The endpoint is
+// Generation preserves Poomsae's recipe-aware fingerprint. The endpoint is
 // excluded so moving a host or port never forces re-embedding.
 func (c *Client) Generation() kitvec.Generation { return c.generation }
 

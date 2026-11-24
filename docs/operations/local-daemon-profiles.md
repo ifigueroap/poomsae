@@ -6,10 +6,10 @@ last_edited: 2026-11-20
 
 # Local daemon profiles
 
-Local daemon profiles let you select an existing Kata home on your machine. Each
+Local daemon profiles let you select an existing Poomsae home on your machine. Each
 profile pins the database's instance UID, so a stopped work daemon can restart
 against its own data while a personal daemon keeps running. This feature
-requires Kata 0.19.0 or later; older releases accept only URL overrides.
+requires Poomsae 0.19.0 or later; older releases accept only URL overrides.
 
 A **spoke** is a local project replica joined to a federation hub. Personal and
 work spokes can join different hubs and hold projects with the same name. A
@@ -22,7 +22,7 @@ their homes, database identities, and hub bindings separate.
    overrides first, so the command reads that home's configured storage:
 
    ```sh
-   KATA_HOME=/absolute/work-home kata daemon diagnose --json
+   POOMSAE_HOME=/absolute/work-home poomsae daemon diagnose --json
    ```
 
    Record `observed_instance_uid` and, when a workspace is bound, `project_uid`.
@@ -43,9 +43,9 @@ their homes, database identities, and hub bindings separate.
    start with `~/`, and both `home` and `instance_uid` are required together. If
    you need a personal profile too, repeat this block with its own name, home,
    and observed UID. A legacy `local = true` entry without `home` still refers
-   to the current `KATA_HOME`.
+   to the current `POOMSAE_HOME`.
 
-3. Bind your workspace in its ignored `.kata.local.toml`:
+3. Bind your workspace in its ignored `.poomsae.local.toml`:
 
    ```toml
    version = 1
@@ -56,23 +56,23 @@ their homes, database identities, and hub bindings separate.
 
    `server.daemon` accepts only a registered local profile with a home and
    instance UID, and it is mutually exclusive with `server.url`. Leave the
-   committed `.kata.toml` project binding unchanged. If `server.daemon` appears
-   in that committed file, Kata warns and ignores it.
+   committed `.poomsae.toml` project binding unchanged. If `server.daemon` appears
+   in that committed file, Poomsae warns and ignores it.
 
-Daemon selection checks `--daemon`, `KATA_SERVER`, the workspace override,
+Daemon selection checks `--daemon`, `POOMSAE_SERVER`, the workspace override,
 `active_daemon`, and finally the default local home. A child directory inherits
 the nearest eligible override inside its workspace boundary, while a separate
-repository or linked worktree needs its own ignored override. Kata ignores
+repository or linked worktree needs its own ignored override. Poomsae ignores
 tracked local overrides, and an override in a broader ancestor directory never
 bypasses workspace boundaries.
 
-Registration is opt-in. Kata does not convert loopback URLs into profiles,
+Registration is opt-in. Poomsae does not convert loopback URLs into profiles,
 remove overrides, enroll a project, or merge projects that share a name.
 
 A profile obeys top-level `autostart = false` in its selected home's
 `config.toml`. With autostart disabled, ordinary commands wait up to 30 seconds
 (or the caller's shorter deadline) for its service manager instead of starting a
-daemon. `kata daemon recover` checks the existing storage, schema, and requested
+daemon. `poomsae daemon recover` checks the existing storage, schema, and requested
 project first; if those checks pass, it waits in the same way.
 
 ## Diagnose and recover
@@ -80,9 +80,9 @@ project first; if those checks pass, it waits in the same way.
 Run these commands from your bound workspace:
 
 ```sh
-kata daemon diagnose --json
-kata daemon recover --expect-project-uid 01J00000000000000000000002 --json
-kata health --json
+poomsae daemon diagnose --json
+poomsae daemon recover --expect-project-uid 01J00000000000000000000002 --json
+poomsae health --json
 ```
 
 Replace the example project UID with your known work project UID. The project
@@ -107,7 +107,7 @@ If your routing configuration is invalid, diagnose reports
 lists current-home processes and includes the same state and message under
 `selected`. That inventory is separate from the selected target and never
 enables fallback or recovery of another home. Storage and live identity checks
-use the normal `KATA_HTTP_TIMEOUT` budget (five seconds by default), so an
+use the normal `POOMSAE_HTTP_TIMEOUT` budget (five seconds by default), so an
 unavailable database cannot stall diagnosis indefinitely.
 
 For the default local daemon, different `binary_version` and `runtime_version`
@@ -148,7 +148,7 @@ replace it after identity checks pass. Missing storage, a wrong database
 identity, or a failed explicit project UID assertion stops recovery before
 startup, and no recovery path creates a replacement project.
 
-An explicit `server.url`, including a loopback tunnel, stays a URL target. Kata
+An explicit `server.url`, including a loopback tunnel, stays a URL target. Poomsae
 cannot infer its home or ownership, recovery refuses it, and ordinary commands
 never fall back to another database when it is unavailable.
 
@@ -156,14 +156,14 @@ never fall back to another database when it is unavailable.
 
 The selected home supplies its own storage, listener, authentication,
 federation, integration, and idle settings. The client does not pass the parent
-home's `KATA_DSN`, PostgreSQL schema overrides, daemon tokens, proxies, or
+home's `POOMSAE_DSN`, PostgreSQL schema overrides, daemon tokens, proxies, or
 hosted `PORT` into that profile. Child processes receive an OS and toolchain
 allowlist, explicit safe credential references from the selected configuration,
 and the selected home and storage settings.
 
-When Kata launches a profile, reserved daemon, PostgreSQL, proxy, and hosted
-variable names cannot be credential references. Other `KATA_` names, including
-`KATA_TEAM_HUB_TOKEN` and `KATA_SHARED_TOKEN`, are allowed. `SSL_CERT_FILE` and
+When Poomsae launches a profile, reserved daemon, PostgreSQL, proxy, and hosted
+variable names cannot be credential references. Other `POOMSAE_` names, including
+`POOMSAE_TEAM_HUB_TOKEN` and `POOMSAE_SHARED_TOKEN`, are allowed. `SSL_CERT_FILE` and
 `SSL_CERT_DIR` pass through to child daemons so private certificate authorities
 remain available for HTTPS connections, and `DOCBANK_HOME` passes through so a
 profile daemon with `[docbank] local = true` finds the same Docbank vault as the
@@ -172,11 +172,11 @@ profile daemon with `[docbank] local = true` finds the same Docbank vault as the
 By default, API and identity checks use the profile's own auth token. For
 identity-token mode, you can select a client credential with a catalog `token`,
 `token_file`, or `token_env`, in that order of precedence, without changing the
-daemon's configured auth. When `autostart = false`, Kata never launches the
+daemon's configured auth. When `autostart = false`, Poomsae never launches the
 profile, so it uses a catalog credential for API and identity checks without
 resolving the daemon's own `auth.token_env`, which may exist only in the
 supervised process environment and may use a reserved name. Without a catalog
-credential, the client resolves the profile's own token. For a profile that Kata
+credential, the client resolves the profile's own token. For a profile that Poomsae
 launches, use a neutral, non-reserved environment name for any referenced
 credential.
 
@@ -196,18 +196,18 @@ database identity. For continuous hub sync or background maintenance, run a
 resident service in the selected home:
 
 ```sh
-KATA_HOME=/absolute/work-home kata daemon start
-KATA_HOME=/absolute/work-home kata daemon stop
+POOMSAE_HOME=/absolute/work-home poomsae daemon start
+POOMSAE_HOME=/absolute/work-home poomsae daemon stop
 ```
 
 These home administration commands, along with restart, reload, and logs, reject
 `--daemon`. Clear inherited storage overrides whenever you administer a home.
 Host-local export and `mcp serve --storage-root` also require an explicit
-`KATA_HOME` instead of a profile selector, while ordinary `mcp serve` uses the
+`POOMSAE_HOME` instead of a profile selector, while ordinary `mcp serve` uses the
 shared daemon selection.
 
 The TUI follows the same selection order and keeps the selected socket and
-credential for API calls, SSE, and reconnects. `kata ui` opens a selected
+credential for API calls, SSE, and reconnects. `poomsae ui` opens a selected
 profile's own browser origin directly. The serving daemon's browser switcher
 omits home-bearing profiles and rejects requests naming them; URL catalog
 entries remain the supported browser gateway targets, and an outer catalog alias

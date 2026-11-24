@@ -11,10 +11,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/transcript"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/transcript"
 )
 
 // registerActionsHandlers installs POST /actions/close and /actions/reopen.
@@ -165,7 +165,7 @@ func registerActionsHandlers(humaAPI huma.API, cfg ServerConfig) {
 			if parentRef, cohort, refusal := CheckSiblingCloseThrottle(
 				ctx, cfg.DB, issue, actor, now, cfg.CloseThrottle.SiblingBurstWindow); refusal != nil {
 				// Dry-run is side-effect-free: surface the 429 but skip persisting
-				// an audit event so kata events --tail doesn't fill with would-be
+				// an audit event so poomsae events --tail doesn't fill with would-be
 				// refusals from validation probes.
 				if !in.Body.DryRun {
 					if err := emitThrottledEvent(ctx, cfg, issue, actor,

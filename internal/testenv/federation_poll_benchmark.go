@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv/sqlcount"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv/sqlcount"
 )
 
 // Federation poll benchmark shape: a hub with many projects, one polled
@@ -49,7 +49,7 @@ func BenchmarkFederationPoll(b *testing.B, store db.Storage) {
 		request.RemoteAddr = "100.64.0.9:41000"
 		request = request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey, &net.TCPAddr{IP: net.ParseIP("100.64.0.5"), Port: 7777}))
 		request.Header.Set("Authorization", "Bearer "+federationPollTokenSecret)
-		request.Header.Set("X-Kata-Event-Features", db.SupportedEventFeatures)
+		request.Header.Set("X-Poomsae-Event-Features", db.SupportedEventFeatures)
 		recorder := httptest.NewRecorder()
 		server.Handler().ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {

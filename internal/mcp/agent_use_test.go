@@ -14,6 +14,6 @@ func TestMCPObservesAdmittedCalls(t *testing.T) {
 		Client: inertTestClient(t), ProjectID: 42, ProjectName: "spoke-project", Actor: "example-agent", Version: "test-version",
 		ObserveToolCall: func() { calls.Add(1) },
 	})
-	_, _ = session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.load_issue_discovery", Arguments: map[string]any{}})
+	_, _ = session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.load_issue_discovery", Arguments: map[string]any{}})
 	require.EqualValues(t, 1, calls.Load())
 }

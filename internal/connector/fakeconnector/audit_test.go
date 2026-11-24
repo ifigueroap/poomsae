@@ -8,7 +8,7 @@ import (
 func TestAuditExternalSurfaceUsesSharedParameterValidation(t *testing.T) {
 	for _, call := range []Call{
 		{Method: "resolve_root", Params: jsontext.Value(`{"locator":7}`)},
-		{Method: "write_fields", Params: jsontext.Value(`{"root_key":"root-example","fields":{"field-example":{"kind":"null","kataOwnerId":"neutral-forbidden"}}}`)},
+		{Method: "write_fields", Params: jsontext.Value(`{"root_key":"root-example","fields":{"field-example":{"kind":"null","poomsaeOwnerId":"neutral-forbidden"}}}`)},
 	} {
 		current := State{Calls: []Call{call}}
 		if err := AuditExternalSurface(current, "root-example", nil, nil); err == nil {
@@ -20,7 +20,7 @@ func TestAuditExternalSurfaceUsesSharedParameterValidation(t *testing.T) {
 func TestAuditExternalSurfaceTreatsReadFieldSelectorsAsOpaque(t *testing.T) {
 	current := State{Calls: []Call{{
 		Method: "read_fields",
-		Params: jsontext.Value(`{"root_key":"root-example","field_ids":["root-short","prefix-01ARZ3NDEKTSV4RRFFQ69G5FAV-suffix","kataOwnerId"]}`),
+		Params: jsontext.Value(`{"root_key":"root-example","field_ids":["root-short","prefix-01ARZ3NDEKTSV4RRFFQ69G5FAV-suffix","poomsaeOwnerId"]}`),
 	}}}
 	if err := AuditExternalSurface(
 		current,

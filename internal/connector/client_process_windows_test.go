@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	"golang.org/x/sys/windows"
 )
 

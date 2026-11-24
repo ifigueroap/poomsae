@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 type closeRaceStore struct {
@@ -249,7 +249,7 @@ func TestClose_IdempotencyReplaysReceiptAfterMove(t *testing.T) {
 
 func TestClose_RejectsKeyWhenAnotherCloseWinsBeforeWrite(t *testing.T) {
 	database := openTestDB(t)
-	project, err := database.db.CreateProject(t.Context(), "kata")
+	project, err := database.db.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	issue, _, err := database.db.CreateIssue(t.Context(), db.CreateIssueParams{
 		ProjectID: project.ID, Title: "race", Author: "agent-one",
@@ -330,7 +330,7 @@ func TestClose_RecoversCommittedReceiptAndPublishesEventsOnce(t *testing.T) {
 		DB: store, StartedAt: database.now, Hooks: sink, Broadcaster: broadcaster, Telemetry: reporter,
 	})
 	path := issueURLRef(project.ID, issue.ShortID, "actions/close")
-	headers := map[string]string{"Idempotency-Key": "close-lost-response-1", "X-Kata-Surface": "cli"}
+	headers := map[string]string{"Idempotency-Key": "close-lost-response-1", "X-Poomsae-Surface": "cli"}
 	body := map[string]any{
 		"actor":          "agent-one",
 		"reason":         "wontfix",

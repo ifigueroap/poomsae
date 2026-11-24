@@ -8,13 +8,13 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     repositoryRoot,
     inheritedEnvironment: process.env,
   })
-  process.env.KATA_WEB_E2E_BINARY = runtime.binary
+  process.env.POOMSAE_WEB_E2E_BINARY = runtime.binary
 
   return async () => {
     try {
       await runtime.teardown()
     } finally {
-      delete process.env.KATA_WEB_E2E_BINARY
+      delete process.env.POOMSAE_WEB_E2E_BINARY
     }
   }
 }

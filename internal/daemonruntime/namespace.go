@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // Namespace bundles per-dbhash directories used by daemon runtime files and
@@ -20,25 +20,25 @@ import (
 type Namespace struct {
 	// DBHash is the 12-char hash of the resolved DB path.
 	DBHash string
-	// DataDir is <KataHome>/runtime/<dbhash>.
+	// DataDir is <PoomsaeHome>/runtime/<dbhash>.
 	DataDir string
-	// SocketDir is <XDG_RUNTIME_DIR>/kata/<dbhash> or a TMPDIR fallback.
+	// SocketDir is <XDG_RUNTIME_DIR>/poomsae/<dbhash> or a TMPDIR fallback.
 	SocketDir string
 }
 
-// NewNamespace resolves directories from $KATA_HOME, the effective DB DSN
-// (via config.KataDSN), $XDG_RUNTIME_DIR, and $TMPDIR. Directories are not
+// NewNamespace resolves directories from $POOMSAE_HOME, the effective DB DSN
+// (via config.PoomsaeDSN), $XDG_RUNTIME_DIR, and $TMPDIR. Directories are not
 // created — call EnsureDirs at startup.
 func NewNamespace() (*Namespace, error) {
-	dbPath, err := config.KataDSN(context.Background())
+	dbPath, err := config.PoomsaeDSN(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("resolve kata DSN: %w", err)
+		return nil, fmt.Errorf("resolve poomsae DSN: %w", err)
 	}
 	dataRoot, err := config.RuntimeDir()
 	if err != nil {
 		return nil, fmt.Errorf("resolve runtime dir: %w", err)
 	}
-	pgConfig, err := config.KataPostgresStorageConfig(context.Background())
+	pgConfig, err := config.PoomsaePostgresStorageConfig(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("resolve postgres storage config: %w", err)
 	}
@@ -55,17 +55,17 @@ func NewNamespace() (*Namespace, error) {
 
 // socketParent returns the per-dbhash socket directory, preferring
 // $XDG_RUNTIME_DIR and falling back to $TMPDIR (or os.TempDir) under
-// kata-<userTag>/<dbhash>. userTag is the numeric uid on Unix and a
+// poomsae-<userTag>/<dbhash>. userTag is the numeric uid on Unix and a
 // sanitized username on Windows (where Getuid is meaningless).
 func socketParent(dbhash string) string {
 	if v := os.Getenv("XDG_RUNTIME_DIR"); v != "" {
-		return filepath.Join(v, "kata", dbhash)
+		return filepath.Join(v, "poomsae", dbhash)
 	}
 	tmp := os.Getenv("TMPDIR")
 	if tmp == "" {
 		tmp = os.TempDir()
 	}
-	return filepath.Join(tmp, "kata-"+userTag(), dbhash)
+	return filepath.Join(tmp, "poomsae-"+userTag(), dbhash)
 }
 
 // EnsureDirs materializes DataDir (0700) and SocketDir (0700).

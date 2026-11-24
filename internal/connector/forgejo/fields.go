@@ -6,7 +6,7 @@ import (
 	"time"
 
 	forgejosdk "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 func descriptors() []connector.FieldDescriptor {

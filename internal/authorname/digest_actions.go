@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // actionOrder lists the token kinds in the daemon's renderActions order

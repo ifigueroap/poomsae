@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 )
 
 // maxEventsBodyBytes bounds the body the Mcp-Name guard buffers. Events

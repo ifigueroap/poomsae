@@ -1,0 +1,451 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/spf13/cobra"
+	"go.kenn.io/kit/atomicfile"
+)
+
+func newImportCmd() *cobra.Command {
+	var input string
+	var target string
+	var force bool
+	var newInstance bool
+	var asStandalone bool
+	var merge bool
+	var sourceFormat string
+	cmd := &cobra.Command{
+		Use:   "import",
+		Short: "import a poomsae database export",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			format, err := resolveImportSourceFormat(cmd, sourceFormat)
+			if err != nil {
+				return err
+			}
+			switch strings.TrimSpace(format) {
+			case "", "poomsae":
+				return runKataJSONLImport(cmd, input, target, force, newInstance, merge, asStandalone)
+			case "beads":
+				if err := validateBeadsImportFlags(cmd); err != nil {
+					return err
+				}
+				return runBeadsImport(cmd)
+			default:
+				return &cliError{
+					Message:  fmt.Sprintf("unsupported import format %q", format),
+					Kind:     kindValidation,
+					ExitCode: ExitValidation,
+				}
+			}
+		},
+	}
+	cmd.Flags().StringVar(&sourceFormat, "source-format", "poomsae", "import source format (poomsae or beads)")
+	cmd.Flags().StringVar(&input, "input", "", "path to JSONL export")
+	cmd.Flags().StringVar(&target, "target", "", "SQLite database path or Postgres DSN to create or merge into")
+	cmd.Flags().BoolVar(&force, "force", false, "replace existing target database")
+	cmd.Flags().BoolVar(&newInstance, "new-instance", false,
+		"keep the target database's new identity instead of reusing the source identity; useful when restoring into a separate copy")
+	cmd.Flags().BoolVar(&merge, "merge", false,
+		"merge one project snapshot into an existing target database")
+	cmd.Flags().BoolVar(&asStandalone, "as-standalone", false,
+		"create an independent copy without source connections, credentials, or claims")
+	return cmd
+}
+
+func resolveImportSourceFormat(cmd *cobra.Command, sourceFormat string) (string, error) {
+	// During the import flag migration, root --format values human|json|agent
+	// select output mode, while poomsae|beads are temporary legacy import source
+	// values. The sets are intentionally disjoint so this fallback can be
+	// removed after the deprecation window without ambiguity.
+	legacy := legacyImportSourceFormat()
+	if isImportLegacySourceFormat(legacy) {
+		if cmd.Flags().Changed("source-format") {
+			return "", &cliError{
+				Message:  fmt.Sprintf("--format %s cannot be combined with --source-format; use --source-format only", legacy),
+				Kind:     kindUsage,
+				ExitCode: ExitUsage,
+			}
+		}
+		return legacy, nil
+	}
+	return strings.TrimSpace(sourceFormat), nil
+}
+
+func legacyImportSourceFormat() string {
+	for _, format := range flags.Sel.formats {
+		format = strings.TrimSpace(format)
+		if isImportLegacySourceFormat(format) {
+			return format
+		}
+	}
+	// No legacy value: fall back to the last --format occurrence, which is what
+	// the removed singular format field held. The caller only acts on a legacy
+	// value, so a non-legacy string here is inert.
+	if n := len(flags.Sel.formats); n > 0 {
+		return strings.TrimSpace(flags.Sel.formats[n-1])
+	}
+	return ""
+}
+
+func validateBeadsImportFlags(cmd *cobra.Command) error {
+	for _, name := range []string{"input", "target", "force", "new-instance", "merge", "as-standalone"} {
+		if cmd.Flags().Changed(name) {
+			return &cliError{
+				Message:  fmt.Sprintf("--%s is not supported with --source-format beads", name),
+				Kind:     kindValidation,
+				ExitCode: ExitValidation,
+			}
+		}
+	}
+	return nil
+}
+
+func runKataJSONLImport(cmd *cobra.Command, input, target string, force, newInstance, merge, asStandalone bool) error {
+	if asStandalone && force {
+		return &cliError{Message: "--as-standalone cannot be combined with --force", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if asStandalone && merge {
+		return &cliError{Message: "--as-standalone cannot be combined with --merge", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if merge && force {
+		return &cliError{Message: "--force cannot be combined with --merge", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if merge && newInstance {
+		return &cliError{Message: "--new-instance cannot be combined with --merge", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if input == "" {
+		return &cliError{Message: "import requires --input", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if target == "" {
+		return &cliError{Message: "import requires --target", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	if err := refuseRunningDaemonWithMessage(cmd.Context(),
+		"daemon is running for this database; stop it before importing"); err != nil {
+		return err
+	}
+	backend, err := storeopen.BackendForDSN(target)
+	if err != nil {
+		return err
+	}
+	if backend == storeopen.BackendPostgres {
+		if merge {
+			return runPostgresJSONLMerge(cmd, input, target)
+		}
+		return runPostgresJSONLImport(cmd, input, target, force, newInstance, asStandalone)
+	}
+	if merge {
+		return runSQLiteJSONLMerge(cmd, input, target)
+	}
+	// Remember whether the main file existed before opening the input. Force
+	// authorizes replacement of that target, not a concurrently created one.
+	_, mainErr := os.Stat(target)
+	mainExists := mainErr == nil
+	if mainErr != nil && !errors.Is(mainErr, os.ErrNotExist) {
+		return fmt.Errorf("stat import target: %w", mainErr)
+	}
+	targetExists, err := sqliteFileSetExists(target)
+	if err != nil {
+		return fmt.Errorf("stat import target: %w", err)
+	}
+	if targetExists && !force {
+		if asStandalone {
+			return &cliError{Message: "standalone copy requires a fresh target; choose another --target", Kind: kindValidation, ExitCode: ExitValidation}
+		}
+		return &cliError{
+			Message:  "target already exists; pass --force to replace it",
+			Kind:     kindValidation,
+			ExitCode: ExitValidation,
+		}
+	}
+	if force && targetExists && !mainExists {
+		return fmt.Errorf("target appeared or has orphan SQLite sidecars; recover that file set or choose a fresh destination")
+	}
+	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
+	if err != nil {
+		return fmt.Errorf("open import input: %w", err)
+	}
+	defer func() { _ = in.Close() }()
+	tmpTarget, cleanupTmp, err := prepareImportTempTarget(target)
+	if err != nil {
+		return err
+	}
+	installed := false
+	defer func() {
+		if !installed {
+			cleanupTmp()
+		}
+	}()
+	d, err := storeopen.Open(cmd.Context(), tmpTarget)
+	if err != nil {
+		return err
+	}
+	if err := jsonl.ImportWithOptions(cmd.Context(), in, d, jsonl.ImportOptions{
+		RequireFreshTarget: true,
+		NewInstance:        newInstance,
+		AsStandalone:       asStandalone,
+	}); err != nil {
+		_ = d.Close()
+		return err
+	}
+	if err := d.Close(); err != nil {
+		return fmt.Errorf("close import target: %w", err)
+	}
+	if err := installPreparedSQLiteImport(cmd.Context(), tmpTarget, target, force && mainExists); err != nil {
+		return err
+	}
+	installed = true
+	return writeImportSuccess(cmd, target)
+}
+
+func runSQLiteJSONLMerge(cmd *cobra.Command, input, target string) error {
+	if _, err := os.Stat(target); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &cliError{Message: "merge target does not exist", Kind: kindValidation, ExitCode: ExitValidation}
+		}
+		return fmt.Errorf("stat merge target: %w", err)
+	}
+	version, err := storeopen.PeekSchemaVersion(cmd.Context(), target)
+	if err != nil {
+		return fmt.Errorf("inspect merge target: %w", err)
+	}
+	if version == 0 {
+		return &cliError{Message: "merge target is not initialized", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
+	if err != nil {
+		return fmt.Errorf("open import input: %w", err)
+	}
+	defer func() { _ = in.Close() }()
+	store, err := storeopen.Open(cmd.Context(), target)
+	if err != nil {
+		return err
+	}
+	if err := jsonl.ImportWithOptions(cmd.Context(), in, store, jsonl.ImportOptions{MergeProject: true}); err != nil {
+		_ = store.Close()
+		return err
+	}
+	if err := store.Close(); err != nil {
+		return fmt.Errorf("close merge target: %w", err)
+	}
+	return writeImportSuccess(cmd, target)
+}
+
+func runPostgresJSONLMerge(cmd *cobra.Command, input, target string) error {
+	identity, err := config.CanonicalDSNIdentity(target)
+	if err != nil {
+		return err
+	}
+	pgConfig, err := postgresRestoreConfig(cmd.Context())
+	if err != nil {
+		return err
+	}
+	version, err := pgstore.PeekSchemaVersionWithConfig(cmd.Context(), target, pgConfig)
+	if err != nil {
+		return err
+	}
+	if version == 0 {
+		return &cliError{Message: "merge target does not exist", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
+	if err != nil {
+		return fmt.Errorf("open import input: %w", err)
+	}
+	defer func() { _ = in.Close() }()
+	store, err := pgstore.OpenWithConfig(cmd.Context(), target, pgConfig)
+	if err != nil {
+		return err
+	}
+	if err := jsonl.ImportWithOptions(cmd.Context(), in, store, jsonl.ImportOptions{MergeProject: true}); err != nil {
+		_ = store.Close()
+		return err
+	}
+	if err := store.Close(); err != nil {
+		return fmt.Errorf("close merge target: %w", err)
+	}
+	return writeImportSuccess(cmd, identity)
+}
+
+func runPostgresJSONLImport(cmd *cobra.Command, input, target string, force, newInstance, asStandalone bool) error {
+	identity, err := config.CanonicalDSNIdentity(target)
+	if err != nil {
+		return err
+	}
+	pgConfig, err := postgresRestoreConfig(cmd.Context())
+	if err != nil {
+		return err
+	}
+	version, err := pgstore.PeekSchemaVersionWithConfig(cmd.Context(), target, pgConfig)
+	if err != nil {
+		return err
+	}
+	if version != 0 && !force {
+		if asStandalone {
+			return &cliError{Message: "standalone copy requires a fresh target; choose another --target", Kind: kindValidation, ExitCode: ExitValidation}
+		}
+		return &cliError{
+			Message:  "target already exists; pass --force to replace it",
+			Kind:     kindValidation,
+			ExitCode: ExitValidation,
+		}
+	}
+	in, err := os.Open(input) //nolint:gosec // import path is user-provided CLI input
+	if err != nil {
+		return fmt.Errorf("open import input: %w", err)
+	}
+	defer func() { _ = in.Close() }()
+	store, err := pgstore.OpenWithConfig(cmd.Context(), target, pgConfig)
+	if err != nil {
+		return err
+	}
+	installedFreshSchema := store.InstalledFreshSchema()
+	instanceUID := store.InstanceUID()
+	if err := jsonl.ImportWithOptions(cmd.Context(), in, store, jsonl.ImportOptions{
+		RequireFreshTarget: version == 0,
+		NewInstance:        newInstance,
+		AsStandalone:       asStandalone,
+	}); err != nil {
+		_ = store.Close()
+		if installedFreshSchema {
+			return errors.Join(err, removeFreshPostgresTargetAfterFailure(
+				cmd.Context(), target, instanceUID, pgConfig,
+			))
+		}
+		return err
+	}
+	if err := store.Close(); err != nil {
+		return fmt.Errorf("close import target: %w", err)
+	}
+	return writeImportSuccess(cmd, identity)
+}
+
+func postgresRestoreConfig(ctx context.Context) (pgstore.Config, error) {
+	storageConfig, err := config.PoomsaePostgresStorageConfig(ctx)
+	if err != nil {
+		return pgstore.Config{}, err
+	}
+	pgConfig := pgstore.ConfigFromValues(
+		storageConfig.Schema, storageConfig.Mode, storageConfig.SchemaOwner,
+		storageConfig.AllowInsecure,
+	)
+	// Import is an explicit offline schema-owner operation. It must prepare a
+	// fresh target even when the long-running runtime is validation-only.
+	pgConfig.SchemaMode = pgstore.SchemaModeBootstrap
+	return pgConfig, nil
+}
+
+func removeFreshPostgresTargetAfterFailure(
+	parent context.Context,
+	target, instanceUID string,
+	pgConfig pgstore.Config,
+) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
+	defer cancel()
+	return pgstore.RemoveFreshSchemaWithConfig(ctx, target, instanceUID, pgConfig)
+}
+
+func writeImportSuccess(cmd *cobra.Command, target string) error {
+	if flags.Quiet || currentOutputMode() == outputJSON {
+		return nil
+	}
+	var err error
+	switch currentOutputMode() {
+	case outputAgent:
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "OK import source_format=poomsae target=%s\n", agentValue(target))
+	default:
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "imported %s\n", target)
+	}
+	return err
+}
+
+func prepareImportTempTarget(target string) (string, func(), error) {
+	dir := filepath.Dir(target)
+	base := filepath.Base(target)
+	f, err := os.CreateTemp(dir, "."+base+".import-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("create import target: %w", err)
+	}
+	tmpTarget := f.Name()
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpTarget) //nolint:gosec // tmpTarget comes from os.CreateTemp above.
+		return "", nil, fmt.Errorf("close import target placeholder: %w", err)
+	}
+	_ = removeSQLiteFileSetMain(tmpTarget)
+	return tmpTarget, func() { _ = removeSQLiteFileSetMain(tmpTarget) }, nil
+}
+
+func installImportedTarget(tmpTarget, target string) error {
+	targetExists, err := sqliteFileSetExists(target)
+	if err != nil {
+		return fmt.Errorf("stat import target before install: %w", err)
+	}
+	if targetExists {
+		return fmt.Errorf("target already exists; refusing to overwrite a destination that appeared during import")
+	}
+	if _, err := moveSQLiteFileSet(tmpTarget, target); err != nil {
+		return fmt.Errorf("install import target: %w", err)
+	}
+	return nil
+}
+
+func moveSQLiteFileSet(from, to string) (bool, error) {
+	moved := make([]string, 0, 3)
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		src := from + suffix
+		dst := to + suffix
+		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return len(moved) > 0, fmt.Errorf("stat %s: %w", src, err)
+		}
+		if err := atomicfile.RenameNoReplace(src, dst); err != nil {
+			var rollbackErr error
+			for _, m := range slices.Backward(moved) {
+				oldSrc := to + m
+				oldDst := from + m
+				if err := atomicfile.RenameNoReplace(oldSrc, oldDst); err != nil {
+					rollbackErr = errors.Join(rollbackErr, fmt.Errorf("rollback %s: %w", m, err))
+				}
+			}
+			return len(moved) > 0, errors.Join(fmt.Errorf("rename %s: %w", suffix, err), rollbackErr)
+		}
+		moved = append(moved, suffix)
+	}
+	return len(moved) > 0, nil
+}
+
+func sqliteFileSetExists(path string) (bool, error) {
+	for _, name := range sqliteFileSetPaths(path) {
+		if _, err := os.Stat(name); err == nil { //nolint:gosec // path is an explicit import target or temp/backup path, plus SQLite sidecars.
+			return true, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+func removeSQLiteFileSetMain(path string) error {
+	var out error
+	for _, name := range sqliteFileSetPaths(path) {
+		if err := os.Remove(name); err != nil && !os.IsNotExist(err) { //nolint:gosec // path is os.CreateTemp output or a suffix of explicit --target for import replacement.
+			out = errors.Join(out, err)
+		}
+	}
+	return out
+}
+
+func sqliteFileSetPaths(path string) []string {
+	return []string{path, path + "-wal", path + "-shm"}
+}

@@ -32,7 +32,7 @@
   {minPrimary}
   {minSecondary}
   {responsiveBreakpoint}
-  ariaLabel="Resize Kata panes"
+  ariaLabel="Resize Poomsae panes"
   {onResize}
   bind:secondaryBeside
   secondary={showSecondary ? secondary : undefined}

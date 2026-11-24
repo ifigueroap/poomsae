@@ -1,7 +1,7 @@
-// Package client exposes the generated kata daemon API client with constructors
-// that match kata's existing daemon transport and authentication modes.
+// Package client exposes the generated poomsae daemon API client with constructors
+// that match poomsae's existing daemon transport and authentication modes.
 //
-// Use Discover to reach the daemon the kata CLI would use, or pass an explicit
+// Use Discover to reach the daemon the poomsae CLI would use, or pass an explicit
 // endpoint to a constructor. Endpoints are HTTP(S) origins or unix:///path
 // Unix sockets.
 //
@@ -19,11 +19,11 @@ import (
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
 
-	internalclient "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	internalclient "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
-// Client is a typed kata daemon API client generated from the Huma OpenAPI
+// Client is a typed poomsae daemon API client generated from the Huma OpenAPI
 // contract.
 type Client struct {
 	*generated.Client
@@ -69,7 +69,7 @@ type options struct {
 	requestEditors []runtime.RequestEditorFn
 }
 
-// Option customizes a typed kata client.
+// Option customizes a typed poomsae client.
 type Option func(*options)
 
 // WithHTTPClient uses the supplied HTTP client. It is intended for tests or
@@ -112,7 +112,7 @@ func WithTrustedActor(header, actor string) Option {
 
 // New creates a client using http.DefaultClient and no bearer-token
 // configuration. Use NewWithGlobalAuth, NewWithBearer, or NewForTarget when
-// the daemon endpoint requires kata auth.
+// the daemon endpoint requires poomsae auth.
 func New(baseURL string, opts ...Option) (*Client, error) {
 	merged := collectOptions(opts...)
 	if socket, ok, err := internalclient.UnixSocketPath(baseURL); err != nil {
@@ -131,8 +131,8 @@ func NewWithHTTPClient(baseURL string, httpClient *http.Client, opts ...Option) 
 	return newGeneratedClient(baseURL, merged)
 }
 
-// NewWithGlobalAuth creates a client using kata's global auth resolution:
-// KATA_AUTH_TOKEN, [auth].token, trust_private_network, remote allow_insecure,
+// NewWithGlobalAuth creates a client using poomsae's global auth resolution:
+// POOMSAE_AUTH_TOKEN, [auth].token, trust_private_network, remote allow_insecure,
 // and Unix-socket transport behavior match the first-party CLI/TUI path.
 func NewWithGlobalAuth(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	merged := collectOptions(opts...)
@@ -154,7 +154,7 @@ func NewWithGlobalAuth(ctx context.Context, baseURL string, opts ...Option) (*Cl
 }
 
 // NewWithBearer creates a client using an explicit bearer token while still
-// honoring kata's configured trust_private_network and remote allow_insecure
+// honoring poomsae's configured trust_private_network and remote allow_insecure
 // behavior.
 func NewWithBearer(ctx context.Context, baseURL, token string, opts ...Option) (*Client, error) {
 	merged := collectOptions(opts...)

@@ -32,7 +32,7 @@ Apply these checks to every new or modified test:
    - A no-assertion test is acceptable only when the failure mode is the subject, such as "this constructor rejects invalid input." Prefer explicit assertions anyway.
 
 2. **Prefer real collaborators over doubles**
-   - This repo is built for it: `internal/testenv.New(t)` boots a real daemon over loopback TCP with a real SQLite store; `internal/testfix` provides real git repos and `.kata.toml` fixtures. Use them instead of hand-rolled fakes of the storage or daemon layers.
+   - This repo is built for it: `internal/testenv.New(t)` boots a real daemon over loopback TCP with a real SQLite store; `internal/testfix` provides real git repos and `.poomsae.toml` fixtures. Use them instead of hand-rolled fakes of the storage or daemon layers.
    - Reserve fakes for genuinely external boundaries (a remote hub, GitHub, an embedding provider) and for the TUI's client seam.
 
 3. **Make fakes specific**
@@ -84,7 +84,7 @@ Use the narrowest test that can catch the break. The ladder in this repo:
 
 - **Package unit tests** next to the code, often against a real in-memory/temp SQLite store. Cheapest; use for domain logic, parsing, folding, ordering.
 - **`internal/testenv` integration tests**: real daemon + HTTP client + DB per test. Use when the behavior spans handler ↔ store ↔ events, or depends on daemon config (`testenv.Option`s like auth or close-throttle).
-- **`cmd/kata` CLI tests**: assert user-visible output, exit codes, and written files — the CLI is a public contract.
+- **`cmd/poomsae` CLI tests**: assert user-visible output, exit codes, and written files — the CLI is a public contract.
 - **`e2e/`**: full workflows over HTTP (lifecycle, federation, hooks, remote-client). Keep them non-tautological: assert the workflow result, stored state, or API contract, not just that nothing crashed. Respect `-short` for slow ones.
 - **TUI golden snapshots** (`internal/tui`, `-update-goldens`): freeze time and color mode as the harness does; treat golden diffs as contract changes to review, not noise to regenerate.
 - **rapid property/stress tests** for invariants under generated inputs (see the federation stress harness).

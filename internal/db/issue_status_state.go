@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // IssueStatusState is private to an import identity. Desired status and order

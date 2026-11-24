@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/twentysync"
 )
 
 type runtimeTwentyFetcher struct {
@@ -106,7 +106,7 @@ func TestServiceTwentyScheduledProgress(t *testing.T) {
 func TestServiceTwentyConfigAndExplicitCredentials(t *testing.T) {
 	_, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "bad.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TwentySync: TwentySyncConfig{APIOrigin: "http://twenty.example"}})
 	require.ErrorContains(t, err, "twenty_sync.api_origin")
-	t.Setenv("KATA_PLANE_TOKEN", "unrelated-example-secret")
+	t.Setenv("POOMSAE_PLANE_TOKEN", "unrelated-example-secret")
 	t.Setenv("EXAMPLE_PLANE_TOKEN", "")
 	s, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, TwentySync: TwentySyncConfig{TokenEnv: "EXAMPLE_PLANE_TOKEN"}})
 	require.NoError(t, err)

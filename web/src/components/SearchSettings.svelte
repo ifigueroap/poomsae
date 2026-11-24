@@ -40,8 +40,8 @@
   const pollMs = 2000
   const restartWaitMs = 120_000
   const reopenGuidance =
-    'After restart, run kata ui to reopen. If this server uses a custom home, set KATA_HOME to it first.'
-  const recoveryGuidance = 'Run kata daemon status, then reopen kata ui.'
+    'After restart, run poomsae ui to reopen. If this server uses a custom home, set POOMSAE_HOME to it first.'
+  const recoveryGuidance = 'Run poomsae daemon status, then reopen poomsae ui.'
   // Ollama shows its status only; switching to the built-in server comes later.
   // The section already says Search by meaning, so the row names its status.
   const labels = { name: 'Status', keepsIndex: '', indexing: 'Preparing {done} of {total} {items}' }
@@ -88,7 +88,7 @@
           ? originStable
             ? ''
             : reopenGuidance
-          : 'Restart the server to finish: run kata daemon restart. If this server uses a custom home, set KATA_HOME to it first.',
+          : 'Restart the server to finish: run poomsae daemon restart. If this server uses a custom home, set POOMSAE_HOME to it first.',
   })
   let failure = $derived(
     requestError ??
@@ -185,16 +185,16 @@
         restartDeadline = 0
         posts++
         if (next.can_restart && !next.job?.error)
-          requestError = "Couldn't confirm restart. Try again or run kata daemon restart."
+          requestError = "Couldn't confirm restart. Try again or run poomsae daemon restart."
       }
       status = next
     }
     if (restartPending && !next?.can_restart && Date.now() >= restartDeadline) {
       requestError = remoteHost
-        ? `Couldn't reconnect. Run kata daemon status on ${remoteHost}.`
+        ? `Couldn't reconnect. Run poomsae daemon status on ${remoteHost}.`
         : originStable
           ? `Couldn't reconnect. ${recoveryGuidance}`
-          : "Couldn't reconnect. Run kata daemon status."
+          : "Couldn't reconnect. Run poomsae daemon status."
     }
     loading = false
     poll()
@@ -228,7 +228,7 @@
       })
       if (post === posts && !response.ok) {
         restartDeadline = 0
-        requestError = "Couldn't restart the daemon. Try again or run kata daemon restart."
+        requestError = "Couldn't restart the daemon. Try again or run poomsae daemon restart."
       }
     } catch {
       // A lost response can mean the daemon is restarting.
@@ -295,7 +295,7 @@
         {/if}
         {#if indexingFailed}
           <Notice variant="inline" live tone="warning" icon={warningIcon}>
-            Couldn't prepare some tasks. Kata keeps trying; run <code>kata health --json</code> for details.
+            Couldn't prepare some tasks. Poomsae keeps trying; run <code>poomsae health --json</code> for details.
           </Notice>
         {/if}
       </div>

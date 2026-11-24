@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestSyncFederationInterruptedLeaveDoesNotBlockUnrelatedPush(t *testing.T) {

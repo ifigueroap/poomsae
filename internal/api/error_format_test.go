@@ -1,4 +1,4 @@
-// Internal tests for Kata's Huma error conversion.
+// Internal tests for Poomsae's Huma error conversion.
 //
 //nolint:revive // package-name lint flagged externally; internal test needs the package name
 package api

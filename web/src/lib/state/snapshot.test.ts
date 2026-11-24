@@ -224,8 +224,8 @@ describe('SnapshotController', () => {
 
 describe('snapshotIntentForRoute', () => {
   it('includes the browser timezone for non-calendar collections', () => {
-    const route = parseRoute(new URL('https://daemon.example/kata?view=all-open'))
-    if (route.kind === 'route-error') throw new Error('expected a Kata route')
+    const route = parseRoute(new URL('https://daemon.example/poomsae?view=all-open'))
+    if (route.kind === 'route-error') throw new Error('expected a Poomsae route')
 
     const intent = snapshotIntentForRoute(
       route,
@@ -239,12 +239,12 @@ describe('snapshotIntentForRoute', () => {
 
   it('loads Inbox, Scheduled, and the landing route from the all-open collection', () => {
     for (const url of [
-      'https://daemon.example/kata',
-      'https://daemon.example/kata?view=inbox',
-      'https://daemon.example/kata?view=scheduled',
+      'https://daemon.example/poomsae',
+      'https://daemon.example/poomsae?view=inbox',
+      'https://daemon.example/poomsae?view=scheduled',
     ]) {
       const route = parseRoute(new URL(url))
-      if (route.kind === 'route-error') throw new Error('expected a Kata route')
+      if (route.kind === 'route-error') throw new Error('expected a Poomsae route')
 
       const intent = snapshotIntentForRoute(route, new Date('2026-09-01T00:30:00Z'), 'UTC')
 
@@ -255,8 +255,8 @@ describe('snapshotIntentForRoute', () => {
   })
 
   it('keeps Today on the calendar collection with the browser date', () => {
-    const route = parseRoute(new URL('https://daemon.example/kata?view=today'))
-    if (route.kind === 'route-error') throw new Error('expected a Kata route')
+    const route = parseRoute(new URL('https://daemon.example/poomsae?view=today'))
+    if (route.kind === 'route-error') throw new Error('expected a Poomsae route')
 
     const intent = snapshotIntentForRoute(
       route,
@@ -273,7 +273,7 @@ describe('snapshotIntentForRoute', () => {
     (view) => {
       const route = parseRoute(
         new URL(
-          `https://daemon.example/kata?view=${view}&issue=01HZNQ7VFPK1XGD8R5MABCD4EX&owner=private-actor`,
+          `https://daemon.example/poomsae?view=${view}&issue=01HZNQ7VFPK1XGD8R5MABCD4EX&owner=private-actor`,
         ),
       )
       if (route.kind === 'route-error') throw new Error('expected credentials route')

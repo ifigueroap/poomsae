@@ -15,11 +15,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
@@ -200,7 +200,7 @@ func TestReopenFromListAndDetailPromptsBeforeDeliveringBacklog(t *testing.T) {
 			view := stripANSI(renderConfirmModal(m.modal, m.reopenPrompt))
 			require.Contains(t, view, "Reopen #abcd?")
 			require.Contains(t, view, "3 recurring child")
-			require.Contains(t, view, "kata cron job update")
+			require.Contains(t, view, "poomsae cron job update")
 			require.NotContains(t, view, "latest", "the prompt informs without steering catch-up")
 
 			m, cmd = updateModel(m, runeKey('y'))
@@ -321,7 +321,7 @@ func TestUndoCloseConfirmsBacklogBeforeReopening(t *testing.T) {
 	require.False(t, m.undoInFlight)
 	view := stripANSI(renderConfirmModal(m.modal, m.reopenPrompt))
 	require.Contains(t, view, "5 recurring child")
-	require.Contains(t, view, "kata cron job update")
+	require.Contains(t, view, "poomsae cron job update")
 
 	m, cmd = updateModel(m, runeKey('y'))
 	require.NotNil(t, cmd)

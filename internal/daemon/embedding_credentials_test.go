@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 func TestMissingEmbeddingCredentialPreservesBacklogAndExplainsSearch(t *testing.T) {

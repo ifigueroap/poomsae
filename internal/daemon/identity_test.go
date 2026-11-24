@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // TestPrincipalKind_TrustedProxyConstants locks the values of the two
@@ -98,12 +98,12 @@ func TestTUIBypassAllowed_RequiresOwnerLocalTransport(t *testing.T) {
 	}{
 		{
 			name: "unix socket",
-			addr: &net.UnixAddr{Name: "/run/user/1000/kata.sock", Net: "unix"},
+			addr: &net.UnixAddr{Name: "/run/user/1000/poomsae.sock", Net: "unix"},
 			want: true,
 		},
 		{
 			name:    "forwarded unix socket",
-			addr:    &net.UnixAddr{Name: "/run/user/1000/kata.sock", Net: "unix"},
+			addr:    &net.UnixAddr{Name: "/run/user/1000/poomsae.sock", Net: "unix"},
 			headers: map[string]string{"Forwarded": "for=192.0.2.10"},
 			want:    false,
 		},

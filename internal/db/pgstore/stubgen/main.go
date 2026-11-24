@@ -469,7 +469,7 @@ func Generate(storagePath string) ([]byte, error) {
 			fmt.Fprintf(&buf, "\t%q\n", importPath)
 		}
 	}
-	buf.WriteString("\n\t\"go.kenn.io/kata/internal/db\"\n)\n\n")
+	buf.WriteString("\n\t\"github.com/ifigueroap/poomsae/internal/db\"\n)\n\n")
 	buf.WriteString(fileHeaderSuffix)
 	buf.Write(stubs.Bytes())
 

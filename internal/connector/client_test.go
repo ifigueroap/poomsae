@@ -18,14 +18,14 @@ import (
 	"testing/synctest"
 	"time"
 
-	// Embed zones as the kata binary does: trimmed test binaries cannot
+	// Embed zones as the poomsae binary does: trimmed test binaries cannot
 	// fall back to the Go installation's copy.
 	_ "time/tzdata"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	protocol "github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	protocol "go.kenn.io/kata/pkg/connector"
 )
 
 func TestProcessClientPassesOneRequestAndOnlyAllowedEnvironment(t *testing.T) {
@@ -1047,8 +1047,8 @@ func TestProcessClientReportsProtocolViolationWhenDescendantHoldsStdout(t *testi
 }
 
 func TestReceivedProtocolViolationOnlyTrustsCompleteResponses(t *testing.T) {
-	const wrongID = `{"protocol":"kata.connector.v1","id":"other","result":{"connector_id":"fake.connector"}}`
-	const valid = `{"protocol":"kata.connector.v1","id":"request-1","result":{"connector_id":"fake.connector","display_name":"Fake","protocol":"kata.connector.v1","capabilities":[],"account_identity":"account-1"}}`
+	const wrongID = `{"protocol":"poomsae.connector.v1","id":"other","result":{"connector_id":"fake.connector"}}`
+	const valid = `{"protocol":"poomsae.connector.v1","id":"request-1","result":{"connector_id":"fake.connector","display_name":"Fake","protocol":"poomsae.connector.v1","capabilities":[],"account_identity":"account-1"}}`
 	for _, tt := range []struct {
 		name          string
 		output        string
@@ -1490,7 +1490,7 @@ func serveProcessClientHelper() {
 	case "invalid-utf8":
 		_, _ = fmt.Fprintf(os.Stdout, `{"protocol":%q,"id":%q,"result":{"connector_id":"fake`, protocol.ProtocolVersion, request.ID)
 		_, _ = os.Stdout.Write([]byte{0xff})
-		_, _ = os.Stdout.WriteString(`connector","display_name":"Fake","protocol":"kata.connector.v1","capabilities":[],"account_identity":"account-1"}}`)
+		_, _ = os.Stdout.WriteString(`connector","display_name":"Fake","protocol":"poomsae.connector.v1","capabilities":[],"account_identity":"account-1"}}`)
 		return
 	case "require-empty-settings":
 		if string(request.Settings) != `{}` {
@@ -1499,7 +1499,7 @@ func serveProcessClientHelper() {
 		}
 		response.Result = describeResult()
 	case "invalid-utf8-result":
-		_, _ = os.Stdout.Write([]byte("{\"protocol\":\"kata.connector.v1\",\"id\":\"" + request.ID + "\",\"result\":{\"display_name\":\""))
+		_, _ = os.Stdout.Write([]byte("{\"protocol\":\"poomsae.connector.v1\",\"id\":\"" + request.ID + "\",\"result\":{\"display_name\":\""))
 		_, _ = os.Stdout.Write([]byte{0xff})
 		_, _ = os.Stdout.WriteString("\"}}")
 		return

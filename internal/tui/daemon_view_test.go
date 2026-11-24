@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	clientpkg "go.kenn.io/kata/internal/client"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
@@ -78,7 +78,7 @@ func TestDaemonView_RenderIncludesDaemonRows(t *testing.T) {
 
 	out := stripANSI(renderDaemons(m))
 
-	assertContains(t, out, "kata / daemons", "missing daemon view title")
+	assertContains(t, out, "poomsae / daemons", "missing daemon view title")
 	assertContains(t, out, "local", "missing local daemon")
 	assertContains(t, out, "shared", "missing shared daemon")
 	assertContains(t, out, "daemon.internal:7777", "missing endpoint host")
@@ -510,7 +510,7 @@ func setupDaemonViewSource() Model {
 		{Name: "shared", URL: "http://daemon.internal:7777", resolved: clientpkg.ResolvedDaemon{
 			Token: "tok", AllowInsecure: true,
 		}},
-		{Name: "prod", URL: "https://kata.example.test"},
+		{Name: "prod", URL: "https://poomsae.example.test"},
 	}
 	return m
 }

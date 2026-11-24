@@ -119,15 +119,15 @@ stale_docs="docs/zensical-public-docs.XXXXXX"
 vercel_docs_root=""
 missing_assets_docs_root=""
 docs_local_sentinels=(
-  "docs/.cache/kata-docs-build-check"
-  "docs/guide/kata-docs-build-check.out"
-  "docs/guide/kata-docs-build-check~"
-  "docs/guide/.kata-build-check/.kata.local.toml"
+  "docs/.cache/poomsae-docs-build-check"
+  "docs/guide/poomsae-docs-build-check.out"
+  "docs/guide/poomsae-docs-build-check~"
+  "docs/guide/.poomsae-build-check/.poomsae.local.toml"
 )
 cleanup_check_docs() {
   rm -rf "$stale_config" "$stale_docs"
   rm -f "${docs_local_sentinels[@]}"
-  rmdir docs/guide/.kata-build-check docs/.cache 2>/dev/null || true
+  rmdir docs/guide/.poomsae-build-check docs/.cache 2>/dev/null || true
   if [[ -n "$vercel_docs_root" ]]; then
     rm -rf "$vercel_docs_root"
   fi
@@ -199,20 +199,20 @@ tar -xf "$vercel_docs_root/docs.tar" -C "$vercel_docs_root/docs"
 (cd docs && python3 scripts/check_public_markdown_sources.py)
 
 for generated in \
-  docs/site/.cache/kata-docs-build-check \
+  docs/site/.cache/poomsae-docs-build-check \
   docs/site/.env.local \
   docs/site/.vercel \
   docs/site/federation/index.html \
-  docs/site/docs/.cache/kata-docs-build-check \
+  docs/site/docs/.cache/poomsae-docs-build-check \
   docs/site/docs/federation/index.html \
-  docs/site/docs/guide/.kata-build-check/.kata.local.toml \
-  docs/site/docs/guide/kata-docs-build-check.out \
-  docs/site/docs/guide/kata-docs-build-check~ \
+  docs/site/docs/guide/.poomsae-build-check/.poomsae.local.toml \
+  docs/site/docs/guide/poomsae-docs-build-check.out \
+  docs/site/docs/guide/poomsae-docs-build-check~ \
   docs/site/docs/hosted-mode/index.html \
   docs/site/docs/superpowers \
-  docs/site/guide/.kata-build-check/.kata.local.toml \
-  docs/site/guide/kata-docs-build-check.out \
-  docs/site/guide/kata-docs-build-check~ \
+  docs/site/guide/.poomsae-build-check/.poomsae.local.toml \
+  docs/site/guide/poomsae-docs-build-check.out \
+  docs/site/guide/poomsae-docs-build-check~ \
   docs/site/hosted-mode/index.html \
   docs/site/superpowers \
   docs/site/website; do

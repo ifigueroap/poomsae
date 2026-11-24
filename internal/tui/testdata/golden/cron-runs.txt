@@ -1,5 +1,5 @@
- Project: example-project                                       kata カタ · dev
-kata カタ jobs [runs] workflows
+ Project: example-project                                    poomsae カタ · dev
+poomsae カタ jobs [runs] workflows
  / search                                             1 loaded run · newest 100
 
   Status     Job            Occurrence   Started     Ended       Summary
@@ -20,5 +20,5 @@ kata カタ jobs [runs] workflows
 
 
 
-
- j/k move▕ ↵/l open▕ / filter▕ h/esc kata▕ r refresh▕ 1-4 tabs▕ ? help▕ q quit
+ j/k move▕ ↵/l open▕ / filter▕ h/esc poomsae▕ r refresh▕ 1-4 tabs▕ ? help
+ q quit

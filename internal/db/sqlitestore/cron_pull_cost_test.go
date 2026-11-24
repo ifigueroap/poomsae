@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // Both one-run and catch-up pages must seek history during admission and replay.

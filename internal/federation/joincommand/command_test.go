@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/federation/joincommand"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/federation/joincommand"
 )
 
 func TestJoinCommandPreservesArguments(t *testing.T) {
@@ -23,9 +23,9 @@ func TestJoinCommandPreservesArguments(t *testing.T) {
 				Capabilities: "claim,pull,push", PushEnabled: true, AdoptExisting: true,
 				AllowInsecure: true, ReplayHorizonEventID: 7,
 			}
-			// Execute only shell argument parsing. The kata function captures arguments
+			// Execute only shell argument parsing. The poomsae function captures arguments
 			// as NUL-separated words rather than launching the enrollment command.
-			script := `kata() { printf '%s\0' "$@"; }; ` + joincommand.Build(in, false)
+			script := `poomsae() { printf '%s\0' "$@"; }; ` + joincommand.Build(in, false)
 			out, err := exec.CommandContext(t.Context(), "sh", "-c", script).CombinedOutput() //nolint:gosec // G204: tests the generated command against a shell stub that only captures arguments.
 			require.NoError(t, err, "%s", out)
 			args := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")

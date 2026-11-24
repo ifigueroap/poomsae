@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R5 creation attribution survives soft-delete/restore and their no-op retries.

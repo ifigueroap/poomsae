@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
 	_ "modernc.org/sqlite"
 )
 
@@ -43,7 +43,7 @@ func mcpEventsRows() []db.MCPEventSubscription {
 	until := mcpEventsAt.Add(time.Minute)
 	terminated := db.MCPEventSubscription{
 		ID: "sub_ended", PrincipalAuthority: "db_token", PrincipalSubject: "7", PrincipalKey: "db_token:7",
-		Actor: "Example Actor", EventName: "kata.inbox.changed", Arguments: []byte(`{"project_uids":["p1"]}`),
+		Actor: "Example Actor", EventName: "poomsae.inbox.changed", Arguments: []byte(`{"project_uids":["p1"]}`),
 		CallbackURL: "https://receiver.example/hook/ended", SecretEnc: []byte{0, 1, 2, 250},
 		PreviousSecretEnc: []byte("older-sealed"), PreviousSecretUntil: &until, VerifiedAt: &ended,
 		Incarnation: "inc-ended", Generation: 4,
@@ -55,7 +55,7 @@ func mcpEventsRows() []db.MCPEventSubscription {
 	}
 	active := db.MCPEventSubscription{
 		ID: "sub_active", PrincipalAuthority: "static_token", PrincipalSubject: "static", PrincipalKey: "static_token:static",
-		EventName: "kata.inbox.changed", Arguments: []byte(`{}`),
+		EventName: "poomsae.inbox.changed", Arguments: []byte(`{}`),
 		CallbackURL: "https://receiver.example/hook/active", SecretEnc: []byte("sealed"),
 		Incarnation: "inc-active", Generation: 1,
 		State: db.MCPEventStateActive, ExpiresAt: &until, Dirty: true, CatalogVersion: "catalog-v1",
@@ -187,7 +187,7 @@ func TestMCPEventsRestoreWithoutKeyFile(t *testing.T) {
 	backup := exportMCPEvents(t, source, 0)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	target, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "restored.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = target.Close() })
@@ -360,7 +360,7 @@ func TestMCPEventsFullRestoreReplacesDestinationState(t *testing.T) {
 }
 
 func TestMCPEventsCutoverFromSchema49HasNoRows(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "old.db")
 	raw, err := sql.Open("sqlite", path)

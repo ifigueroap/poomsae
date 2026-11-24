@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A stored definition that a later release's rules would reject must stay

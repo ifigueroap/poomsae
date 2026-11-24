@@ -1,6 +1,6 @@
 # Install
 
-kata ships as a single Go binary. It stores data locally in SQLite and has no
+poomsae ships as a single Go binary. It stores data locally in SQLite and has no
 runtime service dependency beyond the daemon it starts itself.
 
 ## Requirements
@@ -9,103 +9,80 @@ The release installers below do not require Go. If you use `go install` or
 build from a clone, install Go 1.27.4 or later from <https://go.dev/dl/>.
 
 GitHub release binaries are available starting with `v0.5.0`. Since v0.14.0,
-kata publishes stable releases that preserve backward compatibility across
+poomsae publishes stable releases that preserve backward compatibility across
 upgrades.
 
-On macOS, Homebrew Core is the recommended way to install kata:
+This fork publishes GitHub release archives for Linux, macOS, and Windows. It
+does not publish a Homebrew formula, `.deb` or `.rpm` packages, or a container
+image.
+
+On macOS or Linux, run the shell installer:
 
 ```sh
-brew install kata
-```
-
-Homebrew owns this binary. You can check Kata's release feed with
-`kata update --check`, and install packaged updates with:
-
-```sh
-brew upgrade kata
-```
-
-The formula may trail a newly published GitHub release. On Linux, or if you
-prefer an ordinary release archive on macOS, run the shell installer:
-
-```sh
-curl -fsSL https://katatracker.com/install.sh | bash
-```
-
-If you already use [Homebrew on Linux or WSL 2](https://docs.brew.sh/Homebrew-on-Linux),
-you can install from Core instead:
-
-```sh
-brew install kata
+curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
 ```
 
 On Windows PowerShell, run:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://katatracker.com/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
 ```
 
 Both installers detect your OS and CPU architecture, download the latest
-archive from [GitHub releases](https://github.com/kenn-io/kata/releases), and
+archive from [GitHub releases](https://github.com/ifigueroap/poomsae/releases), and
 verify it against `SHA256SUMS` before installing. For v0.14.x and newer
 versions, they also ask the extracted binary to validate its embedded Web UI
 before installing the binary, while still supporting canonical older releases
 that predate that check. If you prefer to inspect the scripts first,
-read them at <https://katatracker.com/install.sh> and
-<https://katatracker.com/install.ps1>.
+read them at <https://github.com/ifigueroap/poomsae/install.sh> and
+<https://github.com/ifigueroap/poomsae/install.ps1>.
 
 The shell installer shows a download progress line when you run it in a
 terminal. It aborts transfers that stall for 30 seconds and tries each download
 up to three times. If every attempt fails, it suggests running the installer
-again, installing with Homebrew, or downloading the release manually. The shell
-installer places `kata` in `/usr/local/bin` or `~/.local/bin`, while the
-PowerShell installer places `kata.exe` in `%USERPROFILE%\.kata\bin` by default
-and adds that directory to your user `Path`.
+again or downloading the release manually. The shell installer places `poomsae`
+in `/usr/local/bin` or `~/.local/bin`, while the PowerShell installer places
+`poomsae.exe` in `%USERPROFILE%\.poomsae\bin` by default and adds that directory
+to your user `Path`.
 
-Kata also publishes Linux `.deb` and `.rpm` packages for `amd64` and `arm64`.
-Download the package for your distribution from
-[GitHub releases](https://github.com/kenn-io/kata/releases) and install it with
-your system package tool. Upgrade those installations with the same package
-manager. Kata does not replace a package-owned binary itself.
+## Updating Poomsae
 
-## Updating Kata
-
-Update kata with the same installer or package manager that owns your binary.
+Update poomsae with the same installer or package manager that owns your binary.
 If a service manager runs your daemon, follow that deployment's update and
 restart procedure.
 
 After you install a release build, check for newer releases:
 
 ```sh
-kata update --check
+poomsae update --check
 ```
 
 If you installed from an ordinary release archive or one of the installers,
 install an available update from GitHub release assets:
 
 ```sh
-kata update
+poomsae update
 ```
 
-`kata update` verifies the downloaded archive against `SHA256SUMS` before
+`poomsae update` verifies the downloaded archive against `SHA256SUMS` before
 replacing the installed binary. After the install succeeds, it asks a running
 local daemon to restart itself with the new binary. The daemon restarts with
 its own startup options and environment, so `--listen`, `--insecure-readonly`,
 authentication tokens, and the auto-start idle timeout carry over without the
 updater knowing them. A stopped daemon stays stopped. If the daemon used an
-ephemeral port, reopen `kata ui`, because the replacement binds a new one.
+ephemeral port, reopen `poomsae ui`, because the replacement binds a new one.
 
 If the daemon does not come back, or does not support automatic restart,
-`kata update` reports that the binary was installed and returns an error. Fix
-any reported startup problem, then run `kata daemon stop` followed by
-`kata daemon start` with the daemon's original startup options in its original
+`poomsae update` reports that the binary was installed and returns an error. Fix
+any reported startup problem, then run `poomsae daemon stop` followed by
+`poomsae daemon start` with the daemon's original startup options in its original
 host shell or service environment. After a package-manager upgrade,
-`kata daemon restart` uses the executable invoked by the CLI while keeping the
+`poomsae daemon restart` uses the executable invoked by the CLI while keeping the
 running daemon's environment. Both processes must see the same process IDs and
 executable paths. Older signal-only daemons need one stop and start before
 explicit restart can do this.
 
-Package-managed installations keep `kata update --check`, while commands that
+Package-managed installations keep `poomsae update --check`, while commands that
 install updates direct you back to the owning package manager. Packagers can
 read the complete [packaging contract](../development/packaging.md). Installing
 with `go install` remains supported, and building from a clone is still useful
@@ -130,15 +107,15 @@ commands and cron compatibility, read the [release notes](../changelog.md).
 ## Install with `go install`
 
 ```sh
-go install go.kenn.io/kata/cmd/kata@latest
+go install github.com/ifigueroap/poomsae/cmd/poomsae@latest
 ```
 
 Installing from module source includes the CLI, daemon, and TUI, but Go does
-not run the browser asset toolchain. To use `kata ui`, install a release binary
+not run the browser asset toolchain. To use `poomsae ui`, install a release binary
 or build from a clone with `make install` so the compiled browser bundle is
 embedded.
 
-For a tagged Go install, `kata update` replaces the binary with a release archive.
+For a tagged Go install, `poomsae update` replaces the binary with a release archive.
 
 Go writes the binary to `$(go env GOBIN)` when that variable is set, or to
 `$(go env GOPATH)/bin` otherwise. Common defaults are `~/go/bin` on Unix and
@@ -147,23 +124,23 @@ Go writes the binary to `$(go env GOBIN)` when that variable is set, or to
 Verify the installation:
 
 ```sh
-kata version   # or kata --version
-kata --help
+poomsae version   # or poomsae --version
+poomsae --help
 ```
 
 ## Install from a release manually
 
 Download the archive for your platform from the
-[GitHub releases](https://github.com/kenn-io/kata/releases) page, extract it,
-and place the `kata` binary on your `PATH`.
+[GitHub releases](https://github.com/ifigueroap/poomsae/releases) page, extract it,
+and place the `poomsae` binary on your `PATH`.
 
 ## Build from a clone
 
 On macOS or Linux, clone the repository and install with Make:
 
 ```sh
-git clone https://github.com/kenn-io/kata.git
-cd kata
+git clone https://github.com/ifigueroap/poomsae.git
+cd poomsae
 make install
 ```
 
@@ -176,12 +153,12 @@ make install GOBIN=/usr/local/bin
 On Windows, use PowerShell or `cmd.exe`:
 
 ```powershell
-git clone https://github.com/kenn-io/kata.git
-cd kata
-go build -o kata.exe ./cmd/kata
+git clone https://github.com/ifigueroap/poomsae.git
+cd poomsae
+go build -o poomsae.exe ./cmd/poomsae
 ```
 
-Move `kata.exe` to a directory on your `PATH`.
+Move `poomsae.exe` to a directory on your `PATH`.
 
 ## Documentation tooling
 

@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	connector "github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	connector "go.kenn.io/kata/pkg/connector"
 )
 
 func TestInvocationContextSettingsCannotBeMutatedThroughSafeReflection(t *testing.T) {
@@ -16,7 +16,7 @@ func TestInvocationContextSettingsCannotBeMutatedThroughSafeReflection(t *testin
 	var output bytes.Buffer
 	require.NoError(t, connector.ServeOne(
 		t.Context(),
-		bytes.NewBufferString(`{"protocol":"kata.connector.v1","id":"request-1","method":"describe","instance":"notes","settings":{"enabled":true},"params":{}}`),
+		bytes.NewBufferString(`{"protocol":"poomsae.connector.v1","id":"request-1","method":"describe","instance":"notes","settings":{"enabled":true},"params":{}}`),
 		&output,
 		handler,
 	))

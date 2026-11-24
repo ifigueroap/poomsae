@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 const testPageID = "22222222-2222-4222-8222-222222222222"

@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/federationprovider"
 )
 
 type intentChangeFixture struct {
@@ -33,13 +33,13 @@ type intentChangeFixture struct {
 
 func newIntentChangeFixture(t *testing.T, intent federationprovider.Intent) *intentChangeFixture {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-	t.Setenv("KATA_TEST_PROVIDER_INTENT_CHANGE", "1")
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+	t.Setenv("POOMSAE_TEST_PROVIDER_INTENT_CHANGE", "1")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 	log := filepath.Join(t.TempDir(), "provider-requests.jsonl")
-	t.Setenv("KATA_TEST_PROVIDER_LOG", log)
+	t.Setenv("POOMSAE_TEST_PROVIDER_LOG", log)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 			"project_id": 42, "project_uid": hubProjectUID, "project_name": "hub-project",
@@ -206,7 +206,7 @@ func TestReconcileProviderDeniedIntentChangeKeepsReplica(t *testing.T) {
 	require.NoError(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	project, _ := f.binding(t)
 
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "denied")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "denied")
 	err := f.reconcile(t, federationprovider.IntentCollaborate)
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, federation.ErrConfigurationConflict)
@@ -218,7 +218,7 @@ func TestReconcileProviderDeniedIntentChangeKeepsReplica(t *testing.T) {
 	assert.False(t, kept.PushEnabled)
 
 	// Restoring the earlier intent asks again for that access.
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 	require.NoError(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	restored := f.saved(t)
 	assert.Equal(t, federationprovider.IntentReadOnly, restored.Credential.Provider.Intent)
@@ -235,7 +235,7 @@ func TestReconcileProviderIntentChangeRefusesAnotherHubProject(t *testing.T) {
 	require.NoError(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	project, before := f.binding(t)
 
-	t.Setenv("KATA_TEST_PROVIDER_PROJECT_UID", recreatedProjectUID)
+	t.Setenv("POOMSAE_TEST_PROVIDER_PROJECT_UID", recreatedProjectUID)
 	err := f.reconcile(t, federationprovider.IntentCollaborate)
 	require.ErrorIs(t, err, federation.ErrBindingConflict)
 	pending := f.saved(t)
@@ -245,7 +245,7 @@ func TestReconcileProviderIntentChangeRefusesAnotherHubProject(t *testing.T) {
 	assert.Equal(t, project, keptProject)
 	assert.Equal(t, before, kept)
 
-	t.Setenv("KATA_TEST_PROVIDER_PROJECT_UID", "")
+	t.Setenv("POOMSAE_TEST_PROVIDER_PROJECT_UID", "")
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 	assert.Equal(t, pending.Credential.Provider.RequestID, f.saved(t).Credential.Provider.RequestID, "the retry reuses the saved request")
 	_, upgraded := f.binding(t)
@@ -279,7 +279,7 @@ func TestReconcileProviderDowngradeRefusesExternalRoot(t *testing.T) {
 }
 
 // A claim request already on its way to the hub when the downgrade starts can
-// be granted there before Kata caches it. The downgrade waits for that request
+// be granted there before Poomsae caches it. The downgrade waits for that request
 // to finish, so it sees the claim and keeps the replica collaborating instead
 // of releasing the enrollment that could release the claim.
 func TestReconcileProviderDowngradeWaitsForClaimInFlight(t *testing.T) {
@@ -363,7 +363,7 @@ func TestReconcileProviderDowngradeRetryRechecksClaims(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.store.AdvanceFederationPushCursor(t.Context(), project.ID, accepted))
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "denied")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "denied")
 	require.Error(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	_, stopped := f.binding(t)
 	require.False(t, stopped.PushEnabled, "the failed attempt already turned push off")
@@ -377,7 +377,7 @@ func TestReconcileProviderDowngradeRetryRechecksClaims(t *testing.T) {
 		Holder: binding.Actor, HolderInstanceUID: f.store.InstanceUID(), ClientKind: "cli",
 		ClaimKind: "hard", AcquiredAt: now, UpdatedAt: now, Revision: 1,
 	}))
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 	err = f.reconcile(t, federationprovider.IntentReadOnly)
 	require.ErrorIs(t, err, federation.ErrBindingConflict, "the live claim blocks the retry")
 	requests := f.requests(t)
@@ -410,16 +410,16 @@ func TestReconcileProviderIntentChangeRefusesHalfFinishedRebind(t *testing.T) {
 }
 
 // A release whose reply never arrived may have revoked the old approval.
-// Restoring the earlier intent must not reuse it: Kata repeats the release
+// Restoring the earlier intent must not reuse it: Poomsae repeats the release
 // and asks for a new approval for the restored intent.
 func TestReconcileProviderRestoredIntentAfterUnconfirmedReleaseRequestsNewApproval(t *testing.T) {
 	f := newIntentChangeFixture(t, federationprovider.IntentCollaborate)
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 	before := f.saved(t)
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
 	require.Error(t, f.reconcile(t, federationprovider.IntentReadOnly))
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 
 	requests := f.requests(t)
@@ -448,7 +448,7 @@ func TestReconcileProviderRestoredIntentRechecksClaimsBeforeRelease(t *testing.T
 	require.NoError(t, err)
 	require.NoError(t, f.store.AdvanceFederationPushCursor(t.Context(), project.ID, accepted))
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
 	require.Error(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	now := time.Now().UTC()
 	claimUID, err := uid.New()
@@ -459,7 +459,7 @@ func TestReconcileProviderRestoredIntentRechecksClaimsBeforeRelease(t *testing.T
 		ClaimKind: "hard", AcquiredAt: now, UpdatedAt: now, Revision: 1,
 	}))
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 	err = f.reconcile(t, federationprovider.IntentCollaborate)
 	require.ErrorIs(t, err, federation.ErrBindingConflict, "the live claim blocks the repeated release")
 	assert.Len(t, f.requests(t), 2, "the release is not sent again while the claim is live")
@@ -471,17 +471,17 @@ func TestReconcileProviderRestoredIntentRechecksClaimsBeforeRelease(t *testing.T
 }
 
 // A provider that is unavailable when the release is repeated has still not
-// said whether the old approval works, so Kata keeps trying to release it.
+// said whether the old approval works, so Poomsae keeps trying to release it.
 func TestReconcileProviderUnavailableReleaseKeepsReleasePending(t *testing.T) {
 	f := newIntentChangeFixture(t, federationprovider.IntentCollaborate)
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 	before := f.saved(t)
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "exit-two")
 	require.Error(t, f.reconcile(t, federationprovider.IntentReadOnly))
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "unavailable")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "unavailable")
 	require.Error(t, f.reconcile(t, federationprovider.IntentCollaborate))
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 
 	requests := f.requests(t)
@@ -499,7 +499,7 @@ func TestReconcileProviderRestoredIntentAfterRefusedReleaseKeepsApproval(t *test
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 	before := f.saved(t)
 
-	t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "denied")
+	t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "denied")
 	require.Error(t, f.reconcile(t, federationprovider.IntentReadOnly))
 	require.NoError(t, f.reconcile(t, federationprovider.IntentCollaborate))
 

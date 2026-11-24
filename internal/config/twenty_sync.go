@@ -17,7 +17,7 @@ type TwentySyncConfig struct {
 func NormalizeTwentySyncConfig(c TwentySyncConfig) (TwentySyncConfig, error) {
 	c.TokenEnv = strings.TrimSpace(c.TokenEnv)
 	if c.TokenEnv == "" {
-		c.TokenEnv = "KATA_TWENTY_TOKEN"
+		c.TokenEnv = "POOMSAE_TWENTY_TOKEN"
 	}
 	if !planeTokenEnvPattern.MatchString(c.TokenEnv) {
 		return TwentySyncConfig{}, errors.New("twenty_sync.token_env must be a valid environment variable name")

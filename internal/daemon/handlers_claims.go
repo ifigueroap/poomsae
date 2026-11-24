@@ -16,17 +16,17 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/projectscope"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/projectscope"
 )
 
 // projectScopedClaimActionEvent rewrites the lease action response's event
@@ -915,7 +915,7 @@ func configureClaimHubBearerClient(c *http.Client, baseURL, token string, allowI
 }
 
 func newClaimHubHTTPClient(ctx context.Context, baseURL string) (*http.Client, error) {
-	if !strings.HasPrefix(baseURL, "http://kata.invalid") {
+	if !strings.HasPrefix(baseURL, "http://poomsae.invalid") {
 		return &http.Client{Timeout: 10 * time.Second}, nil
 	}
 	ns, err := daemonruntime.NewNamespace()
@@ -945,7 +945,7 @@ func newClaimHubHTTPClient(ctx context.Context, baseURL string) (*http.Client, e
 }
 
 func claimHubPing(ctx context.Context, client *http.Client) bool {
-	apiClient, err := generated.NewDefaultClient("http://kata.invalid", runtime.WithHTTPClient(claimRequestDoer{client}))
+	apiClient, err := generated.NewDefaultClient("http://poomsae.invalid", runtime.WithHTTPClient(claimRequestDoer{client}))
 	if err != nil {
 		return false
 	}

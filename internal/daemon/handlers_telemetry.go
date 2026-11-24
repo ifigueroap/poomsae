@@ -14,9 +14,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"go.kenn.io/kit/atomicfile"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
 )
 
 // TelemetryReporter admits and captures UI telemetry events; the daemon's
@@ -78,7 +78,7 @@ type agentUseGate struct {
 
 func newAgentUseGate(path string, now func() time.Time) *agentUseGate {
 	g := &agentUseGate{path: path, now: now}
-	data, err := os.ReadFile(path) //nolint:gosec // Private telemetry marker derived from Kata home.
+	data, err := os.ReadFile(path) //nolint:gosec // Private telemetry marker derived from Poomsae home.
 	if err == nil {
 		_ = json.Unmarshal(data, &g.state)
 	}
@@ -138,7 +138,7 @@ func captureError(err error) error {
 func registerTelemetryHandlers(humaAPI huma.API, cfg ServerConfig) {
 	gate := newAppOpenedGate(time.Now)
 	path := ""
-	if home, err := config.KataHome(); err == nil && cfg.DB != nil {
+	if home, err := config.PoomsaeHome(); err == nil && cfg.DB != nil {
 		path = filepath.Join(home, "telemetry", "agent-use-"+cfg.DB.InstanceUID()+".json")
 	}
 	agentGate := newAgentUseGate(path, time.Now)

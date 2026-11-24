@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func mcpEventsCutoverSource(t *testing.T) (*sqlitestore.Store, db.Project, db.MCPEventSubscription) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "source.db"))
 	require.NoError(t, err)
@@ -25,7 +25,7 @@ func mcpEventsCutoverSource(t *testing.T) (*sqlitestore.Store, db.Project, db.MC
 	ended := time.Date(2026, 10, 20, 11, 0, 0, 0, time.UTC)
 	row := db.MCPEventSubscription{
 		ID: "sub_cutover", PrincipalAuthority: "local", PrincipalSubject: "local", PrincipalKey: "local:local",
-		EventName: "kata.inbox.changed", Arguments: []byte(`{}`), CallbackURL: "https://receiver.example/hook",
+		EventName: "poomsae.inbox.changed", Arguments: []byte(`{}`), CallbackURL: "https://receiver.example/hook",
 		SecretEnc: []byte("sealed"), Incarnation: "inc", State: db.MCPEventStateEnded, EndReason: "unsubscribed",
 		EndedAt: &ended, PendingKind: db.MCPEventPendingTerminated, PendingMessageID: "msg", PendingBody: []byte(`{"type":"terminated"}`),
 		CreatedAt: ended, UpdatedAt: ended,

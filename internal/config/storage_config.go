@@ -11,10 +11,10 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// readStorageConfig returns the [storage] block from <KATA_HOME>/config.toml
+// readStorageConfig returns the [storage] block from <POOMSAE_HOME>/config.toml
 // using a narrow pre-pass that extracts only [storage] (and [storage.*])
-// section lines before decoding. The narrowing is deliberate: KataDSN runs
-// on every legacy KATA_DB call site, and routing those through the full
+// section lines before decoding. The narrowing is deliberate: PoomsaeDSN runs
+// on every legacy POOMSAE_DB call site, and routing those through the full
 // ReadDaemonConfig would let a typo in any unrelated section (auth, listen,
 // close, ...) break callers that never cared about the daemon config.
 //
@@ -31,7 +31,7 @@ func readStorageConfig() (StorageConfig, error) {
 	if err != nil {
 		return StorageConfig{}, err
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // path derived from KATA_HOME
+	data, err := os.ReadFile(path) //nolint:gosec // path derived from POOMSAE_HOME
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		return StorageConfig{}, nil

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 func TestMCPEventsConfiguration(t *testing.T) {
@@ -38,7 +38,7 @@ addresses=["100.64.0.1","fd00::1"]
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tc.body), 0o600))
 			cfg, err := config.ReadDaemonConfig()
 			if tc.wantInvalid {

@@ -10,11 +10,11 @@ import (
 	"testing"
 
 	"github.com/google/jsonschema-go/jsonschema"
+	"github.com/ifigueroap/poomsae/internal/agentguide"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/agentguide"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 // Contract: setup is an initial, read-only tool returning exact caller-owned
@@ -28,18 +28,18 @@ func TestNativeSetupBoundary(t *testing.T) {
 	session := connectRawTestServerWithOptions(t, Options{Client: inertTestClient(t), ProjectID: 42, ProjectName: "spoke-project", Actor: "example-agent", Version: "test"})
 	listed, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Contains(t, toolNames(listed.Tools), "kata.skills")
-	out := callWorkflowTool(t, session, "kata.skills", map[string]any{"name": "setup"})
+	require.Contains(t, toolNames(listed.Tools), "poomsae.skills")
+	out := callWorkflowTool(t, session, "poomsae.skills", map[string]any{"name": "setup"})
 	want, err := agentguide.ManagedBlock("mcp")
 	require.NoError(t, err)
 	require.Equal(t, want, out["managed_block"])
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.skills", Arguments: map[string]any{"name": "setup"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.skills", Arguments: map[string]any{"name": "setup"}})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
 	text := result.Content[0].(*sdkmcp.TextContent).Text
 	require.Contains(t, text, want)
 	for _, field := range []string{"path", "content", "workspace", "agent_mode"} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.skills", Arguments: map[string]any{"name": "setup", field: path}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.skills", Arguments: map[string]any{"name": "setup", field: path}})
 		require.NoError(t, err)
 		require.True(t, result.IsError, field)
 	}
@@ -98,7 +98,7 @@ func TestNativeGuideExamplesMatchCatalog(t *testing.T) {
 	}
 	md, _ := SkillMarkdown("workflow")
 	require.Contains(t, md, agentguide.MCPContract)
-	require.LessOrEqual(t, len(agentguide.MCPContract), 2000)
+	require.LessOrEqual(t, len(agentguide.MCPContract), 2200)
 }
 
 // An MCP-only client follows the published quickstart using fixture state.
@@ -107,11 +107,11 @@ func TestNativeQuickstartNoShell(t *testing.T) {
 	env := testenv.New(t)
 	project, err := env.DB.CreateProject(t.Context(), "spoke-project")
 	require.NoError(t, err)
-	client, err := kataclient.NewWithHTTPClient(env.URL, env.HTTP)
+	client, err := poomsaeclient.NewWithHTTPClient(env.URL, env.HTTP)
 	require.NoError(t, err)
 	// Multi-project scope requires an explicit create project and qualified refs.
 	session := connectRawTestServerWithOptions(t, Options{Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test"})
-	callWorkflowTool(t, session, "kata.skills", map[string]any{"name": "workflow"})
+	callWorkflowTool(t, session, "poomsae.skills", map[string]any{"name": "workflow"})
 	ref := ""
 	examples := nativeExamples(t, "quickstart")
 	require.NotEmpty(t, examples)
@@ -123,26 +123,26 @@ func TestNativeQuickstartNoShell(t *testing.T) {
 		require.NoError(t, json.Unmarshal(args, &input))
 		out := callWorkflowTool(t, session, example.Tool, input)
 		called = append(called, example.Tool)
-		if strings.HasPrefix(example.Tool, "kata.load_") {
+		if strings.HasPrefix(example.Tool, "poomsae.load_") {
 			_, err := session.ListTools(t.Context(), nil)
 			require.NoError(t, err)
 		}
-		if example.Tool == "kata.create" {
+		if example.Tool == "poomsae.create" {
 			issue := out["issue"].(map[string]any)
 			ref = project.Name + "#" + issue["ref"].(string)
 			// A transport retry reuses the same operation key and issue.
 			again := callWorkflowTool(t, session, example.Tool, input)
 			require.Equal(t, issue["uid"], again["issue"].(map[string]any)["uid"])
 		}
-		if example.Tool == "kata.comment" {
+		if example.Tool == "poomsae.comment" {
 			again := callWorkflowTool(t, session, example.Tool, input)
 			require.Equal(t, out["comment"].(map[string]any)["uid"], again["comment"].(map[string]any)["uid"])
 		}
 	}
-	for _, name := range []string{"kata.search", "kata.create", "kata.claim", "kata.set_metadata", "kata.comment", "kata.close"} {
+	for _, name := range []string{"poomsae.search", "poomsae.create", "poomsae.claim", "poomsae.set_metadata", "poomsae.comment", "poomsae.close"} {
 		require.Contains(t, called, name)
 	}
-	final := callWorkflowTool(t, session, "kata.show", map[string]any{"ref": ref})["issue"].(map[string]any)
+	final := callWorkflowTool(t, session, "poomsae.show", map[string]any{"ref": ref})["issue"].(map[string]any)
 	require.Equal(t, "closed", final["status"])
 	require.Equal(t, "example-agent", final["owner"])
 }
@@ -158,10 +158,10 @@ func TestNativeGuidesSayCommentsCarryFindings(t *testing.T) {
 		descriptions[tool.Name] = tool.Description
 	}
 	require.NotRegexp(t, `\bprogress\b`, session.InitializeResult().Instructions)
-	require.Contains(t, descriptions["kata.comment"], "finding")
-	require.Contains(t, descriptions["kata.edit_comment"], "correct")
-	require.Contains(t, descriptions["kata.close"], "not merged")
-	for _, name := range []string{"kata.comment", "kata.edit_comment", "kata.close"} {
+	require.Contains(t, descriptions["poomsae.comment"], "finding")
+	require.Contains(t, descriptions["poomsae.edit_comment"], "correct")
+	require.Contains(t, descriptions["poomsae.close"], "not merged")
+	for _, name := range []string{"poomsae.comment", "poomsae.edit_comment", "poomsae.close"} {
 		require.NotRegexp(t, `\bprogress\b`, descriptions[name], name)
 	}
 	for _, guide := range skillGuides {
@@ -171,7 +171,7 @@ func TestNativeGuidesSayCommentsCarryFindings(t *testing.T) {
 			require.Contains(t, md, "except work.pr_url")
 		}
 		require.NotRegexp(t, `\bprogress\b`, md, guide.name)
-		for _, text := range []string{"update work.attention and work.attention_msg", "kata.edit_comment", "not merged", "needs-review", "work.pr_url", "pr evidence"} {
+		for _, text := range []string{"update work.attention and work.attention_msg", "poomsae.edit_comment", "not merged", "needs-review", "work.pr_url", "pr evidence"} {
 			require.Contains(t, md, text, guide.name)
 		}
 		if guide.name == "quickstart" {
@@ -191,7 +191,7 @@ func TestNativeGuidesSayClaimsHaveTTL(t *testing.T) {
 	for _, tool := range listed.Tools {
 		descriptions[tool.Name] = tool.Description
 	}
-	for _, text := range []string{session.InitializeResult().Instructions, descriptions["kata.claim"]} {
+	for _, text := range []string{session.InitializeResult().Instructions, descriptions["poomsae.claim"]} {
 		require.Contains(t, text, "ttl_seconds")
 		require.Contains(t, text, "without if_unowned")
 	}
@@ -204,7 +204,7 @@ func TestNativeGuidesSayClaimsHaveTTL(t *testing.T) {
 		}
 		if guide.name == "quickstart" || guide.name == "claiming" {
 			for _, example := range nativeExamples(t, guide.name) {
-				if example.Tool == "kata.claim" {
+				if example.Tool == "poomsae.claim" {
 					require.Contains(t, example.Arguments, "ttl_seconds", guide.name)
 				}
 			}

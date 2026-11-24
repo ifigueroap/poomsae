@@ -3,8 +3,8 @@ package mcpserver
 import (
 	"context"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // TeamsInput requests the hub-local team catalog.
@@ -64,13 +64,13 @@ type ProjectAccessOutput struct {
 func registerTeamTools(server *sdkmcp.Server, h toolHandlers) {
 	read := toolHints(true, false, false)
 	write := toolHints(false, true, false)
-	addTool(server, "kata.teams", "List teams", "List teams through the selected daemon's owner authority.", read, h.teams)
-	addTool(server, "kata.team_create", "Create team", "Create a project-access team.", nonIdempotent(toolHints(false, false, false)), h.teamCreate)
-	addTool(server, "kata.team_show", "Show team", "Read one team and its canonical actor members by UID.", read, h.teamShow)
-	addTool(server, "kata.team_delete", "Delete team", "Delete a team without broadening restricted projects to all visibility.", write, h.teamDelete)
-	addTool(server, "kata.team_member_set", "Set team membership", "Add or remove the canonical actor's membership by team UID.", write, h.teamMemberSet)
-	addTool(server, "kata.project_access_show", "Show project access", "Read project visibility and team UIDs.", read, h.projectAccessShow)
-	addTool(server, "kata.project_access_set", "Set project access", "Set all or teams visibility. A stale revision conflicts; omitting revision captures the current policy before writing.", write, h.projectAccessSet)
+	addTool(server, "poomsae.teams", "List teams", "List teams through the selected daemon's owner authority.", read, h.teams)
+	addTool(server, "poomsae.team_create", "Create team", "Create a project-access team.", nonIdempotent(toolHints(false, false, false)), h.teamCreate)
+	addTool(server, "poomsae.team_show", "Show team", "Read one team and its canonical actor members by UID.", read, h.teamShow)
+	addTool(server, "poomsae.team_delete", "Delete team", "Delete a team without broadening restricted projects to all visibility.", write, h.teamDelete)
+	addTool(server, "poomsae.team_member_set", "Set team membership", "Add or remove the canonical actor's membership by team UID.", write, h.teamMemberSet)
+	addTool(server, "poomsae.project_access_show", "Show project access", "Read project visibility and team UIDs.", read, h.projectAccessShow)
+	addTool(server, "poomsae.project_access_set", "Set project access", "Set all or teams visibility. A stale revision conflicts; omitting revision captures the current policy before writing.", write, h.projectAccessSet)
 }
 
 func (h toolHandlers) teams(ctx context.Context, _ *sdkmcp.CallToolRequest, _ TeamsInput) (*sdkmcp.CallToolResult, TeamsOutput, error) {

@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 var updateEventSQLGolden = flag.Bool("update-golden", false,
@@ -38,7 +38,7 @@ func (c *sqlCapture) QueryRowContext(_ context.Context, query string, _ ...any) 
 }
 
 // TestEventExportSQLIsPinnedPerVersionBand locks the exact query each event
-// projection emits. The kata#1 peer-scrub rule and the subject-liveness
+// projection emits. The poomsae#1 peer-scrub rule and the subject-liveness
 // filter are pure string construction spread across five version bands, and
 // the emitted SQL must stay byte-identical per band: a changed projection
 // silently alters cutover output for one source-version band only, and event

@@ -11,25 +11,25 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
 	"github.com/BurntSushi/toml"
 )
 
-// DaemonConfig is the parsed contents of <KATA_HOME>/config.toml. The
+// DaemonConfig is the parsed contents of <POOMSAE_HOME>/config.toml. The
 // file is optional; an absent file yields a zero-value DaemonConfig and
 // no error so callers can use this unconditionally at daemon start.
 //
 // This file holds daemon-side settings plus user-level client defaults such as
 // TUI preferences and the named daemon catalog. Workspace-local remote
-// overrides (KATA_SERVER, .kata.local.toml) live in their own resolution path.
+// overrides (POOMSAE_SERVER, .poomsae.local.toml) live in their own resolution path.
 type DaemonConfig struct {
 	// Sources contains safe provenance labels, never secret contents.
 	Sources map[string]string `toml:"-"`
 	// Timezone is the IANA timezone used for civil issue schedules that do not
 	// set their own timezone. Empty preserves the UTC default.
 	Timezone string `toml:"timezone"`
-	// Listen is the bind address used by `kata daemon start` when no
+	// Listen is the bind address used by `poomsae daemon start` when no
 	// --listen flag is supplied. Same syntax as the flag (host:port).
 	// An empty value (or a missing file) means the platform default:
 	// Unix socket on Unix platforms, loopback TCP on Windows.
@@ -50,7 +50,7 @@ type DaemonConfig struct {
 	Federation FederationConfig `toml:"federation"`
 	// TUI carries client-side interactive UI defaults. Unlike remote
 	// daemon overrides, these are user preferences and belong in
-	// <KATA_HOME>/config.toml.
+	// <POOMSAE_HOME>/config.toml.
 	TUI TUIConfig `toml:"tui"`
 	// Close carries daemon-wide close-flow policy knobs.
 	Close CloseConfig `toml:"close"`
@@ -64,10 +64,10 @@ type DaemonConfig struct {
 	// MCPEvents enables daemon-owned MCP Events delivery.
 	MCPEvents MCPEventsConfig `toml:"mcp_events"`
 	// Storage carries DB selection plus backend-specific startup policy; see
-	// config.KataDSN for DSN precedence (env > file > default).
+	// config.PoomsaeDSN for DSN precedence (env > file > default).
 	Storage StorageConfig `toml:"storage"`
 	// Search carries opt-in semantic-search settings. An empty
-	// [search.embeddings] section leaves kata on lexical-only FTS.
+	// [search.embeddings] section leaves poomsae on lexical-only FTS.
 	Search  SearchConfig  `toml:"search"`
 	Docbank DocbankConfig `toml:"docbank"`
 	// GitHubSync carries daemon-owned GitHub API credential settings for
@@ -140,7 +140,7 @@ func (c DaemonConfig) AutostartIdleTimeoutDuration() (time.Duration, error) {
 	return duration, nil
 }
 
-// SearchConfig is the [search] block of <KATA_HOME>/config.toml. Today it only
+// SearchConfig is the [search] block of <POOMSAE_HOME>/config.toml. Today it only
 // nests [search.embeddings]; lexical FTS needs no configuration.
 type SearchConfig struct {
 	Embeddings EmbeddingsConfig `toml:"embeddings"`
@@ -208,9 +208,9 @@ func (e EmbeddingsConfig) LocalRecipeCompatible() bool {
 		(e.Dims == 0 || e.Dims == 768 || e.Dims > 0 && e.Dims < 768 && e.RequestDimensions)
 }
 
-// StorageConfig is the [storage] block of <KATA_HOME>/config.toml. An empty
-// DSN means "no override from the file" — env (KATA_DSN, KATA_DB) or the
-// default <KATA_HOME>/kata.db wins. See config.KataDSN.
+// StorageConfig is the [storage] block of <POOMSAE_HOME>/config.toml. An empty
+// DSN means "no override from the file" — env (POOMSAE_DSN, POOMSAE_DB) or the
+// default <POOMSAE_HOME>/poomsae.db wins. See config.PoomsaeDSN.
 type StorageConfig struct {
 	DSN      string                `toml:"dsn"`
 	SQLite   SQLiteStorageConfig   `toml:"sqlite"`
@@ -219,7 +219,7 @@ type StorageConfig struct {
 
 // PostgresStorageConfig controls the schema selected by Postgres connections
 // and whether a serving process may prepare it. Empty fields select pgstore's
-// standalone defaults: schema "kata" and mode "bootstrap".
+// standalone defaults: schema "poomsae" and mode "bootstrap".
 type PostgresStorageConfig struct {
 	Schema        string `toml:"schema"`
 	Mode          string `toml:"mode"`
@@ -229,13 +229,13 @@ type PostgresStorageConfig struct {
 
 // DefaultGitHubSyncTokenEnv is the environment variable name used for
 // daemon GitHub sync tokens when [github_sync].token_env is omitted.
-const DefaultGitHubSyncTokenEnv = "KATA_GITHUB_TOKEN" // #nosec G101 -- environment variable name, not a credential value.
+const DefaultGitHubSyncTokenEnv = "POOMSAE_GITHUB_TOKEN" // #nosec G101 -- environment variable name, not a credential value.
 
 // DefaultGitHubSyncTokenHost is the GitHub host that may receive the default
 // daemon GitHub sync token.
 const DefaultGitHubSyncTokenHost = "github.com"
 
-// GitHubSyncConfig is the [github_sync] block of <KATA_HOME>/config.toml.
+// GitHubSyncConfig is the [github_sync] block of <POOMSAE_HOME>/config.toml.
 type GitHubSyncConfig struct {
 	TokenEnv  string            `toml:"token_env"`
 	TokenHost string            `toml:"token_host"`
@@ -243,7 +243,7 @@ type GitHubSyncConfig struct {
 }
 
 // TokenEnvName returns the configured GitHub sync token environment variable,
-// defaulting to KATA_GITHUB_TOKEN when unset.
+// defaulting to POOMSAE_GITHUB_TOKEN when unset.
 func (c GitHubSyncConfig) TokenEnvName() string {
 	if v := strings.TrimSpace(c.TokenEnv); v != "" {
 		return v
@@ -280,18 +280,18 @@ func NormalizeGitHubSyncConfig(cfg GitHubSyncConfig) (GitHubSyncConfig, error) {
 	return daemonCfg.GitHubSync, nil
 }
 
-// AuthConfig is the [auth] block of <KATA_HOME>/config.toml. An empty
+// AuthConfig is the [auth] block of <POOMSAE_HOME>/config.toml. An empty
 // Token disables bearer auth — appropriate for Unix-socket and loopback-TCP
 // deployments; non-loopback TCP requires either --insecure-readonly with no
 // token, a token plus TrustPrivateNetwork, or the explicit
 // AllowUnauthenticatedPrivateNetworkWrites opt-in on a literal private IP bind.
 //
-// KATA_AUTH_TOKEN, when set, overrides the TOML value. Use it for
+// POOMSAE_AUTH_TOKEN, when set, overrides the TOML value. Use it for
 // ephemeral or CI-only tokens that should never be persisted to disk.
-// KATA_TRUST_PRIVATE_NETWORK=1 is equivalent to trust_private_network = true.
-// KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1 is equivalent to
+// POOMSAE_TRUST_PRIVATE_NETWORK=1 is equivalent to trust_private_network = true.
+// POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES=1 is equivalent to
 // allow_unauthenticated_private_network_writes = true.
-// KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION=1 is equivalent to
+// POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION=1 is equivalent to
 // allow_identity_connector_administration = true.
 type AuthConfig struct {
 	Token                                    string      `toml:"token"`
@@ -307,10 +307,10 @@ type AuthConfig struct {
 	Proxy                                    ProxyConfig `toml:"proxy"`
 }
 
-// WebConfig is the [web] block of <KATA_HOME>/config.toml. Listen overrides
+// WebConfig is the [web] block of <POOMSAE_HOME>/config.toml. Listen overrides
 // the default ephemeral loopback browser address; port zero asks the OS to
 // assign an available port. PublicOrigin declares the exact browser authority
-// when Kata is served through an HTTPS terminator or development proxy; it is
+// when Poomsae is served through an HTTPS terminator or development proxy; it is
 // never inferred from request headers.
 type WebConfig struct {
 	Listen       string   `toml:"listen"`
@@ -325,7 +325,7 @@ type ProxyConfig struct {
 	TrustedProxyListeners []string `toml:"trusted_proxy_listeners"`
 }
 
-// TUIConfig holds TUI user preferences from <KATA_HOME>/config.toml.
+// TUIConfig holds TUI user preferences from <POOMSAE_HOME>/config.toml.
 type TUIConfig struct {
 	// Mouse enables Bubble Tea mouse cell-motion capture and additive
 	// click/wheel navigation. Default false preserves native selection.
@@ -333,13 +333,13 @@ type TUIConfig struct {
 	ConfirmQuit *bool `toml:"confirm_quit"`
 }
 
-// DisplayConfig holds client-only display preferences from <KATA_HOME>/config.toml.
+// DisplayConfig holds client-only display preferences from <POOMSAE_HOME>/config.toml.
 type DisplayConfig struct {
 	MarkdownRenderer []string `toml:"markdown_renderer"`
 }
 
 // CatalogDaemonConfig is a single named entry in the daemon catalog
-// (top-level [[daemon]] in <KATA_HOME>/config.toml).
+// (top-level [[daemon]] in <POOMSAE_HOME>/config.toml).
 type CatalogDaemonConfig struct {
 	Name  string `toml:"name"`
 	Local bool   `toml:"local"`
@@ -358,7 +358,7 @@ type CatalogDaemonConfig struct {
 	AllowInsecure bool   `toml:"allow_insecure"`
 }
 
-// CloseConfig is the [close] block of <KATA_HOME>/config.toml.
+// CloseConfig is the [close] block of <POOMSAE_HOME>/config.toml.
 type CloseConfig struct {
 	Throttle   CloseThrottleConfig `toml:"throttle"`
 	Transcript closeTranscriptFile `toml:"transcript"`
@@ -414,7 +414,7 @@ type SafeDiagnosticError struct {
 func (e *SafeDiagnosticError) Error() string { return e.err.Error() }
 func (e *SafeDiagnosticError) Unwrap() error { return e.err }
 
-// ReadDaemonConfig parses <KATA_HOME>/config.toml. Returns a zero-value
+// ReadDaemonConfig parses <POOMSAE_HOME>/config.toml. Returns a zero-value
 // DaemonConfig and nil error when the file is absent — daemon startup
 // should not fail just because the file isn't there. Other I/O or parse
 // errors are returned so a typo doesn't silently fall back to defaults.
@@ -441,9 +441,9 @@ func ReadDaemonCatalogAndAuthPolicy() (*DaemonConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from KATA_HOME, not user input
+	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from POOMSAE_HOME, not user input
 	if errors.Is(err, os.ErrNotExist) {
-		return &DaemonConfig{Auth: AuthConfig{TrustPrivateNetwork: EnvTruthy("KATA_TRUST_PRIVATE_NETWORK")}}, nil
+		return &DaemonConfig{Auth: AuthConfig{TrustPrivateNetwork: EnvTruthy("POOMSAE_TRUST_PRIVATE_NETWORK")}}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
@@ -469,7 +469,7 @@ func ReadDaemonCatalogAndAuthPolicy() (*DaemonConfig, error) {
 	}
 	cfg := &DaemonConfig{
 		ActiveDaemon: file.ActiveDaemon,
-		Auth:         AuthConfig{TrustPrivateNetwork: file.Auth.TrustPrivateNetwork || EnvTruthy("KATA_TRUST_PRIVATE_NETWORK")},
+		Auth:         AuthConfig{TrustPrivateNetwork: file.Auth.TrustPrivateNetwork || EnvTruthy("POOMSAE_TRUST_PRIVATE_NETWORK")},
 		Daemons:      file.Daemons,
 	}
 	trimDaemonCatalog(cfg)
@@ -481,7 +481,7 @@ func ReadDaemonCatalogAndAuthPolicy() (*DaemonConfig, error) {
 
 func readDaemonConfig(path string, mergeEnv, skipSupervisedAuth bool) (*DaemonConfig, error) {
 	var cfg DaemonConfig
-	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from KATA_HOME, not user input
+	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from POOMSAE_HOME, not user input
 	switch {
 	case err == nil:
 		meta, err := toml.Decode(string(data), &cfg)
@@ -533,7 +533,7 @@ func readDaemonConfig(path string, mergeEnv, skipSupervisedAuth bool) (*DaemonCo
 			return nil, err
 		}
 	}
-	if cfg.Sources["auth"] != "KATA_AUTH_TOKEN" {
+	if cfg.Sources["auth"] != "POOMSAE_AUTH_TOKEN" {
 		cfg.Sources["auth"], _, _ = strings.Cut(cfg.Auth.Source, ":")
 	}
 	if _, err := cfg.Storage.SQLite.BusyTimeoutDuration(); err != nil {
@@ -610,7 +610,7 @@ func readDaemonConfig(path string, mergeEnv, skipSupervisedAuth bool) (*DaemonCo
 	if err := normalizeDaemonCatalog(&cfg); err != nil {
 		return nil, err
 	}
-	// SafeDiagnosticError shows these errors in kata doctor, so errors added to
+	// SafeDiagnosticError shows these errors in poomsae doctor, so errors added to
 	// normalizeFederationSigning must not contain credentials, file contents, or parser output.
 	if err := normalizeFederationSigning(&cfg, filepath.Dir(path)); err != nil {
 		return nil, &SafeDiagnosticError{err: err}
@@ -622,7 +622,7 @@ func readDaemonConfig(path string, mergeEnv, skipSupervisedAuth bool) (*DaemonCo
 }
 
 // ReadDisplayConfig parses client-only display preferences from
-// <KATA_HOME>/config.toml. It validates only the [display] section so
+// <POOMSAE_HOME>/config.toml. It validates only the [display] section so
 // unrelated daemon and client settings do not affect renderer selection.
 func ReadDisplayConfig() (DisplayConfig, error) {
 	var file struct {
@@ -701,7 +701,7 @@ func decodeConfigSection(name string, dst any) (string, error) {
 	if err != nil {
 		return path, err
 	}
-	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from KATA_HOME, not user input
+	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from POOMSAE_HOME, not user input
 	if errors.Is(err, os.ErrNotExist) {
 		return path, nil
 	}
@@ -799,7 +799,7 @@ func isLoopbackWebOrigin(origin *url.URL) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// ReadAuthConfig parses only the daemon auth settings from <KATA_HOME>/config.toml.
+// ReadAuthConfig parses only the daemon auth settings from <POOMSAE_HOME>/config.toml.
 // It intentionally skips daemon-catalog normalization so auth-only clients do not
 // lose [auth] settings because an unrelated catalog entry is unavailable.
 func ReadAuthConfig() (AuthConfig, error) {
@@ -818,7 +818,7 @@ func readAuthConfig(resolveCredential bool) (AuthConfig, error) {
 		return AuthConfig{}, err
 	}
 	var cfg DaemonConfig
-	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from KATA_HOME, not user input
+	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from POOMSAE_HOME, not user input
 	switch {
 	case err == nil:
 		meta, err := toml.Decode(string(data), &cfg)
@@ -996,36 +996,36 @@ func ValidateEmbeddings(e EmbeddingsConfig) error {
 
 func applyDaemonConfigEnv(cfg *DaemonConfig, includeAuthCredentials bool) {
 	if includeAuthCredentials {
-		if value := strings.TrimSpace(os.Getenv("KATA_AUTH_TOKEN_FILE")); value != "" &&
-			(!cfg.Auth.RequireTokenIdentity || !EnvTruthy("KATA_AUTOSTART")) {
+		if value := strings.TrimSpace(os.Getenv("POOMSAE_AUTH_TOKEN_FILE")); value != "" &&
+			(!cfg.Auth.RequireTokenIdentity || !EnvTruthy("POOMSAE_AUTOSTART")) {
 			cfg.Auth.TokenFile = value
 		}
 	}
-	if raw, ok := os.LookupEnv("KATA_AUTOSTART_IDLE_TIMEOUT"); ok {
+	if raw, ok := os.LookupEnv("POOMSAE_AUTOSTART_IDLE_TIMEOUT"); ok {
 		cfg.AutostartIdleTimeout = strings.TrimSpace(raw)
 	}
 	if includeAuthCredentials {
-		if v := strings.TrimSpace(os.Getenv("KATA_AUTH_TOKEN")); v != "" &&
-			(!cfg.Auth.RequireTokenIdentity || !EnvTruthy("KATA_AUTOSTART")) {
+		if v := strings.TrimSpace(os.Getenv("POOMSAE_AUTH_TOKEN")); v != "" &&
+			(!cfg.Auth.RequireTokenIdentity || !EnvTruthy("POOMSAE_AUTOSTART")) {
 			cfg.Auth.Token = v
 			if cfg.Sources != nil {
-				cfg.Sources["auth"] = "KATA_AUTH_TOKEN"
+				cfg.Sources["auth"] = "POOMSAE_AUTH_TOKEN"
 			}
 		}
 	}
-	if EnvTruthy("KATA_TRUST_PRIVATE_NETWORK") {
+	if EnvTruthy("POOMSAE_TRUST_PRIVATE_NETWORK") {
 		cfg.Auth.TrustPrivateNetwork = true
 	}
-	if EnvTruthy("KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES") {
+	if EnvTruthy("POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES") {
 		cfg.Auth.AllowUnauthenticatedPrivateNetworkWrites = true
 	}
-	if EnvTruthy("KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION") {
+	if EnvTruthy("POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION") {
 		cfg.Auth.AllowIdentityConnectorAdministration = true
 	}
-	if v := strings.TrimSpace(os.Getenv("KATA_TRUSTED_ACTOR_HEADER")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("POOMSAE_TRUSTED_ACTOR_HEADER")); v != "" {
 		cfg.Auth.Proxy.TrustedActorHeader = v
 	}
-	if raw := os.Getenv("KATA_TRUSTED_PROXY_LISTENERS"); raw != "" {
+	if raw := os.Getenv("POOMSAE_TRUSTED_PROXY_LISTENERS"); raw != "" {
 		parts := strings.Split(raw, ",")
 		out := make([]string, 0, len(parts))
 		for _, p := range parts {
@@ -1035,7 +1035,7 @@ func applyDaemonConfigEnv(cfg *DaemonConfig, includeAuthCredentials bool) {
 		}
 		cfg.Auth.Proxy.TrustedProxyListeners = out
 	}
-	if raw := os.Getenv("KATA_WEB_ALLOWED_HOSTS"); raw != "" {
+	if raw := os.Getenv("POOMSAE_WEB_ALLOWED_HOSTS"); raw != "" {
 		parts := strings.Split(raw, ",")
 		cfg.Web.AllowedHosts = cfg.Web.AllowedHosts[:0]
 		for _, part := range parts {
@@ -1049,22 +1049,22 @@ func applyDaemonConfigEnv(cfg *DaemonConfig, includeAuthCredentials bool) {
 }
 
 func applyPostgresStorageEnv(cfg *PostgresStorageConfig) {
-	if v := strings.TrimSpace(os.Getenv("KATA_POSTGRES_SCHEMA")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("POOMSAE_POSTGRES_SCHEMA")); v != "" {
 		cfg.Schema = v
 	}
-	if v := strings.TrimSpace(os.Getenv("KATA_POSTGRES_SCHEMA_MODE")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("POOMSAE_POSTGRES_SCHEMA_MODE")); v != "" {
 		cfg.Mode = v
 	}
-	if v := os.Getenv("KATA_POSTGRES_SCHEMA_OWNER"); v != "" {
+	if v := os.Getenv("POOMSAE_POSTGRES_SCHEMA_OWNER"); v != "" {
 		cfg.SchemaOwner = v
 	}
-	if EnvTruthy("KATA_POSTGRES_ALLOW_INSECURE") {
+	if EnvTruthy("POOMSAE_POSTGRES_ALLOW_INSECURE") {
 		cfg.AllowInsecure = true
 	}
 }
 
 // EnvTruthy reports whether an environment variable is set to a recognized
-// true value for kata config overlays.
+// true value for poomsae config overlays.
 func EnvTruthy(name string) bool {
 	v := strings.TrimSpace(os.Getenv(name))
 	return v == "1" || strings.EqualFold(v, "true")
