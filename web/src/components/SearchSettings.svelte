@@ -295,7 +295,8 @@
         {/if}
         {#if indexingFailed}
           <Notice variant="inline" live tone="warning" icon={warningIcon}>
-            Couldn't prepare some tasks. Poomsae keeps trying; run <code>poomsae health --json</code> for details.
+            Couldn't prepare some tasks. Poomsae keeps trying; run <code>poomsae health --json</code
+            > for details.
           </Notice>
         {/if}
       </div>

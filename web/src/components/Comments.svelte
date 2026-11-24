@@ -3,7 +3,12 @@
   import { tick } from 'svelte'
   /* eslint-disable svelte/prefer-svelte-reactivity -- reference counts are a transient search-result lookup. */
   import { commentEvidenceLength, trimCommentEvidence } from '../lib/poomsae/commentEvidence'
-  import { CommentRelations, CreationAttribution, authorName, creationFor } from '@ifigueroap/poomsae-ui'
+  import {
+    CommentRelations,
+    CreationAttribution,
+    authorName,
+    creationFor,
+  } from '@ifigueroap/poomsae-ui'
   import {
     Avatar,
     Button,

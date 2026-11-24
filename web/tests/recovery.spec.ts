@@ -2,7 +2,10 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('SSE disruption surfaces reconnecting state and resumes authority', async ({ page, poomsae }) => {
+test('SSE disruption surfaces reconnecting state and resumes authority', async ({
+  page,
+  poomsae,
+}) => {
   await page.route('**/api/v1/events/stream*', (route) => route.abort('connectionrefused'))
   const credentials = await poomsae.launch(page)
   await expect(page.getByRole('status', { name: 'Poomsae daemon status' })).toBeVisible()
@@ -65,7 +68,10 @@ test('daemon restart keeps an old draft visible but unsubmittable', async ({ pag
   await expect(page.getByRole('button', { name: 'Add comment' })).toBeDisabled()
 })
 
-test('read-only polling authority fences mutations without opening SSE', async ({ page, poomsae }) => {
+test('read-only polling authority fences mutations without opening SSE', async ({
+  page,
+  poomsae,
+}) => {
   let streamRequests = 0
   page.on('request', (request) => {
     if (request.url().includes('/api/v1/events/stream')) streamRequests += 1

@@ -1499,7 +1499,9 @@ describe('App', () => {
 
     render(App)
 
-    expect(await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' })).not.toBeNull()
+    expect(
+      await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' }),
+    ).not.toBeNull()
     expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
     expect(screen.queryByText('Loading…')).toBeNull()
   })
@@ -1958,7 +1960,9 @@ describe('App', () => {
     await fireEvent.input(input, { target: { value: 'example-workspace' } })
     await fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect(await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' })).not.toBeNull()
+    expect(
+      await screen.findByRole('heading', { name: 'Open Poomsae from a terminal' }),
+    ).not.toBeNull()
     expect(sessionStorage.getItem('poomsae.web.session.v1')).toBeNull()
     expect(
       fetcher.mock.calls.some(
@@ -2704,7 +2708,9 @@ describe('App', () => {
       expect(localReference?.signal.aborted).toBe(false)
     })
     now = 120_000
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     expect(await screen.findByText('Loading…')).not.toBeNull()
     await waitFor(() => expect(document.title).toBe('Poomsae'))
@@ -2818,7 +2824,9 @@ describe('App', () => {
 
     render(App)
     expect(await screen.findByRole('button', { name: /Example issue/ })).not.toBeNull()
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
 
     expect(await screen.findByRole('button', { name: /Remote issue/ })).not.toBeNull()
@@ -2880,7 +2888,9 @@ describe('App', () => {
     await vi.advanceTimersByTimeAsync(7000)
     await tick()
     expect(screen.getByRole('alert').textContent).toContain("Couldn't load workspace")
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     await vi.advanceTimersByTimeAsync(0)
     await tick()
@@ -3115,7 +3125,9 @@ describe('App', () => {
     )
     render(App)
     await vi.advanceTimersByTimeAsync(0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     await fireEvent.click(screen.getByRole('menuitemradio', { name: /example-remote/ }))
     await vi.advanceTimersByTimeAsync(0)
     expect(reads).toBeGreaterThan(0)

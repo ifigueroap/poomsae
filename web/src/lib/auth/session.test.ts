@@ -157,7 +157,10 @@ describe('browser session bootstrap', () => {
 
   it.each([
     ['/poomsae?issue=example#abc4', '/poomsae?issue=example%23abc4'],
-    ['/poomsae?issue=01J00000000000000000000001#comments', '/poomsae?issue=01J00000000000000000000001'],
+    [
+      '/poomsae?issue=01J00000000000000000000001#comments',
+      '/poomsae?issue=01J00000000000000000000001',
+    ],
     ['/poomsae?scope=example&issue=abc4#top', '/poomsae?scope=example&issue=abc4'],
   ])('handles issue fragment in %s', (url, expected) => {
     history.replaceState(null, '', url)
@@ -213,9 +216,9 @@ describe('browser session bootstrap', () => {
   })
 
   it('keeps the explicitly selected authentication mechanism tab-local', () => {
-    expect(selectAuthenticationMode({ kind: 'login', returnPath: '/poomsae' }, sessionStorage)).toBe(
-      'login',
-    )
+    expect(
+      selectAuthenticationMode({ kind: 'login', returnPath: '/poomsae' }, sessionStorage),
+    ).toBe('login')
     expect(sessionStorage.getItem(authenticationModeStorageKey)).toBe('login')
     expect(selectAuthenticationMode({ kind: 'none', returnPath: '/poomsae' }, sessionStorage)).toBe(
       'login',

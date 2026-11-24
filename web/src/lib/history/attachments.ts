@@ -56,6 +56,8 @@ export function closingAttachments(
       (current.origin ?? '') === (frozen.origin ?? '')
     const state = matches ? '' : current ? ' (changed)' : ' (removed)'
     const label = `${frozen.name} · ${frozen.size} bytes${state}`
-    return [{ label, ...(matches ? { href: `#poomsae-attachment-${encodeURIComponent(id)}` } : {}) }]
+    return [
+      { label, ...(matches ? { href: `#poomsae-attachment-${encodeURIComponent(id)}` } : {}) },
+    ]
   })
 }

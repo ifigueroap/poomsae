@@ -1,4 +1,8 @@
-import type { PoomsaeCommentLink, PoomsaeCreationAttributionWire, PoomsaeReplyKind } from '@ifigueroap/poomsae-ui'
+import type {
+  PoomsaeCommentLink,
+  PoomsaeCreationAttributionWire,
+  PoomsaeReplyKind,
+} from '@ifigueroap/poomsae-ui'
 
 export type PoomsaeTaskViewName = 'inbox' | 'today' | 'delegated' | 'scheduled' | 'all' | 'logbook'
 
@@ -350,7 +354,10 @@ export interface PoomsaePinnedDaemonRequestOptions extends PoomsaePinnedDaemonOp
 }
 
 export interface PoomsaeTaskAPI {
-  createProject(name: string, options: PoomsaePinnedDaemonOptions): Promise<PoomsaeTaskMutationResponse>
+  createProject(
+    name: string,
+    options: PoomsaePinnedDaemonOptions,
+  ): Promise<PoomsaeTaskMutationResponse>
   createIssue(
     projectID: number,
     actor: string,

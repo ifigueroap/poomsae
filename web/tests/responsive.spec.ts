@@ -102,7 +102,9 @@ test('Appearance changes the sidebar color', async ({ page, poomsae }) => {
   await poomsae.launch(page)
 
   const sidebarColor = () =>
-    page.locator('.poomsae-sidebar').evaluate((element) => getComputedStyle(element).backgroundColor)
+    page
+      .locator('.poomsae-sidebar')
+      .evaluate((element) => getComputedStyle(element).backgroundColor)
   const darkColor = await sidebarColor()
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: /^Appearance/ }).click()
@@ -110,7 +112,10 @@ test('Appearance changes the sidebar color', async ({ page, poomsae }) => {
   await expect.poll(sidebarColor).not.toBe(darkColor)
 })
 
-test('task filters stay inside a narrow list pane without overlapping', async ({ page, poomsae }) => {
+test('task filters stay inside a narrow list pane without overlapping', async ({
+  page,
+  poomsae,
+}) => {
   await page.setViewportSize({ width: 1440, height: 800 })
   const credentials = await poomsae.launch(page)
   const issue = await poomsae.seedIssue(page, credentials, { title: 'Narrow pane example' })
@@ -283,7 +288,10 @@ test('the task list and pane stay aligned beside an open task', async ({ page, p
   expect(Math.abs(headerRight - selection)).toBeLessThan(1)
 })
 
-test('a narrow list names the Updated sort its hidden column applies', async ({ page, poomsae }) => {
+test('a narrow list names the Updated sort its hidden column applies', async ({
+  page,
+  poomsae,
+}) => {
   await page.setViewportSize({ width: 1440, height: 800 })
   const credentials = await poomsae.launch(page)
   await poomsae.seedIssue(page, credentials, { title: 'Sort hint example', priority: 2 })

@@ -42,12 +42,12 @@ describe('canonical Poomsae routes', () => {
   })
 
   it('parses only the canonical route families', () => {
-    expect(parseRoute(new URL(`https://daemon.example/poomsae?view=today&label=ready`))).toMatchObject(
-      {
-        kind: 'poomsae',
-        view: 'today',
-      },
-    )
+    expect(
+      parseRoute(new URL(`https://daemon.example/poomsae?view=today&label=ready`)),
+    ).toMatchObject({
+      kind: 'poomsae',
+      view: 'today',
+    })
     expect(parseRoute(new URL(`https://daemon.example/poomsae?scope=${issueUID}`))).toMatchObject({
       kind: 'poomsae',
       projectUID: issueUID,

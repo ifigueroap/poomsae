@@ -77,7 +77,9 @@ export function normalizeKataUISnapshot(
     member_issue_uid_set: immutableSet(memberIssueUIDs),
     ...(snapshot.selected ? { selected_state: snapshot.selected.state } : {}),
     ...(selectedIssue ? { selected_revision: `"rev-${selectedIssue.revision}"` } : {}),
-    ...(selectedDetail ? { selected_detail: immutableCopy(selectedDetail) as PoomsaeTaskDetail } : {}),
+    ...(selectedDetail
+      ? { selected_detail: immutableCopy(selectedDetail) as PoomsaeTaskDetail }
+      : {}),
     selected_recurrences: immutableCopy(
       snapshot.selected?.recurrences ?? [],
     ) as unknown as readonly PoomsaeRecurrence[],

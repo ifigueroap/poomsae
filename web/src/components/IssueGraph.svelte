@@ -633,7 +633,11 @@
     --poomsae-graph-edge-ambient: color-mix(in srgb, var(--text-muted) 58%, var(--bg-primary));
     --poomsae-graph-edge-context: color-mix(in srgb, var(--border-default) 76%, var(--bg-primary));
     --poomsae-graph-edge-related: color-mix(in srgb, var(--text-muted) 46%, var(--bg-primary));
-    --poomsae-graph-edge-selected: color-mix(in srgb, var(--text-secondary) 82%, var(--text-primary));
+    --poomsae-graph-edge-selected: color-mix(
+      in srgb,
+      var(--text-secondary) 82%,
+      var(--text-primary)
+    );
     --poomsae-graph-edge-blocks: color-mix(in srgb, var(--accent-amber) 75%, var(--bg-primary));
     --poomsae-graph-edge-selected-blocks: color-mix(
       in srgb,
@@ -943,11 +947,15 @@
     stroke-width: 2.2;
   }
 
-  :global(.poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--blocks .svelte-flow__edge-path) {
+  :global(
+    .poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--blocks .svelte-flow__edge-path
+  ) {
     stroke: var(--poomsae-graph-edge-selected-blocks);
   }
 
-  :global(.poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--parent .svelte-flow__edge-path) {
+  :global(
+    .poomsae-graph-edge--selected-adjacent.poomsae-graph-edge--parent .svelte-flow__edge-path
+  ) {
     stroke: var(--poomsae-graph-edge-selected);
   }
 

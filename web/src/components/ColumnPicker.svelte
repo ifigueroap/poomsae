@@ -8,7 +8,10 @@
     floatingPopoverStyle,
   } from '@kenn-io/kit-ui'
   import { tick } from 'svelte'
-  import type { PoomsaeOptionalTaskColumn, PoomsaeTaskColumnVisibility } from '../lib/poomsae/columns'
+  import type {
+    PoomsaeOptionalTaskColumn,
+    PoomsaeTaskColumnVisibility,
+  } from '../lib/poomsae/columns'
 
   interface Props {
     visibility: PoomsaeTaskColumnVisibility

@@ -1,6 +1,12 @@
 import type { PoomsaeTaskLink, PoomsaeTaskStatusFilter, PoomsaeTaskSummary } from './types'
 
-export const POOMSAE_LINK_RELATIONS = ['parent', 'child', 'blocks', 'blocked_by', 'related'] as const
+export const POOMSAE_LINK_RELATIONS = [
+  'parent',
+  'child',
+  'blocks',
+  'blocked_by',
+  'related',
+] as const
 
 export type PoomsaeLinkRelation = (typeof POOMSAE_LINK_RELATIONS)[number]
 
@@ -47,7 +53,10 @@ export function applyKataLinkStatusScope(
   }
 }
 
-export function relationForKataLink(link: PoomsaeTaskLink, selectedUID: string): PoomsaeLinkRelation {
+export function relationForKataLink(
+  link: PoomsaeTaskLink,
+  selectedUID: string,
+): PoomsaeLinkRelation {
   if (link.type === 'parent') return link.from.uid === selectedUID ? 'parent' : 'child'
   if (link.type === 'blocks') return link.to.uid === selectedUID ? 'blocked_by' : 'blocks'
   return 'related'

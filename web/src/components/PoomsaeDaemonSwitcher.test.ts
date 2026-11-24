@@ -39,7 +39,9 @@ describe('PoomsaeDaemonSwitcher', () => {
     }
     const { rerender } = render(PoomsaeDaemonSwitcher, { props })
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     expect(screen.getByRole('menu', { name: 'Configured Poomsae daemons' })).not.toBeNull()
     expect(onOpen).toHaveBeenCalledOnce()
     expect(onSelect).not.toHaveBeenCalled()
@@ -55,7 +57,9 @@ describe('PoomsaeDaemonSwitcher', () => {
     expect(onSelect).toHaveBeenCalledWith('example-remote')
 
     await rerender({ ...props, account: 'Example account', credential: 'Read-only' })
-    await fireEvent.click(screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }))
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Switch Poomsae daemon: example-local' }),
+    )
     expect(screen.getByText('Example account')).not.toBeNull()
     expect(screen.getByText('Read-only')).not.toBeNull()
   })

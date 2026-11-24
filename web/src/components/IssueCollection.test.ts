@@ -1132,7 +1132,10 @@ describe('IssueCollection', () => {
       POOMSAE_TASK_COLUMNS_STORAGE_KEY,
       JSON.stringify(['updated', 'priority', 'due', 'tags']),
     )
-    localStorage.setItem('poomsae:issue-sort/v1', JSON.stringify({ key: 'owner', direction: 'desc' }))
+    localStorage.setItem(
+      'poomsae:issue-sort/v1',
+      JSON.stringify({ key: 'owner', direction: 'desc' }),
+    )
 
     render(IssueCollection, {
       props: {

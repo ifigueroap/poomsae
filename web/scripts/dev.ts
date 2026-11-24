@@ -28,9 +28,13 @@ await Promise.all([
   mkdir(workspace, { recursive: true }),
   mkdir(binaryDirectory, { recursive: true }),
 ])
-await writeFile(join(runRoot, '.poomsae-web-dev-owned'), `${JSON.stringify({ pid: process.pid })}\n`, {
-  mode: 0o600,
-})
+await writeFile(
+  join(runRoot, '.poomsae-web-dev-owned'),
+  `${JSON.stringify({ pid: process.pid })}\n`,
+  {
+    mode: 0o600,
+  },
+)
 
 const backendPort = await availablePort()
 const backendOrigin = `http://127.0.0.1:${backendPort}`

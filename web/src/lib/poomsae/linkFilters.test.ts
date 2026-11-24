@@ -131,7 +131,9 @@ describe('poomsae link filters', () => {
         openOnly,
       ),
     ).toBe(false)
-    expect(poomsaeLinkMatchesFilters(link(), selectedUID, { kind: 'pending' }, openOnly)).toBe(false)
+    expect(poomsaeLinkMatchesFilters(link(), selectedUID, { kind: 'pending' }, openOnly)).toBe(
+      false,
+    )
     expect(poomsaeLinkMatchesFilters(link(), selectedUID, { kind: 'pending' }, mixed)).toBe(true)
     expect(poomsaeLinkMatchesFilters(link(), selectedUID, { kind: 'failed' }, openOnly)).toBe(true)
   })

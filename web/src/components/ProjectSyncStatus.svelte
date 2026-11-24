@@ -287,7 +287,8 @@
                 ? `poomsae federation status --project '${powershellName}'`
                 : `poomsae federation status --project $(if ($PSVersionTable.PSVersion -lt [version]'7.3' -or $PSNativeCommandArgumentPassing -eq 'Legacy') { '${legacyName}' } else { '${powershellName}' })`}
             <div class="sync-attention">
-              <span>Connect the Poomsae CLI to this daemon with your own credential, then run:</span>
+              <span>Connect the Poomsae CLI to this daemon with your own credential, then run:</span
+              >
               <span class="sync-note"
                 >For a remote daemon, select it with its --daemon profile or POOMSAE_SERVER.</span
               >

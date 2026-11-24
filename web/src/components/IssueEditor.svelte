@@ -76,7 +76,11 @@
     onMoveIssue: (toProjectUID: string) => boolean | Promise<boolean>
     onPatchMetadata: (uid: string, patch: Record<string, unknown>) => boolean | Promise<boolean>
     onAddComment?:
-      | ((uid: string, body: string, reply?: PoomsaeCommentReplyIntent) => boolean | Promise<boolean>)
+      | ((
+          uid: string,
+          body: string,
+          reply?: PoomsaeCommentReplyIntent,
+        ) => boolean | Promise<boolean>)
       | undefined
     onEditIssue: (uid: string, patch: PoomsaeTaskEditPatch) => boolean | Promise<boolean>
     onAssignOwner: (uid: string, owner: string) => boolean | Promise<boolean>

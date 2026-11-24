@@ -9,21 +9,25 @@ export interface PoomsaeTaskSort {
   direction: PoomsaeTaskSortDirection
 }
 
-export const POOMSAE_TASK_NATURAL_DIRECTION: Record<PoomsaeTaskSortKey, PoomsaeTaskSortDirection> = {
-  priority: 'asc',
-  title: 'asc',
-  updated: 'desc',
-  owner: 'asc',
-  id: 'asc',
-  due: 'asc',
-}
+export const POOMSAE_TASK_NATURAL_DIRECTION: Record<PoomsaeTaskSortKey, PoomsaeTaskSortDirection> =
+  {
+    priority: 'asc',
+    title: 'asc',
+    updated: 'desc',
+    owner: 'asc',
+    id: 'asc',
+    due: 'asc',
+  }
 
 export const DEFAULT_POOMSAE_TASK_SORT: PoomsaeTaskSort = {
   key: 'updated',
   direction: POOMSAE_TASK_NATURAL_DIRECTION.updated,
 }
 
-export function toggleKataTaskSort(current: PoomsaeTaskSort, key: PoomsaeTaskSortKey): PoomsaeTaskSort {
+export function toggleKataTaskSort(
+  current: PoomsaeTaskSort,
+  key: PoomsaeTaskSortKey,
+): PoomsaeTaskSort {
   if (current.key === key) {
     return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
   }

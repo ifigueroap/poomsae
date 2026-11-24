@@ -72,7 +72,9 @@ test('project readers see sync diagnostics with bounded embedding summaries at n
       name: /^(No changes to send|Sync failed|Sync disabled|Sync status unavailable|\d+ to sync)$/,
     }),
   ).toHaveCount(0)
-  expect((await poomsae.request(page, local, 'GET', '/api/v1/federation/status')).status()).toBe(403)
+  expect((await poomsae.request(page, local, 'GET', '/api/v1/federation/status')).status()).toBe(
+    403,
+  )
   expect(
     (
       await poomsae.request(

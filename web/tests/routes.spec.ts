@@ -47,7 +47,9 @@ test('issue selection preserves the active Forge project scope', async ({ page, 
   await expect(page).toHaveURL(`${poomsae.origin}/poomsae?scope=${poomsae.projectUID}`)
   await page.getByRole('button', { name: /Scoped route task/ }).click()
 
-  await expect(page).toHaveURL(`${poomsae.origin}/poomsae?scope=${poomsae.projectUID}&issue=${issue.uid}`)
+  await expect(page).toHaveURL(
+    `${poomsae.origin}/poomsae?scope=${poomsae.projectUID}&issue=${issue.uid}`,
+  )
   await expect(page.getByRole('heading', { name: 'example-project', exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Task detail' })).toContainText('Scoped route task')
 })

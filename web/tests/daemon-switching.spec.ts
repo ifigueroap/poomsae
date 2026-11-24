@@ -2,7 +2,10 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('navigates the server menu by keyboard and closes it with Escape', async ({ page, poomsae }) => {
+test('navigates the server menu by keyboard and closes it with Escape', async ({
+  page,
+  poomsae,
+}) => {
   await poomsae.launch(page)
   const trigger = page.getByRole('button', { name: 'Switch Poomsae daemon: example-local' })
   await trigger.focus()
@@ -17,7 +20,10 @@ test('navigates the server menu by keyboard and closes it with Escape', async ({
   await expect(trigger).toBeFocused()
 })
 
-test('keeps daemon names readable alongside health and recovery hints', async ({ page, poomsae }) => {
+test('keeps daemon names readable alongside health and recovery hints', async ({
+  page,
+  poomsae,
+}) => {
   await poomsae.launch(page)
   await page.route('**/api/v1/ui/daemons', (route) =>
     route.fulfill({

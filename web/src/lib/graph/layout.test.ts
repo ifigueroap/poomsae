@@ -4,7 +4,9 @@ import type { PoomsaeReachableGraphResponse } from '../poomsae/types'
 import { task } from '../../test/task'
 import { buildKataReachableGraph } from './layout'
 
-function graph(overrides: Partial<PoomsaeReachableGraphResponse> = {}): PoomsaeReachableGraphResponse {
+function graph(
+  overrides: Partial<PoomsaeReachableGraphResponse> = {},
+): PoomsaeReachableGraphResponse {
   return {
     source_uid: overrides.source_uid ?? 'issue-root',
     depth: overrides.depth ?? 'full',

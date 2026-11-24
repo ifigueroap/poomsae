@@ -194,7 +194,11 @@
     {@const open = grouped.filter((link) => !peerClosed(link))}
     {@const closed = grouped.filter(peerClosed)}
     {#if grouped.length}
-      <div class="link-group" role="group" aria-label={relationLabels[group as PoomsaeLinkRelation]}>
+      <div
+        class="link-group"
+        role="group"
+        aria-label={relationLabels[group as PoomsaeLinkRelation]}
+      >
         <p class="link-group-heading">
           {relationLabels[group as PoomsaeLinkRelation]}
           <span class="link-group-count">{grouped.length}</span>

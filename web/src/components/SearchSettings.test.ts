@@ -244,7 +244,12 @@ describe('SearchSettings', () => {
   })
 
   test.each([
-    [true, undefined, true, "Couldn't reconnect. Run poomsae daemon status, then reopen poomsae ui."],
+    [
+      true,
+      undefined,
+      true,
+      "Couldn't reconnect. Run poomsae daemon status, then reopen poomsae ui.",
+    ],
     [false, undefined, false, "Couldn't reconnect. Run poomsae daemon status."],
     [
       false,

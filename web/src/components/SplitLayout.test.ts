@@ -96,9 +96,9 @@ describe('SplitLayout', () => {
       props: { orientation: 'horizontal', responsiveBreakpoint: 700 },
     })
     await waitFor(() => {
-      expect(stacked.container.querySelector('.poomsae-sash')?.getAttribute('data-orientation')).toBe(
-        'vertical',
-      )
+      expect(
+        stacked.container.querySelector('.poomsae-sash')?.getAttribute('data-orientation'),
+      ).toBe('vertical')
       expect(screen.getByTestId('secondary-beside').textContent).toBe('false')
     })
   })

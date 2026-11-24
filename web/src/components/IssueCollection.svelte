@@ -231,7 +231,10 @@
       : sort
   })
 
-  function trackForColumn(layout: TaskGridLayout, column: PoomsaeOptionalTaskColumn): string | null {
+  function trackForColumn(
+    layout: TaskGridLayout,
+    column: PoomsaeOptionalTaskColumn,
+  ): string | null {
     if (column === 'project' && detailBeside) return '16px'
     const base =
       TASK_COLUMN_TRACKS[layout][column] ??
@@ -669,7 +672,9 @@
     return poomsaeTaskStatusMatchesFilter(issue, statusFilter, readyIssueUIDs)
   }
 
-  function revealChainForStatus(chain: readonly PoomsaeTaskSummary[]): readonly PoomsaeTaskSummary[] {
+  function revealChainForStatus(
+    chain: readonly PoomsaeTaskSummary[],
+  ): readonly PoomsaeTaskSummary[] {
     if (statusFilter !== 'ready') return chain
     const target = chain[chain.length - 1]
     if (!target || !issueMatchesStatusFilter(target)) return []
@@ -704,7 +709,9 @@
     })
   }
 
-  function collectKnownExpandableIssues(issues: readonly PoomsaeTaskSummary[]): PoomsaeTaskSummary[] {
+  function collectKnownExpandableIssues(
+    issues: readonly PoomsaeTaskSummary[],
+  ): PoomsaeTaskSummary[] {
     const expandable: PoomsaeTaskSummary[] = []
     const seen = new Set<string>()
 
@@ -1190,7 +1197,10 @@
          ↔ to expand or collapse subtasks. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="table-body" bind:this={tableBody} onkeydown={handleListKeydown}>
-        {#snippet resizeHandle(column: PoomsaeOptionalTaskColumn | 'date' | 'closed', label: string)}
+        {#snippet resizeHandle(
+          column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
+          label: string,
+        )}
           <div class="column-resize" onfocusin={(event) => rememberColumnWidth(column, event)}>
             <SplitResizeHandle
               orientation="horizontal"

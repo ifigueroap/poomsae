@@ -125,7 +125,10 @@
     position()
   }
 
-  function emit(changed: keyof PoomsaeTaskSearchFilters, next: Partial<PoomsaeTaskSearchFilters>): void {
+  function emit(
+    changed: keyof PoomsaeTaskSearchFilters,
+    next: Partial<PoomsaeTaskSearchFilters>,
+  ): void {
     const nextFilters = {
       ...draft,
       ...next,
@@ -176,7 +179,8 @@
           title="Status"
           value={draft.status}
           options={statusOptions}
-          onchange={(value) => emit('status', { status: value as PoomsaeTaskSearchFilters['status'] })}
+          onchange={(value) =>
+            emit('status', { status: value as PoomsaeTaskSearchFilters['status'] })}
         />
       </div>
     {/if}

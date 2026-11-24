@@ -98,7 +98,10 @@
     onRefreshCredentials?: (() => void | Promise<void>) | undefined
     onSearchEmpty?: (() => void) | undefined
     onNavigate: (route: AppRoute) => void | Promise<void>
-    onCreateProject: (name: string, designateInbox?: boolean) => Promise<PoomsaeTaskMutationResponse>
+    onCreateProject: (
+      name: string,
+      designateInbox?: boolean,
+    ) => Promise<PoomsaeTaskMutationResponse>
     onCreateIssue: (
       title: string,
       parent?: ChildParent,
@@ -134,7 +137,9 @@
       input: import('../lib/poomsae/types').PoomsaePatchRecurrenceInput,
       etag: string,
     ) => Promise<void>
-    onDeleteRecurrence: (recurrence: import('../lib/poomsae/types').PoomsaeRecurrence) => Promise<void>
+    onDeleteRecurrence: (
+      recurrence: import('../lib/poomsae/types').PoomsaeRecurrence,
+    ) => Promise<void>
   }
 
   let {

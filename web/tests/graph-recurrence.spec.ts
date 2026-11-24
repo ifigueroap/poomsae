@@ -31,7 +31,10 @@ test('graph refits and preserves its size as the viewport changes', async ({ pag
   await expect.poll(async () => (await primary.boundingBox())!.width).toBe(draggedSize)
 })
 
-test('keeps zoom when opening a node without changing the graph layout', async ({ page, poomsae }) => {
+test('keeps zoom when opening a node without changing the graph layout', async ({
+  page,
+  poomsae,
+}) => {
   const credentials = await poomsae.launch(page)
   const source = await poomsae.seedIssue(page, credentials, { title: 'Graph source example' })
   const child = await poomsae.seedIssue(page, credentials, {
@@ -56,7 +59,9 @@ test('creates, edits, and stops a repeating task from the project header', async
 }) => {
   const credentials = await poomsae.launch(page)
   const issue = await poomsae.seedIssue(page, credentials, { title: 'Recurring example task' })
-  await page.goto(`${poomsae.origin}/poomsae?view=all-open&scope=${poomsae.projectUID}&issue=${issue.uid}`)
+  await page.goto(
+    `${poomsae.origin}/poomsae?view=all-open&scope=${poomsae.projectUID}&issue=${issue.uid}`,
+  )
   await page.getByRole('button', { name: 'Repeats…' }).click()
   const create = page.getByRole('dialog', { name: 'Repeat' })
   await create.getByLabel('Title', { exact: true }).fill('Weekly example review')
@@ -79,7 +84,10 @@ test('creates, edits, and stops a repeating task from the project header', async
   await expect(chip).toHaveCount(0)
 })
 
-test('fits tasks around the key and controls in a short stacked pane', async ({ page, poomsae }) => {
+test('fits tasks around the key and controls in a short stacked pane', async ({
+  page,
+  poomsae,
+}) => {
   const credentials = await poomsae.launch(page)
   const source = await poomsae.seedIssue(page, credentials, { title: 'Graph root' })
   await poomsae.seedIssue(page, credentials, {
