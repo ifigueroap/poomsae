@@ -184,7 +184,10 @@ func firstExistingDir(paths []string) string {
 
 func dirExists(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }
 
 func stopDaemons(ctx context.Context, source string) ([]int, []string) {

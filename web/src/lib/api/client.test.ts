@@ -126,8 +126,10 @@ it.each([
   try {
     const result = await attachmentContent({ projectId: 7, ref: 'abc4', attachmentId: 'saved' })
     expect(result.status).toBe(200)
-    expect(result.data).toBeInstanceOf(Blob)
-    expect(Array.from(new Uint8Array(await (result.data as Blob).arrayBuffer()))).toEqual(bytes)
+    const blob = result.data as Blob
+    expect(blob.size).toBe(bytes.length)
+    expect(blob.type).toBe(type)
+    expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual(bytes)
   } finally {
     setGeneratedFetch(createCredentialedFetch())
   }

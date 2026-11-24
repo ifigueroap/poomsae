@@ -4,5 +4,5 @@
 
 export type MapConnectorFieldPathParameters = {
   instance: string
-  poomsaeField: string
+  kataField: string
 }

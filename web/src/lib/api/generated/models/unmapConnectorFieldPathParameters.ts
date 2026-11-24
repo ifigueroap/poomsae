@@ -4,5 +4,5 @@
 
 export type UnmapConnectorFieldPathParameters = {
   instance: string
-  poomsaeField: string
+  kataField: string
 }

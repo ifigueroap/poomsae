@@ -25,4 +25,4 @@ jobs:
           bash -n scripts/install.sh
           grep -q 'ifigueroap/poomsae' scripts/install.sh
           grep -q 'ifigueroap/poomsae' scripts/install.ps1
-          grep -q 'poomsae_${version#v}_${platform}.tar.gz' scripts/install.sh
+          grep -q '${BINARY_NAME}_${version#v}_${platform}.tar.gz' scripts/install.sh

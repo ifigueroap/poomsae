@@ -147,6 +147,7 @@ jobs:
             exit 1
           fi
           cli=$(node -p "require.resolve('@playwright/test/cli')")
+          # workflowretry: allow Pull the pinned Playwright image before the browser server starts.
           docker pull "$PLAYWRIGHT_IMAGE"
           container_id=$(docker run --detach --interactive --init --network host --ipc host \
             --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE:ro" \
@@ -286,6 +287,7 @@ jobs:
       # with the same headers.
       - name: Check first paint
         run: |
+          # workflowretry: allow Read the served HTML shell from the local daemon.
           curl --fail --silent --show-error --output /tmp/poomsae-index.html http://127.0.0.1:7777/index.html
           grep -q '<html' /tmp/poomsae-index.html
 
@@ -465,6 +467,7 @@ jobs:
         env:
           POOMSAE_NATIVE_PLUGIN_SDK_ROOT: ${{ runner.temp }}/native-agent-sdk
         run: |
+          # workflowretry: allow Install the declared native plugin SDKs without package scripts.
           npm install --prefix "$POOMSAE_NATIVE_PLUGIN_SDK_ROOT" --ignore-scripts --no-audit --no-fund \
             typescript@7.0.2 @types/node@26.6.4 \
             @earendil-works/pi-coding-agent@0.99.1 \

@@ -602,17 +602,17 @@ export type unmapConnectorFieldResponse =
 
 export const getUnmapConnectorFieldUrl = ({
   instance,
-  poomsaeField,
+  kataField,
 }: UnmapConnectorFieldPathParameters) => {
-  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(poomsaeField))}`
+  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(kataField))}`
 }
 
 export const unmapConnectorField = async (
-  { instance, poomsaeField }: UnmapConnectorFieldPathParameters,
+  { instance, kataField }: UnmapConnectorFieldPathParameters,
   options?: Parameters<typeof orvalFetch>[1],
 ): Promise<unmapConnectorFieldResponse> => {
   return orvalFetch<unmapConnectorFieldResponse>(
-    getUnmapConnectorFieldUrl({ instance, poomsaeField }),
+    getUnmapConnectorFieldUrl({ instance, kataField }),
     {
       ...options,
       method: 'DELETE',
@@ -643,13 +643,13 @@ export type mapConnectorFieldResponse =
 
 export const getMapConnectorFieldUrl = ({
   instance,
-  poomsaeField,
+  kataField,
 }: MapConnectorFieldPathParameters) => {
-  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(poomsaeField))}`
+  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(kataField))}`
 }
 
 export const mapConnectorField = async (
-  { instance, poomsaeField }: MapConnectorFieldPathParameters,
+  { instance, kataField }: MapConnectorFieldPathParameters,
   mapConnectorFieldRequestBody: MapConnectorFieldRequestBody,
   options?: Parameters<typeof orvalFetch>[1],
 ): Promise<mapConnectorFieldResponse> => {
@@ -661,7 +661,7 @@ export const mapConnectorField = async (
     if (Array.isArray(h)) return Object.fromEntries(h)
     return h
   }
-  return orvalFetch<mapConnectorFieldResponse>(getMapConnectorFieldUrl({ instance, poomsaeField }), {
+  return orvalFetch<mapConnectorFieldResponse>(getMapConnectorFieldUrl({ instance, kataField }), {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
