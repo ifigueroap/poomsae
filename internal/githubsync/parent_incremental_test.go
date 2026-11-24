@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 var testParentAlias = regexp.MustCompile(`i([0-9]+):\s*issue\(number:\s*([0-9]+)\)`)

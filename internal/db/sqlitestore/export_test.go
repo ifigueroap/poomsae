@@ -5,7 +5,7 @@ import (
 	"database/sql/driver"
 	"time"
 
-	"go.kenn.io/kata/internal/testenv/sqlcount"
+	"github.com/ifigueroap/poomsae/internal/testenv/sqlcount"
 )
 
 // LinksChangedPayloadForTest exposes linksChangedPayload to external tests so

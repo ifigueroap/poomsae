@@ -1,4 +1,4 @@
-import type { KataTaskEvent } from '../kata/types'
+import type { PoomsaeTaskEvent } from '../poomsae/types'
 
 interface Attachment {
   name: string
@@ -32,7 +32,7 @@ function attachment(value: unknown): Attachment | undefined {
 }
 
 export function closingAttachments(
-  event: KataTaskEvent,
+  event: PoomsaeTaskEvent,
   metadata: Record<string, unknown>,
 ): { label: string; href?: string }[] {
   if (event.type !== 'issue.closed' || !Array.isArray(event.payload?.evidence)) return []
@@ -56,6 +56,8 @@ export function closingAttachments(
       (current.origin ?? '') === (frozen.origin ?? '')
     const state = matches ? '' : current ? ' (changed)' : ' (removed)'
     const label = `${frozen.name} · ${frozen.size} bytes${state}`
-    return [{ label, ...(matches ? { href: `#kata-attachment-${encodeURIComponent(id)}` } : {}) }]
+    return [
+      { label, ...(matches ? { href: `#poomsae-attachment-${encodeURIComponent(id)}` } : {}) },
+    ]
   })
 }

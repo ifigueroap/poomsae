@@ -22,7 +22,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 const fixtureCallback = "https://receiver.example/events?route=inbox"
@@ -221,9 +221,9 @@ func TestWebhookNoDaemonHeadersOrProxy(t *testing.T) {
 		t.Setenv(name, proxy.URL)
 	}
 	t.Setenv("NO_PROXY", "")
-	t.Setenv("KATA_AUTH_TOKEN", "fixture-daemon-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "fixture-daemon-token")
 	w, _ := fixtureWebhook(t, func(rw http.ResponseWriter, r *http.Request) {
-		for _, name := range []string{"Authorization", "Cookie", "Proxy-Authorization", "X-Kata-Web-Session", "X-Kata-CSRF", "Forwarded", "X-Forwarded-For"} {
+		for _, name := range []string{"Authorization", "Cookie", "Proxy-Authorization", "X-Poomsae-Web-Session", "X-Poomsae-CSRF", "Forwarded", "X-Forwarded-For"} {
 			if r.Header.Get(name) != "" {
 				t.Errorf("callback received authority header %s", name)
 			}

@@ -281,7 +281,7 @@ func formFixture() Model {
 		view:   viewList,
 		keymap: newKeymap(),
 		list:   listModel{actor: "tester"},
-		scope:  scope{projectID: 7, projectName: "kata"},
+		scope:  scope{projectID: 7, projectName: "poomsae"},
 		detail: detailModel{
 			issue:    &Issue{UID: "01TEST-42aa", ShortID: "42aa", Title: "fix bug", Body: "current body"},
 			scopePID: 7,
@@ -371,7 +371,7 @@ func TestForm_CtrlO_OnEmptyBodyEdit_AllowedToCommit(t *testing.T) {
 
 // bodyEditRecorder records the content revision each body save names.
 type bodyEditRecorder struct {
-	KataAPI
+	PoomsaeAPI
 	expected []*int64
 }
 

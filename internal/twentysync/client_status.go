@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // StatusSession provides independently verified workflow reads and writes.

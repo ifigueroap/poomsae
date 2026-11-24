@@ -4,20 +4,20 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func TestOpenSQLiteFreshProjectIDs(t *testing.T) {
 	ctx := t.Context()
-	fresh, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	fresh, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, fresh.Close()) })
-	cloned, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	cloned, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, cloned.Close()) })
-	second, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	second, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, second.Close()) })
 	require.NotEqual(t, cloned.InstanceUID(), second.InstanceUID())
@@ -35,7 +35,7 @@ func TestOpenSQLiteFreshProjectIDs(t *testing.T) {
 
 func TestOpenSQLitePreservesExistingDatabase(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	store, err := testfix.OpenSQLite(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })

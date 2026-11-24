@@ -9,17 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/federation/joincommand"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/internal/shellquote"
+	"github.com/ifigueroap/poomsae/internal/federation/joincommand"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/shellquote"
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func requireLegacyFederationEnrollmentAuthority(ctx context.Context) error {
@@ -195,7 +195,7 @@ func registerFederationHandlers(humaAPI huma.API, cfg ServerConfig) {
 				}
 				return nil, api.NewError(http.StatusForbidden, "bootstrap_token_write_forbidden",
 					"bootstrap token cannot perform attributed writes; use a user token",
-					"enable federation on the hub with an account token first: kata federation enable", nil)
+					"enable federation on the hub with an account token first: poomsae federation enable", nil)
 			}
 			return nil, err
 		}
@@ -387,7 +387,7 @@ func registerFederationHandlers(humaAPI huma.API, cfg ServerConfig) {
 		if in.Body.Relay != nil {
 			return createRelayEnrollment(ctx, cfg, in)
 		}
-		if !katauid.Valid(in.Body.SpokeInstanceUID) {
+		if !poomsaeuid.Valid(in.Body.SpokeInstanceUID) {
 			return nil, api.NewError(http.StatusBadRequest, "validation", "spoke_instance_uid must be a valid instance UID", "", nil)
 		}
 		if _, err := db.CanonicalFederationCapabilities(in.Body.Capabilities); err != nil {
@@ -498,7 +498,7 @@ func registerFederationHandlers(humaAPI huma.API, cfg ServerConfig) {
 		Summary:     "Rotate a federation enrollment",
 		Description: "Transactionally revokes active project-scoped grants for the spoke and installs the caller-supplied replacement token. Database account tokens cannot rotate legacy grants; use relay enrollment credentials so issuer expiry and revocation remain enforced. In identity mode, bootstrap credentials require actor to name an existing hub account with an unscoped API token, including expired or revoked tokens. The actor must be able to see a project-scoped grant's project. Direct grants remain valid after account tokens expire or are revoked. After canonical capability normalization and actor resolution, an exact replay with the same replacement token, spoke instance, project, canonical capabilities, resolved actor, and adoption policy returns the same active enrollment. An attribute mismatch or revoked replacement enrollment returns 409 with code federation_enrollment_token_conflict.",
 	}, func(ctx context.Context, in *api.RotateFederationEnrollmentRequest) (*api.RotateFederationEnrollmentResponse, error) {
-		if !katauid.Valid(in.Body.SpokeInstanceUID) {
+		if !poomsaeuid.Valid(in.Body.SpokeInstanceUID) {
 			return nil, api.NewError(http.StatusBadRequest, "validation", "spoke_instance_uid must be a valid instance UID", "", nil)
 		}
 		if _, err := db.CanonicalFederationCapabilities(in.Body.Capabilities); err != nil {
@@ -915,7 +915,7 @@ func registerFederationHandlers(humaAPI huma.API, cfg ServerConfig) {
 				if _, err := ReleaseFederationProvider(ctx, cfg.DB, managed, in.ProjectID); err != nil {
 					return nil, api.NewError(http.StatusServiceUnavailable, "federation_cleanup_pending",
 						"provider connection cleanup is pending",
-						"retry kata federation leave when the credential provider is available; the saved request is retained", nil)
+						"retry poomsae federation leave when the credential provider is available; the saved request is retained", nil)
 				}
 			}
 		}
@@ -937,7 +937,7 @@ func registerFederationHandlers(humaAPI huma.API, cfg ServerConfig) {
 				http.StatusConflict,
 				"federation_credential_conflict",
 				"federation credential changed during leave",
-				"resolve the credential conflict in credentials.toml, then retry kata federation leave",
+				"resolve the credential conflict in credentials.toml, then retry poomsae federation leave",
 				nil,
 			)
 		case err != nil:
@@ -1214,9 +1214,9 @@ func federationRelayLeaveAPIError(ctx context.Context, store db.Storage, binding
 	if lookupErr != nil {
 		return federationReplicaAPIError(err)
 	}
-	hint := fmt.Sprintf("let the bridge sync its retained deliveries, or detach a bridge whose hub is gone with `kata federation bridge disconnect --project %s --local-only`", shellquote.Quote(project.Name))
+	hint := fmt.Sprintf("let the bridge sync its retained deliveries, or detach a bridge whose hub is gone with `poomsae federation bridge disconnect --project %s --local-only`", shellquote.Quote(project.Name))
 	if errors.Is(err, db.ErrFederationResetBlockedByDownstream) {
-		hint = "revoke or detach the downstream relay enrollments with `kata federation revoke <id>`, then retry"
+		hint = "revoke or detach the downstream relay enrollments with `poomsae federation revoke <id>`, then retry"
 	}
 	return api.NewError(http.StatusConflict, "federation_lifecycle_blocked", "this relay bridge holds deliveries or downstream enrollments that an ordinary leave cannot resolve", hint, nil)
 }
@@ -1255,7 +1255,7 @@ func abortFederationReplicaLeave(
 			return nil, api.NewError(http.StatusNotFound, "project_not_found", "project not found", "", nil)
 		case errors.Is(err, ErrFederationReplicaLeaveStarted):
 			return nil, api.NewError(http.StatusConflict, "federation_leave_started", err.Error(),
-				"finish the leave with kata federation leave, or kata federation leave --local-only", nil)
+				"finish the leave with poomsae federation leave, or poomsae federation leave --local-only", nil)
 		case errors.Is(err, config.ErrFederationCredentialConflict):
 			return nil, api.NewError(http.StatusConflict, "federation_credential_conflict",
 				"managed federation credential reservations conflict",

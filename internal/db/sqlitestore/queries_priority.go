@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // UpdatePriority sets issues.priority to the new value and emits the matching

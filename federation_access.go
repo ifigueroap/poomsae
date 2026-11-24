@@ -1,14 +1,14 @@
-package kata
+package poomsae
 
 import (
 	"context"
 	"errors"
 )
 
-// ErrFederationAdmissionLimited asks Kata to reject an authenticated
+// ErrFederationAdmissionLimited asks Poomsae to reject an authenticated
 // federation request with 429 before reading a large request body. Embedding
 // hosts may return it when their bounded request admission is full.
-var ErrFederationAdmissionLimited = errors.New("kata: federation request admission limited")
+var ErrFederationAdmissionLimited = errors.New("poomsae: federation request admission limited")
 
 // FederationCapability is the transport authority requested by one
 // authenticated federation operation.
@@ -22,14 +22,14 @@ const (
 )
 
 // FederationOperation describes the authenticated transport operation. ID is
-// a stable Kata operation identifier. Mutation is true when the operation can
+// a stable Poomsae operation identifier. Mutation is true when the operation can
 // change stored task, cursor, or lease state.
 type FederationOperation struct {
 	ID       string
 	Mutation bool
 }
 
-// FederationAccessRequest contains the Kata-authenticated enrollment and
+// FederationAccessRequest contains the Poomsae-authenticated enrollment and
 // project facts supplied to a mounting application's additional authorization
 // boundary. It never contains the plaintext credential or its stored hash.
 type FederationAccessRequest struct {
@@ -45,7 +45,7 @@ type FederationAccessDecision struct {
 	TransactionFence TransactionFence
 }
 
-// FederationAccessController adds host-owned authorization after Kata has
+// FederationAccessController adds host-owned authorization after Poomsae has
 // authenticated a project-scoped enrollment. Returning ErrAccessDenied makes
 // the credential unusable without disclosing which outside authority changed.
 // Mutating operations require a TransactionFence in the returned decision.
@@ -58,7 +58,7 @@ type FederationAccessController interface {
 
 // FederationReferenceAccessController lets a host accept link additions in
 // issue creation or composite edits, and parent link changes, across
-// project-scoped enrollments with different actors. Kata authenticates both push
+// project-scoped enrollments with different actors. Poomsae authenticates both push
 // credentials for the same spoke and runs both native and host authorization
 // fences before calling this method in the ingest transaction. The route keeps
 // its actor. The host must verify that the two enrollments represent the same

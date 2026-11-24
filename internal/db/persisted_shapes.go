@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // Persisted-row limits for retained embedding artifacts. The schema carries no

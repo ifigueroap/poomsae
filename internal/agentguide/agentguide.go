@@ -5,16 +5,16 @@ import "strings"
 
 // Contract is the marker-free agent workflow contract: the short core every
 // coding agent sees. Coordination detail lives in the quickstart fragments.
-const Contract = `Use kata for requested changes, not questions, explanations, or reviews that
+const Contract = `Use poomsae for requested changes, not questions, explanations, or reviews that
 change nothing.
 
 Before a change, search for an issue:
 
-    kata search "<one or two distinctive words>" --agent
+    poomsae search "<one or two distinctive words>" --agent
 
 Search matches every word. Reuse an open issue, or create one:
 
-    kata create "<title>" --body "<what and why>" --idempotency-key <key> --agent
+    poomsae create "<title>" --body "<what and why>" --idempotency-key <key> --agent
 
 Labels p0 through p4 and labels starting with priority: are rejected; use --priority.
 
@@ -27,19 +27,19 @@ Link related work with --related <ref>, or its parent with --parent <ref>.
 Close verified work with a message of 40+ characters and evidence.
 For work without a PR:
 
-    kata close <ref> --done --message "<what changed and how you verified it>" --test "<command>" --agent
+    poomsae close <ref> --done --message "<what changed and how you verified it>" --test "<command>" --agent
 
-Never run kata delete or kata purge unless the user asks for that exact action.
+Never run poomsae delete or poomsae purge unless the user asks for that exact action.
 
 For subagents, inboxes, attention signals, scheduling, and relationship rules,
-run kata quickstart.
+run poomsae quickstart.
 `
 
-// ClaimRules says how to claim and renew. A timed claim lets Kata flag the
+// ClaimRules says how to claim and renew. A timed claim lets Poomsae flag the
 // issue for a human when an agent stops without handing it off.
 const ClaimRules = `Claim before you work:
 
-    kata claim <ref> --if-unowned --ttl 2h --agent
+    poomsae claim <ref> --if-unowned --ttl 2h --agent
 
 Renew before expiry by claiming again with --ttl, without --if-unowned.
 `
@@ -51,19 +51,19 @@ const CommentRules = `Comment only with findings a later reader needs. Pass the 
 quoted heredoc so the shell leaves backticks and $ alone; replies such as
 --reply c:<id> take --body-stdin too:
 
-    kata comment <ref> --body-stdin --agent <<-'EOF'
+    poomsae comment <ref> --body-stdin --agent <<-'EOF'
 	<finding>
 	EOF
 
-Correct your own comment with kata comment edit <ref> <comment-uid>. Keep
+Correct your own comment with poomsae comment edit <ref> <comment-uid>. Keep
 live status in work.attention_msg and an open PR's URL in work.pr_url:
 
-    kata meta set <ref> work.attention_msg "<what remains>"
-    kata meta set <ref> work.pr_url <url>
+    poomsae meta set <ref> work.attention_msg "<what remains>"
+    poomsae meta set <ref> work.pr_url <url>
 
 A PR that is open and not merged is unfinished. If you stop before the work is
 done, leave the issue open, update work.attention and work.attention_msg, and
-run kata label add <ref> needs-review.
+run poomsae label add <ref> needs-review.
 
 Close a done issue that has a PR with --pr <url>; otherwise --commit <sha> or
 --test "<command>" is valid evidence.
@@ -103,20 +103,20 @@ var Fragments = []Fragment{
 	{"remote-daemon", fragRemoteDaemon},
 }
 
-const fragIntro = `# kata agent quickstart
+const fragIntro = `# poomsae agent quickstart
 
-Use kata as the shared issue ledger for this workspace.
+Use poomsae as the shared issue ledger for this workspace.
 
 1. Find the right command by describing the task:
 
-      kata cli search "<task>"
+      poomsae cli search "<task>"
 
    Run from the workspace (--workspace overrides; --project picks
-   another). Author = $KATA_AUTHOR > $USER > git user.name.
+   another). Author = $POOMSAE_AUTHOR > $USER > git user.name.
    No bound workspace: use <project>#<id> refs or --project <project>.
    Issue refs are short_ids derived from each issue's ULID (e.g. abc4).
-   Cross-project: kata#abc4. Full 26-char ULIDs also resolve. Legacy
-   numeric refs (12, kata#12) no longer work.
+   Cross-project: poomsae#abc4. Full 26-char ULIDs also resolve. Legacy
+   numeric refs (12, poomsae#12) no longer work.
 
 `
 
@@ -125,7 +125,7 @@ const fragClosing = `2. Closing an issue asserts that the work is complete. If t
 
    When done, use a message of 40+ characters and typed --evidence:
 
-      kata close abc4 --done \
+      poomsae close abc4 --done \
         --message "Fixed Safari callback double-submit; verified tests pass." \
         --commit <sha>
 
@@ -137,33 +137,33 @@ const fragClosing = `2. Closing an issue asserts that the work is complete. If t
    single "close everything" pass at the end. By default the daemon permits
    sibling close bursts when each close has valid evidence and a substantive
    message. Operators can enable stricter burst/prose throttling via
-   [close.throttle] enabled = true in <KATA_HOME>/config.toml.
+   [close.throttle] enabled = true in <POOMSAE_HOME>/config.toml.
 
    Other close forms (duplicate/superseded: 20+ characters;
    wontfix: 60+ characters):
 
-      kata close abc4 --duplicate-of d4ex  --message "Same Safari race condition."
-      kata close abc4 --superseded-by d4ex --message "Replaced by broader scope."
-      kata close abc4 --wontfix --message "<>=60 chars of rationale>"
-      kata close abc4 --audit-no-change \
+      poomsae close abc4 --duplicate-of d4ex  --message "Same Safari race condition."
+      poomsae close abc4 --superseded-by d4ex --message "Replaced by broader scope."
+      poomsae close abc4 --wontfix --message "<>=60 chars of rationale>"
+      poomsae close abc4 --audit-no-change \
                       --message "Reviewed schema and queries; no change needed." \
                       --evidence "no-change-audit:schema unchanged after review" \
                       --reviewed internal/db/schema.sql
 
    Closing the last open child hints at its open parent. The
    daemon refuses parent-close while open children remain. Reviewers
-   can replay activity with kata audit closes and undo a specific lazy
-   close with kata reopen <ref>.
+   can replay activity with poomsae audit closes and undo a specific lazy
+   close with poomsae reopen <ref>.
 
 `
 
-const fragOutputFlags = `   Default to --agent for ordinary kata reads and mutations in agent logs.
+const fragOutputFlags = `   Default to --agent for ordinary poomsae reads and mutations in agent logs.
    Use --json only when your script needs complete structured data, for
    example when piping into jq.
 
 `
 
-const fragRealWork = `   Use kata for real repository work only.
+const fragRealWork = `   Use poomsae for real repository work only.
    Do not create practice, tutorial, example, or scratchpad issues unless the user explicitly asks for them.
    If the work belongs to another repository or project, use that project.
 
@@ -171,8 +171,8 @@ const fragRealWork = `   Use kata for real repository work only.
 
 const fragSearchCreateUpdate = `3. Search before creating:
 
-   kata search "login race" --agent
-   kata search --project foo "login race" --agent
+   poomsae search "login race" --agent
+   poomsae search --project foo "login race" --agent
 
    If create refuses a look-alike, reuse the match. Pass --force-new only
    if the work truly differs.
@@ -183,31 +183,31 @@ const fragSearchCreateUpdate = `3. Search before creating:
 
 4. If no existing issue fits, create with an idempotency key:
 
-   kata create "fix login race" \
+   poomsae create "fix login race" \
      --body "Observed double-submit in Safari callback." \
      --idempotency-key "login-race-2026-05-02" \
      --agent
 
-   kata create --project foo "fix login race" \
+   poomsae create --project foo "fix login race" \
      --body "Observed double-submit in Safari callback." \
      --idempotency-key "foo-login-race-2026-05-02" \
      --agent
 
 5. Prefer updating existing issues over creating duplicates:
 
-   kata show abc4 --agent
-   kata show --project foo abc4 --agent
-   kata comment abc4 --body-stdin --agent <<-'EOF'
+   poomsae show abc4 --agent
+   poomsae show --project foo abc4 --agent
+   poomsae comment abc4 --body-stdin --agent <<-'EOF'
 	Found another reproduction path.
 	EOF
-   kata label add abc4 safari --agent
-   kata edit abc4 --blocks d4ex --agent
+   poomsae label add abc4 safari --agent
+   poomsae edit abc4 --blocks d4ex --agent
 
    Answer a specific comment with a typed reply, using the handle shown
-   by kata show. --confirm and --refute take evidence in the body. Use
+   by poomsae show. --confirm and --refute take evidence in the body. Use
    --reply, --confirm, --refute, or --supersede the same way:
 
-   kata comment abc4 --confirm c:xbzxrq --body-stdin --agent <<-'EOF'
+   poomsae comment abc4 --confirm c:xbzxrq --body-stdin --agent <<-'EOF'
 	Reproduced with the documented retry steps.
 	EOF
 
@@ -216,21 +216,21 @@ const fragSearchCreateUpdate = `3. Search before creating:
 const fragClaiming = `6. Find and claim available work (multi-agent environments):
 
    # Choose one unclaimed issue
-   kata next --unowned --agent
+   poomsae next --unowned --agent
 
    # Inspect the filtered queue
-   kata ready --unowned --label bug --no-label blocked --agent
+   poomsae ready --unowned --label bug --no-label blocked --agent
 
    # Claim it with a time limit (fails if already assigned to another actor).
    # Renew before it expires by claiming again with --ttl, without --if-unowned.
-   kata claim <ref> --if-unowned --ttl 2h
+   poomsae claim <ref> --if-unowned --ttl 2h
 
    # Release ownership only if you still own it
-   kata unassign <ref> --expect-owner <your-actor>
+   poomsae unassign <ref> --expect-owner <your-actor>
 
    A bare unassign clears the current owner, whoever that is.
-   Check kata status <ref> for the current owner and your effective actor;
-   the "[open] by <name>" line in kata show names the author, not the owner.
+   Check poomsae status <ref> for the current owner and your effective actor;
+   the "[open] by <name>" line in poomsae show names the author, not the owner.
 
 `
 
@@ -238,20 +238,20 @@ const fragScheduling = `7. Use native planning dates deliberately:
 
    # Park until a date or time; a future value excludes the issue from ready/next.
    # This is the first-class form of setting or clearing scheduled_on.
-   kata schedule <ref> <date-or-time>
-   kata schedule <ref> -
+   poomsae schedule <ref> <date-or-time>
+   poomsae schedule <ref> -
 
    # Set or clear deadline_on. A deadline does not park the issue.
-   kata deadline <ref> <date-or-time>
-   kata deadline <ref> -
+   poomsae deadline <ref> <date-or-time>
+   poomsae deadline <ref> -
 
    # Park with no date. Remove the marker to return; do not store false.
-   kata meta set <ref> someday true --json-value
-   kata meta unset <ref> someday
+   poomsae meta set <ref> someday true --json-value
+   poomsae meta unset <ref> someday
 
    Date and time values accept YYYY-MM-DD, local YYYY-MM-DDTHH:MM[:SS],
    optionally followed by [IANA/Zone], or an RFC 3339 UTC instant ending in Z.
-   Without a zone, Kata uses the issue timezone, daemon timezone, or UTC when resolving it.
+   Without a zone, Poomsae uses the issue timezone, daemon timezone, or UTC when resolving it.
 
    Reached schedules and deadlines use notify.* to surface in the current
    owner's inbox, or the author's inbox when unowned. They wait behind an
@@ -267,8 +267,8 @@ const fragRelationships = `8. Use relationships deliberately. They live as flags
    blocked_by  = the target must be resolved before this issue can proceed
    related     = useful context, but not ordering
 
-   kata create "fix auth flow" --parent abc4 --blocked-by d4ex --related j7m2 --agent
-   kata edit abc4 --remove-blocks d4ex --related j7m2 --agent
+   poomsae create "fix auth flow" --parent abc4 --blocked-by d4ex --related j7m2 --agent
+   poomsae edit abc4 --remove-blocks d4ex --related j7m2 --agent
 
    --remove-parent <ref> is strict: it must equal the current parent or
    fail loudly. Read parent before asserting a removal. The other
@@ -280,36 +280,36 @@ const fragTeammates = `9. Attribute swarm contributions and request attention wi
    accountable actor or issue owner. The launcher supplies these variables to
    this child process, not globally to sibling teammates:
 
-   export KATA_TEAMMATE=teammate-1
-   export KATA_INBOX_USER=coordinator/teammate-1
-   kata comment abc4 --body-stdin <<-'EOF'
+   export POOMSAE_TEAMMATE=teammate-1
+   export POOMSAE_INBOX_USER=coordinator/teammate-1
+   poomsae comment abc4 --body-stdin <<-'EOF'
 	The retry path reuses the original export ID.
 	EOF
-   kata create "Check retry behavior" --parent abc4 --idempotency-key retry-teammate-1
-   kata --teammate=teammate-2 comment abc4 --body-stdin <<-'EOF'
+   poomsae create "Check retry behavior" --parent abc4 --idempotency-key retry-teammate-1
+   poomsae --teammate=teammate-2 comment abc4 --body-stdin <<-'EOF'
 	A retry after a timeout creates a second export.
 	EOF
-   kata --teammate='' comment abc4 --body-stdin <<-'EOF'
+   poomsae --teammate='' comment abc4 --body-stdin <<-'EOF'
 	Both retry findings trace to the missing export ID check.
 	EOF
-   kata notify abc4 --to coordinator --message "Please decide"
-   kata notify abc4 --to coordinator/teammate-1 --message "Please check the update"
-   kata inbox --for coordinator/teammate-1
-   kata notify abc4 --to coordinator/teammate-1 --clear
+   poomsae notify abc4 --to coordinator --message "Please decide"
+   poomsae notify abc4 --to coordinator/teammate-1 --message "Please check the update"
+   poomsae inbox --for coordinator/teammate-1
+   poomsae notify abc4 --to coordinator/teammate-1 --clear
 
    Comment creation stores the teammate in its dedicated field. New issue
    creation stores metadata.teammate. The author remains the accountable
-   actor. --teammate overrides KATA_TEAMMATE, including an explicit empty
-   value that suppresses the inherited default. KATA_INBOX_USER only selects
+   actor. --teammate overrides POOMSAE_TEAMMATE, including an explicit empty
+   value that suppresses the inherited default. POOMSAE_INBOX_USER only selects
    an inbox; it does not set comment or create attribution.
 
    Inbox reads cover open issues in the selected project by default.
-   For cross-project work, use kata inbox --for coordinator/teammate-1 --all
+   For cross-project work, use poomsae inbox --for coordinator/teammate-1 --all
    without --project or --workspace. This reads the selected daemon's active
    projects and returns qualified issue refs. It requires daemon API 0.9.0 or
    newer and daemon-wide read authority.
    Closing an issue hides its requests; reopening restores uncleared requests.
-   The recipient remains explicit: use --for or KATA_INBOX_USER. An external harness must map each
+   The recipient remains explicit: use --for or POOMSAE_INBOX_USER. An external harness must map each
    exact actor/teammate address to the runtime it launched and poll or watch
    while that runtime is idle. It wakes an available idle runtime, coalesces a
    request for one already running, and retains an unavailable teammate's
@@ -322,13 +322,13 @@ const fragTeammates = `9. Attribute swarm contributions and request attention wi
    can race. A parent harness watches the actor address and each exact child
    address it allocated; inbox --for coordinator does not aggregate
    coordinator/*. Shared MCP processes use the per-call teammate on
-   kata.comment and kata.create when siblings cannot have separate environments.
+   poomsae.comment and poomsae.create when siblings cannot have separate environments.
 
    If a comment-sized task needs ownership or tracked completion, make it a
    child issue and claim it:
 
-      kata create "fix retry handling" --parent <ref> --idempotency-key retry-child
-      kata claim <child> --if-unowned --ttl 2h
+      poomsae create "fix retry handling" --parent <ref> --idempotency-key retry-child
+      poomsae claim <child> --if-unowned --ttl 2h
 
    Comments record findings; child issues track owned work.
 
@@ -338,12 +338,12 @@ const fragCoordination = `   Coordinate tracked work through work.* metadata whe
    dashboard watches it. Each agent writes only its own work.* keys, and
    never on closed issues:
 
-   kata meta set <ref> work.attention ok           # actively working
-   kata meta set <ref> work.attention stuck        # blocked
-   kata meta set <ref> work.attention needs-human  # wants input or review
-   kata meta set <ref> work.attention_msg "<why>"
-   kata meta set <ref> work.branch <branch>        # once, for branch work
-   kata meta set <ref> work.pr_url <url>           # the open PR
+   poomsae meta set <ref> work.attention ok           # actively working
+   poomsae meta set <ref> work.attention stuck        # blocked
+   poomsae meta set <ref> work.attention needs-human  # wants input or review
+   poomsae meta set <ref> work.attention_msg "<why>"
+   poomsae meta set <ref> work.branch <branch>        # once, for branch work
+   poomsae meta set <ref> work.pr_url <url>           # the open PR
 
    Before stopping on watched work, close it or update both
    work.attention and work.attention_msg for the hand-off.
@@ -352,7 +352,7 @@ const fragCoordination = `   Coordinate tracked work through work.* metadata whe
    --meta work.branch=<branch>, and an idempotency key. It reads their
    work.* but never writes it, and joins with:
 
-   kata wait <refs> --until attention --any --timeout 30m
+   poomsae wait <refs> --until attention --any --timeout 30m
 
    needs-human or stuck completes the wait; so does a close, and the
    reported reason says which.
@@ -365,7 +365,7 @@ const fragMutationComments = `10. To leave context alongside a mutation, pass --
    If the comment call fails, the error names the issue so you can
    retry with a quoted heredoc:
 
-   kata comment <ref> --body-stdin <<-'EOF'
+   poomsae comment <ref> --body-stdin <<-'EOF'
 	<text>
 	EOF
 
@@ -378,14 +378,14 @@ const fragDestructive = `11. Do not run delete or purge unless the user explicit
 
 const fragEvents = `For long-running agents, poll events:
 
-   kata events --after 0 --limit 100 --agent
+   poomsae events --after 0 --limit 100 --agent
 
 Remember the returned cursor and resume from it. If a response says
-reset_required, discard cached kata state and resume from the reset cursor.
+reset_required, discard cached poomsae state and resume from the reset cursor.
 
 For live streams:
 
-   kata events --tail --agent
+   poomsae events --tail --agent
 
 The agent tail stream emits one OK event line per event. Use --json only
 when a consumer expects newline-delimited JSON.
@@ -395,35 +395,35 @@ when a consumer expects newline-delimited JSON.
 const fragDaemonRecovery = `# Selected daemon recovery
 
 Never remove a workspace override to repair a stopped daemon. Start
-with kata daemon diagnose --json. A registered local profile uses
-[server].daemon in .kata.local.toml and pins an existing home/instance_uid.
-For stopped_local_profile, run kata daemon recover; optionally add
+with poomsae daemon diagnose --json. A registered local profile uses
+[server].daemon in .poomsae.local.toml and pins an existing home/instance_uid.
+For stopped_local_profile, run poomsae daemon recover; optionally add
 --expect-project-uid <uid>. Recovery never initializes storage or projects.
 Explicit server URLs stay pinned; restore their server or tunnel.
-Daemon start/stop/restart/reload/logs administer the current KATA_HOME and
-reject --daemon. Set KATA_HOME explicitly for those operations.
+Daemon start/stop/restart/reload/logs administer the current POOMSAE_HOME and
+reject --daemon. Set POOMSAE_HOME explicitly for those operations.
 
 `
 
 const fragRemoteDaemon = `# Remote daemon (optional)
 
-When the kata daemon runs on a different host, point clients at it with
-KATA_SERVER:
+When the poomsae daemon runs on a different host, point clients at it with
+POOMSAE_SERVER:
 
-   export KATA_SERVER=http://100.64.0.5:7777
+   export POOMSAE_SERVER=http://100.64.0.5:7777
 
 Or commit-free per-workspace:
 
-   # .kata.local.toml (gitignored by 'kata init')
+   # .poomsae.local.toml (gitignored by 'poomsae init')
    version = 1
 
    [server]
    url = "http://100.64.0.5:7777"
 
-KATA_SERVER wins over the file when both are set unless a command passes
+POOMSAE_SERVER wins over the file when both are set unless a command passes
 --daemon <name>. If none of those are set, clients next honor active_daemon
-in <KATA_HOME>/config.toml; otherwise they use the local daemon: Unix socket
+in <POOMSAE_HOME>/config.toml; otherwise they use the local daemon: Unix socket
 on Unix platforms, loopback TCP on Windows. A configured-but-down remote
-returns exit 7 (kata server not responding) — no silent fallback to spawning
+returns exit 7 (poomsae server not responding) — no silent fallback to spawning
 a local daemon.
 `

@@ -11,11 +11,11 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/rootbridge"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/api"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 var externalRootOperationIDs = map[string]bool{
@@ -111,7 +111,7 @@ func registerExternalRootHandlers(humaAPI huma.API, cfg ServerConfig) {
 				return nil, externalRootUnavailable()
 			}
 			mapping, err := cfg.ExternalRootService.MapField(ctx, rootbridge.MapFieldParams{
-				ConnectorInstance: in.Instance, KataField: in.KataField, ExternalField: in.Body.ExternalField,
+				ConnectorInstance: in.Instance, PoomsaeField: in.PoomsaeField, ExternalField: in.Body.ExternalField,
 			})
 			if err != nil {
 				return nil, externalRootHandlerError(err)
@@ -127,7 +127,7 @@ func registerExternalRootHandlers(humaAPI huma.API, cfg ServerConfig) {
 			if cfg.ExternalRootService == nil {
 				return nil, externalRootUnavailable()
 			}
-			mapping, err := cfg.ExternalRootService.UnmapField(ctx, in.Instance, in.KataField)
+			mapping, err := cfg.ExternalRootService.UnmapField(ctx, in.Instance, in.PoomsaeField)
 			if err != nil {
 				return nil, externalRootHandlerError(err)
 			}
@@ -314,7 +314,7 @@ func registerExternalRootActions(humaAPI huma.API, cfg ServerConfig) {
 			if err != nil {
 				return nil, err
 			}
-			_, _, callErr := cfg.ExternalRootService.ResolveFieldConflict(ctx, issue.ID, in.Body.KataField, in.Body.Use, actor)
+			_, _, callErr := cfg.ExternalRootService.ResolveFieldConflict(ctx, issue.ID, in.Body.PoomsaeField, in.Body.Use, actor)
 			if callErr != nil {
 				return nil, externalRootHandlerError(callErr)
 			}
@@ -465,15 +465,15 @@ func externalRootBridgeOut(ctx context.Context, store db.Storage, binding db.Ext
 	byID := make(map[int64]string, len(mappings))
 	for _, mapping := range mappings {
 		if mapping.Active {
-			byID[mapping.ID] = mapping.KataField
+			byID[mapping.ID] = mapping.PoomsaeField
 		}
 	}
 	for _, state := range states {
-		kataField, active := byID[state.MappingID]
+		poomsaeField, active := byID[state.MappingID]
 		if !state.Conflicted || !active {
 			continue
 		}
-		kataCandidate, err := externalFieldCandidateOut(state.ConflictKata)
+		poomsaeCandidate, err := externalFieldCandidateOut(state.ConflictKata)
 		if err != nil {
 			return api.ExternalRootBridgeOut{}, err
 		}
@@ -482,7 +482,7 @@ func externalRootBridgeOut(ctx context.Context, store db.Storage, binding db.Ext
 			return api.ExternalRootBridgeOut{}, err
 		}
 		out.FieldConflicts = append(out.FieldConflicts, api.ExternalFieldConflictOut{
-			KataField: kataField, KataCandidate: kataCandidate,
+			PoomsaeField: poomsaeField, PoomsaeCandidate: poomsaeCandidate,
 			ExternalCandidate: externalCandidate, ConflictAt: state.ConflictAt,
 		})
 	}

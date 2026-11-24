@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 type externalRootSafetyFixture struct {
@@ -162,7 +162,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		})
 		require.NoError(t, err)
 		mapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: "claimed-notes", KataField: "scheduled_on",
+			ConnectorInstance: "claimed-notes", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-original", ExternalFieldName: "Start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-original",
@@ -182,7 +182,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		require.True(t, acquired)
 
 		_, remapErr := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: "claimed-notes", KataField: "scheduled_on",
+			ConnectorInstance: "claimed-notes", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-replacement", ExternalFieldName: "Replacement start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-replacement",
@@ -223,7 +223,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 				})
 				require.NoError(t, err)
 				_, err = store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-					ConnectorInstance: connectorInstance, KataField: "scheduled_on",
+					ConnectorInstance: connectorInstance, PoomsaeField: "scheduled_on",
 					ExternalFieldID: "start-original", ExternalFieldName: "Start",
 					AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 					SchemaRevision: "schema-original",
@@ -247,7 +247,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 				switch action {
 				case "remap":
 					_, err = store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-						ConnectorInstance: connectorInstance, KataField: "scheduled_on",
+						ConnectorInstance: connectorInstance, PoomsaeField: "scheduled_on",
 						ExternalFieldID: "start-replacement", ExternalFieldName: "Replacement start",
 						AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 						SchemaRevision: "schema-replacement",
@@ -1027,7 +1027,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 
 	t.Run("field projection is native idempotent and claim guarded", func(t *testing.T) {
 		mapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: "notes", KataField: "scheduled_on",
+			ConnectorInstance: "notes", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-projection", ExternalFieldName: "Start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-projection",
@@ -1048,7 +1048,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		require.NoError(t, err)
 		params := db.ExternalFieldProjectionParams{
 			BindingID: fixture.binding.ID, MappingID: mapping.ID, ClaimToken: fixture.token,
-			KataField: "scheduled_on", IntegrationActor: "connector:notes",
+			PoomsaeField: "scheduled_on", IntegrationActor: "connector:notes",
 			Patch: patch, ExpectedIssueRevision: fixture.issue.Revision,
 		}
 		projected, event, changed, err := store.ApplyExternalFieldProjection(ctx, params)
@@ -1113,7 +1113,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 
 	t.Run("archived projects reject claimed root and field projections", func(t *testing.T) {
 		mapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: "notes", KataField: "scheduled_on",
+			ConnectorInstance: "notes", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-archived", ExternalFieldName: "Start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-archived",
@@ -1136,7 +1136,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		assert.ErrorIs(t, err, db.ErrExternalRootClaimLost)
 		_, _, _, err = store.ApplyExternalFieldProjection(ctx, db.ExternalFieldProjectionParams{
 			BindingID: fixture.binding.ID, MappingID: mapping.ID, ClaimToken: fixture.token,
-			KataField: "scheduled_on", ExpectedIssueRevision: before.Revision,
+			PoomsaeField: "scheduled_on", ExpectedIssueRevision: before.Revision,
 			Patch:            map[string]jsontext.Value{"scheduled_on": jsontext.Value(`"2026-08-24"`)},
 			IntegrationActor: "connector:notes",
 		})
@@ -1152,7 +1152,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 
 	t.Run("field conflict requires explicit resolution", func(t *testing.T) {
 		mapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: "notes", KataField: "scheduled_on",
+			ConnectorInstance: "notes", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-safety", ExternalFieldName: "Start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-safety",
@@ -1654,7 +1654,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		assert.Equal(t, connector, auditPayload.ConnectorInstance)
 		assert.Equal(t, integrationActor, auditPayload.Actor)
 		mapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-			ConnectorInstance: connector, KataField: "scheduled_on",
+			ConnectorInstance: connector, PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start", ExternalFieldName: "Start",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-projection",
@@ -1687,7 +1687,7 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 
 		projected, fieldEvent, changed, err := store.ApplyExternalFieldProjection(ctx, db.ExternalFieldProjectionParams{
 			BindingID: binding.ID, MappingID: mapping.ID, ClaimToken: binding.ClaimToken,
-			KataField: "scheduled_on", ExpectedIssueRevision: projected.Revision,
+			PoomsaeField: "scheduled_on", ExpectedIssueRevision: projected.Revision,
 			Patch: map[string]jsontext.Value{
 				"scheduled_on": jsontext.Value(`"2026-08-24"`),
 			},

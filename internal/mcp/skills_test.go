@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
-	"go.kenn.io/kata/internal/storageadmin"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
 )
 
 func mutatedNameGen(names []string) *rapid.Generator[string] {
@@ -75,7 +75,7 @@ func TestSkillsSchemaBoundary(t *testing.T) {
 		{"whitespace", map[string]any{"name": "\u2003\t"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.skills", Arguments: tc.args})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.skills", Arguments: tc.args})
 			require.NoError(t, err)
 			require.Equal(t, tc.want != "", result.IsError, "%s", mustJSON(t, result))
 			if tc.want != "" {
@@ -88,7 +88,7 @@ func TestSkillsSchemaBoundary(t *testing.T) {
 func TestSkillsGetReturnsOneTextBlock(t *testing.T) {
 	session := connectTestServer(t)
 	for _, name := range SkillGuides() {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.skills", Arguments: map[string]any{"name": name}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.skills", Arguments: map[string]any{"name": name}})
 		require.NoError(t, err)
 		require.False(t, result.IsError)
 		require.Len(t, result.Content, 1)
@@ -138,7 +138,7 @@ func TestSkillsDeterministicAndScopeIndependent(t *testing.T) {
 						for _, name := range names {
 							want, output, err := (toolHandlers{}).skills(t.Context(), nil, SkillsInput{Name: name})
 							require.NoError(t, err)
-							got, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.skills", Arguments: map[string]any{"name": name}})
+							got, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.skills", Arguments: map[string]any{"name": name}})
 							require.NoError(t, err)
 							require.False(t, got.IsError)
 							require.Equal(t, want.Content, got.Content)

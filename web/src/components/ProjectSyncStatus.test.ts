@@ -54,10 +54,14 @@ describe('ProjectSyncStatus', () => {
     expect(screen.getByText('Sync failed · 2 changes waiting')).not.toBeNull()
     expect(screen.getByText('Syncs with daemon.example')).not.toBeNull()
     expect(
-      screen.getByText('Connect the Kata CLI to this daemon with your own credential, then run:'),
+      screen.getByText(
+        'Connect the Poomsae CLI to this daemon with your own credential, then run:',
+      ),
     ).not.toBeNull()
     expect(
-      screen.getByText('For a remote daemon, select it with its --daemon profile or KATA_SERVER.'),
+      screen.getByText(
+        'For a remote daemon, select it with its --daemon profile or POOMSAE_SERVER.',
+      ),
     ).not.toBeNull()
     expect(
       screen.getByText(
@@ -65,7 +69,9 @@ describe('ProjectSyncStatus', () => {
       ),
     ).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: 'Copy PowerShell command' }))
-    expect(writeText).toHaveBeenCalledWith("kata federation status --project 'spoke project’’s'''")
+    expect(writeText).toHaveBeenCalledWith(
+      "poomsae federation status --project 'spoke project’’s'''",
+    )
     expect(screen.getByText('1 generated · 1 reused · 1 without index')).not.toBeNull()
     expect(screen.getByText('3 of 32 embeddings, limited')).not.toBeNull()
     expect(screen.getByText('example-model, 2 dimensions')).not.toBeNull()

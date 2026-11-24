@@ -1,12 +1,12 @@
 ---
 title: Concepts
-description: Learn Kata's core model for projects, issues, relationships, workspaces, and output modes.
+description: Learn Poomsae's core model for projects, issues, relationships, workspaces, and output modes.
 last_edited: 2026-11-20
 ---
 
 # Concepts
 
-Kata keeps its core terms deliberately few so an agent can learn the system
+Poomsae keeps its core terms deliberately few so an agent can learn the system
 quickly and you can audit the system later.
 
 ## Project
@@ -14,11 +14,11 @@ quickly and you can audit the system later.
 A project is the namespace for issues, links, labels, comments, and events.
 Most issue commands resolve a project before they run.
 
-A workspace normally points to one project through `.kata.toml`:
+A workspace normally points to one project through `.poomsae.toml`:
 
 ```toml
-# This repository tracks its work in kata.
-# Coding agents: read `kata quickstart --format contract` before changing code here.
+# This repository tracks its work in poomsae.
+# Coding agents: read `poomsae quickstart --format contract` before changing code here.
 version = 1
 
 [project]
@@ -26,7 +26,7 @@ name = "product"
 ```
 
 Multiple workspaces, clones, or worktrees can share one project when they use
-the same project name and the same kata database.
+the same project name and the same poomsae database.
 
 ## Workspace
 
@@ -35,7 +35,7 @@ context. By default, that is your current directory. To run a command from
 another directory, pass `--workspace <path>`:
 
 ```sh
-kata --workspace ~/code/product list
+poomsae --workspace ~/code/product list
 ```
 
 The workspace binding is not the database. It is only a small pointer that
@@ -43,14 +43,14 @@ lets CLI and TUI commands find the right project.
 
 ## Issue identity
 
-Every issue has a stable ULID `uid`. Kata derives the visible `short_id` from
+Every issue has a stable ULID `uid`. Poomsae derives the visible `short_id` from
 the lowercased suffix of that ULID and extends it if needed to avoid collisions
 inside the project.
 
 You can refer to an issue in three ways:
 
 - bare short ID: `abc4`
-- qualified short ID: `kata#abc4`
+- qualified short ID: `poomsae#abc4`
 - full 26-character ULID
 
 Legacy numeric refs such as `#12` and `12` no longer resolve.
@@ -73,7 +73,7 @@ An issue holds:
 - relationships to other issues
 - event history
 
-You can recover soft-deleted issues with `kata restore`. Purged issues are
+You can recover soft-deleted issues with `poomsae restore`. Purged issues are
 irreversibly removed, except for tombstones needed to preserve external refs.
 
 ## Relationships
@@ -81,7 +81,7 @@ irreversibly removed, except for tombstones needed to preserve external refs.
 Relationships are normalized links between issues in the same daemon database,
 and links can span projects. Relationship flags accept `short_id` (same
 project), `project#short_id`, or a full ULID. The CLI forwards foreign refs to
-the daemon, which resolves them in the named project. Kata rejects any new link
+the daemon, which resolves them in the named project. Poomsae rejects any new link
 whose target is in an archived project, so unarchive the project before adding
 links to it. For a cross-project link, if either project syncs to a hub, both
 must sync to the same hub.
@@ -97,12 +97,12 @@ Relationship flags are framed from the issue you are creating or editing. For
 example:
 
 ```sh
-kata edit child --parent parent
-kata edit prerequisite --blocks dependent
-kata edit dependent --blocked-by prerequisite
+poomsae edit child --parent parent
+poomsae edit prerequisite --blocks dependent
+poomsae edit dependent --blocked-by prerequisite
 ```
 
-`kata ready` uses blocking relationships to find open issues that are not
+`poomsae ready` uses blocking relationships to find open issues that are not
 waiting on open predecessors.
 
 ## Actor
@@ -110,7 +110,7 @@ waiting on open predecessors.
 Every mutation records an actor string. Local actor precedence is:
 
 ```text
---as > $KATA_AUTHOR > $USER > git config user.name > anonymous
+--as > $POOMSAE_AUTHOR > $USER > git config user.name > anonymous
 ```
 
 In shared-daemon identity mode, DB-backed API tokens can make actor attribution
@@ -122,18 +122,18 @@ mutations and derives the actor from the token.
 The daemon records durable events for state changes. Events support:
 
 - TUI refreshes
-- `kata events` polling
-- `kata events --tail` live streams
+- `poomsae events` polling
+- `poomsae events --tail` live streams
 - hooks
 - audit tools
 - federation replication
 
-Use `kata events --agent` for compact logs, and `kata events --json` when a
+Use `poomsae events --agent` for compact logs, and `poomsae events --json` when a
 consumer expects newline-delimited JSON or a full response envelope.
 
 ## Output modes
 
-Kata supports three general output modes:
+Poomsae supports three general output modes:
 
 | Mode | Use |
 | --- | --- |
@@ -143,14 +143,14 @@ Kata supports three general output modes:
 
 Select a mode with `--agent`, `--json`, or `--format human|agent|json`.
 
-`kata quickstart` and its `agent-instructions` alias also accept the
+`poomsae quickstart` and its `agent-instructions` alias also accept the
 command-scoped `--format contract` mode. It prints the canonical managed agent
 briefing for dynamic harness injection; see
 [Agent contract output](../reference/cli.md#agent-contract-output).
 
 ## Close discipline
 
-Closing an issue asserts that the work is complete, and Kata deliberately makes that
+Closing an issue asserts that the work is complete, and Poomsae deliberately makes that
 stronger than adding a comment.
 
 When you close an issue, provide:
@@ -166,7 +166,7 @@ what you tried and what remains.
 
 ## Destructive operations
 
-`kata delete` is reversible, while `kata purge` is not.
+`poomsae delete` is reversible, while `poomsae purge` is not.
 
 Both commands require exact confirmation strings. Agents should never run
 either command unless the user explicitly asks for that exact destructive

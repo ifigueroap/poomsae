@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // MoveIssueProject moves an issue from one project to another within the same

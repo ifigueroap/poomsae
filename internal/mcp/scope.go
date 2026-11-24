@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/shortid"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // ScopeMode identifies how the MCP server selected its projects at startup.
@@ -40,9 +40,9 @@ func NewBoundScope(project ProjectIdentity) (*Scope, error) {
 }
 
 // ResolveBoundScope resolves one project ID and stores its immutable UID.
-func ResolveBoundScope(ctx context.Context, client *kataclient.Client, resolved ProjectIdentity) (*Scope, error) {
+func ResolveBoundScope(ctx context.Context, client *poomsaeclient.Client, resolved ProjectIdentity) (*Scope, error) {
 	if client == nil {
-		return nil, errors.New("kata API client is required")
+		return nil, errors.New("poomsae API client is required")
 	}
 	if err := validateProjectIdentity(resolved, false); err != nil {
 		return nil, err
@@ -89,9 +89,9 @@ func NewAllScope() *Scope {
 }
 
 // ResolveAllowlistScope resolves names once and stores their immutable UIDs.
-func ResolveAllowlistScope(ctx context.Context, client *kataclient.Client, names []string) (*Scope, error) {
+func ResolveAllowlistScope(ctx context.Context, client *poomsaeclient.Client, names []string) (*Scope, error) {
 	if client == nil {
-		return nil, errors.New("kata API client is required")
+		return nil, errors.New("poomsae API client is required")
 	}
 	catalog, err := loadScopeProjects(ctx, client, false)
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *Scope) Mode() ScopeMode {
 }
 
 // Projects returns current project identities within the startup boundary.
-func (s *Scope) Projects(ctx context.Context, client *kataclient.Client, includeArchived bool) ([]ProjectIdentity, error) {
+func (s *Scope) Projects(ctx context.Context, client *poomsaeclient.Client, includeArchived bool) ([]ProjectIdentity, error) {
 	if s == nil {
 		return nil, errors.New("MCP project scope is required")
 	}
@@ -192,7 +192,7 @@ func (s *Scope) ProjectUIDs() ([]string, error) {
 }
 
 // Project resolves a current project name within the startup boundary.
-func (s *Scope) Project(ctx context.Context, client *kataclient.Client, name string, includeArchived bool) (ProjectIdentity, error) {
+func (s *Scope) Project(ctx context.Context, client *poomsaeclient.Client, name string, includeArchived bool) (ProjectIdentity, error) {
 	name = strings.TrimSpace(name)
 	projects, err := s.Projects(ctx, client, includeArchived)
 	if err != nil {
@@ -215,7 +215,7 @@ func (s *Scope) Project(ctx context.Context, client *kataclient.Client, name str
 }
 
 // IssueTarget resolves a qualified issue reference and enforces scope.
-func (s *Scope) IssueTarget(ctx context.Context, client *kataclient.Client, raw string, write bool) (ProjectIdentity, string, error) {
+func (s *Scope) IssueTarget(ctx context.Context, client *poomsaeclient.Client, raw string, write bool) (ProjectIdentity, string, error) {
 	return s.issueTarget(ctx, client, raw, write, false)
 }
 
@@ -223,7 +223,7 @@ func (s *Scope) IssueTarget(ctx context.Context, client *kataclient.Client, raw 
 // boundary while retaining archived projects for lifecycle cleanup operations.
 func (s *Scope) IssueTargetIncludingArchived(
 	ctx context.Context,
-	client *kataclient.Client,
+	client *poomsaeclient.Client,
 	raw string,
 	write bool,
 ) (ProjectIdentity, string, error) {
@@ -232,7 +232,7 @@ func (s *Scope) IssueTargetIncludingArchived(
 
 func (s *Scope) issueTarget(
 	ctx context.Context,
-	client *kataclient.Client,
+	client *poomsaeclient.Client,
 	raw string,
 	write, includeArchived bool,
 ) (ProjectIdentity, string, error) {
@@ -266,7 +266,7 @@ func (s *Scope) issueTarget(
 	return project, parsed.ShortID, nil
 }
 
-func loadScopeProjects(ctx context.Context, client *kataclient.Client, includeArchived bool) ([]ProjectIdentity, error) {
+func loadScopeProjects(ctx context.Context, client *poomsaeclient.Client, includeArchived bool) ([]ProjectIdentity, error) {
 	var include *string
 	if includeArchived {
 		value := "archived"
@@ -288,13 +288,13 @@ func loadScopeProjects(ctx context.Context, client *kataclient.Client, includeAr
 
 func validateProjectIdentity(project ProjectIdentity, requireUID bool) error {
 	if project.ID <= 0 {
-		return errors.New("kata project ID is required")
+		return errors.New("poomsae project ID is required")
 	}
 	if strings.TrimSpace(project.Name) == "" {
-		return errors.New("kata project name is required")
+		return errors.New("poomsae project name is required")
 	}
 	if requireUID && strings.TrimSpace(project.UID) == "" {
-		return errors.New("kata project UID is required")
+		return errors.New("poomsae project UID is required")
 	}
 	return nil
 }

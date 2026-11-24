@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/mattn/go-runewidth"
 
-	"go.kenn.io/kata/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/authorname"
 )
 
 // View renders the stacked detail view as a single scrolling document.
@@ -340,7 +340,7 @@ func renderDocumentSectionHeader(label string) string {
 
 // renderActivityHeader is a section header with the three tab chips
 // trailing the label. Active tab is wrapped in `[ ]` brackets so the
-// active state survives `KATA_COLOR_MODE=none`. The full strip is
+// active state survives `POOMSAE_COLOR_MODE=none`. The full strip is
 // truncated to `width` cells so a narrow terminal never produces an
 // overflow row that wraps under the gutter.
 func (dm detailModel) renderActivityHeader(width int) string {

@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { KataReachableGraphResponse, KataTaskSummary } from '../lib/kata/types'
+import type { PoomsaeReachableGraphResponse, PoomsaeTaskSummary } from '../lib/poomsae/types'
 import { task } from '../test/task'
 import IssueGraph from './IssueGraph.svelte'
 
 function graphResponse(
-  source: KataTaskSummary,
-  nodes: KataTaskSummary[],
-): KataReachableGraphResponse {
+  source: PoomsaeTaskSummary,
+  nodes: PoomsaeTaskSummary[],
+): PoomsaeReachableGraphResponse {
   return {
     source_uid: source.uid,
     depth: 'full',
@@ -32,7 +32,7 @@ function graphNodeButtonWithText(text: string): HTMLButtonElement {
 
 describe('IssueGraph', () => {
   beforeEach(() => {
-    window.localStorage.removeItem('kata.graph.preferences.v1')
+    window.localStorage.removeItem('poomsae.graph.preferences.v1')
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       writable: true,

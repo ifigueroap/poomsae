@@ -1,0 +1,2662 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"log/slog"
+	"maps"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
+	"github.com/ifigueroap/poomsae/internal/planesync"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/internal/telemetry"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
+	"github.com/ifigueroap/poomsae/internal/vector"
+	"github.com/ifigueroap/poomsae/internal/version"
+	poomsaeweb "github.com/ifigueroap/poomsae/internal/web"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/spf13/cobra"
+	kitdaemon "go.kenn.io/kit/daemon"
+	"go.kenn.io/kit/embedlocal"
+	"go.kenn.io/kit/safefileio"
+)
+
+func newDaemonCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "daemon", Short: "manage the poomsae daemon"}
+	cmd.AddCommand(daemonLocalEmbeddingsCmd(), daemonStartCmd(), daemonStatusCmd(), daemonLocateCmd(), daemonStopCmd(), daemonRestartCmd(), daemonReloadCmd(), daemonLogsCmd(), daemonDiagnoseCmd(), daemonRecoverCmd())
+	return cmd
+}
+
+const daemonTelemetryHeartbeatInterval = 24 * time.Hour
+
+const (
+	// daemonShutdownDrainTimeout is the shared budget for draining HTTP
+	// handlers, daemon workers, hooks, and platform cleanup.
+	daemonShutdownDrainTimeout = 25 * time.Second
+	// daemonRestartProcessWaitTimeout leaves time after the internal drain
+	// deadline for final cleanup and observable process exit.
+	daemonRestartProcessWaitTimeout = daemonShutdownDrainTimeout + 5*time.Second
+)
+
+// daemonOwnerLockWait lets a replaced daemon finish its drain, which outlasts
+// its runtime record, before startup refuses its store. A var for tests.
+var daemonOwnerLockWait = daemonRestartProcessWaitTimeout
+
+// daemonReadinessWait is the ordinary budget for a detached daemon that can
+// open its store to publish readiness. A var for tests.
+var daemonReadinessWait = 5 * time.Second
+
+var newTelemetryReporter = func(opts telemetry.Options) telemetry.Client {
+	return telemetry.NewReporterOrDisabled(opts)
+}
+
+var runExternalRootRunner = func(ctx context.Context, runner *rootbridge.Runner) error {
+	return runner.Run(ctx)
+}
+
+type issueSyncDaemonRunner interface {
+	Run(context.Context) error
+}
+
+var newGitHubSyncDaemonRunner = func(config githubsync.RunnerConfig) issueSyncDaemonRunner {
+	return githubsync.NewRunner(config)
+}
+
+var newNotionSyncDaemonRunner = func(cfg notionsync.RunnerConfig) issueSyncDaemonRunner {
+	return notionsync.NewRunner(cfg)
+}
+
+var newNotionSyncClient = notionsync.NewClient
+
+var newPlaneSyncDaemonRunner = func(cfg planesync.RunnerConfig) issueSyncDaemonRunner {
+	return planesync.NewRunner(cfg)
+}
+
+var newPlaneSyncClient = planesync.NewClient
+var newTwentySyncDaemonRunner = func(cfg twentysync.RunnerConfig) issueSyncDaemonRunner {
+	return twentysync.NewRunner(cfg)
+}
+
+var newTwentySyncClient = twentysync.NewClient
+
+var newLinearSyncDaemonRunner = func(cfg linearsync.RunnerConfig) issueSyncDaemonRunner {
+	return linearsync.NewRunner(cfg)
+}
+
+var newLinearSyncClient = linearsync.NewClient
+
+var newTodoistSyncDaemonRunner = func(cfg todoistsync.RunnerConfig) issueSyncDaemonRunner { return todoistsync.NewRunner(cfg) }
+var newTodoistSyncClient = todoistsync.NewClient
+
+var newGitHubSyncHTTPFetcher = githubsync.NewHTTPFetcher
+
+var openEmbeddingVectorIndex = func(
+	ctx context.Context,
+	store db.Storage,
+	vectorsPath string,
+) (*vector.Index, error) {
+	if postgresStore, ok := store.(*pgstore.Store); ok {
+		return vector.OpenPostgres(ctx, postgresStore.DB)
+	}
+	return vector.Open(ctx, vectorsPath)
+}
+
+func newConfiguredGitHubSyncFetcher(cfg config.GitHubSyncConfig) githubsync.Fetcher {
+	return newGitHubSyncHTTPFetcher(githubsync.HTTPFetcherConfig{
+		CredentialResolver: githubsync.NewCredentialResolver(cfg, nil),
+	})
+}
+
+func newConfiguredNotionSyncFetcher(cfg config.NotionSyncConfig) notionsync.Fetcher {
+	return newNotionSyncClient(notionsync.ClientConfig{TokenEnv: cfg.TokenEnv})
+}
+func newConfiguredPlaneSyncFetcher(cfg config.PlaneSyncConfig) planesync.Fetcher {
+	return newPlaneSyncClient(planesync.ClientConfig{Daemon: cfg})
+}
+func newConfiguredLinearSyncFetcher(cfg config.LinearSyncConfig) linearsync.Fetcher {
+	return newLinearSyncClient(linearsync.ClientConfig{Daemon: cfg})
+}
+func newConfiguredTwentySyncFetcher(cfg config.TwentySyncConfig) twentysync.Fetcher {
+	return newTwentySyncClient(twentysync.ClientConfig{Daemon: cfg})
+}
+func newConfiguredTodoistSyncFetcher(cfg config.TodoistSyncConfig) todoistsync.Fetcher {
+	return newTodoistSyncClient(todoistsync.ClientConfig{Daemon: cfg})
+}
+
+type daemonStartOutput struct {
+	Action      string `json:"action"`
+	PID         int    `json:"pid"`
+	ReplacedPID int    `json:"replaced_pid,omitzero"`
+	Address     string `json:"address"`
+	DBPath      string `json:"db_path,omitempty"`
+	WebURL      string `json:"web_url,omitempty"`
+}
+
+type daemonLocateOutput struct {
+	Source         string `json:"source"`
+	Kind           string `json:"kind"`
+	Network        string `json:"network"`
+	Scheme         string `json:"scheme"`
+	Address        string `json:"address"`
+	RequestBaseURL string `json:"request_base_url,omitempty"`
+}
+
+func daemonLocateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "locate",
+		Short: "inspect the selected daemon endpoint without starting it",
+		Long: "Print the running daemon endpoint selected by Poomsae without starting or restarting it. Stopped targets return diagnosis and recovery guidance. Resolution order is " +
+			"--daemon, POOMSAE_SERVER, .poomsae.local.toml [server].url or daemon walking up from " +
+			"--workspace or the current directory, active_daemon, then the local daemon. " +
+			"Local addresses use unix:///path for Unix sockets or host:port for HTTP over TCP; " +
+			"configured remotes use their canonical HTTP(S) URL. Output never includes authentication credentials.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			out, err := locateDaemon(cmd.Context())
+			if err != nil {
+				return err
+			}
+			if currentOutputMode() == outputJSON {
+				return emitJSON(cmd.OutOrStdout(), out)
+			}
+			if currentOutputMode() == outputAgent {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "OK daemon source=%s kind=%s network=%s scheme=%s address=%s",
+					agentValue(out.Source), agentValue(out.Kind), agentValue(out.Network),
+					agentValue(out.Scheme), agentValue(out.Address))
+				if err == nil && out.RequestBaseURL != "" {
+					_, err = fmt.Fprintf(cmd.OutOrStdout(), " request_base_url=%s", agentValue(out.RequestBaseURL))
+				}
+				if err == nil {
+					_, err = fmt.Fprintln(cmd.OutOrStdout())
+				}
+				return err
+			}
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), out.Address)
+			return err
+		},
+	}
+}
+
+func locateDaemon(ctx context.Context) (daemonLocateOutput, error) {
+	var target client.RunningDaemon
+	source := "configured"
+	selectedProfile := false
+	if injected, ok := ctx.Value(client.BaseURLKey{}).(string); ok && injected != "" && flags.Daemon == "" {
+		target = client.RunningDaemon{BaseURL: injected, Address: injected, Network: "tcp", Scheme: "http"}
+	} else {
+		ctx, cancel := context.WithTimeout(ctx, envHTTPTimeout(defaultHTTPTimeout))
+		defer cancel()
+		selection, err := client.InspectSelection(ctx, workspaceStartForRemote(), flags.Daemon)
+		if err != nil {
+			return daemonLocateOutput{}, cliDaemonTargetError(err)
+		}
+		diagnosis, selection, err := probeDaemonSelection(ctx, selectedDaemonDiagnosis(selection, ""), selection)
+		if err != nil {
+			return daemonLocateOutput{}, err
+		}
+		if diagnosis.State != "ready" {
+			return daemonLocateOutput{}, diagnosisError(diagnosis)
+		}
+		target = selection.Resolved.Running()
+		selectedProfile = selection.Profile != nil
+	}
+	if flags.Daemon != "" {
+		source = "daemon_flag"
+	}
+	kind := "remote"
+	if !target.ConfiguredRemote {
+		kind = "local"
+		if flags.Daemon == "" && !selectedProfile {
+			source = "local_default"
+		}
+	}
+	requestBaseURL := target.BaseURL
+	if target.Network == "unix" {
+		requestBaseURL = ""
+	}
+	return daemonLocateOutput{Source: source, Kind: kind, Network: target.Network, Scheme: target.Scheme, Address: target.Address, RequestBaseURL: requestBaseURL}, nil
+}
+
+var (
+	startDetachedDaemon  = defaultStartDetachedDaemon
+	runDaemonForeground  = runDaemonWithListen
+	launchDetachedDaemon = defaultLaunchDetachedDaemon
+)
+
+func daemonStartCmd() *cobra.Command {
+	var (
+		listen           string
+		insecureReadonly bool
+		foreground       bool
+		checkStartup     bool
+		noAutoToken      bool
+	)
+	cmd := &cobra.Command{
+		Use:   "start",
+		Short: "start the daemon",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := requireCurrentHomeDaemonCommand(); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return &cliError{
+					Message:  "poomsae daemon start does not support --agent; run without output formatting",
+					Kind:     kindUsage,
+					ExitCode: ExitUsage,
+				}
+			}
+			if checkStartup {
+				_, err := preflightDaemonStartup(cmd.Context(), listen, insecureReadonly, noAutoToken)
+				return err
+			}
+			if foreground {
+				ctx, cancel := context.WithCancel(cmd.Context())
+				defer cancel()
+				daemonProcessEntered = true
+				return runDaemonForeground(ctx, listen, insecureReadonly, noAutoToken)
+			}
+			out, err := startDetachedDaemonLocked(cmd.Context(), listen, insecureReadonly, noAutoToken)
+			if err != nil {
+				return err
+			}
+			if currentOutputMode() == outputJSON {
+				return emitJSON(cmd.OutOrStdout(), out)
+			}
+			switch out.Action {
+			case "already_running":
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "daemon already running pid=%d address=%s\n", out.PID, out.Address)
+			case "replaced":
+				_, err = fmt.Fprintf(cmd.OutOrStdout(),
+					"replaced auto-started daemon pid=%d; started pid=%d address=%s\n",
+					out.ReplacedPID, out.PID, out.Address)
+			default:
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "started pid=%d address=%s\n", out.PID, out.Address)
+			}
+			if err == nil {
+				err = writeDaemonWebURL(cmd.OutOrStdout(), out.WebURL)
+			}
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&checkStartup, "check-startup", false, "check startup settings")
+	_ = cmd.Flags().MarkHidden("check-startup")
+	cmd.Flags().BoolVar(&foreground, "foreground", false,
+		"run the daemon in the current process instead of starting it in the background")
+	cmd.Flags().BoolVar(&noAutoToken, "no-auto-token", false, "disable creating a persisted daemon token; eligible existing tokens are still reused")
+	cmd.Flags().StringVar(&listen, "listen", "",
+		"bind TCP at host:port (admin-only; non-public addresses only). "+
+			"Falls back to $POOMSAE_HOME/config.toml's `listen` value when "+
+			"unset. Default with neither: Unix socket on Unix; loopback TCP on Windows.")
+	cmd.Flags().BoolVar(&insecureReadonly, "insecure-readonly", false,
+		"permit unauthenticated GETs on non-loopback TCP when no token "+
+			"is configured (DEV ONLY — production must use a token).")
+	return cmd
+}
+
+// startDetachedDaemonLocked holds the start lock an in-place restart holds
+// until its replacement is ready, so an explicit start adopts that replacement
+// instead of launching into the handoff. Restart's own startup already holds it.
+func startDetachedDaemonLocked(ctx context.Context, listen string, insecureReadonly, noAutoToken bool) (daemonStartOutput, error) {
+	ns, err := daemonruntime.NewNamespace()
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	release, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).AcquireStartLock(ctx)
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	defer release()
+	return startDetachedDaemon(ctx, listen, insecureReadonly, noAutoToken)
+}
+
+func defaultStartDetachedDaemon(ctx context.Context, listen string, insecureReadonly, noAutoToken bool) (daemonStartOutput, error) {
+	ns, err := daemonruntime.NewNamespace()
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	if err := ns.EnsureDirs(); err != nil {
+		return daemonStartOutput{}, err
+	}
+	effectiveListen, err := effectiveDaemonListen(listen)
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	requestedEndpoint, err := chooseEndpoint(ns, effectiveListen)
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	replacedPID := 0
+	if rec, ok := liveDaemonRecord(ns.DataDir, 0); ok {
+		address := rec.Endpoint().ConfigAddress()
+		if effectiveListen != "" && !daemonEndpointMatches(requestedEndpoint, rec.Endpoint()) {
+			return daemonStartOutput{}, fmt.Errorf("daemon already running at %s; stop it before starting with listener %s", address, effectiveListen)
+		}
+		// An explicit start means "keep a daemon resident". An auto-started
+		// daemon with idle shutdown armed would exit later, so replace it
+		// with an explicit process instead of reporting it as running.
+		if !daemonRecordAdvertisesIdleShutdown(ctx, rec) {
+			return daemonStartOutputFromRecord("already_running", rec), nil
+		}
+		if err := stopIdleShutdownDaemon(ctx, ns, rec); err != nil {
+			return daemonStartOutput{}, err
+		}
+		replacedPID = rec.PID
+	}
+	var out daemonStartOutput
+	for attempts := 0; ; attempts++ {
+		out, err = launchDetachedDaemon(ctx, ns.DataDir, listen, insecureReadonly, noAutoToken)
+		if err != nil {
+			return daemonStartOutput{}, err
+		}
+		if out.Action != "already_running" {
+			break
+		}
+		rec, ok := liveDaemonRecord(ns.DataDir, out.PID)
+		if !ok || effectiveListen != "" && !daemonEndpointMatches(requestedEndpoint, rec.Endpoint()) {
+			return daemonStartOutput{}, errors.New("daemon disappeared or changed listener while startup was waiting")
+		}
+		if !daemonRecordAdvertisesIdleShutdown(ctx, rec) {
+			out = daemonStartOutputFromRecord("already_running", rec)
+			break
+		}
+		if attempts >= 1 {
+			return daemonStartOutput{}, errors.New("auto-started daemon kept reappearing during explicit start; retry poomsae daemon start")
+		}
+		if err := stopIdleShutdownDaemon(ctx, ns, rec); err != nil {
+			return daemonStartOutput{}, err
+		}
+		replacedPID = rec.PID
+	}
+	if replacedPID != 0 {
+		out.Action = "replaced"
+		out.ReplacedPID = replacedPID
+	}
+	return out, nil
+}
+
+func stopIdleShutdownDaemon(ctx context.Context, ns *daemonruntime.Namespace, rec kitdaemon.RuntimeRecord) error {
+	if err := daemonruntime.SignalDaemonStop(rec, ns.DBHash); err != nil {
+		return fmt.Errorf("stop auto-started daemon pid %d: %w", rec.PID, err)
+	}
+	if err := waitForDaemonProcesses(ctx, []int{rec.PID}, daemonRestartProcessWaitTimeout, kitdaemon.ProcessAlive); err != nil {
+		return fmt.Errorf("stop auto-started daemon pid %d: %w", rec.PID, err)
+	}
+	return nil
+}
+
+// daemonRecordAdvertisesIdleShutdown reports whether the live daemon behind
+// rec is an owner-local process that will stop itself when idle. Remote
+// records are never idle-eligible, and an unreachable daemon is treated as
+// resident so an explicit start does not signal a process it cannot inspect.
+func daemonRecordAdvertisesIdleShutdown(ctx context.Context, rec kitdaemon.RuntimeRecord) bool {
+	endpoint := rec.Endpoint()
+	if !endpoint.IsUnix() {
+		host, _, err := net.SplitHostPort(endpoint.Address)
+		if err != nil {
+			return false
+		}
+		if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+			return false
+		}
+	}
+	httpClient, baseURL := client.LocalHTTPClient(endpoint.ConfigAddress())
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, httpClient)
+	if err != nil {
+		return false
+	}
+	resp, err := apiClient.HealthWithResponse(ctx)
+	if err != nil || resp == nil || resp.StatusCode >= http.StatusBadRequest {
+		return false
+	}
+	body := resp.Body
+	var health daemonAPIHealth
+	if err := json.Unmarshal(body, &health); err != nil {
+		return false
+	}
+	return health.IdleShutdown != nil
+}
+
+func defaultLaunchDetachedDaemon(
+	ctx context.Context, dataDir, listen string, insecureReadonly, noAutoToken bool,
+) (daemonStartOutput, error) {
+	ns, err := daemonruntime.NewNamespace()
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	if filepath.Clean(ns.DataDir) != filepath.Clean(dataDir) {
+		return daemonStartOutput{}, errors.New("daemon startup namespace changed while launching")
+	}
+	effectiveListen, err := effectiveDaemonListen(listen)
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	requestedEndpoint, err := chooseEndpoint(ns, effectiveListen)
+	if err != nil {
+		return daemonStartOutput{}, err
+	}
+	args := []string{"daemon", "start", "--foreground"}
+	if listen != "" {
+		args = append(args, "--listen", listen)
+	}
+	if insecureReadonly {
+		args = append(args, "--insecure-readonly")
+	}
+	if noAutoToken {
+		args = append(args, "--no-auto-token")
+	}
+	opts := kitdaemon.StartDetachedOptions{
+		Args:            args,
+		Env:             os.Environ(),
+		RefuseEphemeral: true,
+	}
+	if logw := client.DaemonLogWriter(dataDir); logw != nil {
+		opts.Stdout = logw
+		opts.Stderr = logw
+		defer func() { _ = logw.Close() }()
+	}
+	exited := make(chan error, 1)
+	var pid int
+	var childExited atomic.Bool
+	opts.AfterStart = func(cmd *exec.Cmd) { pid = cmd.Process.Pid }
+	opts.Exited = func(err error) {
+		childExited.Store(true)
+		exited <- err
+	}
+	var ownerLocks []string
+	if dsn, dsnErr := config.PoomsaeDSN(ctx); dsnErr == nil {
+		ownerLocks = daemonruntime.StoreOwnerLockPaths(dataDir, dsn)
+	}
+	if err := daemonruntime.RefuseForeignStoreOwner(ctx, dataDir, ownerLocks); err != nil {
+		return daemonStartOutput{}, err
+	}
+	if err := kitdaemon.StartDetached(ctx, opts); err != nil {
+		return daemonStartOutput{}, fmt.Errorf("start daemon: %w", err)
+	}
+
+	var record kitdaemon.RuntimeRecord
+	adoptedConcurrentDaemon := false
+	// The child may first wait for a replaced daemon to release the store.
+	err = client.WaitForDaemonStartup(ctx, ownerLocks, daemonOwnerLockWait+daemonReadinessWait, exited, func(context.Context) (bool, error) {
+		var ok bool
+		record, ok = liveDaemonRecord(dataDir, pid)
+		if ok || !childExited.Load() {
+			return ok, nil
+		}
+		record, ok = liveCompatibleDaemonRecord(dataDir, pid, requestedEndpoint, effectiveListen != "")
+		adoptedConcurrentDaemon = ok
+		return ok, nil
+	})
+	if err != nil {
+		if tail := daemonStartLogTail(dataDir); tail != "" {
+			err = fmt.Errorf("%w\n%s", err, tail)
+		}
+		return daemonStartOutput{}, cliDaemonTargetError(err)
+	}
+	action := "started"
+	if adoptedConcurrentDaemon {
+		action = "already_running"
+	}
+	return daemonStartOutputFromRecord(action, record), nil
+}
+
+func liveCompatibleDaemonRecord(dataDir string, excludePID int, requested kitdaemon.Endpoint, listenerSpecified bool) (kitdaemon.RuntimeRecord, bool) {
+	records, err := (kitdaemon.RuntimeStore{Dir: dataDir}).List()
+	if err != nil {
+		return kitdaemon.RuntimeRecord{}, false
+	}
+	for _, record := range records {
+		if record.PID == excludePID || !daemonruntime.RuntimeProcessAlive(record) {
+			continue
+		}
+		if listenerSpecified && !daemonEndpointMatches(requested, record.Endpoint()) {
+			continue
+		}
+		return record, true
+	}
+	return kitdaemon.RuntimeRecord{}, false
+}
+
+func daemonEndpointMatches(requested, actual kitdaemon.Endpoint) bool {
+	if requested.Network != actual.Network {
+		return false
+	}
+	if requested.Network != kitdaemon.NetworkTCP {
+		return filepath.Clean(requested.Address) == filepath.Clean(actual.Address)
+	}
+	requestedHost, requestedPort, requestedErr := net.SplitHostPort(requested.Address)
+	actualHost, actualPort, actualErr := net.SplitHostPort(actual.Address)
+	if requestedErr != nil || actualErr != nil || !strings.EqualFold(requestedHost, actualHost) {
+		return false
+	}
+	requestedPortNumber, requestedErr := strconv.Atoi(requestedPort)
+	actualPortNumber, actualErr := strconv.Atoi(actualPort)
+	if requestedErr != nil || actualErr != nil {
+		return false
+	}
+	if requestedPortNumber == 0 {
+		return actualPortNumber > 0 && actualPortNumber <= 65535
+	}
+	return requestedPortNumber == actualPortNumber
+}
+
+func daemonStartOutputFromRecord(action string, rec kitdaemon.RuntimeRecord) daemonStartOutput {
+	return daemonStartOutput{
+		Action:  action,
+		PID:     rec.PID,
+		Address: rec.Endpoint().ConfigAddress(),
+		DBPath:  rec.Metadata["db_path"],
+		WebURL:  rec.Metadata["web_origin"],
+	}
+}
+
+func writeDaemonWebURL(w io.Writer, webURL string) error {
+	if webURL == "" {
+		return nil
+	}
+	_, err := fmt.Fprintf(w, "  web UI:  %s\n", webURL)
+	return err
+}
+
+func effectiveDaemonListen(listen string) (string, error) {
+	if listen != "" {
+		return daemon.ResolveInterfaceListen(listen)
+	}
+	dcfg, err := config.ReadDaemonConfig()
+	if err != nil {
+		return "", err
+	}
+	return daemon.ResolveInterfaceListen(effectiveDaemonListenWithConfig(listen, dcfg))
+}
+
+func effectiveDaemonListenWithConfig(listen string, dcfg *config.DaemonConfig) string {
+	if listen != "" {
+		return listen
+	}
+	if dcfg.Listen != "" {
+		return dcfg.Listen
+	}
+	if addr, ok := listenFromPortEnv(); ok {
+		return addr
+	}
+	return ""
+}
+
+func liveDaemonRecord(dataDir string, pid int) (kitdaemon.RuntimeRecord, bool) {
+	recs, err := (kitdaemon.RuntimeStore{Dir: dataDir}).List()
+	if err != nil {
+		return kitdaemon.RuntimeRecord{}, false
+	}
+	for _, rec := range recs {
+		if pid != 0 && rec.PID != pid {
+			continue
+		}
+		if daemonruntime.RuntimeProcessAlive(rec) {
+			return rec, true
+		}
+	}
+	return kitdaemon.RuntimeRecord{}, false
+}
+
+func daemonStartLogTail(dataDir string) string {
+	body, err := os.ReadFile(filepath.Join(dataDir, "daemon.log")) //nolint:gosec // G304: dataDir is the daemon namespace, filename is fixed.
+	if err != nil {
+		return ""
+	}
+	const maxTail = 4096
+	if len(body) > maxTail {
+		body = body[len(body)-maxTail:]
+	}
+	return strings.TrimSpace(string(body))
+}
+
+func daemonStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "report whether a daemon is running",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ns, err := daemonruntime.NewNamespace()
+			if err != nil {
+				return err
+			}
+			var recs []kitdaemon.RuntimeRecord
+			if _, statErr := os.Stat(ns.DataDir); statErr == nil {
+				// Never read runtime records from an unsafe directory. Diagnose below
+				// reports the current home as local_unreachable.
+				if validationErr := safefileio.ValidatePrivateDir(ns.DataDir); validationErr == nil {
+					recs, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).List()
+				}
+			} else if !errors.Is(statErr, os.ErrNotExist) {
+				return statErr
+			}
+			if err != nil {
+				return err
+			}
+			out := daemonStatusOutput{Daemons: make([]daemonStatusEntry, 0, len(recs))}
+			selected, _, err := diagnoseDaemon(cmd.Context(), "")
+			out.Selected = &selected
+			var statusErr error
+			if err != nil {
+				statusErr = cliDaemonTargetError(err)
+			} else if selected.State != "ready" {
+				statusErr = diagnosisError(selected)
+			}
+			for _, r := range recs {
+				// Match discovery, which can select a record controls skip.
+				if daemonruntime.RuntimeRecordWorthProbing(r) {
+					out.Daemons = append(out.Daemons, daemonStatusEntry{
+						PID:           r.PID,
+						AutoStarted:   r.Metadata[daemonruntime.RuntimeAutoStartKey] == "1",
+						Version:       daemonRuntimeVersion(r),
+						Address:       r.Endpoint().ConfigAddress(),
+						WebURL:        r.Metadata["web_origin"],
+						DBPath:        r.Metadata["db_path"],
+						StartedAt:     r.StartedAt,
+						MCP:           r.Metadata["mcp"],
+						ConfigSources: runtimeConfigSources(r.Metadata),
+					})
+				}
+			}
+			switch currentOutputMode() {
+			case outputAgent:
+				status := "stopped"
+				if len(out.Daemons) > 0 {
+					status = "running"
+				}
+				daemonFields := ""
+				if len(out.Daemons) == 1 && out.Daemons[0].WebURL != "" {
+					daemonFields = " web_url=" + out.Daemons[0].WebURL
+				}
+				if len(out.Daemons) == 1 && out.Daemons[0].MCP != "" {
+					daemonFields += " mcp=" + out.Daemons[0].MCP
+				}
+				if len(out.Daemons) == 1 && out.Daemons[0].AutoStarted {
+					daemonFields += " auto_started=true"
+				}
+				message := ""
+				if selected.Message != "" {
+					message = " message=" + agentValue(selected.Message)
+				}
+				if selected.RootSigning != nil {
+					message += " root_signing=unavailable"
+				}
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "OK daemon status=%s%s selected_state=%s selected_profile=%s%s\n", status, daemonFields, selected.State, agentValue(selected.Profile), message); err != nil {
+					return err
+				}
+				return statusErr
+			case outputJSON:
+				if err := emitJSON(cmd.OutOrStdout(), out); err != nil {
+					return err
+				}
+				return statusErr
+			}
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Selected daemon: %s (source: %s)\n", selected.State, selected.Source); err != nil {
+				return err
+			}
+			// The selected state is already shown; stderr keeps the recovery hint.
+			if cli, ok := errors.AsType[*cliError](statusErr); ok && selected.State == "local_unreachable" {
+				cli.Message = ""
+				cli.Hint = selected.NextAction
+			}
+			if selected.Message != "" {
+				reason := selected.Message
+				for _, d := range out.Daemons {
+					if selected.statusReason != "" && d.PID == selected.PID && d.Address == selected.Endpoint {
+						reason = selected.statusReason
+						break
+					}
+				}
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  reason: %s\n", reason); err != nil {
+					return err
+				}
+			}
+			if selected.RootSigning != nil {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  warning: %s\n", daemon.RootSigningWarning(*selected.RootSigning)); err != nil {
+					return err
+				}
+			}
+			if len(out.Daemons) == 0 {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No poomsae daemon is running in the current POOMSAE_HOME.")
+				return statusErr
+			}
+			for _, d := range out.Daemons {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "poomsae running at %s\n", daemonStatusAddress(d.Address))
+				if d.WebURL != "" {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  web UI:  %s\n", d.WebURL)
+				}
+				if d.MCP != "" {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  MCP:     %s\n", d.MCP)
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  pid:     %d\n", d.PID)
+				if d.AutoStarted {
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  started: automatically by a poomsae command")
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  version: %s\n", d.Version)
+				if !d.StartedAt.IsZero() {
+					uptime := time.Since(d.StartedAt).Round(time.Second)
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  uptime:  %s\n", uptime)
+				}
+			}
+			return statusErr
+		},
+	}
+}
+
+func daemonStatusAddress(address string) string {
+	if strings.Contains(address, "://") {
+		return address
+	}
+	return "http://" + address
+}
+
+type daemonStatusOutput struct {
+	Selected *daemonDiagnosis    `json:"selected,omitempty"`
+	Daemons  []daemonStatusEntry `json:"daemons"`
+}
+
+type daemonStatusEntry struct {
+	PID           int               `json:"pid"`
+	Version       string            `json:"version"`
+	Address       string            `json:"address"`
+	WebURL        string            `json:"web_url,omitempty"`
+	DBPath        string            `json:"db_path"`
+	StartedAt     time.Time         `json:"started_at"`
+	MCP           string            `json:"mcp,omitempty"` // "serving" or "unavailable" when [mcp] is enabled
+	ConfigSources map[string]string `json:"config_sources,omitempty"`
+	AutoStarted   bool              `json:"auto_started,omitzero"`
+}
+
+func runtimeConfigSources(metadata map[string]string) map[string]string {
+	var sources map[string]string
+	for key, value := range metadata {
+		if strings.HasPrefix(key, "config_") && strings.HasSuffix(key, "_source") {
+			if sources == nil {
+				sources = make(map[string]string)
+			}
+			sources[strings.TrimSuffix(strings.TrimPrefix(key, "config_"), "_source")] = value
+		}
+	}
+	return sources
+}
+
+func daemonRuntimeVersion(r kitdaemon.RuntimeRecord) string {
+	if r.Version == "" {
+		return "unknown"
+	}
+	return r.Version
+}
+
+func noteSkippedDaemons(stderr io.Writer, records []kitdaemon.RuntimeRecord) {
+	for _, record := range records {
+		switch kitdaemon.RuntimeProcessScope(record) {
+		case kitdaemon.ProcessScopeForeign:
+			_, _ = fmt.Fprintf(stderr, "skipping daemon pid=%d (another PID namespace)\n", record.PID)
+		case kitdaemon.ProcessScopeUnknown:
+			_, _ = fmt.Fprintf(stderr, "skipping daemon pid=%d (unverifiable identity)\n", record.PID)
+		}
+	}
+}
+
+func daemonStopCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "stop",
+		Short: "gracefully stop the running daemon and wait until it stops serving",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := requireCurrentHomeDaemonCommand(); err != nil {
+				return err
+			}
+			ns, err := daemonruntime.NewNamespace()
+			if err != nil {
+				return err
+			}
+			recs, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).List()
+			if err != nil {
+				return err
+			}
+			noteSkippedDaemons(cmd.ErrOrStderr(), recs)
+			pids := make([]int, 0, len(recs))
+			for _, r := range recs {
+				if !daemonruntime.RuntimeProcessAlive(r) {
+					continue
+				}
+				// SignalDaemonStop is platform-specific: SIGTERM on Unix,
+				// a named stop event on Windows.
+				if err := daemonruntime.SignalDaemonStop(r, ns.DBHash); err != nil {
+					return &cliError{Kind: kindInternal, ExitCode: ExitInternal, Message: fmt.Sprintf("stop pid %d: %v", r.PID, err)}
+				}
+				pids = append(pids, r.PID)
+			}
+			if err := waitForDaemonProcesses(cmd.Context(), pids, daemonRestartProcessWaitTimeout, func(pid int) bool {
+				_, ok := liveDaemonRecord(ns.DataDir, pid)
+				return ok
+			}); err != nil {
+				return err
+			}
+			switch currentOutputMode() {
+			case outputHuman:
+				for _, pid := range pids {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "stopped pid=%d\n", pid)
+				}
+			case outputAgent:
+				switch len(pids) {
+				case 0:
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "OK daemon action=stop stopped=0")
+				case 1:
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK daemon action=stop pid=%d\n", pids[0])
+				default:
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK daemon action=stop stopped=%d pids=%s\n",
+						len(pids), agentValue(joinInts(pids, ",")))
+				}
+			case outputJSON:
+				return emitJSON(cmd.OutOrStdout(), daemonStopOutput{
+					Action:  "stop",
+					Stopped: len(pids),
+					PIDs:    pids,
+				})
+			}
+			return nil
+		},
+	}
+}
+
+type daemonStopOutput struct {
+	Action  string `json:"action"`
+	Stopped int    `json:"stopped"`
+	PIDs    []int  `json:"pids"`
+}
+
+// unsupportedDaemonRestartError explains how to replace a daemon that cannot
+// accept an installed-executable restart request.
+func unsupportedDaemonRestartError(rec kitdaemon.RuntimeRecord) error {
+	note := ""
+	if endpoint := rec.Endpoint(); !endpoint.IsUnix() && endpoint.Address != "" {
+		note = " (it was listening on " + endpoint.Address + ")"
+	}
+	reason := "is from an older poomsae release; as a one-time step,"
+	if rec.Metadata[daemonruntime.RuntimeRestartExecutableKey] == "0" {
+		reason = "could not identify its installed executable at startup, so it cannot restart itself;"
+	}
+	return fmt.Errorf("daemon pid %d %s run 'poomsae daemon stop', then 'poomsae daemon start' in its original host shell or service with its original startup options%s", rec.PID, reason, note)
+}
+
+func daemonRestartCmd() *cobra.Command {
+	var (
+		listen           string
+		insecureReadonly bool
+		noAutoToken      bool
+		generation       string
+	)
+	cmd := &cobra.Command{
+		Use:   "restart",
+		Short: "restart the daemon",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := requireCurrentHomeDaemonCommand(); err != nil {
+				return err
+			}
+			ns, err := daemonruntime.NewNamespace()
+			if err != nil {
+				return err
+			}
+			lockCtx, cancel := restartLockContext(cmd.Context(), generation)
+			defer cancel()
+			running, release, err := lockLiveDaemons(lockCtx, ns, cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
+			defer release()
+			if generation != "" {
+				record, err := selectRestartGeneration(running, generation)
+				if err != nil {
+					return err
+				}
+				running = []kitdaemon.RuntimeRecord{record}
+			}
+			if err := requireRestartable(running); err != nil {
+				return err
+			}
+			pids := make([]int, 0, len(running))
+			var out daemonStartOutput
+			if len(running) == 0 {
+				if _, err := preflightDaemonStartup(cmd.Context(), listen, insecureReadonly, noAutoToken); err != nil {
+					return fmt.Errorf("restart: validate replacement: %w", err)
+				}
+				out, err = startDetachedDaemon(cmd.Context(), listen, insecureReadonly, noAutoToken)
+				if err != nil {
+					return err
+				}
+			} else {
+				var flags []string
+				for _, name := range []string{"listen", "insecure-readonly", "no-auto-token"} {
+					if f := cmd.Flags().Lookup(name); f.Changed {
+						flags = append(flags, "--"+name+"="+f.Value.String())
+					}
+				}
+				pids, out, err = restartRunningDaemons(cmd.Context(), ns, running, flags)
+				if err != nil {
+					return err
+				}
+			}
+			switch currentOutputMode() {
+			case outputJSON:
+				return emitJSON(cmd.OutOrStdout(), daemonRestartOutput{
+					Action:  "restart",
+					Stopped: len(pids),
+					PIDs:    pids,
+					PID:     out.PID,
+					Address: out.Address,
+					DBPath:  out.DBPath,
+					WebURL:  out.WebURL,
+				})
+			case outputAgent:
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "OK daemon action=restart pid=%d stopped=%d", out.PID, len(pids))
+				if len(pids) > 0 {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), " pids=%s", agentValue(joinInts(pids, ",")))
+				}
+				if out.WebURL != "" {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), " web_url=%s", agentValue(out.WebURL))
+				}
+				_, _ = fmt.Fprintln(cmd.OutOrStdout())
+			case outputHuman:
+				if len(pids) == 0 {
+					_, err = fmt.Fprintf(cmd.OutOrStdout(), "started pid=%d address=%s (was not running)\n", out.PID, out.Address)
+				} else {
+					_, err = fmt.Fprintf(cmd.OutOrStdout(), "restarted pid=%d address=%s\n", out.PID, out.Address)
+				}
+				if err == nil {
+					err = writeDaemonWebURL(cmd.OutOrStdout(), out.WebURL)
+				}
+			}
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&listen, "listen", "",
+		"bind the replacement daemon to host:port (overrides config.toml)")
+	cmd.Flags().BoolVar(&noAutoToken, "no-auto-token", false, "disable creating a persisted daemon token; eligible existing tokens are still reused")
+	cmd.Flags().BoolVar(&insecureReadonly, "insecure-readonly", false,
+		"permit unauthenticated GETs on non-loopback TCP when no token is configured (DEV ONLY)")
+	cmd.Flags().StringVar(&generation, "generation", "", "restart only this daemon generation")
+	_ = cmd.Flags().MarkHidden("generation")
+	return cmd
+}
+
+type daemonStartupPreflight struct {
+	Config         *config.DaemonConfig
+	Web            config.WebConfig
+	MCPToken       string
+	Listen         string
+	Namespace      *daemonruntime.Namespace
+	Endpoint       kitdaemon.Endpoint
+	DBPath         string
+	StoreConfig    storeopen.Config
+	PoomsaeHome    string
+	HookConfigPath string
+	HookConfig     hooks.LoadedConfig
+	Embedder       *embedding.Client
+	VectorsPath    string
+	SavedEmbedding config.EmbeddingsConfig
+	ChoiceErr      error
+}
+
+func preflightDaemonStartup(ctx context.Context, listen string, insecureReadonly, noAutoToken bool) (daemonStartupPreflight, error) {
+	dcfg, err := config.ReadDaemonConfig()
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if err := validateFederationStartupConfig(dcfg); err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if listen != "" {
+		dcfg.Sources["listen"] = "--listen"
+	} else if dcfg.Listen == "" {
+		if _, ok := listenFromPortEnv(); ok {
+			dcfg.Sources["listen"] = "PORT"
+		}
+	}
+	listen, err = daemon.ResolveInterfaceListen(effectiveDaemonListenWithConfig(listen, dcfg))
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	ns, err := daemonruntime.NewNamespace()
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	endpoint, err := chooseEndpoint(ns, listen)
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	mcpToken, err := resolveDaemonMCPStartup(ctx, dcfg, endpoint)
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	home, err := config.PoomsaeHome()
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if err := prepareDaemonAuth(dcfg, endpoint, insecureReadonly, noAutoToken, home); err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if dcfg.Auth.Source == "generated_file" || dcfg.Auth.Source == "persisted_file" {
+		dcfg.Sources["auth"] = dcfg.Auth.Source
+	}
+	if err := daemon.CheckAuthStartup(listen, dcfg.Auth, insecureReadonly); err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if dcfg.Web.Listen != "" {
+		trustedProxySession := trustedProxyBrowserSession(endpoint, dcfg.Web, dcfg.Auth)
+		if err := daemon.CheckWebStartup(dcfg.Web.Listen, dcfg.Auth, insecureReadonly, trustedProxySession); err != nil {
+			return daemonStartupPreflight{}, err
+		}
+	}
+	dbPath, err := config.PoomsaeDSN(ctx)
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if err := storeopen.Validate(dbPath); err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	storeConfig := storeopen.DefaultConfig()
+	backend, err := storeopen.BackendForDSN(dbPath)
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	if backend == storeopen.BackendPostgres {
+		storeConfig.Postgres = pgstore.ConfigFromValues(
+			dcfg.Storage.Postgres.Schema,
+			dcfg.Storage.Postgres.Mode,
+			dcfg.Storage.Postgres.SchemaOwner,
+			dcfg.Storage.Postgres.AllowInsecure,
+		)
+		if err := storeConfig.Postgres.Validate(); err != nil {
+			return daemonStartupPreflight{}, err
+		}
+	}
+	if backend == storeopen.BackendSQLite {
+		storeConfig.SQLiteBusyTimeout, err = dcfg.Storage.SQLite.BusyTimeoutDuration()
+		if err != nil {
+			return daemonStartupPreflight{}, err
+		}
+	}
+
+	hookCfgPath, err := config.HookConfigPath()
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	loadedHooks, err := hooks.LoadStartup(hookCfgPath)
+	if err != nil {
+		return daemonStartupPreflight{}, fmt.Errorf("hooks: %w", err)
+	}
+	savedEmbeddings := dcfg.Search.Embeddings
+	chosen, choiceErr := applySharedEmbeddingChoice(ctx, savedEmbeddings, dbPath)
+	if choiceErr == nil {
+		dcfg.Search.Embeddings = chosen
+	}
+	embedder, vectorsPath, err := preflightEmbeddingStartup(dcfg.Search.Embeddings, dbPath)
+	if err != nil && chosen != savedEmbeddings {
+		choiceErr = fmt.Errorf("preflight: %w", err)
+		dcfg.Search.Embeddings = savedEmbeddings
+		embedder, vectorsPath, err = preflightEmbeddingStartup(savedEmbeddings, dbPath)
+	}
+	if err != nil {
+		return daemonStartupPreflight{}, err
+	}
+	return daemonStartupPreflight{
+		Config:         dcfg,
+		Web:            dcfg.Web,
+		MCPToken:       mcpToken,
+		Listen:         listen,
+		Namespace:      ns,
+		Endpoint:       endpoint,
+		DBPath:         dbPath,
+		StoreConfig:    storeConfig,
+		PoomsaeHome:    home,
+		HookConfigPath: hookCfgPath,
+		HookConfig:     loadedHooks,
+		Embedder:       embedder,
+		VectorsPath:    vectorsPath,
+		SavedEmbedding: savedEmbeddings,
+		ChoiceErr:      choiceErr,
+	}, nil
+}
+
+type daemonRestartOutput struct {
+	Action  string `json:"action"`
+	Stopped int    `json:"stopped"`
+	PIDs    []int  `json:"pids"`
+	PID     int    `json:"pid"`
+	Address string `json:"address"`
+	DBPath  string `json:"db_path,omitempty"`
+	WebURL  string `json:"web_url,omitempty"`
+}
+
+func waitForDaemonProcesses(ctx context.Context, pids []int, timeout time.Duration, alive func(int) bool) error {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	tick := time.NewTicker(50 * time.Millisecond)
+	defer tick.Stop()
+
+	for {
+		allStopped := !slices.ContainsFunc(pids, alive)
+		if allStopped {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-deadline.C:
+			return fmt.Errorf("daemon did not stop within %s", timeout)
+		case <-tick.C:
+		}
+	}
+}
+
+func joinInts(values []int, sep string) string {
+	parts := make([]string, 0, len(values))
+	for _, value := range values {
+		parts = append(parts, strconv.Itoa(value))
+	}
+	return strings.Join(parts, sep)
+}
+
+func daemonReloadCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "reload",
+		Short: "ask a running daemon to reload hooks and embedding credentials",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := requireCurrentHomeDaemonCommand(); err != nil {
+				return err
+			}
+			ns, err := daemonruntime.NewNamespace()
+			if err != nil {
+				return err
+			}
+			recs, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).List()
+			if err != nil {
+				return err
+			}
+			noteSkippedDaemons(cmd.ErrOrStderr(), recs)
+			for _, r := range recs {
+				if !daemonruntime.RuntimeProcessAlive(r) {
+					continue
+				}
+				// SignalDaemonReload is platform-specific: SIGHUP on Unix,
+				// a named reload event on Windows.
+				if err := daemonruntime.SignalDaemonReload(r, ns.DBHash); err != nil {
+					return &cliError{
+						Kind: kindInternal, ExitCode: ExitInternal,
+						Message: fmt.Sprintf("reload pid %d: %v", r.PID, err),
+					}
+				}
+				switch currentOutputMode() {
+				case outputAgent:
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK daemon action=reload pid=%d\n", r.PID)
+				case outputJSON:
+					return emitJSON(cmd.OutOrStdout(), daemonReloadOutput{
+						Action: "reload",
+						PID:    r.PID,
+					})
+				default:
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+						"reload signal sent to pid=%d (check daemon log for result)\n", r.PID)
+				}
+				return nil
+			}
+			return &cliError{Kind: kindUsage, ExitCode: ExitUsage, Message: "no daemon running"}
+		},
+	}
+}
+
+type daemonReloadOutput struct {
+	Action string `json:"action"`
+	PID    int    `json:"pid"`
+}
+
+// runDaemon is the foreground daemon entry point. Used by `poomsae daemon start
+// --foreground` with the platform default endpoint and by the auto-start child
+// process spawned by ensureDaemon.
+func runDaemon(ctx context.Context) error {
+	return runDaemonWithListen(ctx, "", false, false)
+}
+
+// redactRuntimeDSN returns dsn safe for inclusion in the runtime file and
+// the `poomsae daemon status` output. Bare paths and sqlite DSNs pass through
+// unchanged via config.RedactDSN; a postgres DSN has its password masked.
+// The fallback to dsn handles the (defensive) ambiguous-credentials case
+// where config.RedactDSN returns ""; in practice PoomsaeDSN validation has
+// already rejected the bleed shape upstream, so this branch is unreachable
+// through the normal startup path.
+func redactRuntimeDSN(dsn string) string {
+	if r := config.RedactDSN(dsn); r != "" {
+		return r
+	}
+	return dsn
+}
+
+func newAutostartIdleController(
+	dcfg config.DaemonConfig,
+	autostart bool,
+	daemonEndpoint kitdaemon.Endpoint,
+	webEndpoint daemon.WebEndpoint,
+	onIdle func(timeout time.Duration),
+) (*daemon.IdleController, bool, error) {
+	timeout, err := dcfg.AutostartIdleTimeoutDuration()
+	if err != nil {
+		return nil, false, err
+	}
+	if !autostart || timeout == 0 {
+		return nil, false, nil
+	}
+	if !daemon.AutostartIdleShutdownEligible(daemonEndpoint, webEndpoint, dcfg) {
+		return nil, true, nil
+	}
+	return newDaemonIdleController(timeout, func() { onIdle(timeout) }), false, nil
+}
+
+// newDaemonIdleController is a var so tests can wait less than the config floor.
+var newDaemonIdleController = daemon.NewIdleController
+
+// announceIdleShutdown records why an auto-started daemon is exiting. The
+// detached daemon's stderr is its daemon.log, so this is the only trace of an
+// idle exit an operator can find later.
+func announceIdleShutdown(w io.Writer, timeout time.Duration) {
+	_, _ = fmt.Fprintf(w, "poomsae daemon: idle shutdown after %s without client activity\n", timeout)
+}
+
+// runDaemonWithListen is the variant used by `poomsae daemon start --foreground --listen`.
+// An empty listen string uses the platform default unless
+// <POOMSAE_HOME>/config.toml has a `listen = "..."` entry, in which case the
+// config value is used. CLI flag always wins over config.
+// insecureReadonly is the dev escape hatch from --insecure-readonly.
+//
+// When the daemon shuts down because it received the restart signal, it
+// re-executes itself only after every listener and the runtime record have
+// been released.
+func runDaemonWithListen(ctx context.Context, listen string, insecureReadonly, noAutoToken bool) error {
+	reapRestartHelper()
+	diagnostics, errorFile, closeLog := startDaemonLogging(ctx)
+	// Keep crash output alive during panic unwinding; close only on normal return.
+	restart := newDaemonRestart(diagnostics)
+	err := runDaemonProcess(ctx, listen, insecureReadonly, noAutoToken, restart, diagnostics)
+	if err != nil {
+		err = reportRestartFailure(startedForRestartReply, err)
+	} else {
+		err = restart.exec(ctx)
+	}
+	if err != nil && errorFile != nil {
+		_, _ = fmt.Fprintln(errorFile, err)
+	}
+	closeLog()
+	return err
+}
+
+func runDaemonProcess(
+	ctx context.Context, listen string, insecureReadonly, noAutoToken bool, restart *daemonRestart, diagnostics io.Writer,
+) (returnErr error) {
+	startup, err := preflightDaemonStartup(ctx, listen, insecureReadonly, noAutoToken)
+	if err != nil {
+		return err
+	}
+	dcfg := startup.Config
+	listen = startup.Listen
+	ns := startup.Namespace
+	endpoint := startup.Endpoint
+	if msg, ok := daemon.TrustPrivateNetworkWarning(listen, dcfg.Auth); ok {
+		_, _ = fmt.Fprintln(diagnostics, msg)
+	}
+	if msg, ok := daemon.UnauthenticatedPrivateNetworkWritesWarning(listen, dcfg.Auth); ok {
+		_, _ = fmt.Fprintln(diagnostics, msg)
+	}
+	if err := ns.EnsureDirs(); err != nil {
+		return err
+	}
+
+	// A foreground launch must reject an existing daemon before opening
+	// storage: a cutover cannot replace a database still owned by its writer.
+	runtimeStore := kitdaemon.RuntimeStore{Dir: ns.DataDir}
+	records, err := runtimeStore.List()
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+		if daemonruntime.RuntimeRecordBlocksStart(record) {
+			return fmt.Errorf("daemon already running pid=%d; wait for it to exit before starting another daemon; runtime record: %s; remove that file if no poomsae daemon owns that PID", record.PID, record.SourcePath)
+		}
+	}
+	listener, err := kitdaemon.Listen(ctx, endpoint, kitdaemon.WithRuntimeStore(runtimeStore))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.Close() }()
+
+	// Wrap ctx with a local cancel so platform-specific shutdown watchers
+	// (e.g. the Windows named-event fired by `poomsae daemon stop`) can drive
+	// a graceful exit. On Unix this is a no-op; SIGTERM delivered to the
+	// process by main.go's signal.NotifyContext already cancels ctx.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	shutdownTrigger := newDaemonShutdownTrigger(cancel)
+	workers := newDaemonWorkerGroup()
+	closeDependencies := true
+	hooksClosed := false
+
+	// A daemon in another PID namespace can share this store while its record
+	// does not block startup and its socket sits under a different runtime dir.
+	// The kernel file lock is visible across namespaces.
+	ownerLocks := daemonruntime.StoreOwnerLockPaths(ns.DataDir, startup.DBPath)
+	if err := daemonruntime.RefuseForeignStoreOwner(ctx, ns.DataDir, ownerLocks); err != nil {
+		return err
+	}
+	ownerCtx, ownerCancel := context.WithTimeout(ctx, daemonOwnerLockWait)
+	releaseOwner, err := daemonruntime.AcquireStoreOwnerLock(ownerCtx, ownerLocks)
+	ownerCancel()
+	if err != nil {
+		if ctx.Err() == nil && errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("another poomsae daemon owns this store, possibly in another PID namespace; stop it before starting another daemon (owner lock %s)", strings.Join(ownerLocks, ", "))
+		}
+		return fmt.Errorf("acquire store owner lock %s: %w", strings.Join(ownerLocks, ", "), err)
+	}
+	defer func() {
+		// Unjoined workers still use storage, so ownership lasts until exit.
+		if closeDependencies {
+			releaseOwner()
+		}
+	}()
+
+	dbPath := startup.DBPath
+	store, err := storeopen.OpenWithConfig(ctx, dbPath, startup.StoreConfig, db.Serving())
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeDependencies {
+			_ = store.Close()
+		}
+	}()
+
+	rootSigning, err := daemon.LoadRootSigning(ctx, store, filepath.Join(ns.DataDir, "federation-root.key"))
+	if err != nil {
+		return fmt.Errorf("load root attribution signing key: %w", err)
+	}
+	rootSigningHealth, err := rootSigning.Health(ctx, store)
+	if err != nil {
+		return fmt.Errorf("check root attribution signing key: %w", err)
+	}
+	if rootSigningHealth != nil {
+		_, _ = fmt.Fprintln(diagnostics, "poomsae daemon: "+daemon.RootSigningWarning(*rootSigningHealth))
+	}
+
+	runtimeEndpoint := runtimeEndpointForListener(endpoint, listener)
+	webEndpoint, err := daemon.ResolveWebEndpoint(daemon.WebEndpointOptions{
+		NamespaceID: ns.DBHash,
+		GOOS:        runtime.GOOS,
+		Daemon:      runtimeEndpoint,
+		Config:      startup.Web,
+	})
+	if err != nil {
+		return err
+	}
+	if webEndpoint.Listener != nil {
+		defer func() { _ = webEndpoint.Listener.Close() }()
+	}
+	idleController, idleIneligible, err := newAutostartIdleController(
+		*dcfg,
+		os.Getenv(daemonruntime.AutoStartMarkerEnv) == "1",
+		runtimeEndpoint,
+		webEndpoint,
+		func(timeout time.Duration) {
+			announceIdleShutdown(diagnostics, timeout)
+			shutdownTrigger.Call()
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if idleIneligible {
+		_, _ = fmt.Fprintln(diagnostics,
+			"poomsae daemon: auto-start idle shutdown disabled because the daemon is not owner-local")
+	}
+	var acquireHookDrain hooks.AcquireActivity
+	var waitableDrainAdmission activity.WaitableAdmission
+	var idleHealth func() daemon.IdleSnapshot
+	var idleAdmission daemon.IdleForegroundAdmission
+	if idleController != nil {
+		acquireHookDrain = idleController.DrainAdmission()
+		waitableDrainAdmission = idleController.WaitableDrainAdmission()
+		idleHealth = idleController.Snapshot
+		idleAdmission = idleController
+	}
+
+	disp, daemonLog, err := setupHooks(
+		store, ns.DBHash, startup.PoomsaeHome, startup.HookConfig, acquireHookDrain,
+		withoutEnvironmentKey(os.Environ(), daemonruntime.AutoStartMarkerEnv), diagnostics,
+	)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeDependencies && !hooksClosed {
+			// ctx may already be canceled; shutdown still gets its own budget.
+			fallbackCtx, fallbackCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer fallbackCancel()
+			_ = disp.Shutdown(fallbackCtx)
+		}
+	}()
+	hookCfgPath := startup.HookConfigPath
+	if dcfg.Auth.Source == "generated_file" {
+		daemonLog.Printf("auth token persisted at %s", filepath.Join(startup.PoomsaeHome, "auth-token"))
+	}
+
+	telemetryReporter := newDaemonTelemetryReporter(ctx, store)
+	defer func() {
+		if !closeDependencies {
+			return
+		}
+		_ = telemetryReporter.Close()
+	}()
+	closeThrottleWindow, err := dcfg.Close.Throttle.ThrottleWindow()
+	if err != nil {
+		return err
+	}
+
+	allowLocalSession := webEndpoint.AllowsLocalSession(dcfg.Auth)
+	allowTrustedProxySession := webEndpoint.AllowsTrustedProxySession(dcfg.Auth)
+	updates := "sse"
+	if insecureReadonly {
+		updates = "poll"
+	}
+	webAuthentication := webAuthenticationMode(
+		insecureReadonly, allowLocalSession, allowTrustedProxySession, dcfg.Auth.Token,
+	)
+	webCapabilities := []string{webAuthentication, updates}
+	webHandler, releaseAssets, err := poomsaeweb.NewEmbeddedHandlerWithReleaseStatus()
+	if err != nil {
+		return fmt.Errorf("build embedded web handler: %w", err)
+	}
+	if !releaseAssets {
+		webCapabilities = append(webCapabilities, daemonruntime.WebCapabilityPlaceholderAssets)
+	}
+	webRuntime, err := daemon.NewWebRuntime(daemon.WebRuntimeOptions{
+		Origin:       webEndpoint.Origin,
+		OriginStable: webEndpoint.OriginStable,
+		Capabilities: webCapabilities,
+	})
+	if err != nil {
+		return err
+	}
+	webSessions, err := daemon.NewWebSessionManager(daemon.WebSessionManagerConfig{
+		Origin:       webEndpoint.Origin,
+		OriginStable: webEndpoint.OriginStable,
+		InstanceID:   ns.DBHash,
+		Writable:     !insecureReadonly,
+		Updates:      updates,
+		Auth:         dcfg.Auth,
+		DB:           store,
+	})
+	if err != nil {
+		return err
+	}
+	rec := kitdaemon.NewRuntimeRecord("poomsae", version.Version, runtimeEndpoint)
+	rec.Address = runtimeEndpoint.ConfigAddress()
+	rec.Metadata = map[string]string{"db_path": redactRuntimeDSN(dbPath)}
+	if os.Getenv(daemonruntime.AutoStartMarkerEnv) == "1" {
+		rec.Metadata[daemonruntime.RuntimeAutoStartKey] = "1"
+	}
+	for key, source := range dcfg.Sources {
+		rec.Metadata["config_"+key+"_source"] = source
+	}
+	maps.Copy(rec.Metadata, webRuntime.Metadata())
+	maps.Copy(rec.Metadata, restart.metadata())
+
+	if startup.ChoiceErr != nil {
+		daemonLog.Printf("shared embeddings choice: %v", startup.ChoiceErr)
+	}
+
+	broadcaster := daemon.NewEventBroadcaster()
+	publisher := daemon.NewEventPublisher(broadcaster, disp)
+	embedder, vectorIndex, reconcilerHealth, embeddingWake, err := startEmbeddingReconciler(
+		ctx, workers, waitableDrainAdmission, dcfg.Search.Embeddings, startup.Embedder, startup.VectorsPath, store, broadcaster, daemonLog, publisher,
+	)
+	if err != nil {
+		if dcfg.Search.Embeddings == startup.SavedEmbedding {
+			return err
+		}
+		daemonLog.Printf("shared embeddings choice: %v", err)
+		dcfg.Search.Embeddings = startup.SavedEmbedding
+	}
+	defer func() {
+		if closeDependencies && vectorIndex != nil {
+			_ = vectorIndex.Close()
+		}
+	}()
+
+	captureDaemonStartedTelemetry(ctx, store, telemetryReporter)
+	startDaemonTelemetryHeartbeat(ctx, workers, store, telemetryReporter)
+	startSetupFinished(ctx, workers, store, telemetryReporter)
+	stopCleanup := installStopWatcher(ns.DBHash, shutdownTrigger.Call)
+	// installReloadSource is platform-specific: SIGHUP delivery on Unix,
+	// a named reload event pumped onto the channel on Windows. See
+	// daemon_signaling_{unix,windows}.go.
+	sigs, reloadCleanup := installReloadSource(ctx, ns.DBHash)
+	workers.Go(func() {
+		runReloadLoop(ctx, sigs, hookCfgPath, disp, daemonLog, func() {
+			if err := reloadEmbeddingCredentials(ctx, dcfg.Search.Embeddings, startup.DBPath, embedder, embeddingWake); err != nil {
+				daemonLog.Printf("embedding credential reload failed: %v", err)
+			}
+		})
+	})
+	restartCleanup := daemonPlatformCleanup(func(context.Context) bool { return true })
+	if restart != nil {
+		var restartSignals <-chan os.Signal
+		restartSignals, restartCleanup = installRestartSource(ctx, ns.DBHash)
+		workers.Go(func() {
+			restart.watch(ctx, restartSignals, idleAdmission, func() error { return restart.accept(ctx, ns.DataDir, rec) }, daemonLog, shutdownTrigger.Call)
+		})
+	}
+	syncOutcome := daemon.NewSyncOutcomeObserver(telemetryReporter)
+	federationRetries := federation.NewSyncRetries()
+	federationWake := startFederationRunner(
+		ctx, workers, waitableDrainAdmission, store, publisher, daemonLog, federationRetries, syncOutcome, embeddingWake,
+	)
+	startDueNotificationSweeper(
+		ctx, workers, waitableDrainAdmission, store, publisher, dcfg.Timezone, daemonLog,
+	)
+	startAssignmentSweeper(ctx, workers, waitableDrainAdmission, store, publisher, daemonLog)
+	federationConfigHealth := startFederationConfigReconciler(
+		ctx, workers, waitableDrainAdmission, dcfg, store, federationWake, func(event db.Event, fork activity.Admission) {
+			publisher.EventFrom(event.ProjectID, event, fork)
+		}, publisher.Reset, daemonLog,
+	)
+	gitHubSyncFetcher := newConfiguredGitHubSyncFetcher(dcfg.GitHubSync)
+	gitHubSyncProgress := githubsync.NewProgressTracker()
+	gitHubSyncProgress.OnResult = syncOutcome
+	gitHubSyncWake := startGitHubSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, gitHubSyncFetcher, publisher, daemonLog, gitHubSyncProgress,
+	)
+	notionSyncFetcher := newConfiguredNotionSyncFetcher(dcfg.NotionSync)
+	notionSyncProgress := issuesync.NewProgressTracker()
+	notionSyncProgress.OnResult = syncOutcome
+	notionSyncWake := startNotionSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, notionSyncFetcher, publisher, daemonLog, notionSyncProgress,
+	)
+
+	planeSyncFetcher := newConfiguredPlaneSyncFetcher(dcfg.PlaneSync)
+	planeSyncProgress := issuesync.NewProgressTracker()
+	planeSyncProgress.OnResult = syncOutcome
+	planeSyncWake := startPlaneSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, planeSyncFetcher, publisher, daemonLog, planeSyncProgress,
+	)
+	linearSyncFetcher := newConfiguredLinearSyncFetcher(dcfg.LinearSync)
+	linearSyncProgress := issuesync.NewProgressTracker()
+	linearSyncProgress.OnResult = syncOutcome
+	linearSyncWake := startLinearSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, linearSyncFetcher, publisher, daemonLog, linearSyncProgress,
+	)
+	twentySyncFetcher := newConfiguredTwentySyncFetcher(dcfg.TwentySync)
+	twentySyncProgress := issuesync.NewProgressTracker()
+	twentySyncProgress.OnResult = syncOutcome
+	twentySyncWake := startTwentySyncRunner(
+		ctx, workers, waitableDrainAdmission, store, twentySyncFetcher, publisher, daemonLog, twentySyncProgress,
+	)
+	todoistSyncFetcher := newConfiguredTodoistSyncFetcher(dcfg.TodoistSync)
+	todoistSyncProgress := issuesync.NewProgressTracker()
+	todoistSyncProgress.OnResult = syncOutcome
+	todoistSyncWake := startTodoistSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, todoistSyncFetcher, publisher, daemonLog, todoistSyncProgress,
+	)
+	tickTickSyncFetcher := newConfiguredTickTickSyncFetcher(dcfg.TickTickSync)
+	tickTickSyncProgress := issuesync.NewProgressTracker()
+	tickTickSyncProgress.OnResult = syncOutcome
+	tickTickSyncWake := startTickTickSyncRunner(
+		ctx, workers, waitableDrainAdmission, store, tickTickSyncFetcher, publisher, daemonLog, tickTickSyncProgress,
+	)
+
+	externalRootRegistry, err := rootbridge.NewRegistry(ctx, dcfg.Connectors, nil)
+	if err != nil {
+		return err
+	}
+	externalRootReconciler := rootbridge.NewReconciler(store, externalRootRegistry, rootbridge.ReconcilerConfig{
+		RetryAt:         rootbridge.ExternalRootRetryAt(nil),
+		DefaultTimezone: dcfg.Timezone,
+	})
+	externalRootEventSinkFrom := func(event db.Event, fork activity.Admission) {
+		broadcaster.Broadcast(daemon.StreamMsg{Kind: "event", Event: &event, ProjectID: event.ProjectID})
+		hooks.EnqueueFrom(disp, event, fork)
+	}
+	externalRootEventSink := func(event db.Event) { externalRootEventSinkFrom(event, nil) }
+	externalRootService := rootbridge.NewServiceWithEventSinkAndDefaultTimezone(
+		store,
+		externalRootRegistry,
+		func(ctx context.Context, bindingID int64, claimToken string) ([]db.Event, error) {
+			result, err := externalRootReconciler.Run(ctx, bindingID, rootbridge.RunOptions{
+				ClaimToken: claimToken,
+				EventSink:  externalRootEventSink,
+			})
+			return result.Events, err
+		},
+		externalRootEventSink,
+		dcfg.Timezone,
+	)
+	externalRootRunner := &rootbridge.Runner{
+		Store: store, Reconciler: externalRootReconciler,
+		EventSinkFrom:  externalRootEventSinkFrom,
+		DrainAdmission: waitableDrainAdmission,
+		ErrorSink: func(err error) {
+			daemonLog.Printf("external roots: %s", db.SafeExternalRootError(err.Error()))
+		},
+	}
+	externalRootWake := externalRootRunner.Wake
+	workers.Go(func() {
+		if err := runExternalRootRunner(ctx, externalRootRunner); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("external roots: %s", db.SafeExternalRootError(err.Error()))
+		}
+	})
+	startExternalRootEventWake(ctx, workers, store, broadcaster, externalRootWake)
+
+	var signingVerifier *federationsigning.Verifier
+	if dcfg.Federation.Signing.ExternalURL != "" {
+		var err error
+		signingVerifier, err = federationsigning.NewVerifier(dcfg.Federation.Signing.ExternalURL, dcfg.Federation.Signing.Keys, dcfg.Federation.Signing.ReplayStateFile)
+		if err != nil {
+			return fmt.Errorf("initialize federation signing: %w", err)
+		}
+		defer func() { _ = signingVerifier.Close() }()
+	}
+	docbankClient := docbank.New(dcfg.Docbank)
+	var mcpHandler http.Handler
+	if dcfg.MCP.Enabled {
+		mcpHandler, err = newDaemonMCPHandler(ctx, store, dcfg.MCP, startup.MCPToken, runtimeEndpoint, dcfg.Auth)
+		rec.Metadata["mcp"] = "serving"
+		if err != nil {
+			mcpHandler = daemonMCPUnavailableHandler(err)
+			rec.Metadata["mcp"] = "unavailable"
+		}
+	}
+	localSetup := &localEmbeddingsSetup{
+		embeddings: dcfg.Search.Embeddings, idle: idleAdmission,
+		start: func(work func(context.Context)) bool { return workers.Go(func() { work(ctx) }) },
+	}
+	if restart != nil {
+		localSetup.restart = func() error {
+			var output bytes.Buffer
+			// The helper acquires the start lock before replacing this daemon.
+			return kitdaemon.StartDetached(context.WithoutCancel(ctx), kitdaemon.StartDetachedOptions{
+				Executable: restart.executable,
+				Args:       []string{"daemon", "restart", "--generation", restartGeneration(rec)},
+				Env:        os.Environ(), Stdout: &output, Stderr: &output,
+				AfterStart: func(cmd *exec.Cmd) { restart.helperPID.Store(int64(cmd.Process.Pid)) },
+				Exited: func(err error) {
+					restart.helperPID.Store(0)
+					if err == nil {
+						return
+					}
+					localSetup.restartExited(fmt.Errorf("restart failed: %w: %s", err, strings.TrimSpace(output.String())))
+				},
+			})
+		}
+	}
+	if pg, ok := store.(*pgstore.Store); ok {
+		localSetup.vectorReady = func(ctx context.Context) error {
+			idx, err := vector.OpenPostgres(ctx, pg.DB)
+			if err != nil {
+				return fmt.Errorf("install pgvector in this daemon's database, then try again: %w", err)
+			}
+			return idx.Close()
+		}
+	}
+
+	// Start the Events worker only after the last fallible startup step, so an
+	// earlier failure cannot leave it running past the store closing.
+	mcpEvents, mcpEventsReason := startDaemonMCPEvents(ctx, workers, dcfg, ns.DBHash, store, broadcaster, daemonLog)
+	srv := daemon.NewServer(daemon.ServerConfig{
+		LocalEmbeddings:           localSetup,
+		MCPHandler:                mcpHandler,
+		FederationSigning:         signingVerifier,
+		FederationSigningRequired: dcfg.Federation.Signing.Required,
+		DB:                        store,
+		RootSigning:               rootSigning,
+		DefaultTimezone:           dcfg.Timezone,
+		StartedAt:                 time.Now().UTC(),
+		Endpoint:                  &endpoint,
+		Hooks:                     disp,
+		Broadcaster:               broadcaster,
+		MCPEvents:                 mcpEvents,
+		MCPEventsDisabledReason:   mcpEventsReason,
+		FederationWake:            federationWake,
+		FederationSyncOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
+			return federation.SyncFederationOnceWithPulledEvents(ctx, store, binding, credential, client.Opts{}, publisher.Events)
+		},
+		FederationPullOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
+			return federation.SyncFederationPullOnlyOnceWithPulledEvents(ctx, store, binding, credential, client.Opts{}, publisher.Events)
+		},
+		EmbeddingWake:          embeddingWake,
+		FederationCatalog:      append([]config.CatalogDaemonConfig(nil), dcfg.Daemons...),
+		WebDaemons:             append([]config.CatalogDaemonConfig(nil), dcfg.Daemons...),
+		WebSyncHubs:            dcfg.WebSyncHubs(),
+		ActiveWebDaemon:        dcfg.ActiveDaemon,
+		GitHubSyncFetcher:      gitHubSyncFetcher,
+		GitHubSyncConfig:       dcfg.GitHubSync,
+		GitHubSyncWake:         gitHubSyncWake,
+		GitHubSyncProgress:     gitHubSyncProgress,
+		NotionSyncFetcher:      notionSyncFetcher,
+		NotionSyncConfig:       dcfg.NotionSync,
+		NotionSyncWake:         notionSyncWake,
+		NotionSyncProgress:     notionSyncProgress,
+		TickTickSyncFetcher:    tickTickSyncFetcher,
+		TickTickSyncConfig:     dcfg.TickTickSync,
+		TickTickSyncWake:       tickTickSyncWake,
+		TickTickSyncProgress:   tickTickSyncProgress,
+		PlaneSyncFetcher:       planeSyncFetcher,
+		PlaneSyncConfig:        dcfg.PlaneSync,
+		PlaneSyncWake:          planeSyncWake,
+		PlaneSyncProgress:      planeSyncProgress,
+		LinearSyncFetcher:      linearSyncFetcher,
+		LinearSyncConfig:       dcfg.LinearSync,
+		LinearSyncWake:         linearSyncWake,
+		LinearSyncProgress:     linearSyncProgress,
+		TwentySyncFetcher:      twentySyncFetcher,
+		TwentySyncConfig:       dcfg.TwentySync,
+		TwentySyncWake:         twentySyncWake,
+		TwentySyncProgress:     twentySyncProgress,
+		TodoistSyncFetcher:     todoistSyncFetcher,
+		TodoistSyncConfig:      dcfg.TodoistSync,
+		TodoistSyncWake:        todoistSyncWake,
+		TodoistSyncProgress:    todoistSyncProgress,
+		ExternalRootRegistry:   externalRootRegistry,
+		ExternalRootService:    externalRootService,
+		ExternalRootReconciler: externalRootReconciler,
+		ExternalRootWake:       externalRootWake,
+		FederationPushPending:  federation.DirectSpokePushPending(store),
+		FederationHubClient:    federation.CredentialHTTPClient,
+		CloseThrottle: daemon.CloseThrottlePolicy{
+			SiblingBurstEnabled: dcfg.Close.Throttle.ThrottleEnabled(),
+			SiblingBurstWindow:  closeThrottleWindow,
+		},
+		Auth:                   dcfg.Auth,
+		WebSessions:            webSessions,
+		Telemetry:              telemetryReporter,
+		WebHandler:             webHandler,
+		InsecureReadonly:       insecureReadonly,
+		Embedder:               embedder,
+		Docbank:                docbankClient,
+		DocbankFolder:          dcfg.Docbank.Folder,
+		VectorIndex:            vectorIndex,
+		ReconcilerHealth:       reconcilerHealth,
+		FederationConfigHealth: federationConfigHealth,
+		FederationSyncRetry:    federationRetries.FederationSyncRetry,
+		IdleAdmission:          idleAdmission,
+		IdleShutdownHealth:     idleHealth,
+	})
+	defer func() { _ = srv.Close() }()
+	var stopAdmission func()
+	if idleController != nil {
+		stopAdmission = idleController.Stop
+	}
+	shutdown := startDaemonShutdownCoordinator(
+		ctx,
+		cancel,
+		workers,
+		disp,
+		stopAdmission,
+		daemonShutdownDrainTimeout,
+		stopCleanup,
+		reloadCleanup,
+		restartCleanup,
+	)
+	shutdownTrigger.Set(shutdown.Trigger)
+	httpHandlersJoined := true
+	defer func() {
+		shutdown.HTTPHandlersDone(httpHandlersJoined)
+		shutdown.Trigger()
+		result := shutdown.Wait()
+		if result.SafeToCloseDependencies() {
+			hooksClosed = true
+		} else {
+			closeDependencies = false
+		}
+		returnErr = errors.Join(returnErr, result.Err())
+	}()
+
+	mainPolicy := daemon.ListenerPolicy{Kind: daemon.ListenerSocket}
+	if err := startDaemonBackups(ctx, workers, store, dcfg.Backup, ns.DBHash, daemonLog); err != nil {
+		return err
+	}
+	bindings := []daemon.ListenerBinding{{Listener: listener, Policy: mainPolicy}}
+	if webEndpoint.Shared {
+		bindings[0].Policy = daemon.ListenerPolicy{
+			Kind:                  daemon.ListenerSharedTCP,
+			Origin:                webEndpoint.Origin,
+			BackendAuthority:      runtimeEndpoint.Address,
+			AllowedHosts:          append([]string(nil), dcfg.Web.AllowedHosts...),
+			RequireBrowserSession: true,
+			AllowLocalSession:     allowLocalSession,
+			WebAuthentication:     webAuthentication,
+		}
+	} else {
+		bindings = append(bindings, daemon.ListenerBinding{
+			Listener: webEndpoint.Listener,
+			Policy: daemon.ListenerPolicy{
+				Kind:                  daemon.ListenerBrowser,
+				Origin:                webEndpoint.Origin,
+				RequireBrowserSession: true,
+				AllowLocalSession:     allowLocalSession,
+				WebAuthentication:     webAuthentication,
+			},
+		})
+	}
+
+	var federationIngressAddress string
+	if dcfg.Federation.Ingress.Enabled {
+		ingress, err := new(net.ListenConfig).Listen(ctx, "tcp", dcfg.Federation.Ingress.Listen)
+		if err != nil {
+			return fmt.Errorf("listen for restricted federation: %w", err)
+		}
+		defer func() { _ = ingress.Close() }()
+		federationIngressAddress = ingress.Addr().String()
+		bindings = append(bindings, daemon.ListenerBinding{Listener: ingress, Policy: daemon.ListenerPolicy{Kind: daemon.ListenerFederation}})
+	}
+	var runtimeFile string
+	defer func() {
+		if runtimeFile != "" {
+			_ = os.Remove(runtimeFile)
+		}
+	}()
+	onReady := func() error {
+		return shutdown.PublishReady(ctx, func() error {
+			path, err := runtimeStore.Write(rec)
+			if err != nil {
+				return err
+			}
+			runtimeFile = path
+			if federationIngressAddress != "" {
+				_, _ = fmt.Fprintf(diagnostics, "federation ingress listening at %s\n", federationIngressAddress)
+			}
+			if idleController != nil {
+				idleController.Start()
+			}
+			if listen != "" {
+				_, _ = fmt.Fprintf(diagnostics, "poomsae daemon: listening on %s\n", rec.Endpoint().ConfigAddress())
+			}
+			return nil
+		})
+	}
+	httpHandlersJoined = false
+	serveErr := srv.ServeListenersWithLifecycle(ctx, onReady, shutdown.Trigger, bindings...)
+	httpHandlersJoined = !errors.Is(serveErr, daemon.ErrHTTPHandlersUnjoined)
+	shutdown.HTTPHandlersDone(httpHandlersJoined)
+	shutdown.Trigger()
+	if runtimeFile != "" {
+		_ = os.Remove(runtimeFile)
+	}
+	if errors.Is(serveErr, daemon.ErrHTTPHandlersUnjoined) {
+		closeDependencies = false
+	}
+	if errors.Is(serveErr, errDaemonStoppingBeforeReady) {
+		return nil
+	}
+	return serveErr
+}
+
+func startDueNotificationSweeper(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	publisher daemon.EventPublisher,
+	defaultTimezone string,
+	daemonLog *log.Logger,
+) {
+	sweeper := daemon.NewDueNotificationSweeper(store, publisher, defaultTimezone)
+	sweeper.IdleAdmission = drainAdmission
+	sweeper.OnError = func(err error) {
+		daemonLog.Printf("due notification sweeper: %v", err)
+	}
+	workers.Go(func() {
+		if err := sweeper.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("due notification sweeper: %v", err)
+		}
+	})
+}
+
+func startAssignmentSweeper(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+) {
+	sweeper := daemon.NewAssignmentSweeper(store, publisher)
+	sweeper.IdleAdmission = drainAdmission
+	sweeper.OnError = func(err error) {
+		daemonLog.Printf("assignment sweeper: %v", err)
+	}
+	workers.Go(func() {
+		if err := sweeper.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("assignment sweeper: %v", err)
+		}
+	})
+}
+
+func startExternalRootEventWake(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	store db.Storage,
+	bcast *daemon.EventBroadcaster,
+	wake func(int64),
+) {
+	if workers == nil || store == nil || bcast == nil || wake == nil {
+		return
+	}
+	wakeTypes := map[string]bool{
+		"issue.commented": true, "issue.comment_edited": true, "issue.updated": true, db.RepeatedImportEventType: true,
+		"issue.metadata_updated": true, "issue.closed": true, "issue.reopened": true,
+	}
+	sub := bcast.Subscribe(daemon.SubFilter{})
+	workers.Go(func() {
+		defer sub.Unsub()
+		for ctx.Err() == nil {
+			closed := false
+			for !closed {
+				select {
+				case <-ctx.Done():
+					sub.Unsub()
+					return
+				case msg, ok := <-sub.Ch:
+					if !ok {
+						closed = true
+						continue
+					}
+					if msg.Kind == "reset" {
+						closed = true
+						continue
+					}
+					if msg.Kind != "event" || msg.Event == nil || msg.Event.IssueID == nil ||
+						!wakeTypes[msg.Event.Type] {
+						continue
+					}
+					binding, err := store.ExternalRootBindingByIssue(ctx, *msg.Event.IssueID)
+					if err == nil && binding.Active && binding.Enabled &&
+						!isExternalRootProjectionEvent(*msg.Event, binding) {
+						wake(binding.ID)
+					}
+				}
+			}
+			sub.Unsub()
+			if ctx.Err() == nil {
+				sub = bcast.Subscribe(daemon.SubFilter{})
+			}
+		}
+	})
+}
+
+func isExternalRootProjectionEvent(event db.Event, binding db.ExternalRootBinding) bool {
+	var payload struct {
+		Source struct {
+			ConnectorInstance string `json:"connector_instance"`
+		} `json:"source"`
+	}
+	if json.Unmarshal([]byte(event.Payload), &payload) != nil {
+		return false
+	}
+	return payload.Source.ConnectorInstance == binding.ConnectorInstance
+}
+
+func webAuthenticationMode(
+	insecureReadonly bool,
+	allowLocalSession bool,
+	allowTrustedProxySession bool,
+	token string,
+) string {
+	switch {
+	case insecureReadonly && strings.TrimSpace(token) == "":
+		return "readonly"
+	case allowLocalSession:
+		return "loopback"
+	case allowTrustedProxySession:
+		return "proxy"
+	case strings.TrimSpace(token) != "":
+		return "login"
+	default:
+		return "unavailable"
+	}
+}
+
+func newDaemonTelemetryReporter(ctx context.Context, store db.Storage) telemetry.Client {
+	installedAt, err := store.InstanceCreatedAt(ctx)
+	if err != nil {
+		// Zero sends events without an install age instead of going silent.
+		installedAt = time.Time{}
+	}
+	return newTelemetryReporter(telemetry.Options{
+		DistinctID:  store.InstanceUID(),
+		InstalledAt: installedAt,
+		Version:     version.Version,
+		Commit:      version.Commit,
+	})
+}
+
+func captureDaemonStartedTelemetry(ctx context.Context, store db.Storage, reporter telemetry.Client) {
+	captureDaemonTelemetryEvent(ctx, store, reporter, "daemon_started")
+}
+
+func startDaemonTelemetryHeartbeat(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	store db.Storage,
+	reporter telemetry.Client,
+) {
+	if reporter == nil || !reporter.Enabled() {
+		return
+	}
+	workers.Go(func() {
+		runDaemonTelemetryHeartbeat(ctx, func(ctx context.Context) {
+			captureDaemonTelemetryEvent(ctx, store, reporter, "daemon_active")
+		})
+	})
+}
+
+func runDaemonTelemetryHeartbeat(ctx context.Context, capture func(context.Context)) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+	capture(ctx)
+	timer := time.NewTimer(durationUntilNextUTCDay(time.Now()))
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			capture(ctx)
+			timer.Reset(durationUntilNextUTCDay(time.Now()))
+		}
+	}
+}
+
+func durationUntilNextUTCDay(now time.Time) time.Duration {
+	utc := now.UTC()
+	next := time.Date(utc.Year(), utc.Month(), utc.Day()+1, 0, 0, 0, 0, time.UTC)
+	return next.Sub(utc)
+}
+
+func captureDaemonTelemetryEvent(ctx context.Context, store db.Storage, reporter telemetry.Client, event string) {
+	if reporter == nil || !reporter.Enabled() {
+		return
+	}
+	properties := map[string]any{}
+	if projects, err := store.ListProjects(ctx); err == nil {
+		properties["project_count"] = telemetry.ProjectCountBucket(len(projects))
+	}
+	_ = reporter.Capture(event, properties)
+}
+
+func startFederationRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	retries *federation.SyncRetries,
+	onSpokeResult func(string, int64, error),
+	onSyncComplete ...func(),
+) func() {
+	wake := make(chan struct{}, 1)
+	wakeRunner := func() {
+		select {
+		case wake <- struct{}{}:
+		default:
+		}
+	}
+	workers.Go(func() { daemon.ForwardFederationWakes(ctx, publisher.Broadcaster, store.InstanceUID(), wakeRunner) })
+	runner := &federation.Runner{
+		DB:             store,
+		Interval:       federationRunnerInterval(),
+		Wake:           wake,
+		DrainAdmission: drainAdmission,
+		Retries:        retries,
+		OnError: func(err error) {
+			daemonLog.Printf("federation: %v", err)
+		},
+		OnSpokeResult: func(projectID int64, err error) { onSpokeResult("federation", projectID, err) },
+		OnPulledEventsFrom: func(projectID int64, events []db.Event, fork activity.Admission) {
+			publisher.EventsFrom(projectID, events, fork)
+		},
+	}
+	if len(onSyncComplete) > 0 {
+		runner.OnSyncComplete = onSyncComplete[0]
+	}
+	workers.Go(func() {
+		if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("federation: %v", err)
+		}
+	})
+	sweeper := daemon.NewTimedClaimSweeper(store, publisher)
+	sweeper.IdleAdmission = drainAdmission
+	sweeper.OnError = func(err error) {
+		daemonLog.Printf("claim sweeper: %v", err)
+	}
+	workers.Go(func() {
+		if err := sweeper.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("claim sweeper: %v", err)
+		}
+	})
+	return wakeRunner
+}
+
+// vectorsPathForDSN places the semantic-search sidecar next to the SQLite
+// database file, deriving its name from the database filename
+// (/x/poomsae.db -> /x/poomsae.vectors.db) so two databases in one directory never
+// share sidecar state. The mapping must be injective: a filename ending in
+// .db swaps that suffix for .vectors.db, any other filename appends .vectors
+// — the outputs can never coincide (one ends in .vectors.db only when its
+// input ended in .db), so /x/data and /x/data.db get distinct sidecars.
+// SQLite keeps vectors in a derived sidecar. PostgreSQL stores them in its
+// canonical pgvector tables and therefore has no sidecar path.
+func vectorsPathForDSN(dsn string) (string, error) {
+	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
+		return "", nil
+	}
+	path := strings.TrimPrefix(dsn, "sqlite://")
+	if strings.Contains(path, "://") {
+		return "", fmt.Errorf("semantic search requires the sqlite backend, got dsn %s", config.RedactDSN(dsn))
+	}
+	if stem, ok := strings.CutSuffix(path, ".db"); ok {
+		return stem + ".vectors.db", nil
+	}
+	return path + ".vectors", nil
+}
+
+func preflightEmbeddingStartup(
+	ec config.EmbeddingsConfig,
+	dbPath string,
+) (*embedding.Client, string, error) {
+	if !ec.Enabled() {
+		return nil, "", nil
+	}
+	cfg := embedding.ClientConfig(ec)
+	if ec.UsesLocal() {
+		cfg.Endpoint = func(ctx context.Context) (string, error) {
+			return resolveLocalEmbeddings(ctx, func(context.Context, int64) (bool, error) {
+				backend, err := storeopen.BackendForDSN(dbPath)
+				if err != nil {
+					return false, err
+				}
+				chosen := false
+				if backend == storeopen.BackendSQLite {
+					chosen, err = embedlocal.ChoiceRecorded()
+				}
+				if err == nil && !chosen {
+					err = errors.New("run poomsae daemon local-embeddings to approve the download")
+				}
+				return chosen, err
+			})
+		}
+	}
+	embedder, err := embedding.New(cfg)
+	if err != nil {
+		return nil, "", fmt.Errorf("embedding client: %w", err)
+	}
+	if err := embedding.ValidateBatching(context.Background(), ec, embedder); err != nil {
+		return nil, "", fmt.Errorf("embedding batching: %w", err)
+	}
+	vectorsPath, err := vectorsPathForDSN(dbPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("embedding index: %w", err)
+	}
+	return embedder, vectorsPath, nil
+}
+
+// startEmbeddingReconciler opens the sidecar vector index for the embedding
+// client validated during startup preflight, starts the reconciler goroutine,
+// subscribes to the broadcaster so new/edited issues are embedded promptly,
+// and triggers an initial backfill sweep. It returns the client, the index, and
+// a health snapshot func to wire into ServerConfig. When embeddings are not
+// configured it returns nils so the daemon behaves exactly as it did before
+// semantic search existed. The caller owns the returned *vector.Index's
+// lifetime and must close it on shutdown.
+func startEmbeddingReconciler(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	ec config.EmbeddingsConfig,
+	embedder *embedding.Client,
+	vectorsPath string,
+	store db.Storage,
+	bcast *daemon.EventBroadcaster,
+	daemonLog *log.Logger,
+	publishers ...daemon.EventPublisher,
+) (*embedding.Client, *vector.Index, func() daemon.ReconcilerHealth, func(), error) {
+	if embedder == nil {
+		return nil, nil, nil, nil, nil
+	}
+	idx, err := openEmbeddingVectorIndex(ctx, store, vectorsPath)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("embedding index: %w", err)
+	}
+	publisher := daemon.NewEventPublisher(bcast, nil)
+	if len(publishers) > 0 {
+		publisher = publishers[0]
+	}
+	reconciler := daemon.NewConfiguredEmbeddingReconciler(store, idx, embedder, ec, publisher, drainAdmission, config.DefaultFederationCredentialStore(), federation.EmbeddingProducerConnected, federation.EmbeddingProducerAuthorized, nil)
+	workers.Go(func() {
+		if err := reconciler.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			daemonLog.Printf("reconciler: %v", err)
+		}
+	})
+	startEmbeddingNudge(ctx, workers, bcast, reconciler)
+	reconciler.Wake() // initial backfill sweep
+	return embedder, idx, reconciler.Health, reconciler.RetryNow, nil
+}
+
+// startEmbeddingNudge subscribes to the broadcaster and wakes the reconciler on
+// every committed event so new/edited issues are embedded promptly. The
+// goroutine exits when ctx is cancelled or the subscription channel closes, and
+// always releases the subscription via Unsub.
+func startEmbeddingNudge(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	bcast *daemon.EventBroadcaster,
+	r *daemon.Reconciler,
+) {
+	sub := bcast.Subscribe(daemon.SubFilter{})
+	workers.Go(func() {
+		defer sub.Unsub()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-sub.Ch:
+				if !ok {
+					return
+				}
+				if msg.Kind == "event" {
+					r.Wake()
+				}
+			}
+		}
+	})
+}
+
+func federationRunnerInterval() time.Duration {
+	raw := os.Getenv("POOMSAE_FEDERATION_PULL_INTERVAL_MS")
+	if raw == "" {
+		return 30 * time.Second
+	}
+	ms, err := strconv.Atoi(raw)
+	if err != nil || ms <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+func startGitHubSyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher githubsync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *githubsync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredGitHubSyncFetcher(config.GitHubSyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "github", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newGitHubSyncDaemonRunner(githubsync.RunnerConfig{
+			Progress:       progress,
+			Store:          store,
+			Fetcher:        fetcher,
+			Logger:         logger,
+			Interval:       githubSyncRunnerInterval(),
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(
+				_ context.Context,
+				projectID int64,
+				events []db.Event,
+				fork activity.Admission,
+			) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+
+func startNotionSyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher notionsync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *issuesync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredNotionSyncFetcher(config.NotionSyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "notion", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newNotionSyncDaemonRunner(notionsync.RunnerConfig{
+			Store:          store,
+			Fetcher:        fetcher,
+			Progress:       progress,
+			Logger:         logger,
+			Interval:       30 * time.Second,
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(_ context.Context, projectID int64, events []db.Event, fork activity.Admission) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+
+func startPlaneSyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher planesync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *issuesync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredPlaneSyncFetcher(config.PlaneSyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "plane", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newPlaneSyncDaemonRunner(planesync.RunnerConfig{
+			Store:          store,
+			Fetcher:        fetcher,
+			Progress:       progress,
+			Logger:         logger,
+			Interval:       30 * time.Second,
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(_ context.Context, projectID int64, events []db.Event, fork activity.Admission) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+func startTwentySyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher twentysync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *issuesync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredTwentySyncFetcher(config.TwentySyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "twenty", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newTwentySyncDaemonRunner(twentysync.RunnerConfig{
+			Store:          store,
+			Fetcher:        fetcher,
+			Progress:       progress,
+			Logger:         logger,
+			Interval:       30 * time.Second,
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(_ context.Context, projectID int64, events []db.Event, fork activity.Admission) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+
+func startLinearSyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher linearsync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *issuesync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredLinearSyncFetcher(config.LinearSyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "linear", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newLinearSyncDaemonRunner(linearsync.RunnerConfig{
+			Store:          store,
+			Fetcher:        fetcher,
+			Progress:       progress,
+			Logger:         logger,
+			Interval:       30 * time.Second,
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(_ context.Context, projectID int64, events []db.Event, fork activity.Admission) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+
+func startTodoistSyncRunner(
+	ctx context.Context,
+	workers *daemonWorkerGroup,
+	drainAdmission activity.WaitableAdmission,
+	store db.Storage,
+	fetcher todoistsync.Fetcher,
+	publisher daemon.EventPublisher,
+	daemonLog *log.Logger,
+	progress *issuesync.ProgressTracker,
+) func() {
+	if fetcher == nil {
+		fetcher = newConfiguredTodoistSyncFetcher(config.TodoistSyncConfig{})
+	}
+	return startIssueSyncRunner(ctx, workers, daemonLog, "todoist", func(wake <-chan struct{}, logger *slog.Logger) issueSyncDaemonRunner {
+		return newTodoistSyncDaemonRunner(todoistsync.RunnerConfig{
+			Store:          store,
+			Fetcher:        fetcher,
+			Progress:       progress,
+			Logger:         logger,
+			Interval:       30 * time.Second,
+			Wake:           wake,
+			DrainAdmission: drainAdmission,
+			EventSinkFrom: func(_ context.Context, projectID int64, events []db.Event, fork activity.Admission) error {
+				publisher.EventsFrom(projectID, events, fork)
+				return nil
+			},
+		})
+	})
+}
+
+// startIssueSyncRunner owns the shared wake channel and worker lifecycle.
+func startIssueSyncRunner(ctx context.Context, workers *daemonWorkerGroup, daemonLog *log.Logger, provider string, build func(<-chan struct{}, *slog.Logger) issueSyncDaemonRunner) func() {
+	wake := make(chan struct{}, 1)
+	logger := slog.Default()
+	if daemonLog != nil {
+		logger = slog.New(slog.NewTextHandler(daemonLog.Writer(), nil))
+	}
+	runner := build(wake, logger)
+	workers.Go(func() {
+		if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			logger.Warn(provider+" sync", "err", err)
+		}
+	})
+	return func() {
+		select {
+		case wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func githubSyncRunnerInterval() time.Duration {
+	raw := os.Getenv("POOMSAE_GITHUB_SYNC_INTERVAL_MS")
+	if raw == "" {
+		return 5 * time.Minute
+	}
+	ms, err := strconv.Atoi(raw)
+	if err != nil || ms <= 0 {
+		return 5 * time.Minute
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// chooseEndpoint picks the daemon's listener: the platform default when
+// listen is empty (auto-start path) or a kit TCP endpoint otherwise. We
+// pre-flight the address-rule check via ValidateNonPublicAddress so
+// the CLI surfaces a clear error before the server starts, without
+// the listen-then-close TOCTOU window where the validating bind could
+// race with another process or, with port 0, lose the bound port.
+// The actual bind happens once in runDaemonWithListen, before the runtime file
+// is published, so port 0 can be recorded as its concrete bound port.
+func chooseEndpoint(ns *daemonruntime.Namespace, listen string) (kitdaemon.Endpoint, error) {
+	if listen == "" {
+		return defaultEndpoint(ns), nil
+	}
+	if _, _, err := net.SplitHostPort(listen); err != nil {
+		return kitdaemon.Endpoint{}, fmt.Errorf("poomsae daemon: invalid --listen value %q: %v", listen, err)
+	}
+	if err := daemonruntime.ValidateNonPublicAddress(listen); err != nil {
+		return kitdaemon.Endpoint{}, fmt.Errorf("poomsae daemon: invalid --listen value %q: %v", listen, err)
+	}
+	return kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: listen}, nil
+}
+
+func defaultEndpoint(ns *daemonruntime.Namespace) kitdaemon.Endpoint {
+	return defaultEndpointForOS(ns, runtime.GOOS)
+}
+
+func defaultEndpointForOS(ns *daemonruntime.Namespace, goos string) kitdaemon.Endpoint {
+	if goos == "windows" {
+		return kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: "127.0.0.1:0"}
+	}
+	socketPath := filepath.Join(ns.SocketDir, "daemon.sock")
+	return kitdaemon.Endpoint{Network: kitdaemon.NetworkUnix, Address: socketPath}
+}
+
+func runtimeEndpointForListener(endpoint kitdaemon.Endpoint, listener net.Listener) kitdaemon.Endpoint {
+	if endpoint.Network != "tcp" {
+		return endpoint
+	}
+	host, port, err := net.SplitHostPort(endpoint.Address)
+	if err != nil {
+		return kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: listener.Addr().String()}
+	}
+	if port != "0" {
+		return endpoint
+	}
+	_, boundPort, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: listener.Addr().String()}
+	}
+	return kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: net.JoinHostPort(host, boundPort)}
+}
+
+// listenFromPortEnv reports the bind address to use when the daemon is
+// hosted on a PaaS that follows the Heroku-style $PORT contract. Cloud
+// Run, Render, Fly.io, Railway, and App Engine all work this way: the
+// platform injects PORT into the environment and expects the process to
+// bind every interface at 0.0.0.0:$PORT. Consulted only when neither
+// --listen nor a config value was supplied.
+//
+// The auto-start child inherits the parent environment, so a stray PORT
+// in a developer's shell would otherwise hijack every implicit daemon
+// onto wildcard TCP. We refuse to act on PORT when the auto-start marker
+// (daemonruntime.AutoStartMarkerEnv) is set on the process; daemonclient stamps
+// it on the child to identify itself.
+func listenFromPortEnv() (string, bool) {
+	if os.Getenv(daemonruntime.AutoStartMarkerEnv) == "1" {
+		return "", false
+	}
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
+		return "", false
+	}
+	return net.JoinHostPort("0.0.0.0", port), true
+}
+
+// setupHooks materializes $POOMSAE_HOME and constructs the dispatcher from the
+// hook configuration parsed during startup preflight.
+func setupHooks(
+	store db.Storage,
+	dbHash string,
+	home string,
+	loaded hooks.LoadedConfig,
+	acquireDrain hooks.AcquireActivity,
+	environment []string,
+	diagnostics io.Writer,
+) (*hooks.Dispatcher, *log.Logger, error) {
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		return nil, nil, err
+	}
+	daemonLog := log.New(diagnostics, "poomsae-daemon: ", log.LstdFlags)
+	deps := hooks.DispatcherDeps{
+		DBHash:          dbHash,
+		PoomsaeHome:     home,
+		DaemonLog:       daemonLog,
+		AliasResolver:   makeAliasResolver(store),
+		IssueResolver:   makeIssueResolver(store),
+		CommentResolver: makeCommentResolver(store),
+		ProjectResolver: makeProjectResolver(store),
+		Now:             time.Now,
+		GraceWindow:     5 * time.Second,
+		AcquireDrain:    acquireDrain,
+		Environment:     environment,
+	}
+	disp, err := hooks.New(loaded, deps)
+	if err != nil {
+		return nil, nil, fmt.Errorf("hooks: %w", err)
+	}
+	return disp, daemonLog, nil
+}
+
+func withoutEnvironmentKey(environment []string, key string) []string {
+	filtered := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		name, _, hasValue := strings.Cut(entry, "=")
+		if hasValue && strings.EqualFold(name, key) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}

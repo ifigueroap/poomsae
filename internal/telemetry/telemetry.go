@@ -1,26 +1,28 @@
-// Package telemetry emits anonymous daemon, web UI, TUI and CLI usage events
-// when Kenn's recorded answer is yes or TELEMETRY_ENABLED=1.
+// Package telemetry keeps the usage-event allowlist and drops every event.
+// Release builds do not link a PostHog project key, so NewReporter never
+// creates a client or contacts PostHog.
 package telemetry
 
 import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/version"
 	"go.kenn.io/kit/telemetry/posthog"
+
+	"github.com/ifigueroap/poomsae/internal/version"
 )
 
 const (
 	// ExitWait caps how long a completed command or TUI session waits for telemetry.
 	ExitWait = 50 * time.Millisecond
 
-	applicationName = "kata"
-	envPrefix       = "KATA"
-	// EnabledEnv can disable reporting with 0/false/no/off.
-	EnabledEnv      = "KATA_TELEMETRY_ENABLED"
-	postHogEndpoint = "https://us.i.posthog.com"
+	applicationName = "poomsae"
+	envPrefix       = "POOMSAE"
+	// EnabledEnv is the retired opt-in. With no project key it cannot enable delivery.
+	EnabledEnv = "POOMSAE_TELEMETRY_ENABLED"
 )
 
 // ErrUnsupportedEvent is returned when callers try to capture an event outside the allowlist.
@@ -29,16 +31,29 @@ var ErrUnsupportedEvent = posthog.ErrUnsupportedEvent
 // ErrInvalidProperty is returned when an event lacks a required property or its filter rejects it.
 var ErrInvalidProperty = posthog.ErrInvalidProperty
 
+// Delivery is the idempotency key confirmed captures use.
+type Delivery = posthog.Delivery
+
+// Status is the outcome of a confirmed capture.
+type Status = posthog.Status
+
+const (
+	// StatusDelivered means a capture was accepted. Poomsae does not report it.
+	StatusDelivered Status = posthog.StatusDelivered
+	// StatusDisabled means the event was dropped.
+	StatusDisabled Status = posthog.StatusDisabled
+)
+
 // Client is the daemon-facing telemetry reporter contract. EventAllowed lets
 // the UI capture route reject events outside the allowlist.
 type Client interface {
 	posthog.Client
-	CaptureConfirmed(context.Context, string, map[string]any, posthog.Delivery) (posthog.Status, error)
+	CaptureConfirmed(context.Context, string, map[string]any, Delivery) (Status, error)
 	EventAllowed(event string) bool
 	SanitizeProperties(event string, properties map[string]any) (map[string]any, error)
 }
 
-// Reporter sanitizes and submits anonymous telemetry events to PostHog.
+// Reporter sanitizes usage events and drops them. It does not send them.
 type Reporter struct {
 	*posthog.Reporter
 }
@@ -54,19 +69,18 @@ type Options struct {
 	Commit      string
 }
 
-// Eligible reports whether this build can forward usage events.
+// Eligible reports whether this build would forward usage events to its daemon.
+// The daemon still drops them: no PostHog project key is linked.
 func Eligible() bool {
 	// Tagged Go installs have a release version but no embedded revision.
 	return version.Commit != "unknown" && posthog.Eligible(envPrefix, version.Version)
 }
 
-// NewReporter builds an enabled reporter, or a disabled one that keeps the
-// allowlist when telemetry is opted out or the build has no PostHog project
-// key. Release builds set that key at link time.
+// NewReporter builds a reporter that keeps the allowlist and does not create
+// a PostHog client, because this module does not link a project key.
 func NewReporter(opts Options) (*Reporter, error) {
 	reporter, err := posthog.NewReporter(posthog.Options{
 		Logger:      slog.New(slog.DiscardHandler),
-		Endpoint:    postHogEndpoint,
 		Application: applicationName,
 		EnvPrefix:   envPrefix,
 		DistinctID:  opts.DistinctID,
@@ -189,6 +203,35 @@ func NewReporterOrDisabled(opts Options) *Reporter {
 		return DisabledReporter()
 	}
 	return reporter
+}
+
+// SendGroup runs functions and waits for them, bounded by a timeout.
+type SendGroup struct {
+	wg sync.WaitGroup
+}
+
+// Go runs fn on a new goroutine.
+func (g *SendGroup) Go(fn func()) {
+	g.wg.Add(1)
+	go func() {
+		defer g.wg.Done()
+		fn()
+	}()
+}
+
+// Wait blocks until every Go call finishes or timeout elapses.
+func (g *SendGroup) Wait(timeout time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		g.wg.Wait()
+		close(done)
+	}()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-done:
+	case <-timer.C:
+	}
 }
 
 var screenNames = posthog.AllowStringValues("inbox", "today", "delegated", "scheduled", "issues", "logbook", "issue", "graph", "attention", "credentials", "projects", "daemons", "federation", "help", "empty")

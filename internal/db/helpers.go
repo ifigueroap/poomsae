@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/tokenactor"
+	"github.com/ifigueroap/poomsae/internal/tokenactor"
 )
 
 // FederationTokenHash returns the SHA-256 hex digest used for enrollment token

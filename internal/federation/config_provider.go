@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/federationprovider"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
 // status comes only from a validated provider response, never its prose.
@@ -72,7 +72,7 @@ func reconcileProviderMapping(
 		return reconcileError(ErrHubUnavailable, "read approved federation metadata")
 	}
 	// The provider resolves the requested key to stable IDs. Its key may differ
-	// from Kata's internal project name, which may also change after approval.
+	// from Poomsae's internal project name, which may also change after approval.
 	if metadata.ProjectID != credential.HubProjectID || metadata.ProjectUID != decision.HubProjectUID || metadata.ReplayHorizonEventID <= 0 {
 		return reconcileError(ErrBindingConflict, "federation metadata differs from the approved project")
 	}
@@ -208,7 +208,7 @@ func providerReconciliationError(err error) error {
 	case errors.Is(err, daemon.ErrFederationProviderIntentChangeBlocked):
 		return reconcileError(ErrBindingConflict, "changing federation intent waits until the hub accepts the local changes not yet sent and this replica's claims and claim requests are released; "+
 			"they stay on this computer and are not dropped. If the hub no longer accepts this replica's changes, get write access back and set the earlier intent so they can be sent; "+
-			"kata federation status shows what is waiting")
+			"poomsae federation status shows what is waiting")
 	case errors.Is(err, db.ErrFederationProjectNotEmpty), errors.Is(err, daemon.ErrFederationReplicaBindingConflict):
 		return reconcileError(ErrBindingConflict, "federation attachment requires an empty project or explicit migration approval")
 	case errors.Is(err, daemon.ErrFederationReplicaCredentialIO):

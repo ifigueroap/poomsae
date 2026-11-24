@@ -1,8 +1,8 @@
 import { svelte, vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 import { defineConfig } from 'vite'
 
-const developmentBackend = process.env.KATA_WEB_DEV_BACKEND
-const developmentPort = Number.parseInt(process.env.KATA_WEB_DEV_PORT ?? '5173', 10)
+const developmentBackend = process.env.POOMSAE_WEB_DEV_BACKEND
+const developmentPort = Number.parseInt(process.env.POOMSAE_WEB_DEV_PORT ?? '5173', 10)
 
 export default defineConfig({
   base: './',

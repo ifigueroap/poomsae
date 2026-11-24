@@ -20,17 +20,17 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/textsafe"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
 )
 
 const (
-	webDaemonHeaderName   = "X-Kata-Web-Daemon"
+	webDaemonHeaderName   = "X-Poomsae-Web-Daemon"
 	webDaemonProxyPrefix  = "/api/v1/ui/proxy"
 	webDaemonHealthTTL    = 5 * time.Second
 	webDaemonProxyTimeout = 30 * time.Second
@@ -180,7 +180,7 @@ func (g *webDaemonGateway) list(w http.ResponseWriter, r *http.Request) {
 		case "down":
 			hint = "daemon is not reachable"
 		case "upgrade_required":
-			hint = "daemon does not support the Kata web UI"
+			hint = "daemon does not support the Poomsae web UI"
 		}
 		out.Daemons = append(out.Daemons, webDaemonResponse{
 			ID: configured.Name, URL: redactWebDaemonURL(d.baseURL),
@@ -486,7 +486,7 @@ func (g *webDaemonGateway) targetAllowsWebDaemonMutation(
 // request-actor source may write through a target credential bound to an
 // account: the target records each write as that account, as it does for the
 // CLI using the same catalog token, so the browser cannot claim another actor.
-// An identity-bound source stays read-only through any target because Kata has
+// An identity-bound source stays read-only through any target because Poomsae has
 // no delegated-identity protocol to carry its account across the hop.
 func webDaemonEffectiveActorPolicy(target, source string) (string, bool) {
 	switch {
@@ -910,7 +910,7 @@ func encodeWebDaemonETag(upstream string, policy webDaemonSourcePolicy) string {
 		mode = "rw"
 	}
 	mode += "-" + policy.actorPolicy
-	return `"kata-daemon-` + mode + `-` + base64.RawURLEncoding.EncodeToString([]byte(upstream)) + `"`
+	return `"poomsae-daemon-` + mode + `-` + base64.RawURLEncoding.EncodeToString([]byte(upstream)) + `"`
 }
 
 func decodeWebDaemonETag(value string, policy webDaemonSourcePolicy) (string, bool) {
@@ -919,7 +919,7 @@ func decodeWebDaemonETag(value string, policy webDaemonSourcePolicy) (string, bo
 		mode = "rw"
 	}
 	mode += "-" + policy.actorPolicy
-	prefix := `"kata-daemon-` + mode + `-`
+	prefix := `"poomsae-daemon-` + mode + `-`
 	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, `"`) {
 		return "", false
 	}
@@ -943,7 +943,7 @@ func stripWebDaemonBrowserCredentials(headers http.Header) {
 func webDaemonOutboundHeaders(in http.Header) http.Header {
 	out := make(http.Header)
 	for _, name := range []string{
-		"Accept", "Content-Type", "Idempotency-Key", "If-Match", "If-None-Match", "X-Kata-Surface",
+		"Accept", "Content-Type", "Idempotency-Key", "If-Match", "If-None-Match", "X-Poomsae-Surface",
 	} {
 		if values := in.Values(name); len(values) > 0 {
 			out[name] = append([]string(nil), values...)

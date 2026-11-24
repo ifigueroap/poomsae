@@ -16,13 +16,13 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/searchhint"
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/teammate"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/searchhint"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 const (
@@ -1092,7 +1092,7 @@ func (h toolHandlers) boundRelationshipRef(raw string) (string, error) {
 		return "", fmt.Errorf("relationship reference %q is an unscoped UID; use a bound-project short reference", ref)
 	}
 	if len(parsed.ShortID) == shortid.MaxLength {
-		return "", fmt.Errorf("relationship reference %q uses an ambiguous full-length short ID; use the Kata CLI for this target", ref)
+		return "", fmt.Errorf("relationship reference %q uses an ambiguous full-length short ID; use the Poomsae CLI for this target", ref)
 	}
 	if parsed.Project != "" && parsed.Project != h.options.ProjectName {
 		return "", fmt.Errorf("relationship reference %q is outside bound project %q", ref, h.options.ProjectName)

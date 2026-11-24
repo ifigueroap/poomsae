@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // Every view shows the connection status when it needs attention.
@@ -60,9 +60,9 @@ func TestActiveConnectionHeaderFencesStaleReplies(t *testing.T) {
 // cluster visible when the row has room.
 func TestActiveConnectionHeaderKeepsTitleBarContent(t *testing.T) {
 	defer snapshotInit(t)()
-	priorVersion := kataVersion
-	kataVersion = "v0.1.0"
-	t.Cleanup(func() { kataVersion = priorVersion })
+	priorVersion := poomsaeVersion
+	poomsaeVersion = "v0.1.0"
+	t.Cleanup(func() { poomsaeVersion = priorVersion })
 	model := func(width int, hub string) Model {
 		m := newTestModel()
 		m.width = width
@@ -88,17 +88,17 @@ func TestActiveConnectionHeaderKeepsTitleBarContent(t *testing.T) {
 	}{
 		{80, strings.Repeat("long-hub-", 12)},
 		{100, strings.Repeat("long-hub-", 12)},
-		{240, "shared-hub"},
+		{280, "shared-hub"},
 	} {
 		m := model(tc.width, tc.hub)
 		header, _, _ := strings.Cut(stripANSI(m.viewContent()), "\n")
-		if tc.width < 240 {
+		if tc.width < 280 {
 			require.NotContains(t, header, m.activeDaemon.Name)
 			require.NotContains(t, header, m.activeAuth.Actor)
 		}
 		rows = append(rows, header)
 	}
-	require.Contains(t, rows[2], "Daemon: shared-hub · kata カタ · v0.1.0")
+	require.Contains(t, rows[2], "Daemon: shared-hub · poomsae カタ · v0.1.0")
 	assertGolden(t, "active-connection-header", strings.Join(rows, "\n"))
 }
 

@@ -1,22 +1,22 @@
-package kata
+package poomsae
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ErrAccessDenied is returned by an AccessController when a caller must not
 // learn whether the requested resource exists.
-var ErrAccessDenied = errors.New("kata: access denied")
+var ErrAccessDenied = errors.New("poomsae: access denied")
 
 // Principal is the authenticated identity supplied by an embedding host.
 // Subject is a stable opaque identifier and also anchors lease ownership. Its
 // exact bytes are significant; callers must supply the same canonical value
 // on every request.
-// Actor is the display snapshot Kata records on mutations instead of accepting
+// Actor is the display snapshot Poomsae records on mutations instead of accepting
 // an actor from request data.
 type Principal struct {
 	Subject string
@@ -36,7 +36,7 @@ const (
 )
 
 // OperationKind describes the domain boundary of a matched route. The values
-// are owned by Kata so embedding hosts do not have to duplicate route policy.
+// are owned by Poomsae so embedding hosts do not have to duplicate route policy.
 type OperationKind string
 
 // Operation kinds group routes by their data and administration boundary.
@@ -55,7 +55,7 @@ const (
 	OperationIntegrationAdministration OperationKind = "integration_administration"
 )
 
-// OperationPolicy is Kata's deny-by-default classification of one route.
+// OperationPolicy is Poomsae's deny-by-default classification of one route.
 // Mutation and LongLived let a host apply browser and resource controls without
 // inferring behavior from an HTTP verb or operation name.
 type OperationPolicy struct {
@@ -65,7 +65,7 @@ type OperationPolicy struct {
 	LongLived  bool
 }
 
-// Operation identifies the matched Kata HTTP operation without assigning any
+// Operation identifies the matched Poomsae HTTP operation without assigning any
 // host-specific meaning to it.
 type Operation struct {
 	ID         string
@@ -122,7 +122,7 @@ func AfterTransactionRollback(cause error, finish func(context.Context) error) e
 // be nil for bounded responses; long-lived operations require one.
 type AccessDecision struct {
 	Lease AccessLease
-	// TransactionFence should be present on every successful decision. Kata
+	// TransactionFence should be present on every successful decision. Poomsae
 	// invokes it when handling the operation begins a writable storage
 	// transaction, before the transaction's first domain write, and retains its
 	// database locks through commit or rollback.

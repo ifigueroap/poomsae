@@ -10,15 +10,15 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // registerAuditHandlers installs /api/v1/audit/closes, a read-only
 // projection of issue.closed events that surfaces per-close audit rows
 // with derived flags. The endpoint is project-scoped via ?project_id;
-// callers identify the project the same way `kata list` does. The
+// callers identify the project the same way `poomsae list` does. The
 // handler reuses EventsInWindow for the time / actor filter, then
 // applies in-process filters for reason, parent, and no-evidence.
 // Close.throttled events in the same window decorate the matching

@@ -1,4 +1,4 @@
-// Package uid wraps ULID generation and validation for kata stable IDs.
+// Package uid wraps ULID generation and validation for poomsae stable IDs.
 package uid
 
 import (
@@ -53,7 +53,7 @@ func FromStableSeed(seed []byte, t time.Time) (string, error) {
 	return id.String(), nil
 }
 
-// Length is the fixed character length of a kata ULID (Crockford base32).
+// Length is the fixed character length of a poomsae ULID (Crockford base32).
 func Length() int { return encodedLen }
 
 // Valid reports whether s is a strict 26-character ULID.

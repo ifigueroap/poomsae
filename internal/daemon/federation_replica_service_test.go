@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 const (
@@ -422,7 +422,7 @@ func TestEnsureFederationReplicaPreservesHubURLPathPrefix(t *testing.T) {
 	store := openReplicaServiceStore(t)
 	credentials := newReplicaCredentialStore()
 	params := replicaServiceParams()
-	params.HubURL = "https://daemon.example/kata/hub/"
+	params.HubURL = "https://daemon.example/poomsae/hub/"
 	params.Credential.HubURL = params.HubURL
 
 	result, err := daemon.EnsureFederationReplica(
@@ -430,20 +430,20 @@ func TestEnsureFederationReplicaPreservesHubURLPathPrefix(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://daemon.example/kata/hub", result.Binding.HubURL)
+	assert.Equal(t, "https://daemon.example/poomsae/hub", result.Binding.HubURL)
 	stored, found, err := credentials.FederationCredential(
 		t.Context(), result.Project.UID,
 	)
 	require.NoError(t, err)
 	require.True(t, found)
-	assert.Equal(t, "https://daemon.example/kata/hub", stored.HubURL)
+	assert.Equal(t, "https://daemon.example/poomsae/hub", stored.HubURL)
 }
 
 func TestEnsureFederationReplicaPreservesEscapedHubURLPathPrefix(t *testing.T) {
 	store := openReplicaServiceStore(t)
 	credentials := newReplicaCredentialStore()
 	params := replicaServiceParams()
-	params.HubURL = "https://daemon.example/kata%2Fhub/"
+	params.HubURL = "https://daemon.example/poomsae%2Fhub/"
 	params.Credential.HubURL = params.HubURL
 
 	result, err := daemon.EnsureFederationReplica(
@@ -451,13 +451,13 @@ func TestEnsureFederationReplicaPreservesEscapedHubURLPathPrefix(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://daemon.example/kata%2Fhub", result.Binding.HubURL)
+	assert.Equal(t, "https://daemon.example/poomsae%2Fhub", result.Binding.HubURL)
 	stored, found, err := credentials.FederationCredential(
 		t.Context(), result.Project.UID,
 	)
 	require.NoError(t, err)
 	require.True(t, found)
-	assert.Equal(t, "https://daemon.example/kata%2Fhub", stored.HubURL)
+	assert.Equal(t, "https://daemon.example/poomsae%2Fhub", stored.HubURL)
 
 	downstreamURL, err := url.JoinPath(
 		stored.HubURL,
@@ -466,7 +466,7 @@ func TestEnsureFederationReplicaPreservesEscapedHubURLPathPrefix(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(
 		t,
-		"https://daemon.example/kata%2Fhub/api/v1/federation/enrollments",
+		"https://daemon.example/poomsae%2Fhub/api/v1/federation/enrollments",
 		downstreamURL,
 	)
 }
@@ -480,37 +480,37 @@ func TestEnsureFederationReplicaRejectsUnsafeHubURLComponents(t *testing.T) {
 	}{
 		{
 			name:    "user info",
-			hubURL:  "https://planted-user@daemon.example/kata/hub",
+			hubURL:  "https://planted-user@daemon.example/poomsae/hub",
 			wantErr: true,
 			marker:  "planted-user",
 		},
 		{
 			name:    "query",
-			hubURL:  "https://daemon.example/kata/hub?planted-query=1",
+			hubURL:  "https://daemon.example/poomsae/hub?planted-query=1",
 			wantErr: true,
 			marker:  "planted-query",
 		},
 		{
 			name:    "fragment",
-			hubURL:  "https://daemon.example/kata/hub#planted-fragment",
+			hubURL:  "https://daemon.example/poomsae/hub#planted-fragment",
 			wantErr: true,
 			marker:  "planted-fragment",
 		},
 		{
 			name:    "empty query delimiter",
-			hubURL:  "https://daemon.example/kata/hub?",
+			hubURL:  "https://daemon.example/poomsae/hub?",
 			wantErr: true,
 			marker:  "?",
 		},
 		{
 			name:    "empty fragment delimiter",
-			hubURL:  "https://daemon.example/kata/hub#",
+			hubURL:  "https://daemon.example/poomsae/hub#",
 			wantErr: true,
 			marker:  "#",
 		},
 		{
 			name:   "clean path prefix",
-			hubURL: "https://daemon.example/kata/hub/",
+			hubURL: "https://daemon.example/poomsae/hub/",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -531,7 +531,7 @@ func TestEnsureFederationReplicaRejectsUnsafeHubURLComponents(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, "https://daemon.example/kata/hub", result.Binding.HubURL)
+			assert.Equal(t, "https://daemon.example/poomsae/hub", result.Binding.HubURL)
 		})
 	}
 }
@@ -544,28 +544,28 @@ func TestEnsureFederationReplicaRejectsMalformedHubOrigins(t *testing.T) {
 	}{
 		{
 			name:   "empty hostname with port",
-			hubURL: "https://:443/kata/hub",
+			hubURL: "https://:443/poomsae/hub",
 			marker: ":443",
 		},
 		{
 			name:   "invalid port",
-			hubURL: "https://daemon.example:not-a-port/kata/hub",
+			hubURL: "https://daemon.example:not-a-port/poomsae/hub",
 			marker: "not-a-port",
 		},
 		{
 			name:   "zero port",
-			hubURL: "https://daemon.example:0/kata/hub",
+			hubURL: "https://daemon.example:0/poomsae/hub",
 			marker: ":0",
 		},
 		{
 			name:   "out of range port",
-			hubURL: "https://daemon.example:65536/kata/hub",
+			hubURL: "https://daemon.example:65536/poomsae/hub",
 			marker: "65536",
 		},
 		{
 			name:   "missing hostname",
-			hubURL: "https:///kata/hub",
-			marker: "kata/hub",
+			hubURL: "https:///poomsae/hub",
+			marker: "poomsae/hub",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -920,7 +920,7 @@ func TestLeaveFederationReplicaRequiresManagedStoreForMarkedProject(t *testing.T
 }
 
 func TestLeaveFederationReplicaCleansExactManagedReservation(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProjectWithUID(
@@ -951,7 +951,7 @@ func TestLeaveFederationReplicaCleansExactManagedReservation(t *testing.T) {
 }
 
 func TestLeaveFederationReplicaRetainsConflictingManualCurrentUIDCredential(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProjectWithUID(
@@ -2491,7 +2491,7 @@ func openReplicaServiceStore(t *testing.T) *sqlitestore.Store {
 	t.Helper()
 	unsetReplicaAuthToken(t)
 	ctx := t.Context()
-	store, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	// This fixture is discarded after the test; it needs no WAL checkpoint.
 	t.Cleanup(func() { require.NoError(t, store.DB.Close()) })
@@ -2500,14 +2500,14 @@ func openReplicaServiceStore(t *testing.T) *sqlitestore.Store {
 
 func unsetReplicaAuthToken(t *testing.T) {
 	t.Helper()
-	value, existed := os.LookupEnv("KATA_AUTH_TOKEN")
-	require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+	value, existed := os.LookupEnv("POOMSAE_AUTH_TOKEN")
+	require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 	t.Cleanup(func() {
 		if existed {
-			require.NoError(t, os.Setenv("KATA_AUTH_TOKEN", value))
+			require.NoError(t, os.Setenv("POOMSAE_AUTH_TOKEN", value))
 			return
 		}
-		require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+		require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 	})
 }
 

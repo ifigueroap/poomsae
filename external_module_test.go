@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"context"
@@ -18,13 +18,13 @@ func TestExternalModuleCanServeAndStop(t *testing.T) {
 	require.NoError(t, err)
 	consumerDir := t.TempDir()
 
-	goMod := fmt.Sprintf(`module example.com/kata-service-consumer
+	goMod := fmt.Sprintf(`module example.com/poomsae-service-consumer
 
 go 1.26.3
 
-require go.kenn.io/kata v0.0.0
+require github.com/ifigueroap/poomsae v0.0.0
 
-replace go.kenn.io/kata => %s
+replace github.com/ifigueroap/poomsae => %s
 `, filepath.ToSlash(repositoryRoot))
 	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "go.mod"), []byte(goMod), 0o600))
 	sums, err := os.ReadFile("go.sum")
@@ -54,13 +54,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.kenn.io/kata"
+	"github.com/ifigueroap/poomsae"
 )
 
 func TestMountedServiceLifecycle(t *testing.T) {
-	service, err := kata.New(context.Background(), kata.Config{
-		DSN:  filepath.Join(t.TempDir(), "kata.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+	service, err := poomsae.New(context.Background(), poomsae.Config{
+		DSN:  filepath.Join(t.TempDir(), "poomsae.db"),
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	if err != nil {
 		t.Fatal(err)

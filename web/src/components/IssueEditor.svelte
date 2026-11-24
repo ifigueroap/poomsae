@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { Avatar, CopyButton, Markdown, Notice, type TypeaheadOption } from '@kenn-io/kit-ui'
-  import { CreationAttribution, IssueAttachments, projectIssueDetail } from '@kenn-io/kata-ui'
+  import { CreationAttribution, IssueAttachments, projectIssueDetail } from '@ifigueroap/poomsae-ui'
   import NetworkIcon from '@lucide/svelte/icons/network'
   import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert'
   import CircleAlertIcon from '@lucide/svelte/icons/circle-alert'
@@ -12,22 +12,22 @@
 
   import type { UIIssueReference } from '../lib/api/generated'
   import { fetchAttachmentBlob } from '../lib/api/client'
-  import { deadlineDate, closedReasonLabel } from '../lib/kata/view'
-  import { formatDay, localDateString } from '../lib/kata/dates'
+  import { deadlineDate, closedReasonLabel } from '../lib/poomsae/view'
+  import { formatDay, localDateString } from '../lib/poomsae/dates'
   import { describeResolution } from '../lib/history/format'
   import { closingAttachments } from '../lib/history/attachments'
-  import { createKataLinkFilters, type KataLinkFilters } from '../lib/kata/linkFilters'
+  import { createKataLinkFilters, type PoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
   import type {
-    KataCreateRecurrenceInput,
-    KataProjectSummary,
-    KataRecurrence,
-    KataTaskDetail,
-    KataCommentReplyIntent,
-    KataTaskCloseRequest,
-    KataTaskEditPatch,
-    KataTaskEvent,
-    KataTaskSummary,
-  } from '../lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaeProjectSummary,
+    PoomsaeRecurrence,
+    PoomsaeTaskDetail,
+    PoomsaeCommentReplyIntent,
+    PoomsaeTaskCloseRequest,
+    PoomsaeTaskEditPatch,
+    PoomsaeTaskEvent,
+    PoomsaeTaskSummary,
+  } from '../lib/poomsae/types'
   import Checklist from './Checklist.svelte'
   import Comments from './Comments.svelte'
   import IssueHistory from './IssueHistory.svelte'
@@ -57,16 +57,16 @@
     returnComment?: { issueUID: string; commentUID: string } | undefined
     // The latest failed mutation's message, shown where it was attempted.
     mutationError?: string | undefined
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     today?: string | undefined
-    events?: readonly KataTaskEvent[] | undefined
-    issueCatalog?: readonly KataTaskSummary[] | undefined
+    events?: readonly PoomsaeTaskEvent[] | undefined
+    issueCatalog?: readonly PoomsaeTaskSummary[] | undefined
     searchReferences?: ((query: string) => Promise<Reference[]>) | undefined
-    linkFilters?: KataLinkFilters | undefined
-    onLinkFiltersChange?: ((next: KataLinkFilters) => void) | undefined
-    projects: KataProjectSummary[]
+    linkFilters?: PoomsaeLinkFilters | undefined
+    onLinkFiltersChange?: ((next: PoomsaeLinkFilters) => void) | undefined
+    projects: PoomsaeProjectSummary[]
     ownerOptions: TypeaheadOption[]
-    selectedRecurrences?: KataRecurrence[] | undefined
+    selectedRecurrences?: PoomsaeRecurrence[] | undefined
     actionsDisabled?: boolean | undefined
     authorityBlocked?: boolean | undefined
     administrativeActionsAllowed?: boolean | undefined
@@ -76,9 +76,13 @@
     onMoveIssue: (toProjectUID: string) => boolean | Promise<boolean>
     onPatchMetadata: (uid: string, patch: Record<string, unknown>) => boolean | Promise<boolean>
     onAddComment?:
-      | ((uid: string, body: string, reply?: KataCommentReplyIntent) => boolean | Promise<boolean>)
+      | ((
+          uid: string,
+          body: string,
+          reply?: PoomsaeCommentReplyIntent,
+        ) => boolean | Promise<boolean>)
       | undefined
-    onEditIssue: (uid: string, patch: KataTaskEditPatch) => boolean | Promise<boolean>
+    onEditIssue: (uid: string, patch: PoomsaeTaskEditPatch) => boolean | Promise<boolean>
     onAssignOwner: (uid: string, owner: string) => boolean | Promise<boolean>
     onClaimAssignment?:
       | ((uid: string, ttlSeconds: number) => boolean | Promise<boolean>)
@@ -87,13 +91,13 @@
     onSetPriority: (uid: string, priority: number | null) => boolean | Promise<boolean>
     onAddLabel: (uid: string, label: string) => boolean | Promise<boolean>
     onRemoveLabel: (uid: string, label: string) => void | Promise<void>
-    onCloseIssue: (request: KataTaskCloseRequest) => boolean | Promise<boolean>
+    onCloseIssue: (request: PoomsaeTaskCloseRequest) => boolean | Promise<boolean>
     onReopenIssue: () => void | Promise<void>
     onSelectIssue?: ((target: IssueNavigationTarget) => void | Promise<void>) | undefined
     onCreateRecurrence?:
-      | ((projectID: number, input: KataCreateRecurrenceInput) => Promise<void>)
+      | ((projectID: number, input: PoomsaeCreateRecurrenceInput) => Promise<void>)
       | undefined
-    onOpenGraph?: ((issue: KataTaskDetail['issue']) => void) | undefined
+    onOpenGraph?: ((issue: PoomsaeTaskDetail['issue']) => void) | undefined
     graphOpen?: boolean | undefined
     onCloseGraph?: (() => void) | undefined
     statusRequest?: { uid: string; generation: number } | null | undefined
@@ -310,7 +314,7 @@
   function actorName(actor: string): string {
     return actor === selfActor ? 'You' : actor
   }
-  function closingProof(event: KataTaskEvent): string[] {
+  function closingProof(event: PoomsaeTaskEvent): string[] {
     const evidence = event.payload?.evidence
     if (!Array.isArray(evidence)) return []
     return evidence.flatMap((item: unknown) => {
@@ -465,7 +469,7 @@
 </script>
 
 <section
-  class="kata-detail"
+  class="poomsae-detail"
   aria-label="Task detail"
   aria-busy={actionsDisabled || detailInert}
   inert={detailInert}
@@ -759,7 +763,7 @@
 <style>
   /* Sections stack 24px apart; the header block keeps its own tighter
      rhythm. */
-  .kata-detail {
+  .poomsae-detail {
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -771,7 +775,7 @@
     background: var(--bg-surface);
     padding: 0 16px 32px;
     container-type: inline-size;
-    container-name: kata-detail;
+    container-name: poomsae-detail;
   }
   .mutation-controls {
     display: contents;
@@ -935,12 +939,12 @@
     color: var(--text-primary);
   }
   /* A heading inside the description reads below the section's own. */
-  .kata-detail :global(.body-display :is(h1, h2, h3, h4)) {
+  .poomsae-detail :global(.body-display :is(h1, h2, h3, h4)) {
     margin: 0 0 8px;
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
   }
-  .kata-detail :global(.body-display) {
+  .poomsae-detail :global(.body-display) {
     font-size: var(--font-size-md);
   }
   .body-edit {
@@ -992,7 +996,7 @@
     background: var(--accent-blue);
     color: var(--bg-surface);
   }
-  @container kata-detail (max-width: 480px) {
+  @container poomsae-detail (max-width: 480px) {
     .detail-heading {
       flex-wrap: wrap;
     }

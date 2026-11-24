@@ -17,12 +17,12 @@ func TestValidatePostgresTransportRejectsUnverifiedRemoteCandidates(t *testing.T
 	t.Setenv("PGSSLROOTCERT", "")
 
 	for _, dsn := range []string{
-		"postgres://user:secret@db.example/kata",
-		"postgres://user:secret@db.example/kata?sslmode=disable",
-		"postgres://user:secret@db.example/kata?sslmode=allow",
-		"postgres://user:secret@db.example/kata?sslmode=prefer",
-		"postgres://user:secret@db.example/kata?sslmode=require",
-		"postgres://user:secret@db.example/kata?sslmode=verify-ca",
+		"postgres://user:secret@db.example/poomsae",
+		"postgres://user:secret@db.example/poomsae?sslmode=disable",
+		"postgres://user:secret@db.example/poomsae?sslmode=allow",
+		"postgres://user:secret@db.example/poomsae?sslmode=prefer",
+		"postgres://user:secret@db.example/poomsae?sslmode=require",
+		"postgres://user:secret@db.example/poomsae?sslmode=verify-ca",
 	} {
 		t.Run(dsn, func(t *testing.T) {
 			cfg, err := pgx.ParseConfig(dsn)
@@ -39,12 +39,12 @@ func TestValidatePostgresTransportAcceptsVerifiedRemoteAndLocalPlaintext(t *test
 	t.Parallel()
 
 	for _, dsn := range []string{
-		"postgres://user@db.example/kata?sslmode=verify-full&sslrootcert=system",
-		"postgres://user@db.example/kata?sslmode=verify-ca&sslrootcert=system",
-		"postgres://user@127.0.0.1/kata?sslmode=disable",
-		"postgres://user@[::1]/kata?sslmode=disable",
-		"postgres://user@localhost/kata?sslmode=disable",
-		"postgres://user@/kata?host=/var/run/postgresql&sslmode=disable",
+		"postgres://user@db.example/poomsae?sslmode=verify-full&sslrootcert=system",
+		"postgres://user@db.example/poomsae?sslmode=verify-ca&sslrootcert=system",
+		"postgres://user@127.0.0.1/poomsae?sslmode=disable",
+		"postgres://user@[::1]/poomsae?sslmode=disable",
+		"postgres://user@localhost/poomsae?sslmode=disable",
+		"postgres://user@/poomsae?host=/var/run/postgresql&sslmode=disable",
 	} {
 		t.Run(dsn, func(t *testing.T) {
 			cfg, err := pgx.ParseConfig(dsn)
@@ -56,7 +56,7 @@ func TestValidatePostgresTransportAcceptsVerifiedRemoteAndLocalPlaintext(t *test
 
 func TestValidatePostgresTransportExplicitInsecureOptIn(t *testing.T) {
 	t.Parallel()
-	cfg, err := pgx.ParseConfig("postgres://user@db.example/kata?sslmode=disable")
+	cfg, err := pgx.ParseConfig("postgres://user@db.example/poomsae?sslmode=disable")
 	require.NoError(t, err)
 	assert.NoError(t, validatePostgresTransport(cfg, true))
 }
@@ -67,7 +67,7 @@ func TestValidatePostgresTransportAcceptsEffectiveVerifiedTLS(t *testing.T) {
 		t.Setenv("PGSERVICEFILE", "")
 		t.Setenv("PGSSLMODE", "verify-full")
 		t.Setenv("PGSSLROOTCERT", "system")
-		cfg, err := pgx.ParseConfig("postgres://user@db.example/kata")
+		cfg, err := pgx.ParseConfig("postgres://user@db.example/poomsae")
 		require.NoError(t, err)
 		assert.NoError(t, validatePostgresTransport(cfg, false))
 	})
@@ -77,7 +77,7 @@ func TestValidatePostgresTransportAcceptsEffectiveVerifiedTLS(t *testing.T) {
 		require.NoError(t, os.WriteFile(serviceFile, []byte(`[verified]
 host=db.example
 port=5432
-dbname=kata
+dbname=poomsae
 sslmode=verify-full
 sslrootcert=system
 `), 0o600))

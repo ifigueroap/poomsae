@@ -16,16 +16,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const federationTestSpokeUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
@@ -191,13 +191,13 @@ func TestFederationEnableIdentityModeBootstrapTokenCannotWrite(t *testing.T) {
 				map[string]any{"actor": "spoofed"}, bearer("bootstrap-token"))
 			if state == "absent" {
 				assertAPIError(t, resp.StatusCode, raw, http.StatusForbidden, "bootstrap_token_write_forbidden")
-				assert.Contains(t, string(raw), "kata federation enable")
+				assert.Contains(t, string(raw), "poomsae federation enable")
 				assert.Contains(t, string(raw), "account token")
 			} else {
 				// An account-token enable cannot turn a disabled hub or a spoke
 				// binding into an enabled hub, so do not suggest one.
 				assertAPIError(t, resp.StatusCode, raw, http.StatusConflict, "federation_not_enabled")
-				assert.NotContains(t, string(raw), "kata federation enable")
+				assert.NotContains(t, string(raw), "poomsae federation enable")
 			}
 			after, err := env.DB.MaxEventID(ctx)
 			require.NoError(t, err)
@@ -363,7 +363,7 @@ func TestCreateFederationReplicaRoutePreservesHubURLPathPrefix(t *testing.T) {
 
 	var out api.CreateFederationReplicaResponseBody
 	resp := envDoJSON(t, env, http.MethodPost, "/api/v1/federation/replicas", map[string]any{
-		"hub_url":                 "https://daemon.example/kata/hub/",
+		"hub_url":                 "https://daemon.example/poomsae/hub/",
 		"hub_project_id":          42,
 		"hub_project_uid":         "01HZNQ7VFPK1XGD8R5MABCD4EX",
 		"project_name":            "hub-project",
@@ -373,7 +373,7 @@ func TestCreateFederationReplicaRoutePreservesHubURLPathPrefix(t *testing.T) {
 	}, &out)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "https://daemon.example/kata/hub", out.Binding.HubURL)
+	assert.Equal(t, "https://daemon.example/poomsae/hub", out.Binding.HubURL)
 }
 
 func TestCreateFederationReplicaAcceptsCanonicalEquivalentHubEndpoint(t *testing.T) {
@@ -1614,7 +1614,7 @@ func TestFederationQuarantineSkipRequiresConfirmAndAdvancesCursor(t *testing.T) 
 	resp, raw = envDoRaw(t, env, http.MethodPost, path, map[string]any{
 		"actor":  "operator",
 		"reason": "intentional skip",
-	}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
+	}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
 	require.NoError(t, json.Unmarshal(raw, &out))
 	assert.Equal(t, q.ID, out.ID)
@@ -1639,7 +1639,7 @@ func TestFederationQuarantineRetryRequiresConfirmAndLeavesCursor(t *testing.T) {
 	resp, raw = envDoRaw(t, env, http.MethodPost, path, map[string]any{
 		"actor":  "operator",
 		"reason": "hub upgraded",
-	}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
+	}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
 	require.Equal(t, http.StatusPreconditionFailed, resp.StatusCode, string(raw))
 	assert.Contains(t, string(raw), "confirm_mismatch")
 
@@ -1647,7 +1647,7 @@ func TestFederationQuarantineRetryRequiresConfirmAndLeavesCursor(t *testing.T) {
 	resp, raw = envDoRaw(t, env, http.MethodPost, path, map[string]any{
 		"actor":  "operator",
 		"reason": "hub upgraded",
-	}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("RETRY FEDERATION BATCH %d", q.ID)})
+	}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("RETRY FEDERATION BATCH %d", q.ID)})
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
 	require.NoError(t, json.Unmarshal(raw, &out))
 	assert.Equal(t, q.ID, out.ID)
@@ -1699,7 +1699,7 @@ func TestFederationQuarantineRetryRejectsPullQuarantine(t *testing.T) {
 	resp, raw := envDoRaw(t, env, http.MethodPost, path, map[string]any{
 		"actor":  "operator",
 		"reason": "try pull",
-	}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("RETRY FEDERATION BATCH %d", q.ID)})
+	}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("RETRY FEDERATION BATCH %d", q.ID)})
 
 	assertAPIError(t, resp.StatusCode, raw, http.StatusConflict, "federation_quarantine_retry_unsupported")
 	active, err := env.DB.ActiveFederationQuarantine(ctx, project.ID, db.FederationQuarantineDirectionPull)
@@ -1717,8 +1717,8 @@ func TestFederationQuarantineSkipIdentityModeBootstrapTokenCannotWrite(t *testin
 		"actor":  "spoofed",
 		"reason": "intentional skip",
 	}, map[string]string{
-		"Authorization":  "Bearer bootstrap-token",
-		"X-Kata-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID),
+		"Authorization":     "Bearer bootstrap-token",
+		"X-Poomsae-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID),
 	})
 
 	assertAPIError(t, resp.StatusCode, raw, http.StatusForbidden, "bootstrap_token_write_forbidden")
@@ -1743,8 +1743,8 @@ func TestFederationQuarantineSkipIdentityModeUsesDBTokenActor(t *testing.T) {
 		"actor":  "spoofed",
 		"reason": "intentional skip",
 	}, map[string]string{
-		"Authorization":  "Bearer alice-token",
-		"X-Kata-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID),
+		"Authorization":     "Bearer alice-token",
+		"X-Poomsae-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID),
 	})
 
 	require.Equal(t, http.StatusOK, resp.StatusCode, "response: %s", raw)
@@ -1793,7 +1793,7 @@ func TestFederationQuarantineSkipRejectsWrongProjectWithoutMutation(t *testing.T
 	resp, raw := envDoRaw(t, env, http.MethodPost, path, map[string]any{
 		"actor":  "operator",
 		"reason": "intentional skip",
-	}, map[string]string{"X-Kata-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
+	}, map[string]string{"X-Poomsae-Confirm": fmt.Sprintf("SKIP FEDERATION BATCH %d", q.ID)})
 
 	require.Equal(t, http.StatusNotFound, resp.StatusCode, string(raw))
 	active, err := env.DB.ActiveFederationQuarantine(ctx, project.ID, db.FederationQuarantineDirectionPush)
@@ -2011,14 +2011,14 @@ func TestFederationEnrollmentExplicitTokenCreatesRowAndHidesHash(t *testing.T) {
 }
 
 func TestRotateFederationEnrollment(t *testing.T) {
-	previousAuthToken, hadAuthToken := os.LookupEnv("KATA_AUTH_TOKEN")
-	require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+	previousAuthToken, hadAuthToken := os.LookupEnv("POOMSAE_AUTH_TOKEN")
+	require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 	t.Cleanup(func() {
 		if hadAuthToken {
-			require.NoError(t, os.Setenv("KATA_AUTH_TOKEN", previousAuthToken))
+			require.NoError(t, os.Setenv("POOMSAE_AUTH_TOKEN", previousAuthToken))
 			return
 		}
-		require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+		require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 	})
 	assertRotationRejectedWithoutMutation := func(
 		t *testing.T,
@@ -2218,7 +2218,7 @@ func TestRotateFederationEnrollment(t *testing.T) {
 	t.Run("missing trusted proxy actor cannot rotate with a body actor", func(t *testing.T) {
 		server, store, _ := startBearerProxyTestServer(
 			t,
-			"X-Kata-Actor",
+			"X-Poomsae-Actor",
 			bearerProxyOpts{Token: "rotation-proxy-guard-token"},
 		)
 		ctx := t.Context()
@@ -2248,7 +2248,7 @@ func TestRotateFederationEnrollment(t *testing.T) {
 
 	t.Run("mounted host authorization matches create project scope", func(t *testing.T) {
 		ctx := t.Context()
-		store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+		store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, store.Close()) })
 		project, err := store.CreateProject(ctx, "rotation-mounted-project")
@@ -2316,13 +2316,13 @@ func TestTrustedProxyMembersCannotManageLegacyFederationEnrollments(t *testing.T
 	t.Run("create", func(t *testing.T) {
 		server, store, _ := startBearerProxyTestServer(
 			t,
-			"X-Kata-Actor",
+			"X-Poomsae-Actor",
 			bearerProxyOpts{Token: "federation-enrollment-proxy-token"}, //nolint:gosec // Test-only proxy credential.
 		)
 		project, err := store.CreateProject(t.Context(), "proxy-enrollment-project")
 		require.NoError(t, err)
 		headers := bearer("federation-enrollment-proxy-token")
-		headers["X-Kata-Actor"] = "project-member"
+		headers["X-Poomsae-Actor"] = "project-member"
 		response, raw := doReq(t, server, http.MethodPost, "/api/v1/federation/enrollments", map[string]any{ //nolint:gosec // Fixed test-only enrollment token.
 			"spoke_instance_uid": federationTestSpokeUID,
 			"project_id":         project.ID,
@@ -2342,7 +2342,7 @@ func TestTrustedProxyMembersCannotManageLegacyFederationEnrollments(t *testing.T
 	t.Run("rotate", func(t *testing.T) {
 		server, store, _ := startBearerProxyTestServer(
 			t,
-			"X-Kata-Actor",
+			"X-Poomsae-Actor",
 			bearerProxyOpts{Token: "federation-enrollment-rotate-proxy-token"}, //nolint:gosec // Test-only proxy credential.
 		)
 		project, err := store.CreateProject(t.Context(), "proxy-rotate-project")
@@ -2353,7 +2353,7 @@ func TestTrustedProxyMembersCannotManageLegacyFederationEnrollments(t *testing.T
 		})
 		require.NoError(t, err)
 		headers := bearer("federation-enrollment-rotate-proxy-token")
-		headers["X-Kata-Actor"] = "project-member"
+		headers["X-Poomsae-Actor"] = "project-member"
 		response, raw := doReq(t, server, http.MethodPost, "/api/v1/federation/enrollments/actions/rotate", map[string]any{
 			"spoke_instance_uid": federationTestSpokeUID,
 			"project_id":         project.ID,
@@ -4395,7 +4395,7 @@ func TestFederationEnrollmentJoinInstructions(t *testing.T) {
 			} else {
 				command, ok := join["join_command"].(string)
 				require.True(t, ok)
-				assert.Contains(t, command, "kata federation join --project hub-project --hub-url "+tc.wantHubURL)
+				assert.Contains(t, command, "poomsae federation join --project hub-project --hub-url "+tc.wantHubURL)
 				assert.Contains(t, command, "--actor 'Example User'")
 				assert.Equal(t, tc.insecure, strings.Contains(command, "--allow-insecure"))
 				assert.Equal(t, tc.adopt, strings.Contains(command, "--adopt-existing"))
@@ -4553,8 +4553,8 @@ func TestFederationEnrollmentPrivateHTTPRequiresExplicitOptIn(t *testing.T) {
 	for _, allowInsecure := range []bool{false, true} {
 		t.Run(fmt.Sprintf("allow_insecure=%t", allowInsecure), func(t *testing.T) {
 			env := testenv.New(t)
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-			t.Setenv("KATA_ALLOW_INSECURE", "")
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+			t.Setenv("POOMSAE_ALLOW_INSECURE", "")
 			project := createFederatedHubProject(t, env, "hub-project")
 			resp, raw := envDoRaw(t, env, http.MethodPost, "/api/v1/federation/enrollments", map[string]any{
 				"spoke_instance_uid": federationTestSpokeUID, "project_id": project.ID,

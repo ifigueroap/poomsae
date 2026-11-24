@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/todoistsync/todoistapi"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync/todoistapi"
 )
 
 // StatusSession reads task status and writes it with Todoist's close and reopen operations.
@@ -19,7 +19,7 @@ type StatusSession interface {
 }
 
 // StatusTarget names one mapped task, its last verified status observation,
-// and whether its Kata issue is closed.
+// and whether its Poomsae issue is closed.
 type StatusTarget struct {
 	ID           string
 	Prior        *db.IssueStatusObservation
@@ -118,7 +118,7 @@ func observationAfter(row Task, prior *db.IssueStatusObservation) issuesync.Stat
 
 // ReadStatus reports a task's current status. Todoist returns 404 for both
 // completed and deleted tasks, so a task last seen closed reuses that result
-// without another history scan only while its Kata issue is closed too.
+// without another history scan only while its Poomsae issue is closed too.
 func (s *clientSession) ReadStatus(ctx context.Context, c Config, t StatusTarget) (issuesync.StatusObservation, error) {
 	row, found, err := s.activeTask(ctx, c, t.ID)
 	if err != nil {

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestNotionSyncConfig(t *testing.T) {
@@ -14,7 +14,7 @@ func TestNotionSyncConfig(t *testing.T) {
 		input, want string
 		invalid     bool
 	}{
-		{"", "KATA_NOTION_TOKEN", false}, {" EXAMPLE_NOTION_TOKEN ", "EXAMPLE_NOTION_TOKEN", false},
+		{"", "POOMSAE_NOTION_TOKEN", false}, {" EXAMPLE_NOTION_TOKEN ", "EXAMPLE_NOTION_TOKEN", false},
 		{"1TOKEN", "", true}, {"TOKEN-NAME", "", true}, {"TOKEN=secret", "", true}, {"TOKEN NAME", "", true},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
@@ -33,14 +33,14 @@ func TestReadDaemonConfigNotion(t *testing.T) {
 		text, want string
 		invalid    bool
 	}{
-		{"", "KATA_NOTION_TOKEN", false},
+		{"", "POOMSAE_NOTION_TOKEN", false},
 		{"[notion_sync]\ntoken_env = ' EXAMPLE_NOTION_TOKEN '", "EXAMPLE_NOTION_TOKEN", false},
 		{"[notion_sync]\ntoken_env = 'BAD-NAME'", "", true},
 		{"[notion_sync]\ntoken = 'secret'", "", true},
 	} {
 		t.Run(tc.text, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tc.text), 0600))
 			got, err := config.ReadDaemonConfig()
 			if tc.invalid {

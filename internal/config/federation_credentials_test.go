@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestReadFederationCredentialsMissingReturnsEmpty(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 
 	creds, err := config.ReadFederationCredentials()
 
@@ -57,7 +57,7 @@ func TestFederationTransportCredentialPreservesMatchingLegacyPlaintextPolicy(t *
 
 func TestWriteFederationCredentialRoundTrips(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 
 	require.NoError(t, config.WriteFederationCredential("01HZNQ7VFPK1XGD8R5MABCD4EX",
 		config.FederationCredential{
@@ -90,7 +90,7 @@ func TestWriteFederationCredentialRoundTrips(t *testing.T) {
 }
 
 func TestWriteFederationCredentialRejectsPendingEnrollmentWithoutPendingLeave(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	const projectUID = "01EXAMPLEPROJECT0000000000"
 	settled := config.FederationCredential{
 		HubURL: "https://daemon.example", HubProjectID: 42, Token: "settled-token",
@@ -110,7 +110,7 @@ func TestWriteFederationCredentialRejectsPendingEnrollmentWithoutPendingLeave(t 
 }
 
 func TestWriteFederationCredentialAcceptsPendingEnrollmentWithPendingLeave(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	const projectUID = "01EXAMPLEPROJECT0000000000"
 	want := config.FederationCredential{
 		HubURL: "https://daemon.example", HubProjectID: 42, Token: "pending-token",
@@ -126,7 +126,7 @@ func TestWriteFederationCredentialAcceptsPendingEnrollmentWithPendingLeave(t *te
 
 func TestWriteFederationCredentialAllowsUnchangedLegacyConflictDuringUnrelatedWrite(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const (
 		legacyUID = "01LEGACYPROJECT00000000000"
 		otherUID  = "01OTHERPROJECT000000000000"
@@ -157,7 +157,7 @@ pending_enrollment_id = 7
 
 func TestReplaceFederationCredentialRejectsChangedLegacyLeaveConflict(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const projectUID = "01LEGACYPROJECT00000000000"
 	path := filepath.Join(home, "credentials.toml")
 	require.NoError(t, os.WriteFile(path, []byte(`
@@ -191,7 +191,7 @@ pending_enrollment_id = 7
 
 func TestReadFederationCredentialWithoutCapabilitiesDefaultsEmpty(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	path := filepath.Join(home, "credentials.toml")
 	require.NoError(t, os.WriteFile(path, []byte(`
 [projects."01HZNQ7VFPK1XGD8R5MABCD4EX"]
@@ -211,7 +211,7 @@ token = "secret-token"
 
 func TestFederationCredentialManagedMetadataBackwardCompatible(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const (
 		projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 		token      = "old-secret-token"
@@ -247,7 +247,7 @@ token = "old-secret-token"
 
 func TestFederationCredentialManagedMetadataRoundTripsAndRedactsToken(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const (
 		projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 		token      = "managed-secret-token"
@@ -295,7 +295,7 @@ func TestFederationCredentialManagedMetadataRoundTripsAndRedactsToken(t *testing
 }
 
 func TestReserveFederationCredentialUsesOneExactHubUID(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	managed := config.FederationCredential{
@@ -325,7 +325,7 @@ func TestReserveFederationCredentialUsesOneExactHubUID(t *testing.T) {
 }
 
 func TestConcurrentManagedCredentialReservationsPreserveEveryEntry(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	const (
@@ -374,7 +374,7 @@ func TestConcurrentManagedCredentialReservationsPreserveEveryEntry(t *testing.T)
 
 func TestReserveFederationCredentialConflictDoesNotRewriteFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	const hubUID = "01HUBPROJECT00000000000000"
@@ -406,7 +406,7 @@ func TestReserveFederationCredentialConflictDoesNotRewriteFile(t *testing.T) {
 }
 
 func TestFindManagedFederationCredentialRejectsTwoMarkedEntries(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	managed := config.FederationCredential{
@@ -427,7 +427,7 @@ func TestFindManagedFederationCredentialRejectsTwoMarkedEntries(t *testing.T) {
 }
 
 func TestDeleteManagedFederationCredentialRequiresExactKeyAndValue(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	match := config.FederationManagedCredentialReservation{
@@ -465,7 +465,7 @@ func TestDeleteManagedFederationCredentialRequiresExactKeyAndValue(t *testing.T)
 }
 
 func TestDeleteManagedFederationCredentialRejectsReservationMovedToAnotherKey(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	match := config.FederationManagedCredentialReservation{
@@ -489,7 +489,7 @@ func TestDeleteManagedFederationCredentialRejectsReservationMovedToAnotherKey(t 
 }
 
 func TestReplaceManagedFederationCredentialRequiresExactCurrentValue(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	current := config.FederationManagedCredentialReservation{
@@ -518,7 +518,7 @@ func TestReplaceManagedFederationCredentialRequiresExactCurrentValue(t *testing.
 }
 
 func TestRekeyFederationCredentialMovesManualLocalUIDToHubUIDOnce(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	store := config.DefaultFederationCredentialStore()
 	manual := config.FederationCredential{
@@ -549,7 +549,7 @@ func TestWriteFederationCredentialTightensExistingFileMode(t *testing.T) {
 		t.Skip("Unix file-mode tightening is not meaningful on Windows (ACL-based)")
 	}
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	path := filepath.Join(home, "credentials.toml")
 	require.NoError(t, os.WriteFile(path, []byte(""), 0o600))
 	require.NoError(t, os.Chmod(path, 0o644)) //nolint:gosec // Intentionally simulates a preexisting loose credentials file.
@@ -568,7 +568,7 @@ func TestWriteFederationCredentialTightensExistingFileMode(t *testing.T) {
 
 func TestFederationCredentialMetadataForPresentCredentialRedactsToken(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, config.WriteFederationCredential("01HZNQ7VFPK1XGD8R5MABCD4EX",
 		config.FederationCredential{
 			HubURL:        "http://hub.internal:7777",
@@ -590,7 +590,7 @@ func TestFederationCredentialMetadataForPresentCredentialRedactsToken(t *testing
 }
 
 func TestFederationCredentialMetadataForMissingCredential(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 
 	got := config.FederationCredentialMetadataFor("01HZNQ7VFPK1XGD8R5MABCD4EX")
 
@@ -600,7 +600,7 @@ func TestFederationCredentialMetadataForMissingCredential(t *testing.T) {
 
 func TestFederationCredentialMetadataForUnreadableCredential(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "credentials.toml"), []byte("[projects."), 0o600))
 
 	got := config.FederationCredentialMetadataFor("01HZNQ7VFPK1XGD8R5MABCD4EX")
@@ -610,7 +610,7 @@ func TestFederationCredentialMetadataForUnreadableCredential(t *testing.T) {
 }
 
 func TestDeleteFederationCredentialIdempotent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	uid := "01KQJF75QFKWXHASB1QK74ZACZ"
 	other := "01KT4E0PJ4FRW0T0QB86EMZ1SN"
 	if err := config.WriteFederationCredential(uid, config.FederationCredential{HubURL: "http://hub.example", HubProjectID: 1, Token: "t"}); err != nil {
@@ -631,14 +631,14 @@ func TestDeleteFederationCredentialIdempotent(t *testing.T) {
 	if err := config.DeleteFederationCredential(uid); err != nil {
 		t.Fatalf("second delete should be nil, got %v", err)
 	}
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	if err := config.DeleteFederationCredential(uid); err != nil {
 		t.Fatalf("delete with no file should be nil, got %v", err)
 	}
 }
 
 func TestRekeyFederationCredentialAtomicallyMovesOneEntryAndPreservesOthers(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	const (
 		localUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
 		hubUID   = "01HZNQ7VFPK1XGD8R5MABCD4EX"
@@ -693,7 +693,7 @@ func TestRekeyFederationCredentialRejectsConcurrentSourceOrTargetChange(t *testi
 	replacement.ManagedByConfig = true
 
 	t.Run("source changed", func(t *testing.T) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		changed := manual
 		changed.Token = "token-c"
 		require.NoError(t, config.WriteFederationCredential(localUID, changed))
@@ -712,7 +712,7 @@ func TestRekeyFederationCredentialRejectsConcurrentSourceOrTargetChange(t *testi
 	})
 
 	t.Run("target changed", func(t *testing.T) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		conflicting := manual
 		conflicting.Token = "token-d"
 		require.NoError(t, config.WriteFederationCredential(localUID, manual))
@@ -733,7 +733,7 @@ func TestRekeyFederationCredentialRejectsConcurrentSourceOrTargetChange(t *testi
 }
 
 func TestRekeyFederationCredentialConvergesAfterMatchingTargetWrite(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	const (
 		localUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
 		hubUID   = "01HZNQ7VFPK1XGD8R5MABCD4EX"
@@ -766,7 +766,7 @@ func TestRekeyFederationCredentialConvergesAfterMatchingTargetWrite(t *testing.T
 }
 
 func TestRekeyFederationCredentialExactCompletedRetryIsIdempotent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	const (
 		localUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
 		hubUID   = "01HZNQ7VFPK1XGD8R5MABCD4EX"

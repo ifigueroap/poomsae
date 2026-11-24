@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // APITokenScopeKind identifies an immutable native token grant.

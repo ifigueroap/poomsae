@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/pkg/connector"
-	"go.kenn.io/kata/pkg/connector/conformance"
+	"github.com/ifigueroap/poomsae/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector/conformance"
 )
 
 func TestPublicConformance(t *testing.T) {

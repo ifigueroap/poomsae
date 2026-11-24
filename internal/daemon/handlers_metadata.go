@@ -11,9 +11,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // registerMetadataHandlers installs the metadata read and patch routes.
@@ -126,7 +126,7 @@ func patchIssueMetadataHandler(cfg ServerConfig) func(context.Context, *api.Patc
 				return nil, err
 			}
 			out.Body.Event = projected
-			// Wake SSE followers (kata events --tail) and hook consumers on
+			// Wake SSE followers (poomsae events --tail) and hook consumers on
 			// the persisted issue.metadata_updated event. Only broadcast when
 			// the patch actually changed something — a no-op patch persists no
 			// event and must not spuriously wake subscribers.

@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // Exact native values must survive both public response styles and a typed

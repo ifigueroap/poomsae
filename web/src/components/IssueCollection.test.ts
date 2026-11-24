@@ -11,15 +11,15 @@ import { tick } from 'svelte'
 import { fromStore, writable } from 'svelte/store'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { KataTaskSummary } from '../lib/kata/types'
-import type { KataCurrentView } from '../lib/kata/authority'
+import type { PoomsaeTaskSummary } from '../lib/poomsae/types'
+import type { PoomsaeCurrentView } from '../lib/poomsae/authority'
 import IssueCollection from './IssueCollection.svelte'
-import { KATA_TASK_COLUMNS_STORAGE_KEY } from '../lib/kata/columns'
+import { POOMSAE_TASK_COLUMNS_STORAGE_KEY } from '../lib/poomsae/columns'
 
 interface IssueListRenderOptions {
   props: {
-    currentView: KataCurrentView
-    issueCatalog?: readonly KataTaskSummary[] | undefined
+    currentView: PoomsaeCurrentView
+    issueCatalog?: readonly PoomsaeTaskSummary[] | undefined
     [key: string]: unknown
   }
 }
@@ -34,7 +34,7 @@ function render(_component: typeof IssueCollection, options: IssueListRenderOpti
   })
 }
 
-const baseIssues: KataTaskSummary[] = [
+const baseIssues: PoomsaeTaskSummary[] = [
   task({
     id: 101,
     uid: 'issue-pay-rent',
@@ -66,7 +66,7 @@ const baseIssues: KataTaskSummary[] = [
   }),
 ]
 
-const currentView: KataCurrentView = {
+const currentView: PoomsaeCurrentView = {
   name: 'today',
   fetched_at: '2026-05-16T10:00:00Z',
   groups: [
@@ -87,7 +87,7 @@ const delegatedIssue = task({
   ...baseIssues[0]!,
   metadata: { ...baseIssues[0]!.metadata, teammate: 'user-b' },
 })
-const delegatedView: KataCurrentView = {
+const delegatedView: PoomsaeCurrentView = {
   name: 'delegated',
   fetched_at: '2026-05-16T10:00:00Z',
   groups: [
@@ -111,7 +111,7 @@ describe('IssueCollection', () => {
   })
 
   describe('capped render', () => {
-    function manyTasks(count: number): KataTaskSummary[] {
+    function manyTasks(count: number): PoomsaeTaskSummary[] {
       return Array.from({ length: count }, (_, index) =>
         task({
           id: 1000 + index,
@@ -186,7 +186,7 @@ describe('IssueCollection', () => {
 
     it('keeps full group counts and reveals later headings as the prefix grows', async () => {
       window.localStorage.setItem(
-        'kata:issue-sort/v1',
+        'poomsae:issue-sort/v1',
         JSON.stringify({ key: 'title', direction: 'asc' }),
       )
       const issues = manyTasks(1000)
@@ -250,7 +250,7 @@ describe('IssueCollection', () => {
 
     it('keeps growth on selection', async () => {
       // Row limits and focus do not depend on optional metadata columns.
-      window.localStorage.setItem(KATA_TASK_COLUMNS_STORAGE_KEY, JSON.stringify([]))
+      window.localStorage.setItem(POOMSAE_TASK_COLUMNS_STORAGE_KEY, JSON.stringify([]))
       // Keep one extra row beyond the selection so its position alone cannot preserve the count.
       const issues = manyTasks(77)
       const props = {
@@ -272,7 +272,7 @@ describe('IssueCollection', () => {
 
     it('resets changed results in the first render', async () => {
       // Row limits do not depend on optional metadata columns.
-      window.localStorage.setItem(KATA_TASK_COLUMNS_STORAGE_KEY, JSON.stringify([]))
+      window.localStorage.setItem(POOMSAE_TASK_COLUMNS_STORAGE_KEY, JSON.stringify([]))
       // One row beyond the reset's 75-row cap detects a transient over-render.
       const issues = manyTasks(276)
       const props = {
@@ -343,7 +343,7 @@ describe('IssueCollection', () => {
       'retains $target focus when a refresh adds $leadingCount earlier roots',
       async ({ target, index, leadingCount }) => {
         window.localStorage.setItem(
-          'kata:issue-sort/v1',
+          'poomsae:issue-sort/v1',
           JSON.stringify({ key: 'title', direction: 'asc' }),
         )
         const issues = manyTasks(400)
@@ -384,7 +384,7 @@ describe('IssueCollection', () => {
 
     it('retains row focus without a selection when a refresh moves it past the cap', async () => {
       window.localStorage.setItem(
-        'kata:issue-sort/v1',
+        'poomsae:issue-sort/v1',
         JSON.stringify({ key: 'title', direction: 'asc' }),
       )
       const issues = manyTasks(400)
@@ -424,7 +424,7 @@ describe('IssueCollection', () => {
 
     it('keeps a selected child and its scroll anchor when its root moves past the cap', async () => {
       window.localStorage.setItem(
-        'kata:issue-sort/v1',
+        'poomsae:issue-sort/v1',
         JSON.stringify({ key: 'title', direction: 'asc' }),
       )
       const issues = manyTasks(400)
@@ -472,7 +472,7 @@ describe('IssueCollection', () => {
       { action: 'selecting an earlier row', selectedIssueUID: 'bulk-00005' },
     ])('keeps the deep-linked prefix after $action', async ({ selectedIssueUID }) => {
       window.localStorage.setItem(
-        'kata:issue-sort/v1',
+        'poomsae:issue-sort/v1',
         JSON.stringify({ key: 'title', direction: 'asc' }),
       )
       const issues = manyTasks(400)
@@ -661,7 +661,7 @@ describe('IssueCollection', () => {
     )
   })
 
-  const resizeLogbookView: KataCurrentView = {
+  const resizeLogbookView: PoomsaeCurrentView = {
     name: 'logbook',
     fetched_at: '2026-05-16T10:00:00Z',
     groups: [
@@ -678,7 +678,7 @@ describe('IssueCollection', () => {
       },
     ],
   }
-  const resizeCases: [string, KataCurrentView][] = [
+  const resizeCases: [string, PoomsaeCurrentView][] = [
     ['Date', currentView],
     ['Closed', resizeLogbookView],
     ['Due', viewWithIssues([baseIssues[0]!])],
@@ -801,7 +801,7 @@ describe('IssueCollection', () => {
       deadline_on_date: '2026-05-02',
     })
     const lateSecond = task({ uid: 'late-second', title: 'A late', deadline_on_date: '2026-05-21' })
-    const view: KataCurrentView = {
+    const view: PoomsaeCurrentView = {
       name: 'scheduled',
       fetched_at: '2026-05-16T10:00:00Z',
       groups: [
@@ -861,7 +861,7 @@ describe('IssueCollection', () => {
 
       expect(screen.getByRole('button', { name: 'Sort by Date, currently ascending' })).toBeTruthy()
       expect(visibleRows().map((row) => row.dataset.uid)).toEqual(['early', 'late'])
-      expect(JSON.parse(localStorage.getItem('kata:issue-sort/v1')!)).toEqual({
+      expect(JSON.parse(localStorage.getItem('poomsae:issue-sort/v1')!)).toEqual({
         key: 'due',
         direction: 'asc',
       })
@@ -1034,7 +1034,7 @@ describe('IssueCollection', () => {
       blocked_by: [peer('x1'), peer('y2'), peer('z3'), peer('q4'), peer('r5')],
       open_blocked_by: [peer('a1'), peer('b2'), peer('c3'), peer('d4'), peer('e5')],
     })
-    const view: KataCurrentView = {
+    const view: PoomsaeCurrentView = {
       ...currentView,
       name: 'inbox',
       groups: [{ id: 'inbox', title: 'Inbox', issues: [blocked] }],
@@ -1042,7 +1042,7 @@ describe('IssueCollection', () => {
 
     function enableColumn() {
       localStorage.setItem(
-        KATA_TASK_COLUMNS_STORAGE_KEY,
+        POOMSAE_TASK_COLUMNS_STORAGE_KEY,
         JSON.stringify(['project', 'due', 'updated', 'priority', 'owner', 'blockedBy', 'tags']),
       )
     }
@@ -1129,10 +1129,13 @@ describe('IssueCollection', () => {
 
   it('reconciles a restored sort whose optional column is disabled', () => {
     localStorage.setItem(
-      KATA_TASK_COLUMNS_STORAGE_KEY,
+      POOMSAE_TASK_COLUMNS_STORAGE_KEY,
       JSON.stringify(['updated', 'priority', 'due', 'tags']),
     )
-    localStorage.setItem('kata:issue-sort/v1', JSON.stringify({ key: 'owner', direction: 'desc' }))
+    localStorage.setItem(
+      'poomsae:issue-sort/v1',
+      JSON.stringify({ key: 'owner', direction: 'desc' }),
+    )
 
     render(IssueCollection, {
       props: {
@@ -1149,21 +1152,21 @@ describe('IssueCollection', () => {
         .getByRole('button', { name: 'Sort by Title, currently ascending' })
         .getAttribute('aria-pressed'),
     ).toBe('true')
-    expect(JSON.parse(localStorage.getItem('kata:issue-sort/v1')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('poomsae:issue-sort/v1')!)).toEqual({
       key: 'title',
       direction: 'asc',
     })
   })
 
   it('restores ID sorting when the ID column is hidden by default', async () => {
-    localStorage.setItem('kata:issue-sort/v1', JSON.stringify({ key: 'id', direction: 'asc' }))
+    localStorage.setItem('poomsae:issue-sort/v1', JSON.stringify({ key: 'id', direction: 'asc' }))
 
     render(IssueCollection, {
       props: { currentView: viewWithIssues(baseIssues), onSelect: () => {} },
     })
 
     expect(visibleRowTitles()).toEqual(['Review example project', 'Prepare summary'])
-    expect(JSON.parse(localStorage.getItem('kata:issue-sort/v1')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('poomsae:issue-sort/v1')!)).toEqual({
       key: 'id',
       direction: 'asc',
     })
@@ -1173,7 +1176,7 @@ describe('IssueCollection', () => {
     await fireEvent.click(screen.getByRole('checkbox', { name: 'ID' }))
     expect(screen.getByRole('button', { name: 'Sort by ID, currently ascending' })).toBeTruthy()
     await fireEvent.click(screen.getByRole('checkbox', { name: 'ID' }))
-    expect(JSON.parse(localStorage.getItem('kata:issue-sort/v1')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('poomsae:issue-sort/v1')!)).toEqual({
       key: 'title',
       direction: 'asc',
     })
@@ -1226,7 +1229,7 @@ describe('IssueCollection', () => {
         .getByRole('button', { name: 'Sort by Title, currently ascending' })
         .getAttribute('aria-pressed'),
     ).toBe('true')
-    expect(JSON.parse(localStorage.getItem('kata:issue-sort/v1')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('poomsae:issue-sort/v1')!)).toEqual({
       key: 'title',
       direction: 'asc',
     })
@@ -1301,7 +1304,7 @@ describe('IssueCollection', () => {
       closed_at: new Date(2026, 4, 16, 12).toISOString(),
       updated_at: '2026-05-15T08:00:00Z',
     })
-    const logbookView: KataCurrentView = {
+    const logbookView: PoomsaeCurrentView = {
       name: 'logbook',
       fetched_at: currentView.fetched_at,
       groups: [{ id: '2026-05-16', title: 'May 16', issues: [oldDue, noDue] }],
@@ -1309,7 +1312,7 @@ describe('IssueCollection', () => {
 
     for (const savedSort of [null, JSON.stringify({ key: 'due', direction: 'asc' })]) {
       window.localStorage.clear()
-      if (savedSort) window.localStorage.setItem('kata:issue-sort/v1', savedSort)
+      if (savedSort) window.localStorage.setItem('poomsae:issue-sort/v1', savedSort)
       const { unmount } = render(IssueCollection, {
         props: {
           currentView: logbookView,
@@ -1376,7 +1379,7 @@ describe('IssueCollection', () => {
         issueCatalog: [parent, child],
         selectedIssueUID: null,
         loading: false,
-        onSelect: (issue: KataTaskSummary) => selected.push(issue.uid),
+        onSelect: (issue: PoomsaeTaskSummary) => selected.push(issue.uid),
       },
     })
 
@@ -1552,7 +1555,7 @@ describe('IssueCollection', () => {
     'keeps cross-project children in the task tree when sorting by %s',
     async (sortKey) => {
       window.localStorage.setItem(
-        'kata:issue-sort/v1',
+        'poomsae:issue-sort/v1',
         JSON.stringify({ key: sortKey, direction: sortKey === 'due' ? 'asc' : 'desc' }),
       )
       const parent = task({
@@ -1744,7 +1747,7 @@ describe('IssueCollection', () => {
         currentView,
         selectedIssueUID: null,
         loading: false,
-        onSelect: (issue: KataTaskSummary) => selected.push(issue.uid),
+        onSelect: (issue: PoomsaeTaskSummary) => selected.push(issue.uid),
       },
     })
 
@@ -1818,7 +1821,7 @@ describe('IssueCollection', () => {
       selectedIssueUID: null,
       loading: false,
       navigationGeneration: 0,
-      onSelect: (issue: KataTaskSummary) => selected.push(issue.uid),
+      onSelect: (issue: PoomsaeTaskSummary) => selected.push(issue.uid),
     }
     const { rerender } = render(IssueCollection, { props })
 
@@ -2617,7 +2620,7 @@ describe('IssueCollection', () => {
 
 // Shared setup for the fake-timer keyboard tests: renders the list,
 // records selections, and focuses the first row ready for key events.
-function renderKeyboardList(view: KataCurrentView = currentView) {
+function renderKeyboardList(view: PoomsaeCurrentView = currentView) {
   vi.useFakeTimers()
   const selected: string[] = []
   render(IssueCollection, {
@@ -2625,7 +2628,7 @@ function renderKeyboardList(view: KataCurrentView = currentView) {
       currentView: view,
       selectedIssueUID: null,
       loading: false,
-      onSelect: (issue: KataTaskSummary) => selected.push(issue.uid),
+      onSelect: (issue: PoomsaeTaskSummary) => selected.push(issue.uid),
     },
   })
   const rows = visibleRows()
@@ -2633,7 +2636,7 @@ function renderKeyboardList(view: KataCurrentView = currentView) {
   return { selected, rows }
 }
 
-function thirdIssue(): KataTaskSummary {
+function thirdIssue(): PoomsaeTaskSummary {
   return task({
     id: 103,
     uid: 'issue-water-plants',
@@ -2658,7 +2661,7 @@ function visibleRowTitles(): string[] {
     .map((row) => row.querySelector('.title-text')?.textContent?.trim() ?? '')
 }
 
-function viewWithIssues(issues: KataTaskSummary[]): KataCurrentView {
+function viewWithIssues(issues: PoomsaeTaskSummary[]): PoomsaeCurrentView {
   return {
     name: 'all',
     fetched_at: '2026-05-16T10:00:00Z',
@@ -2666,7 +2669,7 @@ function viewWithIssues(issues: KataTaskSummary[]): KataCurrentView {
   }
 }
 
-function task(overrides: Partial<KataTaskSummary>): KataTaskSummary {
+function task(overrides: Partial<PoomsaeTaskSummary>): PoomsaeTaskSummary {
   return {
     id: 1,
     uid: 'issue-uid',

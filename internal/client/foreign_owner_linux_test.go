@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestForeignOwnerHelperProcess(t *testing.T) {
-	if os.Getenv("KATA_CLIENT_PIDNS_HELPER") != "1" {
+	if os.Getenv("POOMSAE_CLIENT_PIDNS_HELPER") != "1" {
 		return
 	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
@@ -33,7 +33,7 @@ func TestAutoStartRefusesStoreOwnedFromAnotherPIDNamespace(t *testing.T) {
 	setupKataEnv(t)
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	child := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=^TestForeignOwnerHelperProcess$") //nolint:gosec // test binary
-	child.Env = append(os.Environ(), "KATA_CLIENT_PIDNS_HELPER=1")
+	child.Env = append(os.Environ(), "POOMSAE_CLIENT_PIDNS_HELPER=1")
 	child.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags:  syscall.CLONE_NEWUSER | syscall.CLONE_NEWPID,
 		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
@@ -58,7 +58,7 @@ func TestAutoStartRefusesStoreOwnedFromAnotherPIDNamespace(t *testing.T) {
 		PID: 1, ProcessIdentityV2: identity, StartedAt: time.Now().UTC(), Network: "tcp", Address: "127.0.0.1:1",
 	})
 	require.NoError(t, err)
-	dsn, err := config.KataDSN(t.Context())
+	dsn, err := config.PoomsaeDSN(t.Context())
 	require.NoError(t, err)
 	release, err := daemonruntime.AcquireStoreOwnerLock(t.Context(), daemonruntime.StoreOwnerLockPaths(ns.DataDir, dsn))
 	require.NoError(t, err)
@@ -78,6 +78,6 @@ func TestAutoStartRefusesStoreOwnedFromAnotherPIDNamespace(t *testing.T) {
 
 	_, err = autoStart(ctx, ns.DataDir)
 
-	require.ErrorContains(t, err, "a kata daemon in another PID namespace owns this store")
+	require.ErrorContains(t, err, "a poomsae daemon in another PID namespace owns this store")
 	assert.Zero(t, spawns)
 }

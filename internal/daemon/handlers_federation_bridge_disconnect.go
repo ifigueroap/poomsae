@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 var errFederationBridgePendingProjectArchived = errors.New("pending bridge setup belongs to an archived project")

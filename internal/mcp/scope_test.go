@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func TestScopeIssueTargetRequiresQualificationInMultiProjectMode(t *testing.T) {
@@ -119,7 +119,7 @@ func TestScopeProjectsFailWhenNoMembersRemain(t *testing.T) {
 	require.EqualError(t, err, "no projects in the MCP startup scope are available")
 }
 
-func projectCatalogClient(t *testing.T, response string) *kataclient.Client {
+func projectCatalogClient(t *testing.T, response string) *poomsaeclient.Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "/api/v1/projects", request.URL.Path)
@@ -127,7 +127,7 @@ func projectCatalogClient(t *testing.T, response string) *kataclient.Client {
 		_, _ = writer.Write([]byte(response))
 	}))
 	t.Cleanup(server.Close)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	return client
 }

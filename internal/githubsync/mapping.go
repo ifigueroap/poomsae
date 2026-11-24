@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/importlabels"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/importlabels"
 )
 
 // IsPullRequestIssue reports whether a GitHub issues API row is a pull request.
@@ -14,12 +14,12 @@ func IsPullRequestIssue(issue Issue) bool {
 	return issue.PullRequest != nil
 }
 
-// BuildImportBatch maps GitHub issue and comment API rows to kata import items.
+// BuildImportBatch maps GitHub issue and comment API rows to poomsae import items.
 func BuildImportBatch(sourceKey string, issues []Issue, comments map[int][]Comment, syncStartedAt time.Time) db.ImportBatchParams {
 	return BuildImportBatchWithConfig(sourceKey, Config{}, issues, comments, ParentData{}, syncStartedAt)
 }
 
-// BuildImportBatchWithConfig maps GitHub issue and comment API rows to kata
+// BuildImportBatchWithConfig maps GitHub issue and comment API rows to poomsae
 // import items using stored provider config for presentation choices.
 func BuildImportBatchWithConfig(sourceKey string, config Config, issues []Issue, comments map[int][]Comment, parentData ParentData, syncStartedAt time.Time) db.ImportBatchParams {
 	batch := db.ImportBatchParams{
@@ -99,7 +99,7 @@ func issueExternalID(issue Issue) string {
 	return fmt.Sprintf("issue-number:%d", issue.Number)
 }
 
-// issueLegacyExternalIDs returns external ids that earlier kata versions may
+// issueLegacyExternalIDs returns external ids that earlier poomsae versions may
 // have used for this issue, so import upsert can adopt a pre-upgrade mapping
 // onto the canonical key. Before the REST id became canonical the key was
 // issue:<node_id>; emit that alias whenever an id-keyed issue also carries a

@@ -8,9 +8,9 @@
 
 
 
-                        no kata projects registered yet
+                       no poomsae projects registered yet
 
-                   run `kata init` in a repo to get started.
+                  run `poomsae init` in a repo to get started.
                                 press q to quit.
 
 

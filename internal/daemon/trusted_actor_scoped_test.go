@@ -8,11 +8,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func TestTrustedProxyPreservesIssueScopedBearer(t *testing.T) {
-	ts, store, _ := startBearerProxyTestServer(t, "X-Kata-Actor", bearerProxyOpts{
+	ts, store, _ := startBearerProxyTestServer(t, "X-Poomsae-Actor", bearerProxyOpts{
 		Token: "bootstrap-token", RequireTokenIdentity: true,
 	})
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -35,7 +35,7 @@ func TestTrustedProxyPreservesIssueScopedBearer(t *testing.T) {
 	base := "/api/v1/projects/" + strconv.FormatInt(project.ID, 10) + "/issues/"
 	for _, actor := range []string{"", "proxy-admin"} {
 		t.Run("actor="+actor, func(t *testing.T) {
-			headers := map[string]string{"Authorization": "Bearer worker-token", "X-Kata-Actor": actor}
+			headers := map[string]string{"Authorization": "Bearer worker-token", "X-Poomsae-Actor": actor}
 			resp, raw := doReq(t, ts, http.MethodGet, base+outside.ShortID, nil, headers)
 			require.Equal(t, http.StatusNotFound, resp.StatusCode, string(raw))
 			resp, raw = doReq(t, ts, http.MethodPost, base+outside.ShortID+"/comments",

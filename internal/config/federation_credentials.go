@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
 	"github.com/BurntSushi/toml"
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"go.kenn.io/kit/atomicfile"
 )
 
@@ -185,7 +185,7 @@ type FederationManagedCredentialStore interface {
 }
 
 // homeFederationCredentialStore uses the standalone daemon's
-// <KATA_HOME>/credentials.toml file.
+// <POOMSAE_HOME>/credentials.toml file.
 type homeFederationCredentialStore struct{}
 
 func (homeFederationCredentialStore) ListManagedFederationCredentials(_ context.Context) ([]FederationManagedCredentialReservation, error) {
@@ -300,7 +300,7 @@ func DefaultFederationCredentialStore() FederationManagedCredentialStore {
 	return homeFederationCredentialStore{}
 }
 
-// ReadFederationCredentials reads <KATA_HOME>/credentials.toml. Missing files
+// ReadFederationCredentials reads <POOMSAE_HOME>/credentials.toml. Missing files
 // return an empty credential set.
 func ReadFederationCredentials() (*FederationCredentials, error) {
 	federationCredentialsMu.Lock()
@@ -318,7 +318,7 @@ func readFederationCredentials() (*FederationCredentials, error) {
 }
 
 func readFederationCredentialsFile(path string) (*FederationCredentials, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // path is derived from a Kata home
+	data, err := os.ReadFile(path) //nolint:gosec // path is derived from a Poomsae home
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &FederationCredentials{Projects: map[string]FederationCredential{}}, nil
@@ -389,7 +389,7 @@ func (c FederationCredential) Metadata() FederationCredentialMetadata {
 }
 
 // DeleteFederationCredential removes one project credential from
-// <KATA_HOME>/credentials.toml. It is idempotent: a missing entry or a missing
+// <POOMSAE_HOME>/credentials.toml. It is idempotent: a missing entry or a missing
 // file is not an error. Called from the daemon leave route, mirroring
 // WriteFederationCredential.
 func DeleteFederationCredential(projectUID string) error {
@@ -451,7 +451,7 @@ func directorySyncUnsupported(err error) bool {
 }
 
 // WriteFederationCredential upserts one project credential into
-// <KATA_HOME>/credentials.toml with owner-only permissions.
+// <POOMSAE_HOME>/credentials.toml with owner-only permissions.
 func WriteFederationCredential(projectUID string, c FederationCredential) error {
 	return updateFederationCredentials(func(creds *FederationCredentials) error {
 		creds.Projects[projectUID] = c

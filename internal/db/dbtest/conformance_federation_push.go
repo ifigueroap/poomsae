@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A push page must finish its first snapshot run and stop before the next

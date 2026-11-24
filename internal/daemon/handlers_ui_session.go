@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 type uiLocalSessionRequest = api.UILocalSessionRequest

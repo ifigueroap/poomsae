@@ -13,17 +13,17 @@ import (
 )
 
 // ErrProjectConfigMissing is returned by ReadProjectConfig when the workspace
-// has no .kata.toml at the given path.
-var ErrProjectConfigMissing = errors.New(".kata.toml not found")
+// has no .poomsae.toml at the given path.
+var ErrProjectConfigMissing = errors.New(".poomsae.toml not found")
 
 // ProjectConfigFilename is the canonical filename committed at workspace roots.
-const ProjectConfigFilename = ".kata.toml"
+const ProjectConfigFilename = ".poomsae.toml"
 
-const projectConfigHeader = "# This repository tracks its work in kata.\n" +
-	"# Coding agents: read `kata quickstart --format contract` before changing code here.\n"
+const projectConfigHeader = "# This repository tracks its work in poomsae.\n" +
+	"# Coding agents: read `poomsae quickstart --format contract` before changing code here.\n"
 
-// ProjectConfig is the parsed contents of a workspace .kata.toml or
-// .kata.local.toml. The same struct serves both files; readers differ
+// ProjectConfig is the parsed contents of a workspace .poomsae.toml or
+// .poomsae.local.toml. The same struct serves both files; readers differ
 // only in which validations they enforce.
 type ProjectConfig struct {
 	Version int             `toml:"version"`
@@ -39,9 +39,9 @@ type ProjectBindings struct {
 
 // ServerConfig carries the [server] block. Optional in both committed
 // and local config files. URL is the daemon base URL (e.g.
-// http://100.64.0.5:7777). When set on .kata.local.toml it directs
+// http://100.64.0.5:7777). When set on .poomsae.local.toml it directs
 // the client to a remote daemon; ignored if it appears in committed
-// .kata.toml in v1, but parsed without error.
+// .poomsae.toml in v1, but parsed without error.
 //
 // AllowInsecure opts out of the client-side scheme guard that rejects
 // plain http to a non-private host. Required when URL uses a hostname
@@ -53,7 +53,7 @@ type ServerConfig struct {
 	AllowInsecure bool   `toml:"allow_insecure,omitempty"`
 }
 
-// ReadProjectConfig parses <workspaceRoot>/.kata.toml and validates v1 fields.
+// ReadProjectConfig parses <workspaceRoot>/.poomsae.toml and validates v1 fields.
 // Returns (nil, ErrProjectConfigMissing) when the file does not exist; other
 // I/O or validation errors are returned as-is.
 func ReadProjectConfig(workspaceRoot string) (*ProjectConfig, error) {
@@ -70,7 +70,7 @@ func ReadProjectConfig(workspaceRoot string) (*ProjectConfig, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	if cfg.Version != 1 {
-		return nil, fmt.Errorf("unsupported .kata.toml version %d (expected 1)", cfg.Version)
+		return nil, fmt.Errorf("unsupported .poomsae.toml version %d (expected 1)", cfg.Version)
 	}
 	cfg.Project.LegacyIdentity = strings.TrimSpace(cfg.Project.LegacyIdentity)
 	cfg.Project.Name = strings.TrimSpace(cfg.Project.Name)
@@ -81,14 +81,14 @@ func ReadProjectConfig(workspaceRoot string) (*ProjectConfig, error) {
 		return nil, fmt.Errorf("project.name: %w", err)
 	}
 	if strings.TrimSpace(cfg.Server.Daemon) != "" {
-		fmt.Fprintln(os.Stderr, "kata: warning: server.daemon in .kata.toml is ignored; move it to .kata.local.toml")
+		fmt.Fprintln(os.Stderr, "poomsae: warning: server.daemon in .poomsae.toml is ignored; move it to .poomsae.local.toml")
 	}
 	return &cfg, nil
 }
 
 // FindProjectConfig walks upward from startPath looking for a readable
-// .kata.toml. Returns the parsed config and the directory it was found
-// in. Returns ErrProjectConfigMissing if no .kata.toml is found. In a git
+// .poomsae.toml. Returns the parsed config and the directory it was found
+// in. Returns ErrProjectConfigMissing if no .poomsae.toml is found. In a git
 // workspace, discovery stops at the git root; otherwise it stops at the
 // filesystem root.
 //
@@ -111,7 +111,7 @@ func FindProjectConfig(startPath string) (*ProjectConfig, string, error) {
 	return cfg, disc.WorkspaceRoot, nil
 }
 
-// WriteProjectConfig writes a v1 .kata.toml at <workspaceRoot>/.kata.toml.
+// WriteProjectConfig writes a v1 .poomsae.toml at <workspaceRoot>/.poomsae.toml.
 func WriteProjectConfig(workspaceRoot, name string) error {
 	name = strings.TrimSpace(name)
 	if err := ValidateProjectName(name); err != nil {
@@ -135,7 +135,7 @@ func projectConfigBytes(name string) []byte {
 
 // HasProjectConfigHeader reports whether the guidance is already present.
 func HasProjectConfigHeader(data []byte) bool {
-	return strings.Contains(string(data), "kata quickstart --format contract")
+	return strings.Contains(string(data), "poomsae quickstart --format contract")
 }
 
 // EnsureProjectConfigHeader prepends agent guidance while preserving existing contents.

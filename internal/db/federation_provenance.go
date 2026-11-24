@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/teammate"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RootKeyPin is the trusted authority for one project. Receiving a public key
@@ -79,7 +79,7 @@ func receiptSigningBytes(receipt AttributionReceipt) ([]byte, error) {
 	return json.Marshal(struct {
 		Domain  string             `json:"domain"`
 		Receipt AttributionReceipt `json:"receipt"`
-	}{Domain: "kata.root-attribution.v1", Receipt: receipt})
+	}{Domain: "poomsae.root-attribution.v1", Receipt: receipt})
 }
 
 // SignRootReceipt returns a signed copy. The caller must derive the accountable

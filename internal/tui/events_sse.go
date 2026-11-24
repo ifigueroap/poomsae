@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/cenkalti/backoff/v7"
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 // reconnectStatusGrace defers surfacing sseReconnecting to the UI for
@@ -142,7 +142,7 @@ func notifyStatus(ctx context.Context, sseCh chan<- tea.Msg, st sseConnState, ge
 // iterator until disconnect. lastID rides Last-Event-ID for resume when >0.
 // connected is true once at least one frame was emitted so callers
 // reset their backoff only on a productive connection. A stream the
-// daemon closes returns kataclient.ErrEventStreamEnded.
+// daemon closes returns poomsaeclient.ErrEventStreamEnded.
 //
 // sseConnected is pushed exactly once per connection, on the first
 // successful frame — never optimistically before a frame lands. A
@@ -158,12 +158,12 @@ func readSSEStream(
 	ctx context.Context, hc *http.Client, base string, projectID *int64,
 	lastID int64, sseCh chan<- tea.Msg, updateLastID *int64, onConnect func(), gen ...uint64,
 ) (bool, error) {
-	apiClient, err := kataclient.NewWithHTTPClient(base, hc)
+	apiClient, err := poomsaeclient.NewWithHTTPClient(base, hc)
 	if err != nil {
 		return false, err
 	}
 	connected := false
-	for e, err := range apiClient.Events(ctx, kataclient.EventsOptions{ProjectID: projectID, LastEventID: lastID}) {
+	for e, err := range apiClient.Events(ctx, poomsaeclient.EventsOptions{ProjectID: projectID, LastEventID: lastID}) {
 		if err != nil {
 			return connected, err
 		}
@@ -199,7 +199,7 @@ func firstGen(gen []uint64) uint64 {
 // ResetAfterID is not threaded onto the message: the daemon's contract
 // (internal/api/events.go EventReset.EventID == ResetAfterID) makes the event
 // ID the authoritative resume checkpoint.
-func forwardFrame(ctx context.Context, sseCh chan<- tea.Msg, event kataclient.Event, gen ...uint64) bool {
+func forwardFrame(ctx context.Context, sseCh chan<- tea.Msg, event poomsaeclient.Event, gen ...uint64) bool {
 	var msg tea.Msg
 	if event.Reset != nil || event.Oversized {
 		msg = resetRequiredMsg{gen: firstGen(gen)}

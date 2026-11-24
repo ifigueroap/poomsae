@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestFederationRebindPreflightUsesEnrollmentTokenAndPreservesPath(t *testing.T) {
@@ -23,7 +23,7 @@ func TestFederationRebindPreflightUsesEnrollmentTokenAndPreservesPath(t *testing
 		adminToken      = "catalog-admin-secret"
 		globalToken     = "spoke-daemon-secret"
 	)
-	t.Setenv("KATA_AUTH_TOKEN", globalToken)
+	t.Setenv("POOMSAE_AUTH_TOKEN", globalToken)
 	var requestPath, authorization string
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestPath = r.URL.EscapedPath()
@@ -153,7 +153,7 @@ func TestFederationRebindPreflightClassifiesEnrollmentRejection(t *testing.T) {
 				var apiErr *api.APIError
 				require.ErrorAs(t, federationReplicaAPIError(err), &apiErr)
 				assert.Equal(t, "replacement hub requires signed requests", apiErr.Message)
-				assert.Contains(t, apiErr.Hint, "kata federation signing configure")
+				assert.Contains(t, apiErr.Hint, "poomsae federation signing configure")
 				assert.Contains(t, apiErr.Hint, "--hub-url <new-https-base>")
 			}
 		})
@@ -191,7 +191,7 @@ func TestFederationRebindPreflightClassifiesPinnedSigningBaseMismatch(t *testing
 	assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 	assert.Equal(t, "validation", apiErr.Code)
 	assert.Contains(t, apiErr.Message, "pinned to a different hub base")
-	assert.Contains(t, apiErr.Hint, "kata federation signing configure")
+	assert.Contains(t, apiErr.Hint, "poomsae federation signing configure")
 	assert.Contains(t, apiErr.Hint, "--hub-url")
 	assert.False(t, requestReachedHub)
 }

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 // RelayRetainedArtifactRow is one retained, unexpired embedding artifact of a

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestRemoveFreshSchemaWaitsForServingLease(t *testing.T) {
@@ -101,7 +101,7 @@ func TestRemoveFreshSchemaRefusesExternalDependents(t *testing.T) {
 	_, err = admin.ExecContext(ctx, `
 		CREATE SCHEMA external_consumer;
 		CREATE TABLE external_consumer.project_refs (
-			project_id BIGINT REFERENCES kata.projects(id)
+			project_id BIGINT REFERENCES poomsae.projects(id)
 		)`)
 	require.NoError(t, err)
 
@@ -143,7 +143,7 @@ func TestRemoveFreshSchemaRefusesExternalFunctionDependents(t *testing.T) {
 		RETURNS void
 		LANGUAGE SQL
 		BEGIN ATOMIC
-			SELECT kata.rebuild_issue_search(p_issue_id);
+			SELECT poomsae.rebuild_issue_search(p_issue_id);
 		END`)
 	require.NoError(t, err)
 

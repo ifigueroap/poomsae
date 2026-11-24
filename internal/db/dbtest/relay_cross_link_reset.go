@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayCrossLinkResetHistory checks reset gating, peer-denial rollback, and unlink history across hops.

@@ -76,7 +76,7 @@ func TestEmbeddingCredentialFileSafety(t *testing.T) {
 
 func TestReadDaemonConfigEmbeddingKeyFilePrecedence(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	path := filepath.Join(home, "embedding.key")
 	writePrivateCredentialFixture(t, path, []byte("file-secret\n"))
 	body := fmt.Sprintf("[search.embeddings]\nbase_url = \"https://embedding.example/v1\"\nmodel = \"example-model\"\napi_key = \"inline-secret\"\napi_key_file = %q\napi_key_env = \"EXAMPLE_EMBEDDING_KEY\"\n", path)

@@ -103,7 +103,7 @@ func LinkPatch(in LinkInput) (map[string]jsontext.Value, error) {
 // SettlePatch answers the sender's request in one issue's slots. Any typed
 // reply to the comment a request names settles that request. The requester
 // then learns of the answer on the issue where they asked, which is where
-// kata wait --until reply watches. Replay never calls it.
+// poomsae wait --until reply watches. Replay never calls it.
 func SettlePatch(slots map[string]jsontext.Value, sender Identity, answeredUID string, link jsontext.Value) map[string]jsontext.Value {
 	patch := map[string]jsontext.Value{}
 	senderAddress := RecipientOf(sender)

@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // Header optionally narrows a request to a fixed set of projects.
 // Each value is a JSON array; repeated values intersect. Coalescing two values
 // with a comma produces invalid JSON and therefore fails closed.
-const Header = "X-Kata-Project-Scope"
+const Header = "X-Poomsae-Project-Scope"
 
 // ParseHeader validates one nonempty narrowing layer. Project UIDs
 // are preferred; id:N preserves the legacy bound MCP API which lacks a UID.

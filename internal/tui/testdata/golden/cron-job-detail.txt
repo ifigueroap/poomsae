@@ -1,5 +1,5 @@
- Project: example-project                                       kata カタ · dev
-kata カタ [jobs] runs workflows
+ Project: example-project                                    poomsae カタ · dev
+poomsae カタ [jobs] runs workflows
  jobs / Daily summary
 
 ▶ State:    enabled

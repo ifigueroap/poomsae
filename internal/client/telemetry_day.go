@@ -8,7 +8,7 @@ import (
 
 	"go.kenn.io/kit/atomicfile"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // TelemetryDayMarkerPath retains the CLI and MCP marker identity for a resolved daemon.
@@ -42,7 +42,7 @@ func TelemetryDisabledMarkerPath(key string) string {
 
 // TelemetryDayMarkerPathForKey hashes a stable target identity without storing its address.
 func TelemetryDayMarkerPathForKey(key, prefix string) string {
-	home, err := config.KataHome()
+	home, err := config.PoomsaeHome()
 	if err != nil {
 		return ""
 	}
@@ -55,7 +55,7 @@ func ReadTelemetryDayMarker(path string) string {
 	if path == "" {
 		return ""
 	}
-	day, err := os.ReadFile(path) //nolint:gosec // G304: path is derived from KATA_HOME, not user input.
+	day, err := os.ReadFile(path) //nolint:gosec // G304: path is derived from POOMSAE_HOME, not user input.
 	if err != nil {
 		return ""
 	}

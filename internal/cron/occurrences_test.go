@@ -154,7 +154,7 @@ func TestRecurringOccurrencesAdapterTriggers(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, got, "a past once trigger has no next time")
 
-	// Kata holds no anchor, lease, or catch-up for an adapter interval.
+	// Poomsae holds no anchor, lease, or catch-up for an adapter interval.
 	got, err = RecurringOccurrences(adapterJob(t, Trigger{Kind: "interval", IntervalSeconds: 3600}), RecurringProgress{}, after, 3)
 	require.NoError(t, err)
 	require.Empty(t, got)

@@ -4,7 +4,7 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
-	"go.kenn.io/kata/internal/colormode"
+	"github.com/ifigueroap/poomsae/internal/colormode"
 	"go.kenn.io/kit/tui/markdownrender"
 )
 
@@ -18,7 +18,7 @@ const (
 )
 
 // resolveColorMode honors NO_COLOR (any non-empty value) over
-// KATA_COLOR_MODE. Unrecognized values fall back to auto.
+// POOMSAE_COLOR_MODE. Unrecognized values fall back to auto.
 func resolveColorMode() colorMode {
 	return colormode.Resolve()
 }
@@ -27,7 +27,7 @@ func resolveColorMode() colorMode {
 // state. applyColorMode rebuilds them once at boot.
 //
 // The palette mirrors roborev's (cmd/roborev/tui/tui.go:38-77) so the
-// two TUIs feel consistent. Where kata's status semantics differ from
+// two TUIs feel consistent. Where poomsae's status semantics differ from
 // roborev's, the colors are remapped: openStyle reuses roborev's
 // passStyle (green), closedStyle is neutral gray so warm/night-shift
 // displays don't collapse blue/cyan into green, and deletedStyle reuses
@@ -62,7 +62,7 @@ var (
 // Border colors used by M3+ render code for panel chrome (focused vs
 // unfocused panes, form/prompt boxes). Stored as color.Color so callers
 // pass them straight to BorderForeground without re-resolving the color
-// mode. Re-bound by applyColorMode so KATA_COLOR_MODE picks the right
+// mode. Re-bound by applyColorMode so POOMSAE_COLOR_MODE picks the right
 // shade.
 var (
 	panelActiveBorder   color.Color // magenta

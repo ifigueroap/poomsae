@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestTickTickTokenSelector(t *testing.T) {
 	c, err := config.NormalizeTickTickSyncConfig(config.TickTickSyncConfig{})
 	require.NoError(t, err)
-	require.Equal(t, "KATA_TICKTICK_TOKEN", c.TokenEnv)
+	require.Equal(t, "POOMSAE_TICKTICK_TOKEN", c.TokenEnv)
 	c, err = config.NormalizeTickTickSyncConfig(config.TickTickSyncConfig{TokenEnv: " EXAMPLE_TOKEN "})
 	require.NoError(t, err)
 	require.Equal(t, "EXAMPLE_TOKEN", c.TokenEnv)
@@ -31,7 +31,7 @@ func TestReadDaemonConfigTickTick(t *testing.T) {
 			switch body {
 			case "":
 				require.NoError(t, err)
-				require.Equal(t, "KATA_TICKTICK_TOKEN", got.TickTickSync.TokenEnv)
+				require.Equal(t, "POOMSAE_TICKTICK_TOKEN", got.TickTickSync.TokenEnv)
 			case "[ticktick_sync]\ntoken_env='EXAMPLE_TOKEN'":
 				require.NoError(t, err)
 				require.Equal(t, "EXAMPLE_TOKEN", got.TickTickSync.TokenEnv)

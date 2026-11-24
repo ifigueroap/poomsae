@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Capture the production Web UI against disposable synthetic Kata state.
+# Capture the production Web UI against disposable synthetic Poomsae state.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,7 +41,7 @@ fi
 mkdir -p "$output_dir/web-ui"
 (
   cd "$repo_root/web"
-  KATA_DOCS_SCREENSHOT_DIR="$output_dir" \
+  POOMSAE_DOCS_SCREENSHOT_DIR="$output_dir" \
     bun run test:e2e -- tests/docs-screenshots.spec.ts
 )
 

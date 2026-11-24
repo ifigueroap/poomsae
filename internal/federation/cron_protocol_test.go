@@ -12,20 +12,20 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func nativeStore(t *testing.T, backend string) db.Storage {
@@ -33,7 +33,7 @@ func nativeStore(t *testing.T, backend string) db.Storage {
 	var store db.Storage
 	var err error
 	if backend == "sqlite" {
-		store, err = sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+		store, err = sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	} else {
 		dsn, cleanup := pgstoretest.NewDatabase(t, t.Context())
 		t.Cleanup(cleanup)
@@ -64,7 +64,7 @@ func nativeRequest(t *testing.T, url, token, features, method string, body []byt
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if features != "" {
-		req.Header.Set("X-Kata-Event-Features", features)
+		req.Header.Set("X-Poomsae-Event-Features", features)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
@@ -119,8 +119,8 @@ func TestCronFederationFeatureGate(t *testing.T) {
 			require.Equal(t, before, after, "refusal cannot create a baseline")
 			resp, data = nativeRequest(t, path+"/metadata", grant.Token, "cron_v1", http.MethodGet, nil)
 			require.Equal(t, 200, resp.StatusCode, string(data))
-			require.Equal(t, "cron_v1", resp.Header.Get("X-Kata-Required-Event-Features"))
-			require.Equal(t, db.SupportedEventFeatures, resp.Header.Get("X-Kata-Event-Features"))
+			require.Equal(t, "cron_v1", resp.Header.Get("X-Poomsae-Required-Event-Features"))
+			require.Equal(t, db.SupportedEventFeatures, resp.Header.Get("X-Poomsae-Event-Features"))
 		})
 	}
 }
@@ -204,7 +204,7 @@ func TestCronClientRejectsUnknownRequirementsBeforeReset(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, db.SupportedEventFeatures, r.Header.Get(db.EventFeaturesHeader))
 				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("X-Kata-Required-Event-Features", required)
+				w.Header().Set("X-Poomsae-Required-Event-Features", required)
 				_, _ = w.Write([]byte(`{"reset_required":true,"reset_after_id":90,"next_after_id":90,"events":[]}`))
 			}))
 			t.Cleanup(server.Close)

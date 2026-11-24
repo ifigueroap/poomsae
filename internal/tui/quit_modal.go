@@ -30,7 +30,7 @@ const (
 // so the panel stays compact regardless of terminal width.
 func renderQuitConfirmModal() string {
 	body := strings.Join([]string{
-		"Quit kata?",
+		"Quit poomsae?",
 		"",
 		"Are you sure you want to quit?",
 		"",

@@ -9,19 +9,19 @@ import (
 	"net/http"
 	"strings"
 
-	kataapi "go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/client/generated"
+	poomsaeapi "github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 type cronAPI interface {
 	ListCronJobs(context.Context, int64) ([]generated.CronJob, error)
 	ShowCronJob(ctx context.Context, projectID int64, uid string) (db.CronJob, error)
-	PutCronJob(ctx context.Context, projectID int64, uid string, write kataapi.PutCronJobBody) error
+	PutCronJob(ctx context.Context, projectID int64, uid string, write poomsaeapi.PutCronJobBody) error
 	ListCronWorkflows(context.Context, int64) ([]generated.CronWorkflow, error)
 	ShowCronWorkflow(ctx context.Context, projectID int64, uid string) (db.CronWorkflow, error)
-	PutCronWorkflow(ctx context.Context, projectID int64, uid string, write kataapi.PutCronWorkflowBody) error
+	PutCronWorkflow(ctx context.Context, projectID int64, uid string, write poomsaeapi.PutCronWorkflowBody) error
 	ListCronRuns(context.Context, int64) ([]generated.CronRun, error)
 	readCronParent(ctx context.Context, projectID int64, parentUID string) (cronParent, error)
 }
@@ -158,9 +158,9 @@ func decodeCronJobRecord(body []byte) (db.CronJob, error) {
 }
 
 func decodeCronJob(body []byte) (db.CronJob, error) {
-	var job kataapi.CronJob
+	var job poomsaeapi.CronJob
 	if err := json.Unmarshal(body, &job, json.RejectUnknownMembers(true)); err != nil {
-		return db.CronJob{}, fmt.Errorf("use a newer kata to edit this job: %w", err)
+		return db.CronJob{}, fmt.Errorf("use a newer poomsae to edit this job: %w", err)
 	}
 	return db.CronJob{CronDefinition: job.CronDefinition, Definition: job.Definition.Native()}, nil
 }
@@ -183,10 +183,10 @@ func (c *Client) ShowCronJob(ctx context.Context, projectID int64, uid string) (
 	return decodeCronJobRecord(wire.Body)
 }
 
-// PutCronJob creates or replaces a job, the same call `kata cron job create`
+// PutCronJob creates or replaces a job, the same call `poomsae cron job create`
 // and `update` make. The body reaches the generated type through its own
 // decoder, which keeps option numbers exact.
-func (c *Client) PutCronJob(ctx context.Context, projectID int64, uid string, write kataapi.PutCronJobBody) error {
+func (c *Client) PutCronJob(ctx context.Context, projectID int64, uid string, write poomsaeapi.PutCronJobBody) error {
 	client, err := c.generatedClient()
 	if err != nil {
 		return err
@@ -211,9 +211,9 @@ func (c *Client) PutCronJob(ctx context.Context, projectID int64, uid string, wr
 
 // decodeCronWorkflow reads a workflow without passing options through a generated map.
 func decodeCronWorkflow(body []byte) (db.CronWorkflow, error) {
-	var workflow kataapi.CronWorkflow
+	var workflow poomsaeapi.CronWorkflow
 	if err := json.Unmarshal(body, &workflow, json.RejectUnknownMembers(true)); err != nil {
-		return db.CronWorkflow{}, fmt.Errorf("use a newer kata to edit this workflow: %w", err)
+		return db.CronWorkflow{}, fmt.Errorf("use a newer poomsae to edit this workflow: %w", err)
 	}
 	return db.CronWorkflow{CronDefinition: workflow.CronDefinition, Definition: workflow.Definition.Native()}, nil
 }
@@ -244,7 +244,7 @@ func (c *Client) ShowCronWorkflow(ctx context.Context, projectID int64, uid stri
 
 // PutCronWorkflow creates or replaces a workflow. The body reaches the
 // generated type through its own decoder, which keeps option numbers exact.
-func (c *Client) PutCronWorkflow(ctx context.Context, projectID int64, uid string, write kataapi.PutCronWorkflowBody) error {
+func (c *Client) PutCronWorkflow(ctx context.Context, projectID int64, uid string, write poomsaeapi.PutCronWorkflowBody) error {
 	client, err := c.generatedClient()
 	if err != nil {
 		return err

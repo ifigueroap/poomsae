@@ -4,7 +4,7 @@ package tickticksync
 import (
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Config contains only operator-selected non-secret settings.
@@ -32,7 +32,7 @@ type Project struct {
 	Permission string `json:"permission"`
 }
 
-// Task contains the public fields imported into Kata; dates remain provider-owned.
+// Task contains the public fields imported into Poomsae; dates remain provider-owned.
 type Task struct {
 	ID            string          `json:"id"`
 	ProjectID     string          `json:"projectId"`

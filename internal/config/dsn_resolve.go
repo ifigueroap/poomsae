@@ -8,36 +8,36 @@ import (
 	"strings"
 )
 
-// KataDSN returns the effective database DSN honoring (in precedence order)
-// $KATA_DSN, $KATA_DB (legacy env override), [storage].dsn from
-// <KATA_HOME>/config.toml, and the <KATA_HOME>/kata.db default. The returned
+// PoomsaeDSN returns the effective database DSN honoring (in precedence order)
+// $POOMSAE_DSN, $POOMSAE_DB (legacy env override), [storage].dsn from
+// <POOMSAE_HOME>/config.toml, and the <POOMSAE_HOME>/poomsae.db default. The returned
 // string is whatever the user supplied: a bare path, sqlite:// DSN, or
 // postgres:// DSN. Callers pass it directly to storeopen.Open. Shape
 // validation rejects unknown schemes and libpq query params on sqlite/bare
 // DSNs with credential-free errors; validation is shape-only and never dials.
 //
 // Env vars take precedence over the config file so a user's existing shell
-// (with KATA_DB exported) keeps pointing at the same database after the
+// (with POOMSAE_DB exported) keeps pointing at the same database after the
 // config-file knob lands — without this ordering, an absent-from-the-shell
 // [storage].dsn would silently redirect long-running scripts to a different
 // DB the next time they re-resolved.
 //
 // The TOML branch reads only the [storage] section via readStorageConfig so
 // a parse error in an unrelated section (auth, listen, close, ...) does not
-// block legacy KATA_DB callers that never cared about the daemon config.
+// block legacy POOMSAE_DB callers that never cared about the daemon config.
 //
 // ctx is accepted for symmetry with other resolver-style helpers and to let
 // future implementations short-circuit a slow read; the current body does
 // not dispatch on it.
-func KataDSN(ctx context.Context) (string, error) {
+func PoomsaeDSN(ctx context.Context) (string, error) {
 	_ = ctx
-	if v := strings.TrimSpace(os.Getenv("KATA_DSN")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("POOMSAE_DSN")); v != "" {
 		if err := validateDSN(v); err != nil {
 			return "", err
 		}
 		return v, nil
 	}
-	if v := strings.TrimSpace(os.Getenv("KATA_DB")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("POOMSAE_DB")); v != "" {
 		if err := validateDSN(v); err != nil {
 			return "", err
 		}
@@ -53,18 +53,18 @@ func KataDSN(ctx context.Context) (string, error) {
 		}
 		return v, nil
 	}
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, "kata.db"), nil
+	return filepath.Join(home, "poomsae.db"), nil
 }
 
-// KataPostgresStorageConfig returns the Postgres-specific [storage.postgres]
+// PoomsaePostgresStorageConfig returns the Postgres-specific [storage.postgres]
 // settings with environment overrides applied. It uses the same narrow
-// [storage]-only reader as KataDSN so unrelated daemon settings cannot block a
+// [storage]-only reader as PoomsaeDSN so unrelated daemon settings cannot block a
 // direct storage operation.
-func KataPostgresStorageConfig(ctx context.Context) (PostgresStorageConfig, error) {
+func PoomsaePostgresStorageConfig(ctx context.Context) (PostgresStorageConfig, error) {
 	_ = ctx
 	storage, err := readStorageConfig()
 	if err != nil {

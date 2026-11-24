@@ -3,44 +3,44 @@ package config_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestCanonicalDSNIdentityBarePathUnchanged(t *testing.T) {
-	got, err := config.CanonicalDSNIdentity("/home/u/.kata/kata.db")
+	got, err := config.CanonicalDSNIdentity("/home/u/.poomsae/poomsae.db")
 	require.NoError(t, err)
-	assert.Equal(t, "/home/u/.kata/kata.db", got)
+	assert.Equal(t, "/home/u/.poomsae/poomsae.db", got)
 }
 
 func TestCanonicalDSNIdentityPostgresStripsCredentialsAndParams(t *testing.T) {
-	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@db.example.com:5432/kata?sslmode=require")
+	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@db.example.com:5432/poomsae?sslmode=require")
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://db.example.com/kata", got)
+	assert.Equal(t, "postgres://db.example.com/poomsae", got)
 	assert.NotContains(t, got, "SECRET")
 }
 
 func TestCanonicalDSNIdentityPostgresStripsDefaultPort(t *testing.T) {
 	// 5432 is the postgres default port — strip it so the same logical DB
 	// referenced with or without :5432 produces the same identity.
-	withPort, err := config.CanonicalDSNIdentity("postgres://host:5432/kata")
+	withPort, err := config.CanonicalDSNIdentity("postgres://host:5432/poomsae")
 	require.NoError(t, err)
-	noPort, err := config.CanonicalDSNIdentity("postgres://host/kata")
+	noPort, err := config.CanonicalDSNIdentity("postgres://host/poomsae")
 	require.NoError(t, err)
 	assert.Equal(t, noPort, withPort)
-	assert.Equal(t, "postgres://host/kata", withPort)
+	assert.Equal(t, "postgres://host/poomsae", withPort)
 
 	// A non-default port is preserved.
-	custom, err := config.CanonicalDSNIdentity("postgres://host:6543/kata")
+	custom, err := config.CanonicalDSNIdentity("postgres://host:6543/poomsae")
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://host:6543/kata", custom)
+	assert.Equal(t, "postgres://host:6543/poomsae", custom)
 }
 
 func TestCanonicalDSNIdentityPostgresNoPortOmitsColon(t *testing.T) {
-	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@db.example.com/kata")
+	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@db.example.com/poomsae")
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://db.example.com/kata", got)
+	assert.Equal(t, "postgres://db.example.com/poomsae", got)
 }
 
 func TestCanonicalDSNIdentityUnknownSchemeErrors(t *testing.T) {
@@ -49,21 +49,21 @@ func TestCanonicalDSNIdentityUnknownSchemeErrors(t *testing.T) {
 }
 
 func TestRedactDSNRemovesPassword(t *testing.T) {
-	got := config.RedactDSN("postgres://user:SECRET@db.example.com:5432/kata?sslmode=require")
+	got := config.RedactDSN("postgres://user:SECRET@db.example.com:5432/poomsae?sslmode=require")
 	assert.NotContains(t, got, "SECRET")
 	assert.Contains(t, got, "user")
 	assert.Contains(t, got, "db.example.com")
 	// Mutation guard: the raw DSN really does contain the secret, so the
 	// NotContains assertion above is non-vacuous.
-	assert.Contains(t, "postgres://user:SECRET@db.example.com:5432/kata?sslmode=require", "SECRET")
+	assert.Contains(t, "postgres://user:SECRET@db.example.com:5432/poomsae?sslmode=require", "SECRET")
 }
 
 func TestRedactDSNBarePathUnchanged(t *testing.T) {
-	assert.Equal(t, "/home/u/.kata/kata.db", config.RedactDSN("/home/u/.kata/kata.db"))
+	assert.Equal(t, "/home/u/.poomsae/poomsae.db", config.RedactDSN("/home/u/.poomsae/poomsae.db"))
 }
 
 func TestRedactDSNRedactsSchemeLessKeywordPassword(t *testing.T) {
-	dsn := "host=db user=kata password=SECRET dbname=kata" //nolint:gosec // fixture proves scheme-less libpq credentials are hidden
+	dsn := "host=db user=poomsae password=SECRET dbname=poomsae" //nolint:gosec // fixture proves scheme-less libpq credentials are hidden
 	got := config.RedactDSN(dsn)
 	assert.NotContains(t, got, "SECRET")
 	assert.NotContains(t, got, "password=SECRET")
@@ -71,7 +71,7 @@ func TestRedactDSNRedactsSchemeLessKeywordPassword(t *testing.T) {
 }
 
 func TestRedactDSNRedactsSchemeLessKeywordPasswordWithSpacedEquals(t *testing.T) {
-	dsn := "host = db user = kata password = SECRET dbname = kata" //nolint:gosec // fixture proves spaced libpq credentials are hidden
+	dsn := "host = db user = poomsae password = SECRET dbname = poomsae" //nolint:gosec // fixture proves spaced libpq credentials are hidden
 	got := config.RedactDSN(dsn)
 	assert.NotContains(t, got, "SECRET")
 	assert.NotContains(t, got, "password = SECRET")
@@ -79,7 +79,7 @@ func TestRedactDSNRedactsSchemeLessKeywordPasswordWithSpacedEquals(t *testing.T)
 }
 
 func TestRedactDSNRedactsSchemeLessKeywordSSLPassword(t *testing.T) {
-	dsn := "host=db user=kata sslpassword=SECRET dbname=kata" //nolint:gosec // fixture proves scheme-less libpq credentials are hidden
+	dsn := "host=db user=poomsae sslpassword=SECRET dbname=poomsae" //nolint:gosec // fixture proves scheme-less libpq credentials are hidden
 	got := config.RedactDSN(dsn)
 	assert.NotContains(t, got, "SECRET")
 	assert.NotContains(t, got, "sslpassword=SECRET")
@@ -87,7 +87,7 @@ func TestRedactDSNRedactsSchemeLessKeywordSSLPassword(t *testing.T) {
 }
 
 func TestRedactDSNRedactsSchemeLessKeywordSSLPasswordWithSpacedEquals(t *testing.T) {
-	dsn := "host = db user = kata sslpassword = SECRET dbname = kata" //nolint:gosec // fixture proves spaced libpq credentials are hidden
+	dsn := "host = db user = poomsae sslpassword = SECRET dbname = poomsae" //nolint:gosec // fixture proves spaced libpq credentials are hidden
 	got := config.RedactDSN(dsn)
 	assert.NotContains(t, got, "SECRET")
 	assert.NotContains(t, got, "sslpassword = SECRET")
@@ -99,7 +99,7 @@ func TestRedactDSNStripsCredentialsInQueryString(t *testing.T) {
 	// ?password=...&sslpassword=...) — RedactDSN drops the whole query for
 	// display so the leak surface stays bounded regardless of which key
 	// carries the secret.
-	dsn := "postgres://db.example.com/kata?password=SECRET&sslmode=require" //nolint:gosec // fixture proves the query-string credential is dropped
+	dsn := "postgres://db.example.com/poomsae?password=SECRET&sslmode=require" //nolint:gosec // fixture proves the query-string credential is dropped
 	got := config.RedactDSN(dsn)
 	assert.NotContains(t, got, "SECRET")
 	assert.NotContains(t, got, "password=")
@@ -159,16 +159,16 @@ func TestRedactDSNPreservesAtInDatabasePath(t *testing.T) {
 func TestCanonicalDSNIdentityBracketsIPv6Host(t *testing.T) {
 	// IPv6 hosts must be bracketed in the canonical form so the result is a
 	// valid URL and two semantically distinct DSNs cannot collide.
-	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@[::1]:5432/kata")
+	got, err := config.CanonicalDSNIdentity("postgres://user:SECRET@[::1]:5432/poomsae")
 	require.NoError(t, err)
 	// Default port (5432) is stripped; brackets stay.
-	assert.Equal(t, "postgres://[::1]/kata", got)
+	assert.Equal(t, "postgres://[::1]/poomsae", got)
 	assert.NotContains(t, got, "SECRET")
 
-	got2, err := config.CanonicalDSNIdentity("postgres://[2001:db8::1]:6543/kata")
+	got2, err := config.CanonicalDSNIdentity("postgres://[2001:db8::1]:6543/poomsae")
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://[2001:db8::1]:6543/kata", got2)
+	assert.Equal(t, "postgres://[2001:db8::1]:6543/poomsae", got2)
 
 	// Mutation guard: confirm the input had the secret + a non-default port.
-	assert.Contains(t, "postgres://user:SECRET@[::1]:5432/kata", "SECRET")
+	assert.Contains(t, "postgres://user:SECRET@[::1]:5432/poomsae", "SECRET")
 }

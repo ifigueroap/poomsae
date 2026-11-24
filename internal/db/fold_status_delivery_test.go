@@ -8,8 +8,8 @@ import (
 
 	"pgregory.net/rapid"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestReconcileFoldStatusIntent(t *testing.T) {

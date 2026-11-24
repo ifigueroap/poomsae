@@ -7,7 +7,7 @@ import (
 )
 
 // DefaultSchema is the isolated schema used by standalone Postgres opens.
-const DefaultSchema = "kata"
+const DefaultSchema = "poomsae"
 
 var schemaNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
@@ -32,7 +32,7 @@ type Config struct {
 	AllowInsecure bool
 }
 
-// DefaultConfig is the standalone profile: a dedicated kata schema that is
+// DefaultConfig is the standalone profile: a dedicated poomsae schema that is
 // installed on first open.
 func DefaultConfig() Config {
 	return Config{Schema: DefaultSchema, SchemaMode: SchemaModeBootstrap}

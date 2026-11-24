@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
 )
 
 func TestBrowserAttachmentRequestsMapRemoteAuthenticationFailure(t *testing.T) {
@@ -55,7 +55,7 @@ func TestBrowserAttachmentRequestsMapRemoteAuthenticationFailure(t *testing.T) {
 	t.Cleanup(func() { _ = server.Close() })
 	handler, err := server.HandlerFor(ListenerPolicy{Kind: ListenerBrowser, Origin: "http://127.0.0.1:27123", RequireBrowserSession: true, AllowLocalSession: true})
 	require.NoError(t, err)
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://127.0.0.1:27123/api/v1/projects/%d/issues/%s/attachments/file/content", project.ID, issue.UID), nil)
 	request.AddCookie(manager.Cookie(issued.Cookie))
@@ -67,7 +67,7 @@ func TestBrowserAttachmentRequestsMapRemoteAuthenticationFailure(t *testing.T) {
 	endpoint := fmt.Sprintf("http://127.0.0.1:27123/api/v1/projects/%d/issues/%s/attachments", project.ID, issue.UID)
 	for _, tc := range []struct{ name, path, body, contentType string }{
 		{"upload", endpoint + "?name=file.pdf&actor=operator", "file bytes", "application/octet-stream"},
-		{"link", endpoint + "/links", `{"path":"/kata/file.pdf","actor":"operator"}`, "application/json"},
+		{"link", endpoint + "/links", `{"path":"/poomsae/file.pdf","actor":"operator"}`, "application/json"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, tc.path, strings.NewReader(tc.body))
@@ -160,7 +160,7 @@ func TestIssueLocalUISession(t *testing.T) {
 		RequireBrowserSession: true, AllowLocalSession: true,
 	})
 	require.NoError(t, err)
-	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://127.0.0.1:27123/api/v1/ui/session/local", bytes.NewBufferString(`{"return_path":"/kata?view=today"}`))
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://127.0.0.1:27123/api/v1/ui/session/local", bytes.NewBufferString(`{"return_path":"/poomsae?view=today"}`))
 	request.Host = "127.0.0.1:27123"
 	request.RemoteAddr = "127.0.0.1:40123"
 	request.Header.Set("Origin", "http://127.0.0.1:27123")
@@ -175,14 +175,14 @@ func TestIssueLocalUISession(t *testing.T) {
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &session))
 	assert.NotEmpty(t, session.Session)
 	assert.NotEmpty(t, session.CSRF)
-	assert.Equal(t, "/kata?view=today", session.ReturnPath)
+	assert.Equal(t, "/poomsae?view=today", session.ReturnPath)
 	assert.True(t, session.Writable)
 	assert.False(t, session.TokenAuditRead)
 }
 
 func TestBootstrapUISessionAdvertisesCredentialAuditWithoutIssueWrites(t *testing.T) {
 	manager := newDeterministicSessionManager(t, "https://daemon.example", "instance_a")
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalBootstrap}, "/kata?view=credentials")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalBootstrap}, "/poomsae?view=credentials")
 	require.NoError(t, err)
 	response := httptest.NewRecorder()
 
@@ -201,7 +201,7 @@ func TestIssueTrustedProxyUISession(t *testing.T) {
 	server := NewServer(ServerConfig{
 		DB: store, StartedAt: time.Now().UTC(), WebSessions: manager,
 		Auth: config.AuthConfig{Proxy: config.ProxyConfig{
-			TrustedActorHeader:    "X-Kata-Actor",
+			TrustedActorHeader:    "X-Poomsae-Actor",
 			TrustedProxyListeners: []string{"127.0.0.1:27123"},
 		}},
 	})
@@ -211,14 +211,14 @@ func TestIssueTrustedProxyUISession(t *testing.T) {
 	})
 	require.NoError(t, err)
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "https://daemon.example/api/v1/ui/session/proxy",
-		bytes.NewBufferString(`{"return_path":"/kata?view=today"}`))
+		bytes.NewBufferString(`{"return_path":"/poomsae?view=today"}`))
 	request = request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey,
 		&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 27123}))
 	request.Host = "daemon.example"
 	request.RemoteAddr = "127.0.0.1:40123"
 	request.Header.Set("Origin", "https://daemon.example")
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Kata-Actor", "user-a")
+	request.Header.Set("X-Poomsae-Actor", "user-a")
 	response := httptest.NewRecorder()
 
 	handler.ServeHTTP(response, request)
@@ -243,7 +243,7 @@ func TestWebLocalSessionRejectsPathBasedProjectInit(t *testing.T) {
 		RequireBrowserSession: true, AllowLocalSession: true,
 	})
 	require.NoError(t, err)
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	for _, tc := range []struct {
 		name      string

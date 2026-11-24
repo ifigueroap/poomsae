@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Hydration can read after a mutation commits or after collection selection.
@@ -82,7 +82,7 @@ func (w *bufferedScopedResponse) Write(body []byte) (int, error) {
 }
 
 func (w *bufferedScopedResponse) startSpill() error {
-	file, err := os.CreateTemp("", "kata-scoped-response-")
+	file, err := os.CreateTemp("", "poomsae-scoped-response-")
 	if err != nil {
 		return err
 	}

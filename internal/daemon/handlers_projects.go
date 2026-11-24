@@ -10,10 +10,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shellquote"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shellquote"
 )
 
 // activeProjectByID resolves a project by rowid for surface API handlers
@@ -50,7 +50,7 @@ func archivedProjectError(ctx context.Context, p db.Project) error {
 		return plain
 	}
 	return api.NewError(404, "project_not_found", "project not found",
-		"project "+p.Name+" is archived; run 'kata projects restore "+p.Name+"' to bring it back", nil)
+		"project "+p.Name+" is archived; run 'poomsae projects restore "+p.Name+"' to bring it back", nil)
 }
 
 func canSeeArchived(ctx context.Context, p db.Project) bool {
@@ -467,14 +467,14 @@ func registerProjectsHandlers(humaAPI huma.API, cfg ServerConfig) {
 		case errors.Is(err, db.ErrProjectNotArchived):
 			return nil, api.NewError(409, "project_not_archived",
 				"project is not archived",
-				"run `kata projects remove "+project.Name+"` first", nil)
+				"run `poomsae projects remove "+project.Name+"` first", nil)
 		}
 		if errors.Is(err, db.ErrFederationProjectIdentityRequired) {
 			return nil, api.NewError(409, "federation_project_identity_required", err.Error(),
 				"leave the joined projects that still expose this move history before purging or merging the former project", nil)
 		}
 		if fedErr, ok := errors.AsType[*db.ProjectFederatedError](err); ok {
-			hint := "run `kata federation leave " + project.Name + "` first"
+			hint := "run `poomsae federation leave " + project.Name + "` first"
 			if fedErr.Role == db.FederationRoleHub {
 				hint = "remove federation before purging (hub teardown is not yet supported)"
 			}
@@ -484,7 +484,7 @@ func registerProjectsHandlers(humaAPI huma.API, cfg ServerConfig) {
 		if errors.Is(err, db.ErrExternalRootContentOwned) {
 			return nil, api.NewError(409, "external_root_content_owned",
 				"the project contains an active external root binding",
-				"run `kata bridge unbind <issue-ref>` for every bound issue before purging the project", nil)
+				"run `poomsae bridge unbind <issue-ref>` for every bound issue before purging the project", nil)
 		}
 		if err != nil {
 			return nil, internalAPIError(err)
@@ -694,8 +694,8 @@ func resolveProject(ctx context.Context, store db.Storage, alias *api.AliasInput
 	}
 
 	return nil, api.NewError(404, "project_not_initialized",
-		"no .kata.toml ancestor and no git ancestor",
-		`run "kata init --project <name>" in the workspace root, or pass --project <name>`, nil)
+		"no .poomsae.toml ancestor and no git ancestor",
+		`run "poomsae init --project <name>" in the workspace root, or pass --project <name>`, nil)
 }
 
 // resolveByAliasInput handles the alias-aware path-free resolve flow.
@@ -725,7 +725,7 @@ func resolveByAliasInput(ctx context.Context, store db.Storage, in *api.AliasInp
 		if project.DeletedAt != nil {
 			return nil, api.NewError(404, "project_not_initialized",
 				"alias "+info.Identity+" points at an archived project",
-				`run "kata init" to bind this workspace to an active project`, map[string]any{"alias": info.Identity})
+				`run "poomsae init" to bind this workspace to an active project`, map[string]any{"alias": info.Identity})
 		}
 		if err := authorizeIssueScopedProject(ctx, project); err != nil {
 			return nil, err
@@ -747,14 +747,14 @@ func resolveByAliasInput(ctx context.Context, store db.Storage, in *api.AliasInp
 		if err != nil {
 			return nil, err
 		}
-		return nil, projectNotInitialized(ctx, store, "alias "+info.Identity+" is not registered", initName, `run "kata init"`, map[string]any{"alias": info.Identity})
+		return nil, projectNotInitialized(ctx, store, "alias "+info.Identity+" is not registered", initName, `run "poomsae init"`, map[string]any{"alias": info.Identity})
 	}
 	if err := config.ValidateProjectName(name); err != nil {
 		return nil, api.NewError(400, "validation", err.Error(), "", nil)
 	}
 	project, err := store.ProjectByName(ctx, name)
 	if errors.Is(err, db.ErrNotFound) {
-		return nil, projectNotInitialized(ctx, store, "project "+name+" is not registered", name, fmt.Sprintf(`run "kata init" with --project set to %q`, name), map[string]any{"project": name})
+		return nil, projectNotInitialized(ctx, store, "project "+name+" is not registered", name, fmt.Sprintf(`run "poomsae init" with --project set to %q`, name), map[string]any{"project": name})
 	}
 	if err != nil {
 		return nil, internalAPIError(err)
@@ -796,7 +796,7 @@ func gitInitName(info config.AliasInfo) (string, error) {
 func projectNotInitialized(ctx context.Context, store db.Storage, message, name, initCommand string, data map[string]any) error {
 	hint := initCommand + " in this workspace"
 	if initCommand == "" {
-		hint = "run kata projects create -- " + shellquote.Quote(name)
+		hint = "run poomsae projects create -- " + shellquote.Quote(name)
 	}
 	if name != "" {
 		project, err := store.ProjectByNameIncludingArchived(ctx, name)
@@ -804,7 +804,7 @@ func projectNotInitialized(ctx context.Context, store db.Storage, message, name,
 			return internalAPIError(err)
 		}
 		if err == nil && project.DeletedAt != nil && canSeeArchived(ctx, project) {
-			hint = fmt.Sprintf(`run "kata projects restore %d"`, project.ID)
+			hint = fmt.Sprintf(`run "poomsae projects restore %d"`, project.ID)
 			if initCommand != "" {
 				hint += fmt.Sprintf(`, then %s in this workspace`, initCommand)
 			}
@@ -836,9 +836,9 @@ func resolveByName(ctx context.Context, store db.Storage, name string) (*api.Pro
 	return &api.ProjectResolveBody{Project: projectOutForCaller(ctx, project)}, nil
 }
 
-// resolveByKataToml returns (body, true, nil) when a .kata.toml binding
+// resolveByKataToml returns (body, true, nil) when a .poomsae.toml binding
 // exists at the workspace root and resolves to a project. Returns
-// (nil, false, nil) when there is no .kata.toml. Surfaces parse errors.
+// (nil, false, nil) when there is no .poomsae.toml. Surfaces parse errors.
 func resolveByKataToml(ctx context.Context, store db.Storage, disc config.DiscoveredPaths) (*api.ProjectResolveBody, bool, error) {
 	if disc.WorkspaceRoot == "" {
 		return nil, false, nil
@@ -865,7 +865,7 @@ func resolveByKataToml(ctx context.Context, store db.Storage, disc config.Discov
 	}
 	project, err := store.ProjectByName(ctx, cfgFile.Project.Name)
 	if errors.Is(err, db.ErrNotFound) {
-		return nil, false, projectNotInitialized(ctx, store, "project "+cfgFile.Project.Name+" is bound by .kata.toml but not registered", cfgFile.Project.Name, `run "kata init"`, map[string]any{"project": cfgFile.Project.Name})
+		return nil, false, projectNotInitialized(ctx, store, "project "+cfgFile.Project.Name+" is bound by .poomsae.toml but not registered", cfgFile.Project.Name, `run "poomsae init"`, map[string]any{"project": cfgFile.Project.Name})
 	}
 	if err != nil {
 		return nil, false, internalAPIError(err)
@@ -929,7 +929,7 @@ func resolveByAlias(ctx context.Context, store db.Storage, disc config.Discovere
 		if err != nil {
 			return nil, err
 		}
-		return nil, projectNotInitialized(ctx, store, "no kata project is attached to this workspace", name, `run "kata init"`, nil)
+		return nil, projectNotInitialized(ctx, store, "no poomsae project is attached to this workspace", name, `run "poomsae init"`, nil)
 	}
 	if err != nil {
 		return nil, internalAPIError(err)
@@ -1110,7 +1110,7 @@ func initByName(
 	return body, mutation, created, nil
 }
 
-// readWorkspaceConfig reads .kata.toml only when a workspace root was actually
+// readWorkspaceConfig reads .poomsae.toml only when a workspace root was actually
 // discovered; passing "" to ReadProjectConfig would resolve to the daemon's
 // cwd. Parse errors surface as 400; "missing" returns nil.
 func readWorkspaceConfig(disc config.DiscoveredPaths) (*config.ProjectConfig, error) {
@@ -1161,8 +1161,8 @@ func upsertProject(ctx context.Context, store db.Storage, name, actor string) (d
 			return db.Project{}, nil, false, err
 		}
 		return db.Project{}, nil, false, api.NewError(409, "project_archived",
-			"project with this name was archived via `kata projects remove`",
-			`run "kata projects restore `+name+`" or pick a different name`,
+			"project with this name was archived via `poomsae projects remove`",
+			`run "poomsae projects restore `+name+`" or pick a different name`,
 			map[string]any{"name": name, "deleted_at": archived.DeletedAt})
 	}
 	created, event, err := store.CreateProjectAndEvent(ctx, name, actor)

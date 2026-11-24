@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const aliasSelect = `SELECT id, project_id, alias_identity, alias_kind, created_at FROM project_aliases`

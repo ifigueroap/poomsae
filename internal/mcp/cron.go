@@ -9,12 +9,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/jsonutil"
+	"github.com/ifigueroap/poomsae/internal/uid"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/jsonutil"
-	"go.kenn.io/kata/internal/uid"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // CronProjectInput selects one project inside the MCP startup scope.
@@ -31,7 +31,7 @@ type CronListInput struct {
 // CronIdentityInput selects a retained definition UID.
 type CronIdentityInput struct {
 	CronProjectInput
-	UID string `json:"uid" jsonschema:"Stable UID retained before creation; obtain one with kata.cron_new_uid"`
+	UID string `json:"uid" jsonschema:"Stable UID retained before creation; obtain one with poomsae.cron_new_uid"`
 }
 
 // CronActionInput requires the caller's current definition event.
@@ -49,17 +49,17 @@ func registerCronTools(server *sdkmcp.Server, h toolHandlers) {
 	registerCronWorkflowTools(server, h)
 	registerCronRunTools(server, h)
 	read := toolHints(true, false, false)
-	addCronTool(server, "kata.cron_new_uid", "Generate cron UID", "Generate and retain a UID before the first create or observe call. Creates and reserves nothing; the UID is unbound until creation. Reuse it after a lost response.", nonIdempotent(toolHints(true, false, false)), h.cronNewUID)
-	addCronTool(server, "kata.cron_capabilities", "Read cron capabilities", "Read the selected project's live cron capabilities under the configured daemon authority.", read, h.cronCapabilities)
-	addCronTool(server, "kata.cron_jobs", "List cron jobs", "List native notification and adapter execution definitions. Execution jobs need an external adapter; listing launches no work.", read, h.cronJobs)
-	addCronTool(server, "kata.cron_job", "Read cron job", "Read one retained job UID, including its current definition_event_uid and reversible tombstone.", read, h.cronJob)
-	addCronTool(server, "kata.cron_job_create", "Create cron job", "Create a typed job with a caller-retained UID from kata.cron_new_uid. Native notification jobs use daemon delivery; execution jobs require an external adapter. Retry retains UID and daemon conflicts.", toolHints(false, false, false), h.cronJobCreate)
-	addCronTool(server, "kata.cron_job_update", "Replace cron job", "Replace a complete definition using its current expected_event_uid. Native parent bindings cannot change. Never launches an execution adapter.", toolHints(false, true, false), h.cronJobUpdate)
-	addCronTool(server, "kata.cron_job_delete", "Archive cron job", "Reversibly tombstone a cron definition using its current expected_event_uid.", toolHints(false, true, false), h.cronJobDelete)
-	addCronTool(server, "kata.cron_job_restore", "Restore cron job", "Restore a cron tombstone using its current expected_event_uid; preserves daemon dependency checks.", toolHints(false, false, false), h.cronJobRestore)
+	addCronTool(server, "poomsae.cron_new_uid", "Generate cron UID", "Generate and retain a UID before the first create or observe call. Creates and reserves nothing; the UID is unbound until creation. Reuse it after a lost response.", nonIdempotent(toolHints(true, false, false)), h.cronNewUID)
+	addCronTool(server, "poomsae.cron_capabilities", "Read cron capabilities", "Read the selected project's live cron capabilities under the configured daemon authority.", read, h.cronCapabilities)
+	addCronTool(server, "poomsae.cron_jobs", "List cron jobs", "List native notification and adapter execution definitions. Execution jobs need an external adapter; listing launches no work.", read, h.cronJobs)
+	addCronTool(server, "poomsae.cron_job", "Read cron job", "Read one retained job UID, including its current definition_event_uid and reversible tombstone.", read, h.cronJob)
+	addCronTool(server, "poomsae.cron_job_create", "Create cron job", "Create a typed job with a caller-retained UID from poomsae.cron_new_uid. Native notification jobs use daemon delivery; execution jobs require an external adapter. Retry retains UID and daemon conflicts.", toolHints(false, false, false), h.cronJobCreate)
+	addCronTool(server, "poomsae.cron_job_update", "Replace cron job", "Replace a complete definition using its current expected_event_uid. Native parent bindings cannot change. Never launches an execution adapter.", toolHints(false, true, false), h.cronJobUpdate)
+	addCronTool(server, "poomsae.cron_job_delete", "Archive cron job", "Reversibly tombstone a cron definition using its current expected_event_uid.", toolHints(false, true, false), h.cronJobDelete)
+	addCronTool(server, "poomsae.cron_job_restore", "Restore cron job", "Restore a cron tombstone using its current expected_event_uid; preserves daemon dependency checks.", toolHints(false, false, false), h.cronJobRestore)
 }
 func (h toolHandlers) cronNewUID(context.Context, *sdkmcp.CallToolRequest, CronProjectInput) (*sdkmcp.CallToolResult, CronUIDOutput, error) {
-	id, err := kataclient.NewCronUID()
+	id, err := poomsaeclient.NewCronUID()
 	return successResult(), CronUIDOutput{UID: id}, err
 }
 func (h toolHandlers) cronCapabilities(ctx context.Context, _ *sdkmcp.CallToolRequest, in CronProjectInput) (*sdkmcp.CallToolResult, generated.GetCronCapabilitiesResponse, error) {

@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/credentialfile"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/credentialfile"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // Policy validation and request admission share these errors. They never

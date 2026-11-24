@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
 )
 
 func TestDocbankForwardMapsHubCredentialRejection(t *testing.T) {
@@ -56,7 +56,7 @@ func TestDocbankForwardMapsHubCredentialRejection(t *testing.T) {
 			require.Equal(t, tc.wantCode, apiErr.Code)
 			require.NotContains(t, apiErr.Error(), "private remote detail")
 			if tc.code == "claim_denied" {
-				require.Contains(t, apiErr.Hint, "run kata federation lease acquire")
+				require.Contains(t, apiErr.Hint, "run poomsae federation lease acquire")
 			}
 		})
 	}

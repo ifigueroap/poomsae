@@ -10,8 +10,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func registerDigestHandlers(humaAPI huma.API, cfg ServerConfig) {
@@ -194,7 +194,7 @@ func applyEvent(e db.Event, totals, grand *api.DigestTotals, acc *issueAccum) {
 		// CreateIssue folds initial labels/owner/links into the same payload
 		// rather than emitting separate issue.labeled/assigned/linked events,
 		// so the digest must mine them out here or it undercounts common
-		// create-time activity (e.g. `kata create --label bug --owner alice`).
+		// create-time activity (e.g. `poomsae create --label bug --owner alice`).
 		labels, owner, links := createdInitialState(e.Payload)
 		for _, l := range labels {
 			bump(&totals.Labeled, &grand.Labeled)
@@ -312,7 +312,7 @@ func applyEvent(e db.Event, totals, grand *api.DigestTotals, acc *issueAccum) {
 			bump(&totals.Unblocked, &grand.Unblocked)
 		}
 	case "issue.links_changed":
-		// Aggregated event from the PATCH /issues/{n} path (kata#1).
+		// Aggregated event from the PATCH /issues/{n} path (poomsae#1).
 		// One event covers any combination of adds and removes; we
 		// expand it back into per-edge digest accounting so reports
 		// look the same regardless of which API path produced the
@@ -495,11 +495,11 @@ func applyLinksChangedDigest(payload string, totals, grand *api.DigestTotals, ac
 	}
 	// blocked_by_removed deletes the same `blocks` edge as blocks_removed
 	// would from the opposite POV — but the actor semantics differ.
-	// `kata edit X --remove-blocked-by Y` means X is no longer blocked by
+	// `poomsae edit X --remove-blocked-by Y` means X is no longer blocked by
 	// Y; X did not unblock anyone. We surface this as a plain unlink from
 	// X's POV (no UnblocksOthers credit, no Unblocked-total bump) so the
 	// digest doesn't misattribute the action to X. The mirror operation
-	// (`kata edit Y --remove-blocks X`) still credits Y with unblocking.
+	// (`poomsae edit Y --remove-blocks X`) still credits Y with unblocking.
 	for _, n := range p.BlockedByRemoved {
 		remove("blocked_by", n, false)
 	}

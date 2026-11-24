@@ -17,7 +17,7 @@ func TestAllowsNewPostgresMigration(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	writeFile(t, repo, "internal/db/pgstore/migrations/000002_next.up.sql", "new\n")
 	gitCommand(t, "add", "internal/db/pgstore/migrations/000002_next.up.sql")
@@ -31,7 +31,7 @@ func TestAllowsMigrationDocumentationEdit(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	gitCommand(t, "checkout", "main")
 	writeFile(t, repo, "internal/db/pgstore/migrations/README.md", "old docs\n")
@@ -50,7 +50,7 @@ func TestBlocksDuplicatePostgresMigrationVersion(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	gitCommand(t, "checkout", "main")
 	writeFile(t, repo, "internal/db/pgstore/migrations/000002_main_name.up.sql", "main\n")
@@ -72,7 +72,7 @@ func TestBlocksDuplicateVersionAcrossFeatureBranchCommits(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	writeFile(t, repo, "internal/db/pgstore/migrations/000002_first_branch_name.up.sql", "first\n")
 	gitCommand(t, "add", "internal/db/pgstore/migrations/000002_first_branch_name.up.sql")
@@ -91,7 +91,7 @@ func TestBlocksInvalidPostgresMigrationName(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	writeFile(t, repo, "internal/db/pgstore/migrations/2_quick_fix.up.sql", "new\n")
 	writeFile(t, repo, "internal/db/pgstore/migrations/000002_quick_fix.down.sql", "down\n")
@@ -108,7 +108,7 @@ func TestBlocksReleasedPostgresMigrationEdit(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	writeFile(t, repo, "internal/db/pgstore/migrations/000001_init.up.sql", "changed\n")
 	gitCommand(t, "add", "internal/db/pgstore/migrations/000001_init.up.sql")
@@ -123,7 +123,7 @@ func TestBlocksReleasedPostgresMigrationRename(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	gitCommand(t, "mv", "internal/db/pgstore/migrations/000001_init.up.sql", "internal/db/pgstore/migrations/000001_renamed.up.sql")
 
@@ -136,7 +136,7 @@ func TestBlocksRenameOntoMigrationReleasedAfterFeatureFork(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	source := "internal/db/pgstore/migrations/000002_draft.up.sql"
 	destination := "internal/db/pgstore/migrations/000002_released.up.sql"
@@ -164,7 +164,7 @@ func TestUsesHookGitIndexFile(t *testing.T) {
 	isolateGitEnvironment(t)
 	repo := initRepoWithMainMigration(t)
 	t.Chdir(repo)
-	t.Setenv("KATA_MIGRATION_BASE_REF", "main")
+	t.Setenv("POOMSAE_MIGRATION_BASE_REF", "main")
 
 	alternateIndex := filepath.Join(t.TempDir(), "index")
 	hookEnv := append(cleanGitEnv(os.Environ()), "GIT_INDEX_FILE="+alternateIndex)
@@ -194,7 +194,7 @@ func initRepoWithMainMigration(t *testing.T) string {
 	require.NoError(t, os.WriteFile(migrationPath, []byte("old\n"), 0o600))
 
 	gitCommandIn(t, repo, "init", "-q", "-b", "main")
-	gitCommandIn(t, repo, "config", "user.email", "kata-fixture@example.invalid")
+	gitCommandIn(t, repo, "config", "user.email", "poomsae-fixture@example.invalid")
 	gitCommandIn(t, repo, "config", "user.name", "Test")
 	gitCommandIn(t, repo, "add", ".")
 	gitCommandIn(t, repo, "commit", "-qm", "init")

@@ -8,11 +8,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/notification"
-	"go.kenn.io/kata/internal/testenv"
 	"go.kenn.io/kit/tui/helplayout"
 	"go.kenn.io/kit/tui/splitlayout"
 )
@@ -132,7 +132,7 @@ func (h *deleteHarness) openAttentionDetail(uid string) {
 // focusChild opens parent with child linked under it and focuses the children.
 func (h *deleteHarness) focusChild(parent, child db.Issue) {
 	h.t.Helper()
-	_, err := h.client.KataAPI.AddLink(h.t.Context(), h.project.ID, child.UID, LinkBody{Type: "parent", ToRef: parent.UID}, "alice")
+	_, err := h.client.PoomsaeAPI.AddLink(h.t.Context(), h.project.ID, child.UID, LinkBody{Type: "parent", ToRef: parent.UID}, "alice")
 	require.NoError(h.t, err)
 	h.selectIssue(parent.UID)
 	h.m = h.drain(h.m.detail.refetch(h.m.api))
@@ -143,7 +143,7 @@ func TestDeletePreservesPendingReturn(t *testing.T) {
 	for _, destination := range []string{"Inbox", "Attention"} {
 		for _, deletedTarget := range []string{"unrelated target", "pending child"} {
 			t.Run(destination+"/"+deletedTarget, func(t *testing.T) {
-				t.Setenv("KATA_INBOX_USER", "alice")
+				t.Setenv("POOMSAE_INBOX_USER", "alice")
 				h := newDeleteHarness(t, viewDetail)
 				parent, child, target := h.issues[0], h.issues[1], h.issues[2]
 				if deletedTarget == "pending child" {
@@ -195,7 +195,7 @@ func TestDeletePreservesIndependentSplitDetail(t *testing.T) {
 			h := newDeleteHarness(t, viewList)
 			rows := h.m.list.visibleRows()
 			parent, child := rows[0].issue, rows[2].issue
-			_, err := h.client.KataAPI.AddLink(t.Context(), h.project.ID, child.UID, LinkBody{Type: "parent", ToRef: parent.UID}, "alice")
+			_, err := h.client.PoomsaeAPI.AddLink(t.Context(), h.project.ID, child.UID, LinkBody{Type: "parent", ToRef: parent.UID}, "alice")
 			require.NoError(t, err)
 
 			h.selectIssue(parent.UID)
@@ -252,7 +252,7 @@ func TestAttentionUndoIgnoresOtherEdits(t *testing.T) {
 func TestDeleteReachesEverySavedView(t *testing.T) {
 	for _, context := range []string{"Inbox", "Attention detail", "Attention Back", "split detail"} {
 		t.Run(context, func(t *testing.T) {
-			t.Setenv("KATA_INBOX_USER", "alice")
+			t.Setenv("POOMSAE_INBOX_USER", "alice")
 			h := newDeleteHarness(t, viewDetail)
 			parent, target := h.issues[0], h.issues[1]
 			h.selectIssue(target.UID)
@@ -336,10 +336,10 @@ func TestDeleteReachesEverySavedView(t *testing.T) {
 func TestDeleteInvalidatesSavedRelations(t *testing.T) {
 	for _, route := range []string{"Back", "Inbox list", "Attention list"} {
 		t.Run(route, func(t *testing.T) {
-			t.Setenv("KATA_INBOX_USER", "alice")
+			t.Setenv("POOMSAE_INBOX_USER", "alice")
 			h := newDeleteHarness(t, viewDetail)
 			parent, child := h.issues[0], h.issues[1]
-			_, err := h.client.KataAPI.AddLink(t.Context(), h.project.ID, parent.UID, LinkBody{Type: "related", ToRef: child.UID}, "alice")
+			_, err := h.client.PoomsaeAPI.AddLink(t.Context(), h.project.ID, parent.UID, LinkBody{Type: "related", ToRef: child.UID}, "alice")
 			require.NoError(t, err)
 			h.focusChild(parent, child)
 			require.NotEmpty(t, h.m.detail.links)

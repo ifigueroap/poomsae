@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 type attachmentDeadlineTransport struct {
@@ -154,7 +154,7 @@ func TestWebDaemonRosterMappedHubs(t *testing.T) {
 			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/api/v1/ui/daemons", nil)
 			require.NoError(t, err)
 			if tc.selected != "" {
-				req.Header.Set("X-Kata-Web-Daemon", tc.selected)
+				req.Header.Set("X-Poomsae-Web-Daemon", tc.selected)
 			}
 			response, err := http.DefaultClient.Do(req)
 			require.NoError(t, err)
@@ -234,7 +234,7 @@ func TestWebDaemonRosterReportsTargetsWithoutWebUIContract(t *testing.T) {
 	require.NoError(t, json.NewDecoder(response.Body).Decode(&roster))
 	require.Len(t, roster.Daemons, 2)
 	assert.Equal(t, "upgrade_required", roster.Daemons[1].Health)
-	assert.Equal(t, "daemon does not support the Kata web UI", roster.Daemons[1].Hint)
+	assert.Equal(t, "daemon does not support the Poomsae web UI", roster.Daemons[1].Hint)
 }
 
 func TestWebDaemonRosterRejectsPreviousSnapshotContract(t *testing.T) {
@@ -307,7 +307,7 @@ func TestAnonymousReadonlyRosterHidesConfiguredCredentialTargetsBeforeProbing(t 
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/ui/snapshot?view=all-open", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	response, err = http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -317,16 +317,16 @@ func TestAnonymousReadonlyRosterHidesConfiguredCredentialTargetsBeforeProbing(t 
 
 func TestWebDaemonProxyPinsTargetAndStripsBrowserCredentials(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "web", r.Header.Get("X-Kata-Surface"))
+		assert.Equal(t, "web", r.Header.Get("X-Poomsae-Surface"))
 		assert.Equal(t, "/api/v1/ui/snapshot", r.URL.Path)
 		assert.Equal(t, "view=all-open", r.URL.RawQuery)
 		assert.Equal(t, "Bearer target-token", r.Header.Get("Authorization"))
 		assert.Empty(t, r.Header.Get("Origin"))
 		assert.Empty(t, r.Header.Get("Cookie"))
-		assert.Empty(t, r.Header.Get("X-Kata-Web-Session"))
-		assert.Empty(t, r.Header.Get("X-Kata-CSRF"))
-		assert.Empty(t, r.Header.Get("X-Kata-Web-Daemon"))
-		assert.Empty(t, r.Header.Get("X-Kata-Actor"))
+		assert.Empty(t, r.Header.Get("X-Poomsae-Web-Session"))
+		assert.Empty(t, r.Header.Get("X-Poomsae-CSRF"))
+		assert.Empty(t, r.Header.Get("X-Poomsae-Web-Daemon"))
+		assert.Empty(t, r.Header.Get("X-Poomsae-Actor"))
 		assert.Empty(t, r.Header.Get("X-Example-Proxy"))
 		assert.Equal(t, "application/json", r.Header.Get("Accept"))
 		w.Header().Set("Set-Cookie", "upstream=secret")
@@ -346,15 +346,15 @@ func TestWebDaemonProxyPinsTargetAndStripsBrowserCredentials(t *testing.T) {
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/ui/snapshot?view=all-open", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	request.Header.Set("Authorization", "Bearer browser-token")
-	request.Header.Set("Cookie", "kata=browser-cookie")
-	request.Header.Set("X-Kata-Web-Session", "browser-session")
-	request.Header.Set("X-Kata-CSRF", "browser-csrf")
-	request.Header.Set("X-Kata-Actor", "user-a")
+	request.Header.Set("Cookie", "poomsae=browser-cookie")
+	request.Header.Set("X-Poomsae-Web-Session", "browser-session")
+	request.Header.Set("X-Poomsae-CSRF", "browser-csrf")
+	request.Header.Set("X-Poomsae-Actor", "user-a")
 	request.Header.Set("X-Example-Proxy", "user-a")
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("X-Kata-Surface", "web")
+	request.Header.Set("X-Poomsae-Surface", "web")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -409,7 +409,7 @@ func TestWebDaemonProxyRestrictsDownstreamOperations(t *testing.T) {
 			request, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
 				server.URL+"/api/v1/ui/proxy"+test.path, strings.NewReader(test.body))
 			require.NoError(t, err)
-			request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+			request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 			request.Header.Set("Content-Type", "application/json")
 			response, err := http.DefaultClient.Do(request)
 			require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestWebDaemonGatewayAllowsIssueReferenceLookup(t *testing.T) {
 		"%s/api/v1/ui/proxy/api/v1/ui/issue-reference?project_id=%d&ref=%s", server.URL, project.ID, issue.ShortID,
 	), nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-local")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-local")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -467,7 +467,7 @@ func TestWebDaemonGatewayRejectsDownstreamRosterBeforeProxying(t *testing.T) {
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/ui/daemons", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -494,7 +494,7 @@ func TestWebDaemonGatewayRejectsDeletedIssueLookupBeforeProxying(t *testing.T) {
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/projects/7/issues/abc4?include_deleted=true", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -518,7 +518,7 @@ func TestWebDaemonProxyDoesNotMisclassifyUpstreamAuthAsBrowserExpiry(t *testing.
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/ui/snapshot", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -552,7 +552,7 @@ func TestWebDaemonProxyRejectsUpstreamRedirects(t *testing.T) {
 		server.URL+"/api/v1/ui/proxy/api/v1/projects/resolve",
 		strings.NewReader(`{"name":"example-project"}`))
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	request.Header.Set("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
@@ -574,7 +574,7 @@ func TestWebDaemonProxyDispatchesLocalSelectionInProcess(t *testing.T) {
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
 		server.URL+"/api/v1/ui/proxy/api/v1/ping", nil)
 	require.NoError(t, err)
-	request.Header.Set("X-Kata-Web-Daemon", "example-local")
+	request.Header.Set("X-Poomsae-Web-Daemon", "example-local")
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -602,7 +602,7 @@ func TestLocalProfileGatewayOmitsAndRejectsHomeEntries(t *testing.T) {
 				assert.NotContains(t, string(body), "/work-home")
 				request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/api/v1/ui/proxy/api/v1/ping", nil)
 				require.NoError(t, err)
-				request.Header.Set("X-Kata-Web-Daemon", name)
+				request.Header.Set("X-Poomsae-Web-Daemon", name)
 				response, err = http.DefaultClient.Do(request)
 				require.NoError(t, err)
 				require.NoError(t, response.Body.Close())

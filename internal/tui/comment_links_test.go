@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/commentref"
 	"github.com/mattn/go-runewidth"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/commentref"
 )
 
 func TestCommentLinksRenderAndNavigate(t *testing.T) {

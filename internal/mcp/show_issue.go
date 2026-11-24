@@ -1,6 +1,6 @@
 package mcpserver
 
-import "go.kenn.io/kata/pkg/client/generated"
+import "github.com/ifigueroap/poomsae/pkg/client/generated"
 
 // issueFromShow narrows the show-issue record to the plain issue shape the
 // summary helpers take. The generated client flattens ShowIssueOut instead of

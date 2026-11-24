@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type allowWorkerFenceAccess struct{}
@@ -84,8 +84,8 @@ func TestServiceWorkerDenialFinalizesBeforeStopping(t *testing.T) {
 					dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
 					t.Cleanup(cleanup)
 					config.DSN = dsn
-					config.Postgres = PostgresConfig{Schema: "kata", SchemaMode: PostgresSchemaBootstrap}
-					driver, prefix = "pgx", "kata."
+					config.Postgres = PostgresConfig{Schema: "poomsae", SchemaMode: PostgresSchemaBootstrap}
+					driver, prefix = "pgx", "poomsae."
 					inspectionDSN = dsn
 				}
 				rejected := errors.New("worker transaction rejected")
@@ -290,7 +290,7 @@ func TestServiceRunEntryPointsRequireWorkerFenceWithHostAccess(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
 	err = service.Run(t.Context())
-	assert.EqualError(t, err, "kata: worker transaction fence is required with host access")
+	assert.EqualError(t, err, "poomsae: worker transaction fence is required with host access")
 	err = service.RunSemanticIndex(t.Context())
-	assert.EqualError(t, err, "kata: worker transaction fence is required with host access")
+	assert.EqualError(t, err, "poomsae: worker transaction fence is required with host access")
 }

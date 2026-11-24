@@ -84,7 +84,7 @@ func (e *APIError) Schema(r huma.Registry) *huma.Schema {
 
 // WrapErrorAdapter keeps Huma's validation status normalization local to one
 // API. Huma writes a response status before running response transformers, so
-// the adapter context must translate 422 to Kata's documented 400 at the first
+// the adapter context must translate 422 to Poomsae's documented 400 at the first
 // SetStatus call. This avoids mutating Huma's process-global error factories,
 // which would otherwise affect unrelated APIs in an embedding host.
 func WrapErrorAdapter(adapter huma.Adapter) huma.Adapter {
@@ -107,14 +107,14 @@ type errorContext struct {
 	embeddedContext
 }
 
-// Unwrap preserves adapter access through Kata's status-normalizing context.
+// Unwrap preserves adapter access through Poomsae's status-normalizing context.
 func (c *errorContext) Unwrap() huma.Context { return c.embeddedContext }
 
 func (c *errorContext) SetStatus(status int) {
 	c.embeddedContext.SetStatus(normalizeHumaStatus(status))
 }
 
-// TransformHumaError converts framework-generated errors to Kata's stable
+// TransformHumaError converts framework-generated errors to Poomsae's stable
 // envelope. Explicit APIError values pass through unchanged. Setting the
 // content type here also prevents Huma's default ErrorModel from leaving an
 // application/problem+json header behind after transformation.

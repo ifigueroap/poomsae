@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	hubfederation "go.kenn.io/kata/internal/federation"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	hubfederation "github.com/ifigueroap/poomsae/internal/federation"
 )
 
 func newHubAdminClient(ctx context.Context, target daemonTarget) (*Client, daemonTarget, error) {
@@ -66,7 +66,7 @@ func newHubAdminClient(ctx context.Context, target daemonTarget) (*Client, daemo
 }
 
 // federationHubTargetToken resolves only the credential attached to the
-// selected hub target. In particular, KATA_AUTH_TOKEN authenticates the local
+// selected hub target. In particular, POOMSAE_AUTH_TOKEN authenticates the local
 // daemon and is never a fallback or override for a catalog hub.
 func federationHubTargetToken(target daemonTarget) (string, error) {
 	return (config.CatalogDaemonConfig{

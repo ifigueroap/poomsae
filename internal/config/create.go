@@ -2,7 +2,7 @@ package config
 
 import "fmt"
 
-// CreateConfig holds CLI-only defaults from [create] in <KATA_HOME>/config.toml.
+// CreateConfig holds CLI-only defaults from [create] in <POOMSAE_HOME>/config.toml.
 // A nil DefaultPriority leaves newly created issues without a priority.
 type CreateConfig struct {
 	DefaultPriority *int64 `toml:"default_priority"`

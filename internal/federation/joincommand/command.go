@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shellquote"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shellquote"
 )
 
 // Build returns a shell command for joining the supplied grant, or an empty
@@ -27,7 +27,7 @@ func Build(in api.FederationJoinInstructions, signingTemplate bool) string {
 	// Join fetches current metadata with the enrollment token, even if the hub
 	// has purged history since these instructions were issued.
 	args := []string{
-		"kata", "federation", "join", "--project", in.ProjectName, "--hub-url", in.HubURL,
+		"poomsae", "federation", "join", "--project", in.ProjectName, "--hub-url", in.HubURL,
 		"--hub-project-id", strconv.FormatInt(in.HubProjectID, 10), "--token", in.Token,
 		"--capabilities", strings.ReplaceAll(caps, "claim", "lease"), "--actor", in.Actor,
 	}

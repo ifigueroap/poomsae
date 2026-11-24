@@ -1,13 +1,13 @@
-import type { KataReachableGraphResponse } from '../kata/types'
-import type { KataGraphDepthLimit } from './layout'
+import type { PoomsaeReachableGraphResponse } from '../poomsae/types'
+import type { PoomsaeGraphDepthLimit } from './layout'
 import { graphDistanceByUID } from './distance'
 
 export function filterSnapshotGraph(
-  snapshot: KataReachableGraphResponse,
+  snapshot: PoomsaeReachableGraphResponse,
   sourceUID: string,
-  depth: KataGraphDepthLimit,
+  depth: PoomsaeGraphDepthLimit,
   shouldHideDone: boolean,
-): KataReachableGraphResponse {
+): PoomsaeReachableGraphResponse {
   const maxDepth = depth === 'full' ? Number.POSITIVE_INFINITY : Number(depth)
   const hiddenUIDs = new Set(
     snapshot.nodes

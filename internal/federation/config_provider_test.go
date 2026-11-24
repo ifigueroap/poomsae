@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/pkg/federationprovider"
 )
 
 type unavailableProviderProjectStore struct {
@@ -35,9 +35,9 @@ func (s *unavailableProviderProjectStore) ProjectByUID(ctx context.Context, uid 
 }
 
 func TestRemovedProviderCleanupSurvivesPurgedProjectAndDatabaseRetry(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "approval_required")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "approval_required")
 	store := openReconcileStore(t)
 	credentials := config.DefaultFederationCredentialStore()
 	executable, err := os.Executable()
@@ -52,7 +52,7 @@ func TestRemovedProviderCleanupSurvivesPurgedProjectAndDatabaseRetry(t *testing.
 	require.NoError(t, err)
 	_, err = store.PurgeProject(t.Context(), db.PurgeProjectParams{ProjectID: project.ID, Actor: "Example User"})
 	require.NoError(t, err)
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "released")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	clock := newManualClock(time.Now())
@@ -75,17 +75,17 @@ func TestRemovedProviderCleanupSurvivesPurgedProjectAndDatabaseRetry(t *testing.
 }
 
 func TestReconcileProviderProcess(_ *testing.T) {
-	if os.Getenv("KATA_TEST_RECONCILE_PROVIDER") != "1" {
+	if os.Getenv("POOMSAE_TEST_RECONCILE_PROVIDER") != "1" {
 		return
 	}
 	request, err := federationprovider.DecodeRequest(os.Stdin)
 	if err != nil {
 		os.Exit(2)
 	}
-	if os.Getenv("KATA_TEST_PROVIDER_DECISION") == "exit-two" {
+	if os.Getenv("POOMSAE_TEST_PROVIDER_DECISION") == "exit-two" {
 		os.Exit(2)
 	}
-	if path := os.Getenv("KATA_TEST_PROVIDER_LOG"); path != "" {
+	if path := os.Getenv("POOMSAE_TEST_PROVIDER_LOG"); path != "" {
 		logged := request
 		logged.CandidateToken = ""
 		line, err := json.Marshal(logged)
@@ -102,9 +102,9 @@ func TestReconcileProviderProcess(_ *testing.T) {
 			os.Exit(1)
 		}
 	}
-	if request.Operation == "release" && os.Getenv("KATA_TEST_PROVIDER_RELEASE_DECISION") == "exit-two" {
+	if request.Operation == "release" && os.Getenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION") == "exit-two" {
 		// The provider may have released the request before failing, so
-		// Kata cannot tell whether the old approval still works.
+		// Poomsae cannot tell whether the old approval still works.
 		os.Exit(2)
 	}
 	if request.Operation == "release" {
@@ -114,7 +114,7 @@ func TestReconcileProviderProcess(_ *testing.T) {
 		}
 		// Leave fences the request first. An intent change keeps the saved
 		// request, unfenced, until this release is confirmed.
-		intentChange := os.Getenv("KATA_TEST_PROVIDER_INTENT_CHANGE") == "1"
+		intentChange := os.Getenv("POOMSAE_TEST_PROVIDER_INTENT_CHANGE") == "1"
 		found := false
 		for _, credential := range saved.Projects {
 			if credential.Provider != nil && (credential.LeavePending || intentChange) && credential.Provider.RequestID == request.RequestID {
@@ -125,22 +125,22 @@ func TestReconcileProviderProcess(_ *testing.T) {
 			os.Exit(2)
 		}
 	}
-	response := federationprovider.Response{Version: 1, Operation: request.Operation, RequestID: request.RequestID, Status: federationprovider.Status(os.Getenv("KATA_TEST_PROVIDER_DECISION"))}
-	if request.Operation == "release" && os.Getenv("KATA_TEST_PROVIDER_RELEASE_DECISION") != "" {
-		response.Status = federationprovider.Status(os.Getenv("KATA_TEST_PROVIDER_RELEASE_DECISION"))
+	response := federationprovider.Response{Version: 1, Operation: request.Operation, RequestID: request.RequestID, Status: federationprovider.Status(os.Getenv("POOMSAE_TEST_PROVIDER_DECISION"))}
+	if request.Operation == "release" && os.Getenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION") != "" {
+		response.Status = federationprovider.Status(os.Getenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION"))
 	}
 	if response.Status == "ready" {
 		response.HubURL, response.ProjectID, response.ProjectUID = request.HubURL, 42, hubProjectUID
-		if other := os.Getenv("KATA_TEST_PROVIDER_PROJECT_UID"); other != "" {
+		if other := os.Getenv("POOMSAE_TEST_PROVIDER_PROJECT_UID"); other != "" {
 			response.ProjectUID = other
 		}
 		response.EnrollmentID, response.Actor = 7, "Example User"
-		if os.Getenv("KATA_TEST_PROVIDER_INTENT_CHANGE") == "1" {
+		if os.Getenv("POOMSAE_TEST_PROVIDER_INTENT_CHANGE") == "1" {
 			// Each approval names its own actor, as a provider may.
 			response.Actor = "Example User (approval " + request.RequestID.String() + ")"
 		}
 		response.Capabilities = "claim,pull,push"
-		if os.Getenv("KATA_TEST_PROVIDER_NO_CLAIM") == "1" {
+		if os.Getenv("POOMSAE_TEST_PROVIDER_NO_CLAIM") == "1" {
 			response.Capabilities = "pull,push"
 		}
 		if request.Intent == "read_only" {
@@ -171,9 +171,9 @@ func TestRemovedProviderCleanupDoesNotFollowReusedName(t *testing.T) {
 		{name: "replacement created by reconciler"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
-			t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+			t.Setenv("POOMSAE_HOME", t.TempDir())
+			t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 			store := openReconcileStore(t)
 			credentials := config.DefaultFederationCredentialStore()
 			executable, err := os.Executable()
@@ -200,8 +200,8 @@ func TestRemovedProviderCleanupDoesNotFollowReusedName(t *testing.T) {
 				_, err = store.CreateProject(t.Context(), mapping.SpokeProject)
 				require.NoError(t, err)
 			}
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "approval_required")
-			t.Setenv("KATA_TEST_PROVIDER_RELEASE_DECISION", "released")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "approval_required")
+			t.Setenv("POOMSAE_TEST_PROVIDER_RELEASE_DECISION", "released")
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			r := federation.NewReconciler(federation.ReconcilerConfig{
@@ -239,9 +239,9 @@ func TestRemovedProviderCleanupDoesNotFollowReusedName(t *testing.T) {
 }
 
 func TestReconcilerRemovesProviderMappingAndRetriesExactCleanup(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 	store := openReconcileStore(t)
 	credentials := config.DefaultFederationCredentialStore()
 	executable, err := os.Executable()
@@ -267,7 +267,7 @@ func TestReconcilerRemovesProviderMappingAndRetriesExactCleanup(t *testing.T) {
 
 	// The process starts with no configured mappings. Its first cleanup attempt
 	// cannot reach the provider; cancellation models shutting down that process.
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "unavailable")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "unavailable")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	clock := newManualClock(time.Now())
@@ -292,7 +292,7 @@ func TestReconcilerRemovesProviderMappingAndRetriesExactCleanup(t *testing.T) {
 
 	// A new controller and credential handle recover the saved helper/request,
 	// without a catalog entry or a new authorization request.
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "released")
 	ctx, cancel = context.WithCancel(t.Context())
 	defer cancel()
 	r = federation.NewReconciler(federation.ReconcilerConfig{
@@ -327,12 +327,12 @@ func TestReconcileProviderUsesApprovedMetadataWithoutCatalogAdministration(t *te
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.name == "collaborate without claiming" {
-				t.Setenv("KATA_TEST_PROVIDER_NO_CLAIM", "1")
+				t.Setenv("POOMSAE_TEST_PROVIDER_NO_CLAIM", "1")
 			}
 			intent := tc.intent
-			t.Setenv("KATA_HOME", t.TempDir())
-			t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "approval_required")
+			t.Setenv("POOMSAE_HOME", t.TempDir())
+			t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "approval_required")
 			store := openReconcileStore(t)
 			credentials := config.DefaultFederationCredentialStore()
 			metadataCalls := 0
@@ -396,12 +396,12 @@ func TestReconcileProviderUsesApprovedMetadataWithoutCatalogAdministration(t *te
 				_, _, err = store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: local.ID, Title: "Import this task", Author: "Original Author"})
 				require.NoError(t, err)
 			}
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 			err = federation.ReconcileMapping(t.Context(), store, credentials, hub, catalog, mapping, nil)
 			require.ErrorIs(t, err, federation.ErrBindingConflict, "metadata cannot change the approved project")
 			badMetadata = false
 			// A saved ready result must work even if the helper becomes unavailable.
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "invalid")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "invalid")
 			err = federation.ReconcileMapping(t.Context(), store, credentials, hub, catalog, mapping, nil)
 			if tc.existingData && intent != "migrate" {
 				require.ErrorIs(t, err, federation.ErrBindingConflict)
@@ -448,9 +448,9 @@ func TestReconcileProviderUsesApprovedMetadataWithoutCatalogAdministration(t *te
 }
 
 func TestProviderInputErrorIsVisibleAndRetainsExactRequest(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "exit-two")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "exit-two")
 	store := openReconcileStore(t)
 	credentials := config.DefaultFederationCredentialStore()
 	executable, err := os.Executable()
@@ -475,7 +475,7 @@ func TestProviderInputErrorIsVisibleAndRetainsExactRequest(t *testing.T) {
 	saved, found, err := credentials.FindManagedFederationCredential(t.Context(), mapping.SpokeProject)
 	require.NoError(t, err)
 	require.True(t, found)
-	t.Setenv("KATA_TEST_PROVIDER_DECISION", "approval_required")
+	t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "approval_required")
 	retried, err := daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.NoError(t, err)
 	assert.Equal(t, saved.Credential.Provider.RequestID, retried.Credential.Provider.RequestID)
@@ -485,8 +485,8 @@ func TestProviderInputErrorIsVisibleAndRetainsExactRequest(t *testing.T) {
 func TestReconcilerStopsTerminalProviderDecisionsWithoutDroppingCleanup(t *testing.T) {
 	for _, status := range []string{"denied", "conflict"} {
 		t.Run(status, func(t *testing.T) {
-			t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", status)
+			t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", status)
 			store := openReconcileStore(t)
 			credentials := config.DefaultFederationCredentialStore()
 			executable, err := os.Executable()
@@ -522,7 +522,7 @@ func TestReconcilerStopsTerminalProviderDecisionsWithoutDroppingCleanup(t *testi
 					}, 20*time.Millisecond, time.Millisecond,
 						"terminal authorization must not schedule another attempt")
 				}()
-				t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+				t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 			}
 
 			// Removing the mapping still releases the original request. The peer
@@ -531,7 +531,7 @@ func TestReconcilerStopsTerminalProviderDecisionsWithoutDroppingCleanup(t *testi
 			require.NoError(t, err)
 			require.True(t, found)
 			assert.Equal(t, federationprovider.Status(status), saved.Credential.Provider.Status)
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "released")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "released")
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			r := federation.NewReconciler(federation.ReconcilerConfig{Store: store, Credentials: credentials, Wake: cancel})
@@ -546,8 +546,8 @@ func TestReconcilerStopsTerminalProviderDecisionsWithoutDroppingCleanup(t *testi
 func TestReconcilerRetriesWaitingProviderDecisions(t *testing.T) {
 	for _, status := range []string{"approval_required", "sign_in_required", "unavailable"} {
 		t.Run(status, func(t *testing.T) {
-			t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", status)
+			t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", status)
 			store := openReconcileStore(t)
 			credentials := config.DefaultFederationCredentialStore()
 			executable, err := os.Executable()
@@ -577,7 +577,7 @@ func TestReconcilerRetriesWaitingProviderDecisions(t *testing.T) {
 			saved, found, err := credentials.FindManagedFederationCredential(t.Context(), "spoke-project")
 			require.NoError(t, err)
 			require.True(t, found)
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "denied")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "denied")
 			clock.Advance(time.Second)
 			require.Eventually(t, func() bool { return r.Health().LastErrorCategory == "denied" }, providerWait, 10*time.Millisecond)
 			retried, found, err := credentials.FindManagedFederationCredential(t.Context(), "spoke-project")
@@ -594,9 +594,9 @@ func TestReconcilerRetriesWaitingProviderDecisions(t *testing.T) {
 func TestReconcileProviderJoinsRestoredPlaceholder(t *testing.T) {
 	for _, intent := range []federationprovider.Intent{"collaborate", "migrate"} {
 		t.Run(string(intent), func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
-			t.Setenv("KATA_TEST_RECONCILE_PROVIDER", "1")
-			t.Setenv("KATA_TEST_PROVIDER_DECISION", "ready")
+			t.Setenv("POOMSAE_HOME", t.TempDir())
+			t.Setenv("POOMSAE_TEST_RECONCILE_PROVIDER", "1")
+			t.Setenv("POOMSAE_TEST_PROVIDER_DECISION", "ready")
 			store := openReconcileStore(t)
 			ctx := t.Context()
 			project, err := store.CreateProjectWithUID(ctx, "spoke-project", hubProjectUID)

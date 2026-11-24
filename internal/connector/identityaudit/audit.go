@@ -1,5 +1,5 @@
 // Package identityaudit validates provider-facing connector parameters for
-// local Kata identity channels.
+// local Poomsae identity channels.
 package identityaudit
 
 import (
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 // Code identifies a connector parameter validation failure.
@@ -265,7 +265,7 @@ func forbiddenPath(value any, path, method string) (string, bool) {
 
 func forbiddenSemanticKey(key string) bool {
 	normalized := normalizeSemanticKey(key)
-	if normalized == "kata" || strings.HasPrefix(normalized, "kata_") {
+	if normalized == "poomsae" || normalized == "kata" || strings.HasPrefix(normalized, "poomsae_") || strings.HasPrefix(normalized, "kata_") {
 		return true
 	}
 	switch normalized {

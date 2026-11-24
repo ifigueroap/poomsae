@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 func TestTrustedCallbackPolicy(t *testing.T) {

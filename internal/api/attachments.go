@@ -4,7 +4,7 @@ package api
 import (
 	"uuid"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 type AddAttachmentRequest struct {

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RelaySharedAccessFixture is one native root and its common-audience pair.

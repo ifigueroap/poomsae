@@ -1,31 +1,31 @@
 ---
 title: Go client
-description: Connect Go programs to a Kata daemon with the typed client, CLI-compatible daemon discovery, and an in-process test server.
+description: Connect Go programs to a Poomsae daemon with the typed client, CLI-compatible daemon discovery, and an in-process test server.
 last_edited: 2026-11-20
 ---
 
 # Go client
 
-Connect your Go programs to a Kata daemon with `go.kenn.io/kata/pkg/client`.
+Connect your Go programs to a Poomsae daemon with `github.com/ifigueroap/poomsae/pkg/client`.
 The client is generated from the [HTTP API schema](http-api.md) and uses the
-same daemon selection, transports, and bearer-token rules as the Kata CLI, so
+same daemon selection, transports, and bearer-token rules as the Poomsae CLI, so
 your integration does not have to reimplement them.
 
 Importing `pkg/client` does not link the daemon, its storage engines, or sync
 connectors, so client-only programs stay small. The
-[test server](#test-against-a-real-daemon) in `pkg/katatest` runs a real daemon
+[test server](#test-against-a-real-daemon) in `pkg/poomsaetest` runs a real daemon
 and links all of them, so import it only in tests.
 
 ```sh
-go get go.kenn.io/kata
+go get github.com/ifigueroap/poomsae
 ```
 
-To host Kata inside a Go program instead of talking to a daemon, see
-[Embedding kata in Go](../development/embedding.md).
+To host Poomsae inside a Go program instead of talking to a daemon, see
+[Embedding poomsae in Go](../development/embedding.md).
 
 ## Connect to the user's daemon
 
-`client.Discover` returns a client connected to the same daemon the Kata CLI
+`client.Discover` returns a client connected to the same daemon the Poomsae CLI
 would use:
 
 ```go
@@ -36,10 +36,10 @@ if errors.Is(err, client.ErrDaemonUnavailable) {
 ```
 
 `Discover` checks the same sources as
-[`kata daemon locate`](daemon-discovery.md#selection-order), in order:
+[`poomsae daemon locate`](daemon-discovery.md#selection-order), in order:
 
-1. `KATA_SERVER`.
-2. `[server].url` or `[server].daemon` in the nearest `.kata.local.toml`,
+1. `POOMSAE_SERVER`.
+2. `[server].url` or `[server].daemon` in the nearest `.poomsae.local.toml`,
    walking upward from `Workspace`, or from the process working directory
    when `Workspace` is empty. `[server].daemon` selects a pinned local profile.
 3. The `active_daemon` catalog entry, which can be a remote or a pinned local
@@ -47,14 +47,14 @@ if errors.Is(err, client.ErrDaemonUnavailable) {
 4. The running default local daemon.
 
 The bearer token comes from the selected source, as it does in the CLI.
-The default local daemon uses `KATA_AUTH_TOKEN`, then the current home's
+The default local daemon uses `POOMSAE_AUTH_TOKEN`, then the current home's
 `[auth].token`. A pinned local profile uses its own auth configuration, and its
 catalog `token`, `token_file`, or `token_env` can select a client credential in
 identity-token mode.
 
-Both `Discover` and `kata daemon locate` inspect the selected daemon without
+Both `Discover` and `poomsae daemon locate` inspect the selected daemon without
 starting it. To check stopped-profile state and get recovery guidance, run
-`kata daemon diagnose`; `kata daemon recover` can start a local profile once
+`poomsae daemon diagnose`; `poomsae daemon recover` can start a local profile once
 its existing storage and identity pass the recovery checks. To have `Discover`
 start a stopped local daemon for you, set
 [`StartWith`](#start-a-stopped-local-daemon).
@@ -68,8 +68,8 @@ Because client-only programs do not include the PostgreSQL driver, they cannot
 resolve DSN routing options: the `host`, `port`, `dbname`, `service`, or
 `servicefile` query options, or `PGHOST`, `PGPORT`, `PGDATABASE`, or
 `PGSERVICE` filling in a part the URL leaves out. When those are used,
-`Discover` returns an error. Set `KATA_SERVER` to the daemon's endpoint, which
-`kata daemon locate` prints.
+`Discover` returns an error. Set `POOMSAE_SERVER` to the daemon's endpoint, which
+`poomsae daemon locate` prints.
 
 When no daemon is selected or a selected local daemon has no reachable runtime,
 `Discover` returns an error matching `client.ErrDaemonUnavailable`. A local
@@ -89,10 +89,10 @@ if target, ok := api.Discovered(); ok && target.Remote {
 ```
 
 `Discovered` returns a `client.DiscoveredDaemon` whose `Remote` field is true
-for a configured remote daemon. Kata clients treat a remote daemon as unable to
+for a configured remote daemon. Poomsae clients treat a remote daemon as unable to
 read the caller's files, even at a loopback address, and resolve projects
 without sending local paths. This matches `kind=remote` in
-[`kata daemon locate`](daemon-discovery.md#output-contract). A pinned local
+[`poomsae daemon locate`](daemon-discovery.md#output-contract). A pinned local
 profile selected by `[server].daemon` or `active_daemon` is local.
 
 For a client built from an explicit endpoint, such as `New` or `NewForTarget`,
@@ -101,7 +101,7 @@ For a client built from an explicit endpoint, such as `New` or `NewForTarget`,
 ### Connect to a catalog daemon by name
 
 `client.DaemonCatalog` lists the `[[daemon]]` entries in
-`<KATA_HOME>/config.toml` in file order, matching the choices in the TUI daemon
+`<POOMSAE_HOME>/config.toml` in file order, matching the choices in the TUI daemon
 switcher:
 
 ```go
@@ -116,7 +116,7 @@ for _, d := range daemons {
 | `Name` | The entry's `name`. |
 | `Local` | True for a `local = true` entry, including a pinned local profile. |
 | `Endpoint` | `local` for a local entry. For a remote entry, the URL's host and port, such as `daemon.example:7443`. |
-| `HasToken` | True when the entry sets `token`, `token_file` or `token_env`. Kata reads no credential files or variables here, so the selected source may still be unavailable. |
+| `HasToken` | True when the entry sets `token`, `token_file` or `token_env`. Poomsae reads no credential files or variables here, so the selected source may still be unavailable. |
 | `Active` | True for the entry `active_daemon` names. |
 
 Entries carry no token values. If there is no config file, the list is empty;
@@ -134,11 +134,11 @@ The named entry replaces every other selection source and ignores `Workspace`.
 `Discover` resolves it with the same catalog rules as `--daemon`:
 
 - A remote entry resolves `token` > `token_file` > `token_env`.
-  `KATA_AUTH_TOKEN` overrides the catalog credential without reading its source.
+  `POOMSAE_AUTH_TOKEN` overrides the catalog credential without reading its source.
 - A local entry uses the same catalog precedence. Without a selector, it falls
-  back to `KATA_AUTH_TOKEN`, then the current home's `[auth].token`.
+  back to `POOMSAE_AUTH_TOKEN`, then the current home's `[auth].token`.
 - A failed selected file or an unset or empty selected `token_env` returns an
-  error without fallback, unless `KATA_AUTH_TOKEN` overrides the credential for
+  error without fallback, unless `POOMSAE_AUTH_TOKEN` overrides the credential for
   a remote entry. Files follow the
   [catalog credential rules](configuration.md#daemon-config).
 - A local entry connects to the running default local daemon. A pinned local
@@ -155,12 +155,12 @@ one.
 ### Start a stopped local daemon
 
 To start a stopped local daemon automatically, set `DiscoverOptions.StartWith`
-to the path of a `kata` executable, as the TUI daemon switcher does:
+to the path of a `poomsae` executable, as the TUI daemon switcher does:
 
 ```go
 api, err := client.Discover(ctx, client.DiscoverOptions{
 	Daemon:    "example-workspace",
-	StartWith: kataPath,
+	StartWith: poomsaePath,
 })
 ```
 
@@ -168,9 +168,9 @@ api, err := client.Discover(ctx, client.DiscoverOptions{
 
 | Selected daemon | Command |
 | --- | --- |
-| The current home's daemon, or a plain `local = true` entry | `kata daemon start` |
-| A pinned local profile chosen by `Daemon` | `kata --daemon <name> daemon recover` |
-| A pinned local profile chosen by `.kata.local.toml` or `active_daemon` | `kata [--workspace <Workspace>] daemon recover` |
+| The current home's daemon, or a plain `local = true` entry | `poomsae daemon start` |
+| A pinned local profile chosen by `Daemon` | `poomsae --daemon <name> daemon recover` |
+| A pinned local profile chosen by `.poomsae.local.toml` or `active_daemon` | `poomsae [--workspace <Workspace>] daemon recover` |
 
 `daemon recover` checks the profile's existing storage and instance UID before
 and after starting it, and never creates storage. `Discover` never starts a
@@ -189,7 +189,7 @@ to a constructor. An endpoint is an HTTP(S) origin such as
 | Constructor | Bearer token sent |
 | --- | --- |
 | `client.New(endpoint)` | None. |
-| `client.NewWithGlobalAuth(ctx, endpoint)` | `KATA_AUTH_TOKEN`, then `[auth].token`. |
+| `client.NewWithGlobalAuth(ctx, endpoint)` | `POOMSAE_AUTH_TOKEN`, then `[auth].token`. |
 | `client.NewWithBearer(ctx, endpoint, token)` | `token`. |
 | `client.NewForTarget(ctx, endpoint, client.TargetAuth{Token: token})` | `TargetAuth.Token`. Global auth config is not read. |
 
@@ -241,41 +241,41 @@ Daemon errors carry a structured envelope with a stable `code`:
 ```go
 _, err := api.ShowProjectWithResponse(ctx, opts)
 if envelope, ok := errors.AsType[generated.ErrorEnvelope](err); ok {
-	log.Printf("kata %s: %s", envelope.ErrorData.Code, envelope.ErrorData.Message)
+	log.Printf("poomsae %s: %s", envelope.ErrorData.Code, envelope.ErrorData.Message)
 }
 if client.StatusCode(err) == http.StatusUnauthorized {
 	// Ask the user for a token.
 }
 ```
 
-`client.StatusCode` returns the HTTP status even when the body is not a Kata
+`client.StatusCode` returns the HTTP status even when the body is not a Poomsae
 envelope, such as a proxy's error page. When no response arrives, for example
 when the connection fails, it returns `0`.
 
 ## Test against a real daemon
 
-`go.kenn.io/kata/pkg/katatest` starts an in-process Kata service with its own
+`github.com/ifigueroap/poomsae/pkg/poomsaetest` starts an in-process Poomsae service with its own
 SQLite database for one test, and stops it when the test ends:
 
 ```go
 func TestFilesIssue(t *testing.T) {
-	server := katatest.New(t, katatest.WithToken("test-token"))
+	server := poomsaetest.New(t, poomsaetest.WithToken("test-token"))
 	api := server.Client(t)
 	// Or hand server.Endpoint and the token to the code under test.
 }
 ```
 
-- `katatest.WithToken(token)` requires that bearer token on API requests.
+- `poomsaetest.WithToken(token)` requires that bearer token on API requests.
   Without it, the service trusts callers the way an unauthenticated local
   daemon does.
-- `katatest.WithUnixSocket()` serves on a Unix socket, setting
+- `poomsaetest.WithUnixSocket()` serves on a Unix socket, setting
   `server.Endpoint` to a `unix:///...` endpoint.
 
 As with any daemon that has no identity tokens, write requests must name an
 `actor` in the request body.
 
-To exercise `client.Discover`, set `KATA_SERVER` to `server.Endpoint` and
-`KATA_AUTH_TOKEN` to the token.
+To exercise `client.Discover`, set `POOMSAE_SERVER` to `server.Endpoint` and
+`POOMSAE_AUTH_TOKEN` to the token.
 
 ## Cron identities
 

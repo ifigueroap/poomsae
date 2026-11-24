@@ -37,7 +37,7 @@ func scenarioModel(t *testing.T, w, h int) Model {
 	t.Helper()
 	m := initialModel(Options{})
 	m.api = nil
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m.width, m.height = w, h
 	m.layout = splitlayout.PickLayout(w, h)
 	out, _ := m.Update(initialFetchMsg{
@@ -443,7 +443,7 @@ func sendKeyAndDrain(t *testing.T, m Model, msg tea.KeyPressMsg) Model {
 // which proves the SSE → detail-refetch routing is intact.
 func TestScenario_ChildCreatedRefetchesParentDetail(t *testing.T) {
 	m := scenarioModel(t, 120, 30)
-	m.api = NewClient("http://kata.invalid", nil)
+	m.api = NewClient("http://poomsae.invalid", nil)
 	m = scenarioOpenDetail(t, m, "short body")
 	parentSID := m.detail.issue.ShortID
 	parentUID := m.detail.issue.UID

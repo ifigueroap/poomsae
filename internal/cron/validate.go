@@ -9,8 +9,8 @@ import (
 	"time"
 	"unicode"
 
-	"go.kenn.io/kata/internal/notification"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ErrInvalid identifies a malformed or unsupported portable document.
@@ -251,7 +251,7 @@ func checkSize(value any, limit int) error {
 	return nil
 }
 
-// Executor options are opaque to Kata, but named credential/path fields cannot
+// Executor options are opaque to Poomsae, but named credential/path fields cannot
 // carry local values. Executors resolve secret_refs and checkout_key locally.
 func validateOptions(input []byte) error {
 	if len(input) == 0 {

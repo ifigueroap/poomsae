@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/editorcmd"
+	"github.com/ifigueroap/poomsae/internal/editorcmd"
 )
 
 // editorCmd suspends Bubble Tea, runs $EDITOR on a tmpfile pre-seeded
@@ -26,7 +26,7 @@ import (
 // running, the terminal belongs to $EDITOR — Bubble Tea is paused, so
 // keys (including 'q') do not reach our handlers.
 func editorCmd(kind, template string, formGen int64) tea.Cmd {
-	tmp, err := os.CreateTemp("", "kata-*.md")
+	tmp, err := os.CreateTemp("", "poomsae-*.md")
 	if err != nil {
 		return func() tea.Msg {
 			return editorReturnedMsg{kind: kind, formGen: formGen, err: err}

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 // Contract: backup env replaces TOML, durations are positive, and a schedule
@@ -28,7 +28,7 @@ func TestDeploymentBackupConfiguration(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			body := tc.body
 			if tc.interval != "" || (tc.wantError && tc.name != "destination required") {
 				body = fmt.Sprintf(body, filepath.Join(home, "backups"))
@@ -52,9 +52,9 @@ func TestDeploymentBackupConfiguration(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, wantInterval, interval)
 			require.Equal(t, wantRetain, retain)
-			t.Setenv("KATA_BACKUP_DIR", filepath.Join(home, "env-backups"))
-			t.Setenv("KATA_BACKUP_INTERVAL", "3h")
-			t.Setenv("KATA_BACKUP_RETAIN", "72h")
+			t.Setenv("POOMSAE_BACKUP_DIR", filepath.Join(home, "env-backups"))
+			t.Setenv("POOMSAE_BACKUP_INTERVAL", "3h")
+			t.Setenv("POOMSAE_BACKUP_RETAIN", "72h")
 			cfg, err = config.ReadDaemonConfig()
 			require.NoError(t, err)
 			require.Equal(t, filepath.Join(home, "env-backups"), cfg.Backup.Dir)

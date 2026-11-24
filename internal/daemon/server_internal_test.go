@@ -9,8 +9,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/hooks"
 )
 
 func TestEveryRegisteredOperationHasHostPolicy(t *testing.T) {

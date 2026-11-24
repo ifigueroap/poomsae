@@ -3,8 +3,8 @@ package dbtest
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkFederatedOvertakenMoveSourceLeave(t *testing.T, _ db.Storage, backend Backend) error {

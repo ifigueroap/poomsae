@@ -4,12 +4,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestScopedStorageCollectionAndRecurrenceContracts(t *testing.T) {
@@ -25,7 +25,7 @@ func TestScopedStorageCollectionAndRecurrenceContracts(t *testing.T) {
 				t.Cleanup(cleanup)
 				store, err = pgstore.Open(t.Context(), dsn)
 			} else {
-				store, err = sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+				store, err = sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 			}
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, store.Close()) })

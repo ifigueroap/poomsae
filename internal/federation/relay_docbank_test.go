@@ -16,17 +16,17 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 func TestRelayDocbankReadAfterRootNewInstanceRestore(t *testing.T) {
@@ -89,11 +89,11 @@ func TestRelayDocbankWritesAfterRootNewInstanceRestore(t *testing.T) {
 			require.Equal(t, http.StatusOK, code)
 			require.True(t, claim.Granted)
 			version := uuid.MustParse("6f1c2e8a-2222-4222-8222-222222222222")
-			vault.Seed("/kata/link.pdf", docbank.Node{ID: 42, Name: "link.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked document")})
+			vault.Seed("/poomsae/link.pdf", docbank.Node{ID: 42, Name: "link.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked document")})
 			endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments", node.project.ID, issue.UID)
 			for _, operation := range []struct{ path, body, typ string }{
 				{"?name=report.pdf", "root document", "application/octet-stream"},
-				{"/links", `{"path":"/kata/link.pdf"}`, "application/json"},
+				{"/links", `{"path":"/poomsae/link.pdf"}`, "application/json"},
 			} {
 				status, raw := relayDocbankRequest(t, node, http.MethodPost, endpoint+operation.path, operation.body, operation.typ)
 				require.Equal(t, http.StatusOK, status, string(raw))
@@ -117,7 +117,7 @@ func serveRelayDocbank(t *testing.T, node *relayMatrixNode, f *docbanktest.Fake,
 	cfg := daemon.ServerConfig{FederationSyncOnce: func(ctx context.Context, binding db.FederationBinding, credential config.FederationCredential) error {
 		return federation.SyncFederationOnce(ctx, node.store, binding, credential, node.credentials)
 	}, DB: node.store, FederationCredentials: node.credentials,
-		RootSigning: daemon.NewRootSigning(node.signer), Auth: config.AuthConfig{Token: "bootstrap-test-token", RequireTokenIdentity: true}, DocbankFolder: "/kata"}
+		RootSigning: daemon.NewRootSigning(node.signer), Auth: config.AuthConfig{Token: "bootstrap-test-token", RequireTokenIdentity: true}, DocbankFolder: "/poomsae"}
 	if len(syncOverride) > 0 {
 		cfg.FederationSyncOnce = syncOverride[0]
 	}
@@ -193,9 +193,9 @@ func TestRelayDocbankUploadAndImmediateContent(t *testing.T) {
 	status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"?name=second.pdf", "second document", "application/octet-stream")
 	require.Equal(t, http.StatusOK, status, string(raw))
 	version := uuid.MustParse("6f1c2e8a-2222-4222-8222-222222222222")
-	rootVault.Seed("/kata/link.pdf", docbank.Node{ID: 42, Name: "link.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked document")})
+	rootVault.Seed("/poomsae/link.pdf", docbank.Node{ID: 42, Name: "link.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked document")})
 	relayClaimLookups.Store(0)
-	status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"/links", `{"path":"/kata/link.pdf"}`, "application/json")
+	status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"/links", `{"path":"/poomsae/link.pdf"}`, "application/json")
 	require.Equal(t, http.StatusOK, status, string(raw))
 	require.Positive(t, relayClaimLookups.Load())
 	syncRelayMatrixNode(t, leaf)
@@ -261,7 +261,7 @@ func TestRelayDocbankLinkUsesRootAndRefusesSubtreeEscape(t *testing.T) {
 	root, _, leaf, issue := newRelayClaimChain(t)
 	f := docbanktest.New(t)
 	version := uuid.MustParse("6f1c2e8a-2222-4222-8222-222222222222")
-	f.Seed("/kata/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("root document")})
+	f.Seed("/poomsae/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("root document")})
 	f.Seed("/private/report.pdf", docbank.Node{ID: 43, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, nil)
 	serveRelayDocbank(t, root, f)
 	localVault := docbanktest.New(t)
@@ -272,7 +272,7 @@ func TestRelayDocbankLinkUsesRootAndRefusesSubtreeEscape(t *testing.T) {
 	_, err = leaf.store.PatchIssueMetadata(t.Context(), db.PatchIssueMetadataIn{IssueID: issueIDForRelayMatrix(t, leaf, issue.UID), Actor: leaf.account, Patch: map[string]jsontext.Value{"attachment.legacy": legacy}})
 	require.NoError(t, err)
 	endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments/links", leaf.project.ID, issue.UID)
-	status, raw := relayDocbankRequest(t, leaf, http.MethodPost, endpoint, `{"path":"/kata/report.pdf","reuse_existing":true}`, "application/json")
+	status, raw := relayDocbankRequest(t, leaf, http.MethodPost, endpoint, `{"path":"/poomsae/report.pdf","reuse_existing":true}`, "application/json")
 	require.Equal(t, http.StatusOK, status, string(raw))
 	var first, second api.AddAttachmentResponseBody
 	require.NoError(t, json.Unmarshal(raw, &first))
@@ -338,8 +338,8 @@ func TestRelayDocbankNewIssueCanAttachImmediately(t *testing.T) {
 				status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"?name=report.pdf", "new report", "application/octet-stream")
 			} else {
 				version := uuid.MustParse("6f1c2e8a-2222-4222-8222-222222222222")
-				vault.Seed("/kata/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked report")})
-				status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"/links", `{"path":"/kata/report.pdf"}`, "application/json")
+				vault.Seed("/poomsae/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("linked report")})
+				status, raw = relayDocbankRequest(t, leaf, http.MethodPost, endpoint+"/links", `{"path":"/poomsae/report.pdf"}`, "application/json")
 			}
 			require.Equal(t, http.StatusOK, status, string(raw))
 			var out api.AddAttachmentResponseBody

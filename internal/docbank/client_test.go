@@ -8,18 +8,18 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
 )
 
 func TestDocbankUploadAndContent(t *testing.T) {
 	f := docbanktest.New(t)
 	c := docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-	parent, err := c.EnsureFolder(t.Context(), "/kata/project-a")
+	parent, err := c.EnsureFolder(t.Context(), "/poomsae/project-a")
 	require.NoError(t, err)
-	same, err := c.EnsureFolder(t.Context(), "/kata/project-a")
+	same, err := c.EnsureFolder(t.Context(), "/poomsae/project-a")
 	require.NoError(t, err)
 	require.Equal(t, parent, same)
 	// SHA-256 of "abc".

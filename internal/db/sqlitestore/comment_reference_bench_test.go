@@ -5,15 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func BenchmarkReadCommentGraphFullUIDReference(b *testing.B) {
 	for _, comments := range []int{1_000, 10_000, 100_000} {
 		b.Run(fmt.Sprintf("comments=%d", comments), func(b *testing.B) {
 			ctx := b.Context()
-			d, err := Open(ctx, filepath.Join(b.TempDir(), "kata.db"))
+			d, err := Open(ctx, filepath.Join(b.TempDir(), "poomsae.db"))
 			require.NoError(b, err)
 			b.Cleanup(func() { _ = d.Close() })
 			// Dropping the FTS triggers speeds up setup without affecting the read path.

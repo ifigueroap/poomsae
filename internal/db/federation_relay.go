@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // Relay constants bound protocol version, stream names, hop depth and envelope bytes.
@@ -136,7 +136,7 @@ func relayEnvelopeDigest(envelope RelayEnvelope) (string, error) {
 		Domain   string        `json:"domain"`
 		Header   RelayEnvelope `json:"header"`
 		BodyHash string        `json:"body_hash"`
-	}{"kata.relay-hop.v1", header, hex.EncodeToString(bodyDigest[:])})
+	}{"poomsae.relay-hop.v1", header, hex.EncodeToString(bodyDigest[:])})
 	if err != nil {
 		return "", err
 	}

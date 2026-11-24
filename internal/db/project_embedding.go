@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ProjectEmbeddingMetadataKey names the root-owned stable producer configuration in project metadata.

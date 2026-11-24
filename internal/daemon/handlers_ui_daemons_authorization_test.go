@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
 )
 
 type observedDoneContext struct {
@@ -85,7 +85,7 @@ func TestWebDaemonGatewayAppliesWebLocalProjectPolicyBeforeForwarding(t *testing
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 
 	for _, test := range []struct {
@@ -264,7 +264,7 @@ func TestWebDaemonGatewayIntersectsSnapshotAuthorityAndPreservesConditionalReads
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalBootstrap}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalBootstrap}, "/poomsae")
 	require.NoError(t, err)
 
 	first := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet,
@@ -309,7 +309,7 @@ func TestWebDaemonGatewayPreservesIdentitySourceAttribution(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalTrustedProxy, Actor: "user-a"}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalTrustedProxy, Actor: "user-a"}, "/poomsae")
 	require.NoError(t, err)
 
 	snapshotResponse := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet,
@@ -366,7 +366,7 @@ func TestWebDaemonGatewayLetsRequestActorSourceWriteThroughAccountBoundTarget(t 
 			handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 				Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 			})
-			issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+			issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 			require.NoError(t, err)
 
 			response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet,
@@ -402,7 +402,7 @@ func TestWebDaemonGatewayAccountBoundTargetAttributesWritesToTokenAccount(t *tes
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: target.URL, Token: "member-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 
 	response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodPost,
@@ -483,7 +483,7 @@ func TestWebDaemonGatewayChecksTargetAuthorityBeforeMutation(t *testing.T) {
 			handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 				Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 			})
-			issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+			issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 			require.NoError(t, err)
 
 			response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodDelete,
@@ -517,7 +517,7 @@ func TestWebDaemonGatewayCannotProxyTUIBypassToLoopbackTarget(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: target.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	body := bytes.NewBufferString(`{"actor":"forged","source":"tui","reason":"done"}`)
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
@@ -565,7 +565,7 @@ func TestWebDaemonGatewayForwardsNonBypassCloseBodiesUnchanged(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	bodies := []string{
 		`{"actor":"agent","reason":"done","message":"A substantive close message that remains intact."}`,
@@ -590,7 +590,7 @@ func TestWebDaemonGatewayRejectsOversizedCloseBeforeContactingTarget(t *testing.
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	body := `{"message":"` + strings.Repeat("x", (1<<20)+1) + `"}`
 	response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodPost,
@@ -629,7 +629,7 @@ func TestWebDaemonGatewayBoundsTargetAuthorityCheck(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 
 	response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodDelete,
@@ -815,7 +815,7 @@ func TestWebDaemonGatewayRejectsNullSnapshotEnvelope(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 
 	response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet,
@@ -835,7 +835,7 @@ func TestWebDaemonGatewayRejectsIncompatibleUIContracts(t *testing.T) {
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 
 	for _, path := range []string{"/api/v1/ui/snapshot", "/api/v1/ui/references"} {
@@ -858,7 +858,7 @@ func TestWebDaemonGatewayRejectsRemoteStreamsAndCredentialedReadonlyTargets(t *t
 	handler, manager := newAuthorizedWebDaemonGateway(t, false, true, config.CatalogDaemonConfig{
 		Name: "example-remote", URL: upstream.URL, Token: "target-token", AllowInsecure: true,
 	})
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	stream := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet,
 		pathEventsStreamPath, nil, "")
@@ -1008,7 +1008,7 @@ func TestWebDaemonGatewayStreamsEventsForTokenSessionOnLocalTarget(t *testing.T)
 	require.NoError(t, err)
 	listener := httptest.NewServer(handler)
 	t.Cleanup(listener.Close)
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalDBToken, Actor: "member", TokenID: token.ID}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalDBToken, Actor: "member", TokenID: token.ID}, "/poomsae")
 	require.NoError(t, err)
 
 	for _, path := range []string{pathEventsStreamPath, webDaemonProxyPrefix + pathEventsStreamPath} {
@@ -1063,7 +1063,7 @@ func TestWebDaemonGatewayRestrictsEmbeddingsByViewer(t *testing.T) {
 				require.NoError(t, err)
 				principal = Principal{Kind: PrincipalDBToken, Actor: "member", TokenID: token.ID}
 			}
-			issued, err := manager.IssueSession(principal, "/kata")
+			issued, err := manager.IssueSession(principal, "/poomsae")
 			require.NoError(t, err)
 			response := authorizedGatewayRequest(t, handler, manager, issued, http.MethodGet, "/api/v1/embeddings/local", nil, "")
 			require.Equal(t, http.StatusOK, response.Code, response.Body.String())

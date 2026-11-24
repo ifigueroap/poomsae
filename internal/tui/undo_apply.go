@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // undoBacklogLookupTimeout bounds the optional backlog lookup so a slow read
@@ -128,9 +128,9 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			}
 		}
 		if entry.kind == "close" {
-			out.resp, out.err = c.KataAPI.Reopen(ctx, entry.projectID, entry.uid, entry.actor)
+			out.resp, out.err = c.PoomsaeAPI.Reopen(ctx, entry.projectID, entry.uid, entry.actor)
 		} else if evidenceRequired {
-			closer, ok := c.KataAPI.(evidenceCloseAPI)
+			closer, ok := c.PoomsaeAPI.(evidenceCloseAPI)
 			if !ok || evidence == nil || evidence.Reason != "done" {
 				out.err = errors.New("evidence-bearing done close is required")
 				return out
@@ -139,7 +139,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 				suppressIssueActionTelemetry(ctx), entry.projectID, entry.uid, *evidence,
 			)
 		} else {
-			out.resp, out.err = c.KataAPI.Close(
+			out.resp, out.err = c.PoomsaeAPI.Close(
 				suppressIssueActionTelemetry(ctx), entry.projectID, entry.uid, entry.actor,
 			)
 		}
@@ -156,7 +156,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 		if entry.before.Owner != nil {
 			owner = *entry.before.Owner
 		}
-		out.resp, out.err = c.KataAPI.Assign(ctx, entry.projectID, entry.uid, owner, entry.actor)
+		out.resp, out.err = c.PoomsaeAPI.Assign(ctx, entry.projectID, entry.uid, owner, entry.actor)
 	case "priority.set":
 		if equalInt64Ptr(current.Priority, entry.before.Priority) {
 			out.already = true
@@ -166,7 +166,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			out.conflict = "issue priority changed since the action"
 			return out
 		}
-		out.resp, out.err = c.KataAPI.SetPriority(ctx, entry.projectID, entry.uid, entry.before.Priority, entry.actor)
+		out.resp, out.err = c.PoomsaeAPI.SetPriority(ctx, entry.projectID, entry.uid, entry.before.Priority, entry.actor)
 	case "body.edit":
 		if current.Body == entry.before.Body {
 			out.already = true
@@ -176,7 +176,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			out.conflict = "issue body changed since the action"
 			return out
 		}
-		out.resp, out.err = c.KataAPI.EditBody(ctx, entry.projectID, entry.uid, entry.before.Body, entry.actor, &current.ContentRevision)
+		out.resp, out.err = c.PoomsaeAPI.EditBody(ctx, entry.projectID, entry.uid, entry.before.Body, entry.actor, &current.ContentRevision)
 		if isRevisionConflict(out.err) {
 			out.err = nil
 			out.conflict = "issue body changed since the action"
@@ -192,7 +192,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			out.conflict = "issue dates changed since the action"
 			return out
 		}
-		writer, ok := c.KataAPI.(datesAPI)
+		writer, ok := c.PoomsaeAPI.(datesAPI)
 		if !ok {
 			out.err = errors.New("connected client cannot edit dates")
 			return out
@@ -217,9 +217,9 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			return out
 		}
 		if entry.kind == "label.add" {
-			out.resp, out.err = c.KataAPI.RemoveLabel(ctx, entry.projectID, entry.uid, entry.label, entry.actor)
+			out.resp, out.err = c.PoomsaeAPI.RemoveLabel(ctx, entry.projectID, entry.uid, entry.label, entry.actor)
 		} else {
-			out.resp, out.err = c.KataAPI.AddLabel(ctx, entry.projectID, entry.uid, entry.label, entry.actor)
+			out.resp, out.err = c.PoomsaeAPI.AddLabel(ctx, entry.projectID, entry.uid, entry.label, entry.actor)
 		}
 	case "link.add":
 		if entry.link == nil {
@@ -254,7 +254,7 @@ func (c *undoClient) undo(ctx context.Context, entry undoEntry, opts undoOptions
 			out.conflict = "created link changed since the action"
 			return out
 		}
-		remover, ok := c.KataAPI.(interface {
+		remover, ok := c.PoomsaeAPI.(interface {
 			RemoveLink(context.Context, int64, string, int64, string) (*MutationResp, error)
 		})
 		if !ok {
@@ -395,4 +395,4 @@ func sameStatus(a, b *Issue) bool {
 	return *a.ClosedReason == *b.ClosedReason
 }
 
-var _ KataAPI = (*undoClient)(nil)
+var _ PoomsaeAPI = (*undoClient)(nil)

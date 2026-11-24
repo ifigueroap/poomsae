@@ -2,18 +2,18 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/sve
 import type { ComponentProps } from 'svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
-  KataProjectSummary,
-  KataTaskDetail,
-  KataTaskEvent,
-  KataTaskSummary,
-} from '../lib/kata/types'
+  PoomsaeProjectSummary,
+  PoomsaeTaskDetail,
+  PoomsaeTaskEvent,
+  PoomsaeTaskSummary,
+} from '../lib/poomsae/types'
 import type { UIIssueReference } from '../lib/api/generated'
 
 import IssueDetail from './IssueDetail.svelte'
 
 type IssueDetailProps = ComponentProps<typeof IssueDetail>
 
-function makeIssue(overrides: Partial<KataTaskDetail['issue']> = {}): KataTaskDetail {
+function makeIssue(overrides: Partial<PoomsaeTaskDetail['issue']> = {}): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,
@@ -41,7 +41,7 @@ function makeIssue(overrides: Partial<KataTaskDetail['issue']> = {}): KataTaskDe
   }
 }
 
-function makeProject(uid: string, name: string, role = ''): KataProjectSummary {
+function makeProject(uid: string, name: string, role = ''): PoomsaeProjectSummary {
   return {
     id: uid === 'project-1' ? 1 : 2,
     uid,
@@ -53,7 +53,7 @@ function makeProject(uid: string, name: string, role = ''): KataProjectSummary {
   }
 }
 
-function makeSummary(): KataTaskSummary {
+function makeSummary(): PoomsaeTaskSummary {
   return {
     id: 2,
     uid: 'blocker-1',
@@ -72,7 +72,7 @@ function makeSummary(): KataTaskSummary {
   }
 }
 
-function makeReference(task: KataTaskSummary): UIIssueReference {
+function makeReference(task: PoomsaeTaskSummary): UIIssueReference {
   return {
     uid: task.uid,
     short_id: task.short_id,
@@ -253,7 +253,7 @@ describe('IssueDetail', () => {
   it.each(['evidence', 'older effective event', 'no effective event'] as const)(
     'shows the closed task line with %s',
     (kind) => {
-      const close = (event_id: number, actor: string, reason: string): KataTaskEvent => ({
+      const close = (event_id: number, actor: string, reason: string): PoomsaeTaskEvent => ({
         event_id,
         event_uid: `close-${event_id}`,
         origin_instance_uid: 'instance-1',
@@ -491,7 +491,7 @@ describe('IssueDetail', () => {
             to: { uid: 'issue-2', short_id: 'I-2', qualified_id: 'INBOX-2', status: 'closed' },
           },
         ],
-      } as KataTaskDetail,
+      } as PoomsaeTaskDetail,
     })
 
     await fireEvent.click(screen.getByRole('button', { name: /^Related INBOX-2/ }))

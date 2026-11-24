@@ -12,13 +12,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federationcoord"
 )
 
 func encodeRootKeySeed(key ed25519.PrivateKey) string {
@@ -128,7 +128,7 @@ func TestRootKeyRepinAfterKeyLoss(t *testing.T) {
 		require.Equal(t, http.StatusConflict, status, body)
 		require.Equal(t, "root_signing_key_unavailable", body["error"].(map[string]any)["code"])
 		require.Contains(t, body["error"].(map[string]any)["message"], "project hub-project")
-		require.Contains(t, body["error"].(map[string]any)["message"], "kata federation root-key repin --project hub-project")
+		require.Contains(t, body["error"].(map[string]any)["message"], "poomsae federation root-key repin --project hub-project")
 		status, body = f.createIssue(t, f.standalone)
 		require.Equal(t, http.StatusOK, status, body)
 		require.Equal(t, &api.RootSigningHealth{KeyFile: f.keyFile, KeyLoaded: false, KeyProblem: "key file is missing", Projects: []string{"hub-project"}}, f.health(t))
@@ -358,7 +358,7 @@ func TestRelayResetReportsUnavailableRootKey(t *testing.T) {
 		code, _, raw = withoutKey.request(t, http.MethodGet, fmt.Sprintf("/api/v1/projects/%d/federation/relay/reset", fixture.private.ID), "", nil, map[string]string{"Authorization": "Bearer narrow-enrollment-test-token"})
 		require.Equal(t, http.StatusConflict, code, string(raw))
 		require.Contains(t, string(raw), "root_signing_key_unavailable")
-		require.Contains(t, string(raw), "kata federation root-key repin --project restricted-project")
+		require.Contains(t, string(raw), "poomsae federation root-key repin --project restricted-project")
 	})
 }
 

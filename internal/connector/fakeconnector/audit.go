@@ -4,7 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"fmt"
 
-	"go.kenn.io/kata/internal/connector/identityaudit"
+	"github.com/ifigueroap/poomsae/internal/connector/identityaudit"
 )
 
 // AuditExternalSurface validates every raw fake call and mutation against the

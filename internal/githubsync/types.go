@@ -63,7 +63,7 @@ type Repository struct {
 	FullName string `json:"full_name"`
 }
 
-// Binding identifies the GitHub repository associated with a kata project.
+// Binding identifies the GitHub repository associated with a poomsae project.
 type Binding struct {
 	Host  string
 	Owner string

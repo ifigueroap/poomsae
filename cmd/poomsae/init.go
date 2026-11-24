@@ -1,0 +1,1104 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+
+	"github.com/ifigueroap/poomsae/internal/agentguide"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
+	"go.kenn.io/kit/atomicfile"
+	"go.kenn.io/kit/fslink"
+	"go.kenn.io/kit/pathresolve"
+)
+
+// initOptions holds the flags specific to `poomsae init`.
+type initOptions struct {
+	Project         string
+	Replace         bool
+	Reassign        bool
+	WithAgents      bool
+	AgentMode       string
+	WithHooks       bool
+	WithCodexHooks  bool
+	WithAgentHooks  []string
+	AgentHooks      []string
+	ContractOnly    bool
+	OpenCodeAPI     string
+	Actor           string
+	SkipLocalWrites bool
+}
+
+// callInitOpts is the parameter bag passed to callInit.
+type callInitOpts struct {
+	Project         string
+	Replace         bool
+	Reassign        bool
+	WithAgents      bool
+	AgentMode       string
+	WithHooks       bool
+	WithCodexHooks  bool
+	WithAgentHooks  []string
+	AgentHooks      []string
+	ContractOnly    bool
+	OpenCodeAPI     string
+	Actor           string
+	SkipLocalWrites bool
+}
+
+// cliError is a structured error that carries an exit code for main().
+//
+// Kind is the coarse classification used by the --json error envelope so
+// scripts can branch on a stable taxonomy instead of grepping the
+// human-readable message. Code is the stable per-error tag, usually supplied
+// by the daemon (e.g. "issue_not_found") but occasionally added by a client
+// path with command-specific recovery semantics.
+// Message is the human-readable text. ExitCode is what main() exits with.
+type cliError struct {
+	HTTPStatus int
+	Hint       string
+	Message    string
+	Kind       errKind
+	Code       string
+	ExitCode   int
+	Data       jsontext.Value
+}
+
+func (e *cliError) Error() string { return e.Message }
+
+// errKind is the coarse classification surfaced in the --json error
+// envelope. Maps roughly onto the spec §4.7 exit codes but is named
+// for the kind of failure rather than the numeric exit, so JSON
+// consumers can branch on a stable identifier.
+type errKind string
+
+const (
+	kindUsage         errKind = "usage"
+	kindValidation    errKind = "validation"
+	kindNotFound      errKind = "not_found"
+	kindConflict      errKind = "conflict"
+	kindConfirm       errKind = "confirm"
+	kindDaemonUnavail errKind = "daemon_unavailable"
+	kindInternal      errKind = "internal"
+	kindChecksFailed  errKind = "checks_failed"
+)
+
+// kindForExit maps an exit code to the conventional errKind. Used when
+// a non-cliError reaches main and we still want to emit a JSON
+// envelope under --json.
+func kindForExit(exit int) errKind {
+	switch exit {
+	case ExitUsage:
+		return kindUsage
+	case ExitValidation:
+		return kindValidation
+	case ExitNotFound:
+		return kindNotFound
+	case ExitConflict:
+		return kindConflict
+	case ExitConfirm:
+		return kindConfirm
+	case ExitDaemonUnavail:
+		return kindDaemonUnavail
+	}
+	return kindInternal
+}
+
+// kindForStatus maps an HTTP status to the conventional errKind. The
+// daemon-supplied error code is reserved for future per-code overrides.
+func kindForStatus(status int) errKind {
+	switch status {
+	case http.StatusBadRequest:
+		return kindValidation
+	case http.StatusNotFound:
+		return kindNotFound
+	case http.StatusConflict:
+		return kindConflict
+	case http.StatusPreconditionFailed:
+		return kindConfirm
+	}
+	return kindInternal
+}
+
+// checkExplicitWorkspaceBinding refuses an explicit --workspace whose binding
+// lives outside it and would be changed, or whose symlink resolves elsewhere.
+func checkExplicitWorkspaceBinding(workspace string, opts *initOptions) error {
+	if flags.Workspace == "" {
+		return nil
+	}
+	paths, err := config.DiscoverPaths(workspace)
+	if err != nil {
+		return nil
+	}
+	dest := config.WriteDestination(paths, workspace)
+	if paths.WorkspaceRoot != "" && !sameAgentHookFile(dest, workspace) {
+		return checkEnclosingBinding(workspace, dest, opts)
+	}
+	return checkBindingLinks(workspace, dest)
+}
+
+func checkEnclosingBinding(workspace, dest string, opts *initOptions) error {
+	if enclosingInitIsNoOp(dest, *opts) {
+		opts.SkipLocalWrites = true
+		return nil
+	}
+	return initBindingConflict(fmt.Sprintf("%q already binds %q.", filepath.Join(dest, config.ProjectConfigFilename), workspace),
+		"To change the enclosing binding, set --workspace to its folder, keep your other options, and use --replace when changing projects.")
+}
+
+func checkBindingLinks(workspace, dest string) error {
+	for _, dir := range []string{workspace, dest} {
+		if _, err := bindingTarget(workspace, filepath.Join(dir, config.ProjectConfigFilename)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func enclosingInitIsNoOp(dest string, opts initOptions) bool {
+	if opts.Reassign || opts.WithAgents || opts.WithHooks || opts.WithCodexHooks || len(opts.WithAgentHooks) != 0 || len(opts.AgentHooks) != 0 {
+		return false
+	}
+	cfg, err := config.ReadProjectConfig(dest)
+	if err != nil || (strings.TrimSpace(opts.Project) != "" && strings.TrimSpace(opts.Project) != cfg.Project.Name) {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(dest, config.ProjectConfigFilename)) //nolint:gosec // dest is the discovered binding directory
+	if err != nil || !config.HasProjectConfigHeader(data) {
+		return false
+	}
+	data, err = os.ReadFile(filepath.Join(dest, ".gitignore")) //nolint:gosec // dest is the discovered binding directory
+	return err == nil && hasGitignoreEntry(data, ".poomsae.local.toml")
+}
+
+// bindingTarget refuses a binding symlink, dangling or not, that resolves
+// outside the explicit workspace. A regular or missing file passes.
+func bindingTarget(workspace, bindingPath string) (string, error) {
+	dir, err := pathresolve.EvalSymlinks(workspace)
+	if err != nil {
+		return "", err
+	}
+	target, err := pathresolve.EvalSymlinksAllowMissing(bindingPath)
+	if err != nil {
+		return "", err
+	}
+	parent, err := pathresolve.EvalSymlinks(filepath.Dir(bindingPath))
+	if err != nil {
+		return "", err
+	}
+	if rel, err := filepath.Rel(dir, target); target != filepath.Join(parent, filepath.Base(bindingPath)) && (err != nil || !filepath.IsLocal(rel)) {
+		return "", initBindingConflict(fmt.Sprintf("%q links to %q, outside %q.", bindingPath, target, workspace),
+			"Replace this workspace's .poomsae.toml symlink with a local binding before retrying.")
+	}
+	return target, nil
+}
+
+func initBindingConflict(message, hint string) error {
+	return &cliError{Message: message, Hint: hint, Kind: kindConflict, Code: "project_binding_conflict", ExitCode: ExitConflict}
+}
+
+// newInitCmd returns the cobra.Command for `poomsae init`.
+func newInitCmd() *cobra.Command {
+	var opts initOptions
+	var agentHooksCSV string
+
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "bind workspace to a project",
+		Long: `Initialize poomsae in this workspace.
+
+Writes a committed .poomsae.toml that binds the workspace to a project
+name. The daemon derives the name from a git remote when one is present;
+pass --project to choose the project name explicitly.
+
+Also adds .poomsae.local.toml to .gitignore so a developer's per-machine
+overrides (e.g., a remote daemon URL via [server] url = "...") never
+get committed.
+
+--with-agents: committed guidance for everyone on the repo.
+--with-hooks / --with-codex-hooks: this workspace's Claude Code / Codex hooks.
+--agent-hooks=codex,pi: project contract and available attention hooks; --contract-only opts out of attention.
+--with-agent-hooks <harness>: project contract and available attention hooks (repeatable).
+poomsae agent-hook install: discover configured agents and install contract plus available attention hooks.
+Name agents for explicit setup; use --local for project scope. If a user-level hook exists, --with-codex-hooks skips the workspace contract hook unless the workspace config is tracked.`,
+		Example: `  poomsae init --project example-project --agent
+  poomsae init --with-agents --agent`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if cmd.Flags().Changed("agent-mode") {
+				if opts.AgentMode != "cli" && opts.AgentMode != "mcp" {
+					return agentHookUsage("--agent-mode must be cli or mcp")
+				}
+				if !opts.WithAgents {
+					return agentHookUsage("--agent-mode requires --with-agents")
+				}
+			}
+			if cmd.Flags().Changed("agent-hooks") {
+				for name := range strings.SplitSeq(agentHooksCSV, ",") {
+					name = strings.TrimSpace(name)
+					if name == "" {
+						return agentHookUsage("--agent-hooks requires nonempty comma-separated agent names")
+					}
+					opts.AgentHooks = append(opts.AgentHooks, name)
+				}
+			}
+			if cmd.Flags().Changed("contract-only") && len(opts.AgentHooks) == 0 {
+				return agentHookUsage("init --contract-only requires --agent-hooks")
+			}
+			startPath, err := resolveStartPath(flags.Workspace)
+			if err != nil {
+				return err
+			}
+			opts.Project = flags.Project
+			if err := checkExplicitWorkspaceBinding(startPath, &opts); err != nil {
+				return err
+			}
+			callOpts, err := prepareInitHookOptions(cmd.Context(), callInitOpts(opts))
+			if err != nil {
+				return err
+			}
+			if _, _, err := planInitHookOptions(cmd.Context(), callOpts, startPath); err != nil {
+				return err
+			}
+			ctx, baseURL, err := ensureDaemonContext(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("daemon: %w", err)
+			}
+			callOpts.Actor, _ = resolveActor(ctx, flags.As, nil)
+			out, err := callInit(ctx, baseURL, startPath, callOpts)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprint(cmd.OutOrStdout(), out)
+			return err
+		},
+	}
+
+	cmd.Flags().BoolVar(&opts.Replace, "replace", false, "overwrite .poomsae.toml binding when it conflicts")
+	cmd.Flags().BoolVar(&opts.Reassign, "reassign", false, "move an existing alias to this project")
+	cmd.Flags().BoolVar(&opts.WithAgents, "with-agents", false, "write poomsae agent guidance into AGENTS.md/CLAUDE.md in the workspace")
+	cmd.Flags().StringVar(&opts.AgentMode, "agent-mode", "", "with --with-agents, select cli (default) or mcp instructions")
+	cmd.Flags().BoolVar(&opts.WithHooks, "with-hooks", false, "install work.attention harness hooks into the workspace's Claude Code config (.claude/)")
+	cmd.Flags().StringVar(&agentHooksCSV, "agent-hooks", "", "install project contract and available attention hooks for comma-separated agents")
+	cmd.Flags().BoolVar(&opts.ContractOnly, "contract-only", false, "with --agent-hooks, install contracts without adding attention")
+	cmd.Flags().StringArrayVar(&opts.WithAgentHooks, "with-agent-hooks", nil, "install a project contract and available attention hooks; repeat per harness")
+	cmd.Flags().BoolVar(&opts.WithCodexHooks, "with-codex-hooks", false, "install Codex CLI contract and work.attention hooks (.codex/hooks.json)")
+
+	return cmd
+}
+
+// callInit dispatches `poomsae init` between the path-free flow (client
+// derives the project name locally, daemon registers project, client writes
+// files) and the path-based flow (daemon does everything).
+//
+// Path-free runs whenever the client can resolve the name locally —
+// from .poomsae.toml, --project, or a discoverable git workspace. That's
+// the contract that lets a daemon on another host serve init without
+// filesystem access to the client workspace. The client falls back to
+// the path-based request only when local derivation can't produce an
+// name, so the daemon (or its absence) emits the validation error.
+func callInit(ctx context.Context, baseURL, startPath string, opts callInitOpts) (string, error) {
+	var err error
+	opts, err = prepareInitHookOptions(ctx, opts)
+	if err != nil {
+		return "", err
+	}
+	if _, _, err := planInitHookOptions(ctx, opts, startPath); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(opts.Actor) == "" {
+		opts.Actor, _ = resolveActor(ctx, "", nil)
+	}
+	if opts.Project == "" {
+		opts.Project = flags.Project
+	}
+	derived, err := localDerive(ctx, startPath, opts)
+	switch {
+	case err == nil:
+		return runNameInit(ctx, baseURL, derived, opts)
+	case errors.Is(err, config.ErrNameConflict):
+		return "", &cliError{
+			Message:  err.Error(),
+			Kind:     kindConflict,
+			Code:     "project_binding_conflict",
+			ExitCode: ExitConflict,
+		}
+	case errors.Is(err, config.ErrNoNameSource):
+		return runStartPathInit(ctx, baseURL, startPath, opts)
+	default:
+		return "", &cliError{
+			Message:  err.Error(),
+			Kind:     kindValidation,
+			ExitCode: ExitValidation,
+		}
+	}
+}
+
+// localInit captures everything callInit needs to run the path-free
+// flow: the chosen name, the discovered roots (so .poomsae.toml lands
+// at the workspace/git root rather than the cwd), the existing
+// .poomsae.toml binding (so we can skip a redundant write), the absolute
+// start path used as a final fallback for the write location, and
+// optional alias metadata so the daemon can attach an alias without
+// stat'ing the client's filesystem.
+type localInit struct {
+	Choice       config.NameChoice
+	Disc         config.DiscoveredPaths
+	ExistingToml *config.ProjectConfig
+	StartPath    string
+	Alias        *config.AliasInfo
+}
+
+// localDerive runs the same name-selection logic the daemon uses
+// in path-based init, but on the client's filesystem. Errors from
+// PickInitName (conflict, no-source) are returned unwrapped so
+// callInit can dispatch on them. Alias metadata is computed
+// best-effort: when the workspace can't yield an alias, the daemon
+// still gets name but no alias attach happens.
+func localDerive(ctx context.Context, startPath string, opts callInitOpts) (localInit, error) {
+	disc, err := config.DiscoverPaths(startPath)
+	if err != nil {
+		return localInit{}, err
+	}
+	var tomlCfg *config.ProjectConfig
+	if disc.WorkspaceRoot != "" {
+		cfg, err := config.ReadProjectConfig(disc.WorkspaceRoot)
+		switch {
+		case err == nil:
+			tomlCfg = cfg
+		case errors.Is(err, config.ErrProjectConfigMissing):
+			// Discovered workspace root, but file vanished between the
+			// walk and the read; treat as no-toml so we fall through
+			// to the next identity source.
+		default:
+			return localInit{}, err
+		}
+	}
+	choice, err := config.PickInitName(ctx, disc, tomlCfg, opts.Project, opts.Replace)
+	if err != nil {
+		return localInit{}, err
+	}
+	alias, err := computeAliasInfo(ctx, disc, startPath)
+	if err != nil {
+		return localInit{}, err
+	}
+	return localInit{
+		Choice:       choice,
+		Disc:         disc,
+		ExistingToml: tomlCfg,
+		StartPath:    startPath,
+		Alias:        alias,
+	}, nil
+}
+
+// computeAliasInfo derives the alias metadata the daemon needs to
+// attach an alias on the client's behalf. Mirrors the daemon-side
+// path-based init: when the workspace has neither a git ancestor
+// nor a .poomsae.toml ancestor, we synthesize a workspace root at the
+// start path so ComputeAliasIdentity has something to anchor on
+// (matching the path-based local:// fallback).
+func computeAliasInfo(ctx context.Context, disc config.DiscoveredPaths, startPath string) (*config.AliasInfo, error) {
+	if disc.GitRoot == "" && disc.WorkspaceRoot == "" {
+		disc.WorkspaceRoot = startPath
+	}
+	info, err := config.ComputeAliasIdentity(ctx, disc)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+// runNameInit POSTs the derived name to the daemon, then
+// writes .poomsae.toml and .gitignore on the client's filesystem. The
+// daemon never sees the client's workspace path.
+func runNameInit(ctx context.Context, baseURL string, in localInit, opts callInitOpts) (string, error) {
+	reqBody := map[string]any{
+		"name": in.Choice.Name,
+	}
+	if opts.Actor != "" {
+		reqBody["actor"] = opts.Actor
+	}
+	if opts.Replace {
+		reqBody["replace"] = true
+	}
+	if opts.Reassign {
+		reqBody["reassign"] = true
+	}
+	if in.Alias != nil {
+		reqBody["alias"] = map[string]any{
+			"identity": in.Alias.Identity,
+			"kind":     in.Alias.Kind,
+		}
+	}
+	bs, err := postProjects(ctx, baseURL, reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	var resp struct {
+		Project struct {
+			Name string `json:"name"`
+		} `json:"project"`
+		Created bool `json:"created"`
+	}
+	if err := json.Unmarshal(bs, &resp); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	dest := config.WriteDestination(in.Disc, in.StartPath)
+	if opts.SkipLocalWrites {
+		return formatInitOutput(bs, resp.Project.Name, dest, resp.Created, resp.Created, nil, "")
+	}
+	bindingPath := filepath.Join(dest, config.ProjectConfigFilename)
+	if flags.Workspace != "" {
+		bindingPath, err = bindingTarget(in.StartPath, bindingPath)
+	} else {
+		bindingPath, err = pathresolve.EvalSymlinksAllowMissing(bindingPath)
+	}
+	if err != nil {
+		return "", err
+	}
+	guidanceWarning := ""
+	tomlChanged := needsTomlWrite(in.ExistingToml, resp.Project.Name)
+	if tomlChanged {
+		if err := config.ReplaceProjectConfig(bindingPath, resp.Project.Name); err != nil {
+			return "", fmt.Errorf("write .poomsae.toml: %w", err)
+		}
+	} else if tomlChanged, err = config.EnsureProjectConfigHeader(bindingPath); err != nil {
+		err = fmt.Errorf("write .poomsae.toml: %w", err)
+		warnAgentsUpdate(err)
+		guidanceWarning = err.Error()
+	}
+	gitignoreChanged, err := ensureGitignoreEntry(dest, ".poomsae.local.toml")
+	if err != nil {
+		warnGitignoreUpdate(err)
+	}
+	agentsChanged := false
+	if opts.WithAgents {
+		agentsChanged, err = applyAgentGuidance(dest, opts.AgentMode)
+		if err != nil {
+			warnAgentsUpdate(err)
+			if guidanceWarning != "" {
+				guidanceWarning += "; "
+			}
+			guidanceWarning += err.Error()
+		}
+	}
+	hooksChanged := false
+	if opts.WithHooks {
+		hooksChanged, err = applyClaudeHooks(dest)
+		if err != nil {
+			warnHooksUpdate(err)
+		}
+	}
+	codexHooksChanged := false
+	if opts.WithCodexHooks {
+		var warnings []string
+		codexHooksChanged, warnings, err = applyCodexHooks(ctx, dest)
+		if err != nil {
+			warnCodexHooksUpdate(err)
+		}
+		emitHookWarnings(warnings)
+	}
+
+	nativeHooksChanged, hookResults, err := applyInitHookOptions(ctx, opts, dest)
+	if err != nil {
+		return "", initAgentHooksFailure(bs, resp.Project.Name, dest, resp.Created, nativeHooksChanged, err)
+	}
+	return formatInitOutput(bs, resp.Project.Name, dest, resp.Created, resp.Created || tomlChanged || gitignoreChanged || agentsChanged || hooksChanged || codexHooksChanged || nativeHooksChanged, hookResults, guidanceWarning)
+}
+
+// runStartPathInit is the fallback used when the client cannot derive a name
+// locally (no .poomsae.toml, no --project, no git). It
+// preserves today's behavior: the daemon walks its own filesystem,
+// writes .poomsae.toml, and reports back the workspace root so the client
+// places .gitignore beside it.
+func runStartPathInit(ctx context.Context, baseURL, startPath string, opts callInitOpts) (string, error) {
+	reqBody := map[string]any{"start_path": startPath}
+	if opts.Actor != "" {
+		reqBody["actor"] = opts.Actor
+	}
+	if opts.Project != "" {
+		reqBody["name"] = opts.Project
+	}
+	if opts.Replace {
+		reqBody["replace"] = true
+	}
+	if opts.Reassign {
+		reqBody["reassign"] = true
+	}
+	bs, err := postProjects(ctx, baseURL, reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	var resp struct {
+		Project struct {
+			Name string `json:"name"`
+		} `json:"project"`
+		WorkspaceRoot string `json:"workspace_root,omitempty"`
+		Created       bool   `json:"created"`
+	}
+	if err := json.Unmarshal(bs, &resp); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	gitignoreDir := resp.WorkspaceRoot
+	if gitignoreDir == "" {
+		gitignoreDir = startPath
+	}
+	gitignoreChanged, err := ensureGitignoreEntry(gitignoreDir, ".poomsae.local.toml")
+	if err != nil {
+		warnGitignoreUpdate(err)
+	}
+	agentsChanged, guidanceWarning := false, ""
+	if opts.WithAgents {
+		agentsChanged, err = applyAgentGuidance(gitignoreDir, opts.AgentMode)
+		if err != nil {
+			warnAgentsUpdate(err)
+			guidanceWarning = err.Error()
+		}
+	}
+	hooksChanged := false
+	if opts.WithHooks {
+		hooksChanged, err = applyClaudeHooks(gitignoreDir)
+		if err != nil {
+			warnHooksUpdate(err)
+		}
+	}
+	codexHooksChanged := false
+	if opts.WithCodexHooks {
+		var warnings []string
+		codexHooksChanged, warnings, err = applyCodexHooks(ctx, gitignoreDir)
+		if err != nil {
+			warnCodexHooksUpdate(err)
+		}
+		emitHookWarnings(warnings)
+	}
+
+	nativeHooksChanged, hookResults, err := applyInitHookOptions(ctx, opts, gitignoreDir)
+	if err != nil {
+		return "", initAgentHooksFailure(bs, resp.Project.Name, gitignoreDir, resp.Created, nativeHooksChanged, err)
+	}
+	// The path-based daemon flow writes workspace files remotely and exposes no
+	// local file-change bit today; project creation is the closest stable signal.
+	return formatInitOutput(bs, resp.Project.Name, gitignoreDir, resp.Created, resp.Created || gitignoreChanged || agentsChanged || hooksChanged || codexHooksChanged || nativeHooksChanged, hookResults, guidanceWarning)
+}
+
+func warnGitignoreUpdate(err error) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "poomsae: warning: could not update .gitignore: %v\n", err)
+}
+
+func warnAgentsUpdate(err error) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "poomsae: warning: could not update agent guidance: %v\n", err)
+}
+
+func warnHooksUpdate(err error) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "poomsae: warning: could not install attention hooks: %v\n", err)
+}
+
+func warnCodexHooksUpdate(err error) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "poomsae: warning: could not install Codex attention hooks: %v\n", err)
+}
+
+// emitHookWarnings surfaces non-fatal advisories from a hook installer (e.g. a
+// pre-existing [hooks] table in .codex/config.toml) on stderr. Suppressed in
+// machine-output modes, matching the other init warnings.
+func emitHookWarnings(warnings []string) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "poomsae: warning: %s\n", w)
+	}
+}
+
+// warnBeadsConflict tells the user poomsae declined to edit a file in place
+// because it still carries a beads integration block, and points at the sidecar
+// proposal poomsae wrote instead. Suppressed in machine-output modes, matching
+// warnGitignoreUpdate.
+func warnBeadsConflict(originalPath, sidecarPath string) {
+	if currentOutputMode() != outputHuman {
+		return
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = ""
+	}
+	fmt.Fprint(os.Stderr, beadsConflictMessage(cwd, originalPath, sidecarPath))
+}
+
+// beadsConflictMessage builds the human hint for a declined in-place edit.
+// Paths are rendered relative to cwd when they sit under it, else absolute, so
+// the `mv` command is copy-pasteable no matter which directory init was invoked
+// from — the write destination is the workspace root, which need not be cwd.
+func beadsConflictMessage(cwd, originalPath, sidecarPath string) string {
+	label := filepath.Base(originalPath)
+	sidecar := displayPath(cwd, sidecarPath)
+	original := displayPath(cwd, originalPath)
+	return fmt.Sprintf(
+		"poomsae: %s still contains a beads integration block; left it untouched.\n"+
+			"      Wrote a migrated copy to %s (beads block removed, poomsae guidance added).\n"+
+			"      Review it, then `mv %s %s` to adopt — or delete it to keep the original.\n",
+		label, sidecar, shellQuote(sidecar), shellQuote(original))
+}
+
+// displayPath renders abs for a shell hint: relative to cwd when abs sits under
+// it, else abs unchanged. An empty or unusable cwd yields the absolute path.
+func displayPath(cwd, abs string) string {
+	if cwd == "" {
+		return abs
+	}
+	rel, err := filepath.Rel(cwd, abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return abs
+	}
+	return rel
+}
+
+// postProjects POSTs the request and returns the raw response body on
+// success. Non-2xx responses are decoded into a *cliError so callers
+// can return them directly.
+func postProjects(ctx context.Context, baseURL string, reqBody any) ([]byte, error) {
+	client, err := httpClientFor(ctx, baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("client: %w", err)
+	}
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+	var body generated.InitProjectBody
+	if err := json.Unmarshal(data, &body); err != nil {
+		return nil, err
+	}
+	response, callErr := apiClient.InitProjectWithResponse(ctx, &generated.InitProjectRequestOptions{Body: &body})
+	if response == nil {
+		return nil, fmt.Errorf("POST /api/v1/projects: %w", externalCLITransportError(response, callErr))
+	}
+	if response.StatusCode >= 300 {
+		return nil, apiErrFromBody(response.StatusCode, response.Body)
+	}
+	return response.Body, nil
+}
+
+// needsTomlWrite reports whether .poomsae.toml needs to be written: true
+// when no toml exists yet or its name doesn't match the chosen value.
+// Mirrors the daemon-side guard so re-running init in the
+// same workspace is a no-op rather than a redundant rewrite.
+func needsTomlWrite(existing *config.ProjectConfig, name string) bool {
+	if existing == nil {
+		return true
+	}
+	return existing.Project.Name != name
+}
+
+// formatInitOutput renders the selected output mode for init, shared between
+// the path-free and path-based flows.
+func formatInitOutput(bs []byte, name, workspace string, projectCreated, changed bool, hookResults []agentHookMutation, guidanceWarning string) (string, error) {
+	switch currentOutputMode() {
+	case outputJSON:
+		if hookResults != nil || guidanceWarning != "" {
+			var response map[string]jsontext.Value
+			if err := json.Unmarshal(bs, &response); err != nil {
+				return "", err
+			}
+			if response == nil {
+				return "", errors.New("init response must be a JSON object")
+			}
+			if hookResults != nil {
+				encoded, err := json.Marshal(hookResults)
+				if err != nil {
+					return "", err
+				}
+				response["agent_hooks"] = encoded
+			}
+			if guidanceWarning != "" {
+				encoded, err := json.Marshal(guidanceWarning)
+				if err != nil {
+					return "", err
+				}
+				response["agent_guidance_warning"] = encoded
+			}
+			var err error
+			bs, err = json.Marshal(response, json.Deterministic(true))
+			if err != nil {
+				return "", err
+			}
+		}
+		var buf bytes.Buffer
+		if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+			return "", fmt.Errorf("emit json: %w", err)
+		}
+		return buf.String(), nil
+	case outputAgent:
+		var out strings.Builder
+		fmt.Fprintf(&out, "OK init project=%s workspace=%s changed=%t\n", agentValue(name), agentValue(workspace), changed)
+		if guidanceWarning != "" {
+			fmt.Fprintf(&out, "agent_guidance_warning=%s\n", agentValue(guidanceWarning))
+		}
+		for _, result := range hookResults {
+			fmt.Fprintf(&out, "agent_hooks_harness=%s agent_hooks_state=%s changed=%t reason=%s\n", agentValue(result.Harness), result.State, result.Changed, agentValue(result.Reason))
+		}
+		return out.String(), nil
+	}
+	action := "bound"
+	if projectCreated {
+		action = "created and bound"
+	}
+	var out strings.Builder
+	fmt.Fprintf(&out, "%s project %s\n", action, textsafe.Line(name))
+	for _, result := range hookResults {
+		fmt.Fprintf(&out, "%s: %s — %s\n", result.Harness, result.State, textsafe.Line(result.ConfigPath))
+		if result.Reason != "" {
+			out.WriteString(textsafe.Line(result.Reason) + "\n")
+		}
+	}
+	out.WriteString("Run poomsae agent setup to connect Claude Code or Codex.\n")
+	return out.String(), nil
+}
+
+// resolveStartPath returns the absolute path to use as the daemon's
+// start_path. Relative paths are resolved against the CLI's current working
+// directory so the daemon (which may have a different cwd) doesn't end up
+// binding or writing .poomsae.toml in the wrong place.
+func resolveStartPath(workspace string) (string, error) {
+	if workspace == "" {
+		return os.Getwd()
+	}
+	return filepath.Abs(workspace)
+}
+
+// apiErrFromBody decodes a daemon ErrorEnvelope and returns a *cliError with
+// the appropriate exit code. Falls back to a raw-body error when the envelope
+// can't be decoded so the caller still has debugging context.
+func apiErrFromBody(status int, bs []byte) *cliError {
+	var env struct {
+		Error struct {
+			Hint    string         `json:"hint,omitempty"`
+			Code    string         `json:"code"`
+			Message string         `json:"message"`
+			Data    jsontext.Value `json:"data,omitempty"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(bs, &env); err != nil {
+		return &cliError{
+			HTTPStatus: status,
+			Message:    errors.New(string(bs)).Error(),
+			Code:       "",
+			Kind:       kindForStatus(status),
+			ExitCode:   mapStatusToExit(status, ""),
+		}
+	}
+	return &cliError{
+		HTTPStatus: status,
+		Hint:       env.Error.Hint,
+		Message:    env.Error.Message,
+		Code:       env.Error.Code,
+		Kind:       kindForStatus(status),
+		ExitCode:   mapStatusToExit(status, env.Error.Code),
+		Data:       env.Error.Data,
+	}
+}
+
+// mapStatusToExit maps an HTTP status to a CLI exit code. The code parameter
+// is reserved for future per-code overrides (e.g. distinguishing
+// project_not_found from project_not_initialized within 404s).
+func mapStatusToExit(status int, _ string) int {
+	switch status {
+	case http.StatusBadRequest:
+		return ExitValidation
+	case http.StatusNotFound:
+		return ExitNotFound
+	case http.StatusConflict:
+		return ExitConflict
+	case http.StatusPreconditionFailed:
+		return ExitConfirm
+	default:
+		return ExitInternal
+	}
+}
+
+func hasGitignoreEntry(data []byte, entry string) bool {
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if strings.TrimSpace(line) == entry {
+			return true
+		}
+	}
+	return false
+}
+
+// ensureGitignoreEntry appends a single line to <dir>/.gitignore if the entry
+// is not already present. It creates the file if absent and returns whether the
+// file changed. Re-running on a file that already lists the entry is a no-op.
+func ensureGitignoreEntry(dir, entry string) (bool, error) {
+	path := filepath.Join(dir, ".gitignore")
+	existing, err := os.ReadFile(path) //nolint:gosec
+	switch {
+	case err == nil:
+		// Walk lines so we don't false-match a substring inside a longer
+		// pattern (e.g. ".poomsae.local.toml.bak").
+		if hasGitignoreEntry(existing, entry) {
+			return false, nil
+		}
+		// Preserve trailing-newline convention: if the file ends without
+		// a newline, add one before appending so we don't merge our line
+		// into theirs.
+		var prefix string
+		if len(existing) > 0 && existing[len(existing)-1] != '\n' {
+			prefix = "\n"
+		}
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // .gitignore is world-readable by convention; mode is unused by O_APPEND on existing files but golangci-lint flags it
+		if err != nil {
+			return false, err
+		}
+		defer func() { _ = f.Close() }()
+		if _, err := f.WriteString(prefix + entry + "\n"); err != nil {
+			return false, err
+		}
+		return true, nil
+	case errors.Is(err, os.ErrNotExist):
+		if err := os.WriteFile(path, []byte(entry+"\n"), 0o644); err != nil { //nolint:gosec
+			return false, err
+		}
+		return true, nil
+	default:
+		return false, err
+	}
+}
+
+// beadsBlockBeginPrefix and beadsBlockEnd match the integration block Beads
+// writes into AGENTS.md/CLAUDE.md. The begin marker carries a trailing
+// version/profile/hash, so we match on its prefix and scan to the end marker.
+const (
+	beadsBlockBeginPrefix = "<!-- BEGIN BEADS INTEGRATION"
+	beadsBlockEnd         = "<!-- END BEADS INTEGRATION -->"
+)
+
+// agentsProposalSuffix names the sidecar poomsae writes when it refuses to edit a
+// file in place because it still carries a beads integration block. The user
+// reviews it and moves it over the original when ready.
+const agentsProposalSuffix = ".poomsae-proposed"
+
+// applyAgentGuidance is the entry point for `--with-agents`. It writes poomsae's
+// block into existing real agent guidance files (AGENTS.md and CLAUDE.md), or
+// creates AGENTS.md when neither exists. When migrating off beads, it sidesteps
+// a destructive edit: if a file still carries a beads integration block, poomsae
+// leaves it untouched and writes a <file>.poomsae-proposed copy (beads block
+// removed, poomsae block added) for the user to adopt or discard.
+func applyAgentGuidance(dir, mode string) (bool, error) {
+	block, err := agentguide.ManagedBlock(mode)
+	if err != nil {
+		return false, err
+	}
+	changed := false
+
+	agentsPath := filepath.Join(dir, "AGENTS.md")
+	// Refuse a symlinked AGENTS.md before reading it. Following the link would
+	// let a hostile repo copy an outside file's content into the workspace via
+	// the migration sidecar, or rewrite the link target.
+	if fi, lerr := os.Lstat(agentsPath); lerr == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return changed, fmt.Errorf("refusing to manage symlinked %s", agentsPath)
+	}
+
+	claudePath := filepath.Join(dir, "CLAUDE.md")
+	agentsExists, err := regularGuidanceFileExists(agentsPath)
+	if err != nil {
+		return changed, err
+	}
+	claudeExists, err := regularGuidanceFileExists(claudePath)
+	if err != nil {
+		return changed, err
+	}
+
+	// A conflict stays confined to its file so one bad file cannot leave the
+	// other on a stale instruction mode.
+	var failures []error
+	apply := func(path string, exists bool) {
+		c, err := applyAgentGuidanceFile(path, exists, block)
+		changed = changed || c
+		if err != nil {
+			failures = append(failures, fmt.Errorf("%s: %w", filepath.Base(path), err))
+		}
+	}
+	if agentsExists || !claudeExists {
+		apply(agentsPath, agentsExists)
+	}
+	if claudeExists {
+		apply(claudePath, true)
+	}
+
+	return changed, errors.Join(failures...)
+}
+
+// regularGuidanceFileExists reports whether path is an existing real guidance
+// file. Symlinks and directories are not managed through this path.
+func regularGuidanceFileExists(path string) (bool, error) {
+	fi, err := os.Lstat(path)
+	switch {
+	case err == nil:
+		return fi.Mode()&os.ModeSymlink == 0 && !fi.IsDir(), nil
+	case errors.Is(err, os.ErrNotExist):
+		return false, nil
+	default:
+		return false, err
+	}
+}
+
+func applyAgentGuidanceFile(path string, exists bool, block string) (bool, error) {
+	content, readExists, err := readIfExists(path)
+	if err != nil {
+		return false, err
+	}
+	exists = exists && readExists
+	if exists && hasBeadsBlock(content) {
+		sidecar, err := writeMigrationProposal(path, content, block)
+		if err != nil {
+			return false, err
+		}
+		warnBeadsConflict(path, sidecar)
+		return true, nil
+	}
+	return ensureAgentsBlock(path, content, exists, block)
+}
+
+// ensureAgentsBlock writes poomsae's block into an agent guidance file whose
+// current content is already known. It creates the file when absent, appends
+// the block when the file has no poomsae markers, and rewrites the block in place
+// when its content drifts. A begin marker with no matching end marker is an
+// error rather than a guessed span. Returns whether the file changed.
+func ensureAgentsBlock(path, content string, exists bool, block string) (bool, error) {
+	updated, err := agentguide.UpsertManagedBlock(content, block)
+	if err != nil {
+		return false, err
+	}
+	if exists && updated == content {
+		return false, nil
+	}
+	if exists {
+		if err := rewriteGuidanceFile(path, []byte(updated)); err != nil {
+			return false, err
+		}
+	} else if err := writeNewGuidanceFile(path, []byte(updated)); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// writeMigrationProposal writes a <path><suffix> copy of an existing file with
+// the beads block stripped and poomsae's block added, leaving the original
+// untouched. Returns the sidecar path.
+func writeMigrationProposal(path, content, block string) (string, error) {
+	proposed, err := agentguide.UpsertManagedBlock(stripBeadsBlock(content), block)
+	if err != nil {
+		return "", err
+	}
+	sidecar := path + agentsProposalSuffix
+	if err := writeNewGuidanceFile(sidecar, []byte(proposed)); err != nil {
+		return "", err
+	}
+	return sidecar, nil
+}
+
+// writeNewGuidanceFile creates path with data, refusing to follow a symlink a
+// hostile repo may have planted there. O_EXCL fails (EEXIST) when anything —
+// regular file or symlink — already occupies the path, so poomsae never redirects
+// its write onto a victim file the path merely points at.
+func writeNewGuidanceFile(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec
+	if err != nil {
+		return err
+	}
+	_, werr := f.Write(data)
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	return werr
+}
+
+// rewriteGuidanceFile atomically replaces an existing regular file, keeping its
+// permission bits and refusing to write through a symlink so poomsae never
+// rewrites a file the path merely points at.
+func rewriteGuidanceFile(path string, data []byte) error {
+	err := atomicfile.WriteFile(path, data, atomicfile.WithPreserveMode())
+	if errors.Is(err, fslink.ErrIsLink) {
+		return fmt.Errorf("refusing to write through symlinked %s", path)
+	}
+	return err
+}
+
+// hasBeadsBlock reports whether content carries a complete beads integration
+// block (both markers, in order).
+func hasBeadsBlock(content string) bool {
+	begin := strings.Index(content, beadsBlockBeginPrefix)
+	if begin == -1 {
+		return false
+	}
+	return strings.Contains(content[begin:], beadsBlockEnd)
+}
+
+// stripBeadsBlock removes the beads integration block and collapses the blank
+// space it leaves at the seam. Content without a complete block is returned
+// unchanged. A non-empty result ends with a newline.
+func stripBeadsBlock(content string) string {
+	begin := strings.Index(content, beadsBlockBeginPrefix)
+	if begin == -1 {
+		return content
+	}
+	rel := strings.Index(content[begin:], beadsBlockEnd)
+	if rel == -1 {
+		return content
+	}
+	end := begin + rel + len(beadsBlockEnd)
+	prefix := strings.TrimRight(content[:begin], "\n")
+	suffix := strings.TrimLeft(content[end:], "\n")
+	switch {
+	case prefix == "":
+		return suffix
+	case suffix == "":
+		return prefix + "\n"
+	default:
+		return prefix + "\n\n" + suffix
+	}
+}
+
+// readIfExists returns a file's content and whether it exists. A missing file
+// is reported as (",", false, nil); other read errors propagate.
+func readIfExists(path string) (string, bool, error) {
+	bs, err := os.ReadFile(path) //nolint:gosec
+	switch {
+	case err == nil:
+		return string(bs), true, nil
+	case errors.Is(err, os.ErrNotExist):
+		return "", false, nil
+	default:
+		return "", false, err
+	}
+}

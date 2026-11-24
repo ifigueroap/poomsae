@@ -1,10 +1,10 @@
 import { defineConfig } from '@playwright/test'
 
-const port = Number.parseInt(process.env.KATA_WEB_DEV_PORT ?? '5173', 10)
+const port = Number.parseInt(process.env.POOMSAE_WEB_DEV_PORT ?? '5173', 10)
 const origin = `http://127.0.0.1:${port}`
 const ci = Boolean(process.env.CI)
 // CI runs the Chromium and Firefox selections separately; each names its report.
-const jsonSuite = process.env.KATA_PLAYWRIGHT_SUITE ?? 'web-e2e'
+const jsonSuite = process.env.POOMSAE_PLAYWRIGHT_SUITE ?? 'web-e2e'
 
 export default defineConfig({
   testDir: './tests',

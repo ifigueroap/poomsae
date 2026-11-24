@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"net/http"
@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
 )
 
 func TestServiceDoctorRequiresManagePolicyAndHonorsHostDenial(t *testing.T) {
@@ -15,13 +15,13 @@ func TestServiceDoctorRequiresManagePolicyAndHonorsHostDenial(t *testing.T) {
 		t.Run(map[bool]string{false: "permitted", true: "denied"}[denied], func(t *testing.T) {
 			controller := &recordingAccessController{}
 			if denied {
-				controller.err = kata.ErrAccessDenied
+				controller.err = poomsae.ErrAccessDenied
 			}
-			service, err := kata.New(t.Context(), kata.Config{DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller})
+			service, err := poomsae.New(t.Context(), poomsae.Config{DSN: filepath.Join(t.TempDir(), "service.db"), Access: controller})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, service.Close()) })
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/doctor", nil)
-			req = req.WithContext(kata.WithPrincipal(req.Context(), kata.Principal{Subject: "operator", Actor: "operator"}))
+			req = req.WithContext(poomsae.WithPrincipal(req.Context(), poomsae.Principal{Subject: "operator", Actor: "operator"}))
 			rr := httptest.NewRecorder()
 			service.Handler().ServeHTTP(rr, req)
 			if denied {

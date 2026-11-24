@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestRelayOfflineIntent(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayOfflineIntent(t, store)
@@ -24,7 +24,7 @@ func TestRelayOfflineIntent(t *testing.T) {
 }
 
 func TestRelayRootAcceptanceStatus(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayRootAcceptanceStatus(t, store, func(ctx context.Context, projectID int64) error {
@@ -41,7 +41,7 @@ func TestSignedRelayResetCommitments(t *testing.T) {
 }
 
 func TestCreateRelayResetAfterCompaction(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunCreateRelayResetAfterCompaction(t, store, func(ctx context.Context, projectID int64) error {
@@ -51,7 +51,7 @@ func TestCreateRelayResetAfterCompaction(t *testing.T) {
 }
 
 func TestForwardCompactedRelayCheckpointPostCheckpointIngress(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunForwardCompactedRelayCheckpointPostCheckpointIngress(t, store, func(ctx context.Context, projectID int64) error {
@@ -61,35 +61,35 @@ func TestForwardCompactedRelayCheckpointPostCheckpointIngress(t *testing.T) {
 }
 
 func TestRelayResetForwardsToActiveDownstream(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayResetForwardsToActiveDownstream(t, store)
 }
 
 func TestRelayResetRepeatedBeforeDownstreamActivation(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayResetRepeatedBeforeDownstreamActivation(t, store)
 }
 
 func TestRelayResetSupersedesArtifactOffers(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayResetSupersedesArtifactOffers(t, store)
 }
 
 func TestRelayResetRefreshSupersedesArtifactOffers(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayResetRefreshSupersedesArtifactOffers(t, store)
 }
 
 func TestRelayRevokedOutboxLifecycle(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayRevokedOutboxLifecycle(t, store)
@@ -109,14 +109,14 @@ func TestRelayResetCarriesCronDefinitions(t *testing.T) {
 }
 
 func TestRelayLocalDetach(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayLocalDetach(t, store)
 }
 
 func TestRelayRevocationPrunesBindingState(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayRevocationPrunesBindingState(t, store, func(ctx context.Context, projectID int64) error {
@@ -126,7 +126,7 @@ func TestRelayRevocationPrunesBindingState(t *testing.T) {
 }
 
 func TestRelayResetPreparesForSuspendedDownstream(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	dbtest.RunRelayResetPreparesForSuspendedDownstream(t, store, func(ctx context.Context, tokenID int64, expires time.Time) error {

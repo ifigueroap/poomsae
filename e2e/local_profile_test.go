@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestLocalProfileTwoHomeRecovery(t *testing.T) {
@@ -28,7 +28,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	}
 	bin := buildKataBinary(t)
 	hub := func() (*httptest.Server, db.Project) {
-		store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+		store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, store.Close()) })
 		project, err := store.CreateProject(t.Context(), "spoke-project")
@@ -43,7 +43,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	personalAddr, workAddr := fmt.Sprintf("127.0.0.1:%d", freeTCPPort(t)), fmt.Sprintf("127.0.0.1:%d", freeTCPPort(t))
 	seed := func(home, addr, token, hubURL string, project db.Project) (string, string) {
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf("listen = %q\n[auth]\ntoken = %q\n", addr, token)), 0600))
-		store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+		store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 		require.NoError(t, err)
 		local, err := store.CreateProjectWithUID(t.Context(), project.Name, project.UID)
 		require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 				result = append(result, key+"="+value)
 			}
 		}
-		return append(result, "KATA_HOME="+home)
+		return append(result, "POOMSAE_HOME="+home)
 	}
 	run := func(home, dir string, extraEnv []string, args ...string) (string, int) {
 		t.Helper()
@@ -104,8 +104,8 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	stopDaemon(workProcess)
 	workProcess.Process = nil // startDaemonCmd cleanup must not wait twice.
 	bind := func(root string) {
-		require.NoError(t, os.WriteFile(filepath.Join(root, ".kata.toml"), []byte("version = 1\n[project]\nname = \"spoke-project\"\n"), 0600))
-		require.NoError(t, os.WriteFile(filepath.Join(root, ".kata.local.toml"), []byte("version = 1\n[server]\ndaemon = \"work\"\n"), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(root, ".poomsae.toml"), []byte("version = 1\n[project]\nname = \"spoke-project\"\n"), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(root, ".poomsae.local.toml"), []byte("version = 1\n[server]\ndaemon = \"work\"\n"), 0600))
 	}
 	bind(workspace)
 	child := filepath.Join(workspace, "child")
@@ -113,7 +113,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	external := t.TempDir()
 	diagnose := func(dir string, args ...string) map[string]any {
 		t.Helper()
-		out, code := run(personalHome, dir, []string{"KATA_AUTH_TOKEN=personal-token"}, append(args, "daemon", "diagnose", "--json")...)
+		out, code := run(personalHome, dir, []string{"POOMSAE_AUTH_TOKEN=personal-token"}, append(args, "daemon", "diagnose", "--json")...)
 		require.Zero(t, code, out)
 		var result map[string]any
 		require.NoError(t, json.Unmarshal([]byte(out), &result), out)
@@ -143,7 +143,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	}
 	git(repository, "init", "-q")
 	bind(repository)
-	git(repository, "add", ".kata.toml")
+	git(repository, "add", ".poomsae.toml")
 	git(repository, "-c", "user.name=operator", "-c", "user.email=operator@example.test", "commit", "-qm", "workspace binding")
 	linked := filepath.Join(t.TempDir(), "linked")
 	git(repository, "worktree", "add", "--detach", linked)
@@ -162,7 +162,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	require.NotZero(t, code, out)
 	assert.Contains(t, out, "wrong_project")
 	t.Cleanup(func() { _, _ = run(workHome, external, nil, "daemon", "stop") })
-	out, code = run(personalHome, workspace, []string{"KATA_AUTH_TOKEN=personal-token", "PORT=8888"}, "daemon", "recover", "--expect-project-uid", workProject.UID, "--json")
+	out, code = run(personalHome, workspace, []string{"POOMSAE_AUTH_TOKEN=personal-token", "PORT=8888"}, "daemon", "recover", "--expect-project-uid", workProject.UID, "--json")
 	require.Zero(t, code, out+"\n"+workLog.String())
 	var recovered map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &recovered))
@@ -170,14 +170,14 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	assert.Equal(t, workUID, recovered["observed_instance_uid"])
 	assert.Equal(t, workProject.UID, recovered["project_uid"])
 	workHub.Close()
-	out, code = run(personalHome, workspace, []string{"KATA_AUTH_TOKEN=personal-token"}, "show", shortID, "--json")
+	out, code = run(personalHome, workspace, []string{"POOMSAE_AUTH_TOKEN=personal-token"}, "show", shortID, "--json")
 	require.Zero(t, code, out+"\n"+workLog.String())
 	assert.Contains(t, out, "existing replica issue")
 	// A selected tunnel URL stays pinned and cannot be recovered as a profile.
-	out, code = run(personalHome, workspace, []string{"KATA_SERVER=http://127.0.0.1:1"}, "daemon", "diagnose", "--json")
+	out, code = run(personalHome, workspace, []string{"POOMSAE_SERVER=http://127.0.0.1:1"}, "daemon", "diagnose", "--json")
 	require.Zero(t, code, out)
 	assert.Contains(t, out, "unknown_loopback_endpoint")
-	out, code = run(personalHome, workspace, []string{"KATA_SERVER=http://127.0.0.1:1"}, "daemon", "recover")
+	out, code = run(personalHome, workspace, []string{"POOMSAE_SERVER=http://127.0.0.1:1"}, "daemon", "recover")
 	require.NotZero(t, code, out)
 	personalResult := diagnose(external, "--project", "spoke-project")
 	assert.Equal(t, "ready", personalResult["state"])

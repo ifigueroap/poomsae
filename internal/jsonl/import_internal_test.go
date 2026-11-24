@@ -7,9 +7,9 @@ import (
 	"testing"
 	"weak"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestToImportRecordNormalizesTimestampFields(t *testing.T) {
@@ -31,7 +31,7 @@ func TestToImportRecordNormalizesTimestampFields(t *testing.T) {
 		{
 			name: "project",
 			kind: KindProject,
-			data: `{"id":1,"uid":"` + projectUID + `","name":"kata","created_at":"` + legacy + `","deleted_at":"` + legacy + `","metadata":{},"revision":1}`,
+			data: `{"id":1,"uid":"` + projectUID + `","name":"poomsae","created_at":"` + legacy + `","deleted_at":"` + legacy + `","metadata":{},"revision":1}`,
 			assert: func(t *testing.T, rec db.ImportRecord) {
 				project := recordAs[db.ProjectExport](t, rec)
 				assert.Equal(t, canonical, project.CreatedAt)
@@ -233,7 +233,7 @@ func TestToImportRecordNormalizesTimestampFields(t *testing.T) {
 		{
 			name: "purge log",
 			kind: KindPurgeLog,
-			data: `{"id":1,"uid":"` + otherUID + `","origin_instance_uid":"` + projectUID + `","project_id":1,"purged_issue_id":1,"issue_uid":"` + issueUID + `","project_uid":"` + projectUID + `","project_name":"kata","short_id":"abc1","issue_title":"done","issue_author":"tester","comment_count":0,"link_count":0,"label_count":0,"event_count":0,"actor":"tester","reason":"done","purged_at":"` + legacy + `"}`,
+			data: `{"id":1,"uid":"` + otherUID + `","origin_instance_uid":"` + projectUID + `","project_id":1,"purged_issue_id":1,"issue_uid":"` + issueUID + `","project_uid":"` + projectUID + `","project_name":"poomsae","short_id":"abc1","issue_title":"done","issue_author":"tester","comment_count":0,"link_count":0,"label_count":0,"event_count":0,"actor":"tester","reason":"done","purged_at":"` + legacy + `"}`,
 			assert: func(t *testing.T, rec db.ImportRecord) {
 				purgeLog := recordAs[db.PurgeLogExport](t, rec)
 				assert.Equal(t, canonical, purgeLog.PurgedAt)

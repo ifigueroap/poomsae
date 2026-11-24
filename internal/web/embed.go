@@ -10,7 +10,7 @@ import (
 //go:embed all:dist
 var embeddedDistribution embed.FS
 
-// NewEmbeddedHandler serves the distribution compiled into the Kata binary.
+// NewEmbeddedHandler serves the distribution compiled into the Poomsae binary.
 func NewEmbeddedHandler() (http.Handler, error) {
 	files, err := embeddedFiles()
 	if err != nil {

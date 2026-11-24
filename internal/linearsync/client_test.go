@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -25,7 +25,7 @@ func response(code int, body string) *http.Response {
 func mockClient(t *testing.T, fn roundTrip) *Client {
 	t.Helper()
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	return NewClient(ClientConfig{LookupEnv: func(k string) (string, bool) { require.Equal(t, "KATA_LINEAR_TOKEN", k); return "example-key", true }, Transport: fn, Now: func() time.Time { return now }, Wait: func(ctx context.Context, d time.Duration) error { now = now.Add(d); return ctx.Err() }})
+	return NewClient(ClientConfig{LookupEnv: func(k string) (string, bool) { require.Equal(t, "POOMSAE_LINEAR_TOKEN", k); return "example-key", true }, Transport: fn, Now: func() time.Time { return now }, Wait: func(ctx context.Context, d time.Duration) error { now = now.Add(d); return ctx.Err() }})
 }
 func sessionFor(t *testing.T, c *Client) Session {
 	t.Helper()
@@ -63,7 +63,7 @@ func TestClientRefusesTrashedProject(t *testing.T) {
 	cfg.ProjectID = projectID
 	c := mockClient(t, func(r *http.Request) (*http.Response, error) {
 		query, _ := requestBody(t, r)
-		if strings.Contains(query, "KataLinearScope") {
+		if strings.Contains(query, "PoomsaeLinearScope") {
 			return dataResponse(map[string]any{"viewer": map[string]any{"organization": map[string]any{"id": workspaceID}}, "team": map[string]any{"id": teamID, "name": "Example team", "archivedAt": nil, "organization": map[string]any{"id": workspaceID}}}), nil
 		}
 		return dataResponse(map[string]any{"project": map[string]any{"id": projectID, "name": "Example project", "archivedAt": nil, "trashed": true, "teams": map[string]any{"nodes": []any{map[string]any{"id": teamID}}}}}), nil
@@ -97,11 +97,11 @@ func TestClientScopesPaginationAndNullableFields(t *testing.T) {
 		require.Equal(t, "POST", r.Method)
 		query, v := requestBody(t, r)
 		calls++
-		if strings.Contains(query, "KataLinearScope") {
+		if strings.Contains(query, "PoomsaeLinearScope") {
 			require.Equal(t, teamID, v["team"])
 			return dataResponse(map[string]any{"viewer": map[string]any{"organization": map[string]any{"id": workspaceID}}, "team": map[string]any{"id": teamID, "name": "Example team", "archivedAt": nil, "organization": map[string]any{"id": workspaceID}}}), nil
 		}
-		require.Contains(t, query, "KataLinearIssues")
+		require.Contains(t, query, "PoomsaeLinearIssues")
 		require.Equal(t, teamID, v["team"], "the team connection scopes the read")
 		require.Equal(t, map[string]any{}, v["filter"],
 			"Linear's issue filter on team ID can return other teams' issues")
@@ -220,7 +220,7 @@ func TestClientProjectScopeAndSharedResetCooldown(t *testing.T) {
 	}, Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
 		query, v := requestBody(t, r)
 		calls++
-		if strings.Contains(query, "KataLinearScope") {
+		if strings.Contains(query, "PoomsaeLinearScope") {
 			res := dataResponse(map[string]any{"viewer": map[string]any{"organization": map[string]any{"id": workspaceID}}, "team": map[string]any{"id": teamID, "name": "Example team", "archivedAt": nil, "organization": map[string]any{"id": workspaceID}}})
 			if calls == 1 {
 				res.Header.Set("X-RateLimit-Requests-Remaining", "0")
@@ -228,7 +228,7 @@ func TestClientProjectScopeAndSharedResetCooldown(t *testing.T) {
 			}
 			return res, nil
 		}
-		require.Contains(t, query, "KataLinearProject")
+		require.Contains(t, query, "PoomsaeLinearProject")
 		require.Equal(t, projectID, v["project"])
 		require.Equal(t, teamID, v["team"])
 		return dataResponse(map[string]any{"project": map[string]any{"id": projectID, "name": "Example project", "archivedAt": nil, "teams": map[string]any{"nodes": []any{map[string]any{"id": teamID}}, "pageInfo": map[string]any{"hasNextPage": false}}}}), nil

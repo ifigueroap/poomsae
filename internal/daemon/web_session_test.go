@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestBrowserSession(t *testing.T) {
@@ -52,7 +52,7 @@ func TestBrowserSession(t *testing.T) {
 			handler.ServeHTTP(response, request)
 			assert.Equal(t, tt.want, response.Code)
 			if tt.want == http.StatusUnauthorized {
-				assert.Equal(t, "loopback", response.Header().Get("X-Kata-Web-Authentication"))
+				assert.Equal(t, "loopback", response.Header().Get("X-Poomsae-Web-Authentication"))
 			}
 		})
 	}
@@ -60,7 +60,7 @@ func TestBrowserSession(t *testing.T) {
 
 func TestWebLocalSessionIsLimitedToSPAOperations(t *testing.T) {
 	manager := newDeterministicSessionManager(t, "http://127.0.0.1:27123", "instance_a")
-	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(Principal{Kind: PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	handler := requireBrowserSession(manager, ListenerPolicy{
 		Kind: ListenerBrowser, Origin: "http://127.0.0.1:27123", RequireBrowserSession: true,
@@ -139,7 +139,7 @@ func TestIssueScopedBrowserSessionUsesSameRouteAllowlist(t *testing.T) {
 			RootIssueUID: "01HBBBBBBBBBBBBBBBBBBBBBBB",
 		},
 		ExpiresAt: &expiresAt,
-	}, "/kata")
+	}, "/poomsae")
 	require.NoError(t, err)
 	manager.db = &webSessionActiveTokenStore{Storage: manager.db, token: db.APIToken{
 		ID: 7, Actor: "worker-a", Scope: &db.APITokenScope{
@@ -194,7 +194,7 @@ func TestIssueScopedBrowserSessionExpiresAtTokenDeadline(t *testing.T) {
 		},
 		ExpiresAt: &expiresAt,
 	}
-	issued, err := manager.IssueSession(principal, "/kata")
+	issued, err := manager.IssueSession(principal, "/poomsae")
 	require.NoError(t, err)
 	manager.db = &webSessionActiveTokenStore{Storage: manager.db, token: db.APIToken{
 		ID: 7, Actor: principal.Actor, Scope: principal.Scope, ExpiresAt: &expiresAt,
@@ -264,7 +264,7 @@ func TestSharedTCPTokenlessPublicAuthorityRequiresBrowserSession(t *testing.T) {
 		publicResponse := httptest.NewRecorder()
 		handler.ServeHTTP(publicResponse, publicRequest)
 		assert.Equal(t, http.StatusUnauthorized, publicResponse.Code)
-		assert.Equal(t, "https://daemon.example", publicResponse.Header().Get("X-Kata-Web-Origin"))
+		assert.Equal(t, "https://daemon.example", publicResponse.Header().Get("X-Poomsae-Web-Origin"))
 	}
 
 	for _, authority := range []string{"127.0.0.1:7777", "localhost:7777", "backend.example:7777"} {
@@ -809,7 +809,7 @@ func TestBrowserAccessAdministrationBoundary(t *testing.T) {
 		t.Run(string(principal.Kind), func(t *testing.T) {
 			manager := newDeterministicSessionManager(t, "http://127.0.0.1:27123", "adminboundary")
 			manager.db = &webSessionActiveTokenStore{token: db.APIToken{ID: 7, Actor: "member"}}
-			issued, err := manager.IssueSession(principal, "/kata")
+			issued, err := manager.IssueSession(principal, "/poomsae")
 			require.NoError(t, err)
 			wantAdmin := principal.Kind == PrincipalBootstrap || principal.Kind == PrincipalStaticToken
 			require.Equal(t, wantAdmin, manager.CanAdministerAccess(principal))

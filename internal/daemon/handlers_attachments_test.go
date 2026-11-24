@@ -15,27 +15,27 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func attachmentEnv(t *testing.T) (*testenv.Env, *docbanktest.Fake) {
 	t.Helper()
 	f := docbanktest.New(t)
 	client := docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-	return testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.Docbank = client; cfg.DocbankFolder = "/kata" }), f
+	return testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.Docbank = client; cfg.DocbankFolder = "/poomsae" }), f
 }
 func attachmentUpload(t *testing.T, env *testenv.Env, endpoint, name string, data io.Reader, token ...string) (int, []byte) {
 	t.Helper()
@@ -120,7 +120,7 @@ func TestAttachmentUploadRechecksAuthority(t *testing.T) {
 			defer resume()
 			env := testenv.New(t, func(cfg *daemon.ServerConfig) {
 				cfg.Docbank = docbank.NewClient(upstream.URL, func() (string, error) { return "test-key", nil })
-				cfg.DocbankFolder = "/kata"
+				cfg.DocbankFolder = "/poomsae"
 			})
 			var p db.Project
 			var iss db.Issue
@@ -199,7 +199,7 @@ func TestAttachmentAdmissionBeforeBody(t *testing.T) {
 			cfg := daemon.ServerConfig{DB: env.DB}
 			if tc.configured {
 				cfg.Docbank = docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-				cfg.DocbankFolder = "/kata"
+				cfg.DocbankFolder = "/poomsae"
 			}
 			body := &testfix.ReadCountingBody{}
 			endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments?name=%s&actor=operator", p.ID, iss.ShortID, tc.filename)
@@ -314,7 +314,7 @@ func TestAttachmentReportsUnresolvableKeyWithoutContactingDocbank(t *testing.T) 
 	keys := config.DocbankConfig{APIKeyFile: keyFile}
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) {
 		cfg.Docbank = docbank.NewClient(f.Server.URL, keys.ResolveKey)
-		cfg.DocbankFolder = "/kata"
+		cfg.DocbankFolder = "/poomsae"
 	})
 	p, iss := seedProjectAndIssue(t, env)
 	endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments", p.ID, iss.ShortID)
@@ -330,7 +330,7 @@ func TestAttachmentScopeBeforeOutbound(t *testing.T) {
 	f := docbanktest.New(t)
 	env := testenv.New(t, testenv.WithAuthToken("bootstrap-token"), testenv.WithRequireTokenIdentity(), func(cfg *daemon.ServerConfig) {
 		cfg.Docbank = docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-		cfg.DocbankFolder = "/kata"
+		cfg.DocbankFolder = "/poomsae"
 	})
 	p, root := seedProjectAndIssue(t, env)
 	hidden := createScopedHTTPTestIssue(t, env, p.ID, "Hidden", nil)
@@ -430,7 +430,7 @@ func TestAttachmentReuseUnreadableReference(t *testing.T) {
 			require.NoError(t, err)
 			assertAPIError(t, code, raw, http.StatusBadRequest, "attachment_invalid")
 			require.Contains(t, string(raw), "attachment.existing")
-			require.Contains(t, string(raw), "kata docbank attachments rm "+iss.ShortID+" existing")
+			require.Contains(t, string(raw), "poomsae docbank attachments rm "+iss.ShortID+" existing")
 			require.JSONEq(t, string(before.Metadata), string(after.Metadata))
 			require.Equal(t, eventID, afterEventID)
 		})
@@ -448,7 +448,7 @@ func TestAttachmentUploadReuseConcurrentPostgres(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 	f := docbanktest.New(t)
 	client := docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-	d := daemon.NewServer(daemon.ServerConfig{DB: store, StartedAt: time.Now().UTC(), Broadcaster: daemon.NewEventBroadcaster(), Docbank: client, DocbankFolder: "/kata"})
+	d := daemon.NewServer(daemon.ServerConfig{DB: store, StartedAt: time.Now().UTC(), Broadcaster: daemon.NewEventBroadcaster(), Docbank: client, DocbankFolder: "/poomsae"})
 	t.Cleanup(func() { _ = d.Close() })
 	server := httptest.NewServer(d.Handler())
 	t.Cleanup(server.Close)

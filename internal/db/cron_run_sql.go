@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/teammate"
 )
 
 // CronObservationLimit bounds a complete run observation or event in bytes.

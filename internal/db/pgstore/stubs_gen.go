@@ -22,7 +22,7 @@
 package pgstore
 
 import (
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Compile-time check that *Store satisfies db.Storage. The assertion stays

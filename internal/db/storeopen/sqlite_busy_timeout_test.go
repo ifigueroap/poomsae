@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/db/storeopen"
 )
 
 func TestSQLiteConfiguredBusyTimeout(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[storage.sqlite]\nbusy_timeout = \"1ms\"\n"), 0600))
 	ctx := t.Context()
 	path := filepath.Join(home, "test.db")
@@ -52,7 +52,7 @@ func TestSQLiteConfiguredBusyTimeout(t *testing.T) {
 	// Open before taking the second lock: startup itself writes.
 	_, err = hold.ExecContext(ctx, "ROLLBACK")
 	require.NoError(t, err)
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "1s")
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "1s")
 	second, err := storeopen.Open(ctx, path)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, second.Close()) }()
@@ -75,8 +75,8 @@ func TestSQLiteConfiguredBusyTimeout(t *testing.T) {
 }
 
 func TestSQLiteBusyTimeoutInvalidBeforeOpen(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "0s")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "0s")
 	path := filepath.Join(t.TempDir(), "missing.db")
 	_, err := storeopen.Open(t.Context(), path, db.Serving())
 	require.ErrorContains(t, err, "storage.sqlite.busy_timeout")
@@ -85,8 +85,8 @@ func TestSQLiteBusyTimeoutInvalidBeforeOpen(t *testing.T) {
 }
 
 func TestSQLiteBusyTimeoutExplicitOptionWins(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "")
 	store, err := storeopen.Open(t.Context(), filepath.Join(t.TempDir(), "test.db"), db.WithSQLiteBusyTimeout(2*time.Second))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, store.Close()) }()
@@ -96,8 +96,8 @@ func TestSQLiteBusyTimeoutExplicitOptionWins(t *testing.T) {
 }
 
 func TestSQLiteReadOnlyOpenUsesConfiguredBusyTimeout(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "")
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "test.db")
 	writable, err := storeopen.Open(ctx, path)

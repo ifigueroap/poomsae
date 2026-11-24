@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"testing"
 
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	"github.com/stretchr/testify/require"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 // Catalog-only tests still use an initialized client so production can bind
 // immutable request limits. Any accidental daemon request fails the test.
-func inertTestClient(t *testing.T) *kataclient.Client {
+func inertTestClient(t *testing.T) *poomsaeclient.Client {
 	t.Helper()
-	client, err := kataclient.NewWithHTTPClient("http://daemon.invalid", &http.Client{Transport: inertMCPTransport{t: t}})
+	client, err := poomsaeclient.NewWithHTTPClient("http://daemon.invalid", &http.Client{Transport: inertMCPTransport{t: t}})
 	require.NoError(t, err)
 	return client
 }

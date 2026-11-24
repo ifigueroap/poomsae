@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // TestIssueFromShowCopiesEveryIssueField fills every field of the show-issue

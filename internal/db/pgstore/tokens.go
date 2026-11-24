@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const apiTokenSelect = `SELECT id, token_hash, actor, name, scope_kind, scope_project_uid, scope_root_issue_uid, expires_at, created_at, last_used_at, revoked_at FROM api_tokens` //nolint:gosec // SQL column name, not a credential.

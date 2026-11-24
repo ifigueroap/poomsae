@@ -1,0 +1,60 @@
+package main
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+var externalFixtures struct {
+	sync.Mutex
+	dir      string
+	binaries map[string]string
+}
+
+// Compile and share test binaries before their behavioral deadlines start.
+func externalFixtureBinary(t *testing.T, name string) string {
+	t.Helper()
+	return testBinary(t, name, "./testdata/"+name)
+}
+
+func poomsaeTestBinary(t *testing.T, version string) string {
+	t.Helper()
+	return testBinary(t, "poomsae-"+version, "-buildvcs=false", "-ldflags", "-X github.com/ifigueroap/poomsae/internal/version.Version="+version, "github.com/ifigueroap/poomsae/cmd/poomsae")
+}
+
+func testBinary(t *testing.T, name string, args ...string) string {
+	t.Helper()
+	externalFixtures.Lock()
+	defer externalFixtures.Unlock()
+	if bin := externalFixtures.binaries[name]; bin != "" {
+		return bin
+	}
+	if externalFixtures.dir == "" {
+		dir, err := os.MkdirTemp("", "poomsae-contract-fixtures-")
+		require.NoError(t, err)
+		externalFixtures.dir = dir
+		externalFixtures.binaries = map[string]string{}
+	}
+	filename := name
+	if runtime.GOOS == "windows" {
+		filename += ".exe"
+	}
+	bin := filepath.Join(externalFixtures.dir, filename)
+	//nolint:gosec // Fixed test build arguments and owned binary destination.
+	output, err := exec.CommandContext(t.Context(), "go", append([]string{"build", "-o", bin}, args...)...).CombinedOutput()
+	require.NoError(t, err, "build test binary: %s", output)
+	externalFixtures.binaries[name] = bin
+	return bin
+}
+func cleanupExternalFixtures() error {
+	if externalFixtures.dir == "" {
+		return nil
+	}
+	return os.RemoveAll(externalFixtures.dir)
+}

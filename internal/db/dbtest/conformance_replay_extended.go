@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 const (
@@ -758,7 +758,7 @@ func extendedReplayRecords() []db.ImportRecord {
 			ProjectID: projectID, IssueID: &issueID, ImportedAt: created,
 		},
 		&db.ExternalFieldMappingExport{
-			ConnectorInstance: "connector-one", KataField: "scheduled_on",
+			ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-one", Active: true,
@@ -1313,7 +1313,7 @@ func checkSnapshotMergeExternalRoots(
 		return err
 	}
 	targetMapping, err := target.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-one",
@@ -1384,7 +1384,7 @@ func checkSnapshotMergeExternalRoots(
 	precisionTarget := backend.Open(t)
 	t.Cleanup(func() { require.NoError(t, precisionTarget.Close()) })
 	precisionMapping, err := precisionTarget.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-one",
@@ -1441,7 +1441,7 @@ func checkSnapshotMergeExternalRoots(
 	deactivatedTarget := backend.Open(t)
 	t.Cleanup(func() { require.NoError(t, deactivatedTarget.Close()) })
 	deactivatedMapping, err := deactivatedTarget.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-one",
@@ -1486,7 +1486,7 @@ func checkSnapshotMergeExternalRoots(
 	advancedTarget := backend.Open(t)
 	t.Cleanup(func() { require.NoError(t, advancedTarget.Close()) })
 	advancedMapping, err := advancedTarget.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-one",
@@ -1538,7 +1538,7 @@ func checkSnapshotMergeExternalRoots(
 	conflictTarget := backend.Open(t)
 	t.Cleanup(func() { require.NoError(t, conflictTarget.Close()) })
 	conflictingMapping, err := conflictTarget.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "schedule-one", ExternalFieldName: "Different schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-one",

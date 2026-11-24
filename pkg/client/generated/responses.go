@@ -776,9 +776,9 @@ type RestartLocalEmbeddingsResp struct {
 }
 
 type PollEventsResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataEventsIssueUID        string `header:"X-Kata-Events-Issue-UID"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeEventsIssueUID        string `header:"X-Poomsae-Events-Issue-UID"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type PollEventsResp struct {
@@ -1085,7 +1085,7 @@ type DetachProjectAliasResp struct {
 }
 
 type GetCronCapabilitiesResp200Headers struct {
-	XKataEventFeatures string `header:"X-Kata-Event-Features"`
+	XPoomsaeEventFeatures string `header:"X-Poomsae-Event-Features"`
 }
 
 type GetCronCapabilitiesResp struct {
@@ -1226,9 +1226,9 @@ type DigestProjectResp struct {
 }
 
 type PollProjectEventsResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataEventsIssueUID        string `header:"X-Kata-Events-Issue-UID"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeEventsIssueUID        string `header:"X-Poomsae-Events-Issue-UID"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type PollProjectEventsResp struct {
@@ -1241,8 +1241,8 @@ type PollProjectEventsResp struct {
 }
 
 type GetProjectFederationResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type GetProjectFederationResp struct {
@@ -1286,8 +1286,8 @@ type FederatedDocbankContentResp struct {
 }
 
 type EnableProjectFederationResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type EnableProjectFederationResp struct {
@@ -1300,10 +1300,10 @@ type EnableProjectFederationResp struct {
 }
 
 type PollFederationProjectEventsResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataEventsIssueUID        string `header:"X-Kata-Events-Issue-UID"`
-	XKataFederationPollWaitMax string `header:"X-Kata-Federation-Poll-Wait-Max"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeEventsIssueUID        string `header:"X-Poomsae-Events-Issue-UID"`
+	XPoomsaeFederationPollWaitMax string `header:"X-Poomsae-Federation-Poll-Wait-Max"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type PollFederationProjectEventsResp struct {
@@ -1316,8 +1316,8 @@ type PollFederationProjectEventsResp struct {
 }
 
 type IngestFederationProjectEventsResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type IngestFederationProjectEventsResp struct {
@@ -1330,8 +1330,8 @@ type IngestFederationProjectEventsResp struct {
 }
 
 type GetFederationProjectMetadataResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type GetFederationProjectMetadataResp struct {
@@ -1360,8 +1360,8 @@ type SkipFederationQuarantineResp struct {
 }
 
 type OfferRelayDeliveriesResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type OfferRelayDeliveriesResp struct {
@@ -1374,8 +1374,8 @@ type OfferRelayDeliveriesResp struct {
 }
 
 type GetRelayResetResp200Headers struct {
-	XKataEventFeatures         string `header:"X-Kata-Event-Features"`
-	XKataRequiredEventFeatures string `header:"X-Kata-Required-Event-Features"`
+	XPoomsaeEventFeatures         string `header:"X-Poomsae-Event-Features"`
+	XPoomsaeRequiredEventFeatures string `header:"X-Poomsae-Required-Event-Features"`
 }
 
 type GetRelayResetResp struct {
@@ -1476,7 +1476,7 @@ type ListIssuesResp struct {
 }
 
 type CreateIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type CreateIssueResp struct {
@@ -1497,7 +1497,7 @@ type ShowIssueResp struct {
 }
 
 type EditIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type EditIssueResp struct {
@@ -1510,7 +1510,7 @@ type EditIssueResp struct {
 }
 
 type AssignIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type AssignIssueResp struct {
@@ -1531,7 +1531,7 @@ type ClaimIssueResp struct {
 }
 
 type CloseIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type CloseIssueResp struct {
@@ -1544,7 +1544,7 @@ type CloseIssueResp struct {
 }
 
 type DeleteIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type DeleteIssueResp struct {
@@ -1570,7 +1570,7 @@ type MoveIssueResp struct {
 }
 
 type SetIssuePriorityResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type SetIssuePriorityResp struct {
@@ -1591,7 +1591,7 @@ type PurgeIssueResp struct {
 }
 
 type ReopenIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type ReopenIssueResp struct {
@@ -1604,7 +1604,7 @@ type ReopenIssueResp struct {
 }
 
 type RestoreIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type RestoreIssueResp struct {
@@ -1617,7 +1617,7 @@ type RestoreIssueResp struct {
 }
 
 type UnassignIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type UnassignIssueResp struct {
@@ -1717,7 +1717,7 @@ type ResumeExternalRootBridgeResp struct {
 }
 
 type CreateCommentResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type CreateCommentResp struct {
@@ -1730,7 +1730,7 @@ type CreateCommentResp struct {
 }
 
 type EditCommentResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type EditCommentResp struct {
@@ -1751,7 +1751,7 @@ type ReachableIssueGraphResp struct {
 }
 
 type AddLabelResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type AddLabelResp struct {
@@ -1764,7 +1764,7 @@ type AddLabelResp struct {
 }
 
 type RemoveLabelResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type RemoveLabelResp struct {
@@ -1825,7 +1825,7 @@ type CreateLinkResp struct {
 }
 
 type DeleteLinkResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type DeleteLinkResp struct {
@@ -1859,7 +1859,7 @@ type PatchIssueMetadataResp struct {
 }
 
 type NotifyIssueResp200Headers struct {
-	XKataProjectName string `header:"X-Kata-Project-Name"`
+	XPoomsaeProjectName string `header:"X-Poomsae-Project-Name"`
 }
 
 type NotifyIssueResp struct {
@@ -1969,7 +1969,7 @@ type RestoreProjectResp struct {
 }
 
 type SearchIssuesResp200Headers struct {
-	XKataEmbeddingsConfigured string `header:"X-Kata-Embeddings-Configured"`
+	XPoomsaeEmbeddingsConfigured string `header:"X-Poomsae-Embeddings-Configured"`
 }
 
 type SearchIssuesResp struct {

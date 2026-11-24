@@ -18,7 +18,7 @@ import (
 const timestampLayout = "20060102T150405.000000000Z"
 
 var storageIDPattern = regexp.MustCompile(`^[0-9a-f]{12}$`)
-var ownedFilename = regexp.MustCompile(`^kata-backup-([0-9]{8}T[0-9]{6}\.[0-9]{9}Z)-[0-9a-f]{6}\.jsonl$`)
+var ownedFilename = regexp.MustCompile(`^poomsae-backup-([0-9]{8}T[0-9]{6}\.[0-9]{9}Z)-[0-9a-f]{6}\.jsonl$`)
 
 // Settings owns one database's destination. Export must atomically publish a
 // complete snapshot at the supplied filename and return only after it commits.
@@ -84,7 +84,7 @@ func (s *Schedule) snapshot(ctx context.Context, now time.Time) error {
 	if _, err := rand.Read(suffix[:]); err != nil {
 		return err
 	}
-	name := "kata-backup-" + now.UTC().Format(timestampLayout) + "-" + hex.EncodeToString(suffix[:]) + ".jsonl"
+	name := "poomsae-backup-" + now.UTC().Format(timestampLayout) + "-" + hex.EncodeToString(suffix[:]) + ".jsonl"
 	if err := s.settings.Export(ctx, filepath.Join(s.dir, name)); err != nil {
 		return fmt.Errorf("backup export: %w", err)
 	}

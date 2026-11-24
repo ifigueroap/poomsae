@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // SearchFTS returns issues that contain all normalized query terms.

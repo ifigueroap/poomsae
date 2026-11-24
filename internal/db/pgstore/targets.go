@@ -3,7 +3,7 @@ package pgstore
 import (
 	"github.com/jackc/pgx/v5"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 // Every program that can open PostgreSQL storage links this package, so each

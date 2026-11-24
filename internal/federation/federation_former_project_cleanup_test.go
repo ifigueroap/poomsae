@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestSyncFederationFormerProjectCleanupRetainsDelayedEnvelopeIdentity(t *testing.T) {
@@ -36,7 +36,7 @@ func TestSyncFederationFormerProjectCleanupRetainsDelayedEnvelopeIdentity(t *tes
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, receiver.env.URL+"/api/v1/projects/"+strconv.FormatInt(receiver.projects[0].ID, 10)+"/actions/purge", strings.NewReader(`{"actor":"worker"}`))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Kata-Confirm", "PURGE "+receiver.projects[0].Name)
+	req.Header.Set("X-Poomsae-Confirm", "PURGE "+receiver.projects[0].Name)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	body, err := io.ReadAll(resp.Body)
@@ -104,7 +104,7 @@ func TestSyncFederationFormerTransitIdentitySurvivesSourceReplay(t *testing.T) {
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, receiver.env.URL+path, strings.NewReader(payload))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-Kata-Confirm", "PURGE "+receiver.projects[1].Name)
+			req.Header.Set("X-Poomsae-Confirm", "PURGE "+receiver.projects[1].Name)
 			resp, err := http.DefaultClient.Do(req)
 			require.NoError(t, err)
 			body, err := io.ReadAll(resp.Body)

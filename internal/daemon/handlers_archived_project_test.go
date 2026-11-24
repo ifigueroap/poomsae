@@ -151,14 +151,14 @@ func TestArchivedProject_IssueScopedHandlersReturn404(t *testing.T) {
 		{"deleteIssue", http.MethodPost,
 			"/api/v1/projects/" + pid + "/issues/" + num + "/actions/delete",
 			map[string]any{"actor": "tester"},
-			map[string]string{"X-Kata-Confirm": "DELETE #" + num}},
+			map[string]string{"X-Poomsae-Confirm": "DELETE #" + num}},
 		{"restoreIssue", http.MethodPost,
 			"/api/v1/projects/" + pid + "/issues/" + num + "/actions/restore",
 			map[string]any{"actor": "tester"}, nil},
 		{"purgeIssue", http.MethodPost,
 			"/api/v1/projects/" + pid + "/issues/" + num + "/actions/purge",
 			map[string]any{"actor": "tester"},
-			map[string]string{"X-Kata-Confirm": "PURGE #" + num}},
+			map[string]string{"X-Poomsae-Confirm": "PURGE #" + num}},
 	}
 
 	for _, tc := range cases {

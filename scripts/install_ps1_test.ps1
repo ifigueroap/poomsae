@@ -64,7 +64,7 @@ function Test-ResolveReleaseArchUsesDetectedWindowsArm64Asset {
 
         Assert-Equal 'arm64' $arch "arm64 asset selection"
         Assert-Equal 1 $script:ReleaseAssetUrls.Count "arm64 asset selection URL count"
-        Assert-True ($script:ReleaseAssetUrls[0].EndsWith('/kata_0.5.0_windows_arm64.zip')) "arm64 asset selection URL"
+        Assert-True ($script:ReleaseAssetUrls[0].EndsWith('/poomsae_0.5.0_windows_arm64.zip')) "arm64 asset selection URL"
     } finally {
         Restore-ReleaseAssetMock
     }
@@ -83,17 +83,17 @@ function Test-ResolveReleaseArchDoesNotFallbackFromArm64ToAmd64 {
 
         Assert-Equal $null $arch "missing arm64 asset selection"
         Assert-Equal 1 $script:ReleaseAssetUrls.Count "missing arm64 asset URL count"
-        Assert-True ($script:ReleaseAssetUrls[0].EndsWith('/kata_0.5.0_windows_arm64.zip')) "missing arm64 asset URL"
+        Assert-True ($script:ReleaseAssetUrls[0].EndsWith('/poomsae_0.5.0_windows_arm64.zip')) "missing arm64 asset URL"
     } finally {
         Restore-ReleaseAssetMock
     }
 }
 
 function Test-VerifyChecksumAcceptsMatchingHash {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kata-install-ps1-test-$(Get-Random)"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "poomsae-install-ps1-test-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
     try {
-        $archiveName = 'kata_0.5.0_windows_amd64.zip'
+        $archiveName = 'poomsae_0.5.0_windows_amd64.zip'
         $archivePath = Join-Path $tmp $archiveName
         $checksumFile = Join-Path $tmp 'SHA256SUMS'
         Set-Content -LiteralPath $archivePath -Value 'archive payload' -NoNewline
@@ -107,10 +107,10 @@ function Test-VerifyChecksumAcceptsMatchingHash {
 }
 
 function Test-VerifyChecksumRejectsMismatch {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kata-install-ps1-test-$(Get-Random)"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "poomsae-install-ps1-test-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
     try {
-        $archiveName = 'kata_0.5.0_windows_amd64.zip'
+        $archiveName = 'poomsae_0.5.0_windows_amd64.zip'
         $archivePath = Join-Path $tmp $archiveName
         $checksumFile = Join-Path $tmp 'SHA256SUMS'
         Set-Content -LiteralPath $archivePath -Value 'archive payload' -NoNewline
@@ -125,13 +125,13 @@ function Test-VerifyChecksumRejectsMismatch {
 }
 
 function Test-AssertReleaseBinaryRejectsMissingWebAssets {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kata-install-ps1-web-test-$(Get-Random)"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "poomsae-install-ps1-web-test-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
     try {
         $fakeBinary = Join-Path $tmp 'invalid-release.ps1'
         Set-Content -LiteralPath $fakeBinary -Value "throw 'invalid binary'"
 
-        Assert-Throws 'validated Kata web UI' {
+        Assert-Throws 'validated Poomsae web UI' {
             Assert-ReleaseBinary -BinaryPath $fakeBinary -Version 'v0.14.0'
         } "release web asset validation"
     } finally {
@@ -140,7 +140,7 @@ function Test-AssertReleaseBinaryRejectsMissingWebAssets {
 }
 
 function Test-AssertReleaseBinaryAcceptsLegacyRelease {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kata-install-ps1-legacy-test-$(Get-Random)"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "poomsae-install-ps1-legacy-test-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
     try {
         $fakeBinary = Join-Path $tmp 'legacy-release.ps1'
@@ -153,14 +153,14 @@ function Test-AssertReleaseBinaryAcceptsLegacyRelease {
 }
 
 function Test-AssertReleaseBinaryRejectsNoncanonicalLegacyVersions {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kata-install-ps1-version-test-$(Get-Random)"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "poomsae-install-ps1-version-test-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
     try {
         $fakeBinary = Join-Path $tmp 'invalid-release.ps1'
         Set-Content -LiteralPath $fakeBinary -Value "throw 'invalid binary'"
 
         foreach ($version in @('V0.13.0', "v0.13.0`n", 'v0.013.0', 'v0.13.0-rc.1', 'v1.0.0', '')) {
-            Assert-Throws 'validated Kata web UI' {
+            Assert-Throws 'validated Poomsae web UI' {
                 Assert-ReleaseBinary -BinaryPath $fakeBinary -Version $version
             } "noncanonical release version [$version]"
         }

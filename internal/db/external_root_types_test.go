@@ -21,28 +21,28 @@ func TestValidateExternalRootProjectionParamsRejectsInvalidNativeTitles(t *testi
 
 func TestValidateExternalFieldProjectionParamsRejectsNoncanonicalPatch(t *testing.T) {
 	tests := []struct {
-		name      string
-		kataField string
-		patch     map[string]jsontext.Value
+		name         string
+		poomsaeField string
+		patch        map[string]jsontext.Value
 	}{
 		{
-			name: "padded Kata field", kataField: " scheduled_on",
+			name: "padded Poomsae field", poomsaeField: " scheduled_on",
 			patch: map[string]jsontext.Value{"scheduled_on": jsontext.Value(`"2026-08-21"`)},
 		},
 		{
-			name: "disallowed key", kataField: "scheduled_on",
+			name: "disallowed key", poomsaeField: "scheduled_on",
 			patch: map[string]jsontext.Value{
 				"scheduled_on": jsontext.Value(`"2026-08-21"`),
 				"title":        jsontext.Value(`"not allowed"`),
 			},
 		},
 		{
-			name: "missing mapped key", kataField: "scheduled_on",
+			name: "missing mapped key", poomsaeField: "scheduled_on",
 			patch: map[string]jsontext.Value{"timezone": jsontext.Value(`"Etc/UTC"`)},
 		},
-		{name: "empty patch", kataField: "scheduled_on", patch: map[string]jsontext.Value{}},
+		{name: "empty patch", poomsaeField: "scheduled_on", patch: map[string]jsontext.Value{}},
 		{
-			name: "invalid JSON", kataField: "scheduled_on",
+			name: "invalid JSON", poomsaeField: "scheduled_on",
 			patch: map[string]jsontext.Value{"scheduled_on": jsontext.Value(`{"unfinished"`)},
 		},
 	}
@@ -50,7 +50,7 @@ func TestValidateExternalFieldProjectionParamsRejectsNoncanonicalPatch(t *testin
 		t.Run(test.name, func(t *testing.T) {
 			err := ValidateExternalFieldProjectionParams(ExternalFieldProjectionParams{
 				BindingID: 1, MappingID: 2, ClaimToken: "claim-token",
-				KataField: test.kataField, Patch: test.patch, ExpectedIssueRevision: 1,
+				PoomsaeField: test.poomsaeField, Patch: test.patch, ExpectedIssueRevision: 1,
 				IntegrationActor: "connector:notes",
 			})
 			assert.ErrorIs(t, err, ErrExternalRootValidation)

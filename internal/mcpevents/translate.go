@@ -4,7 +4,7 @@ import (
 	"encoding/json/v2"
 	"strings"
 
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/notification"
 )
 
 // inboxVisibilityTypes always wake a matching subscription as visibility.

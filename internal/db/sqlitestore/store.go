@@ -1,4 +1,4 @@
-// Package sqlitestore opens the kata SQLite database and bootstraps it from
+// Package sqlitestore opens the poomsae SQLite database and bootstraps it from
 // the canonical schema.sql. A fresh DB lands at db.CurrentSchemaVersion() in
 // one transaction; an existing DB at the current version opens unchanged; an
 // older DB returns ErrSchemaCutoverRequired so storeopen can apply additive
@@ -19,9 +19,9 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver registered as "sqlite"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/sqliteconfig"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/sqliteconfig"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 //go:embed schema.sql
@@ -68,7 +68,7 @@ type readQuerier interface {
 // Compile-time check that *Store satisfies the neutral db.Storage contract.
 var _ db.Storage = (*Store)(nil)
 
-// Open opens (and if needed initializes) the kata SQLite database at path.
+// Open opens (and if needed initializes) the poomsae SQLite database at path.
 // Connection-local PRAGMAs are applied via the connection string; WAL is
 // enabled once during setup. Fresh databases are bootstrapped from schema.sql
 // inside a transaction. Older databases return ErrSchemaCutoverRequired so
@@ -154,7 +154,7 @@ func (d *Store) BeginExportSnapshot(ctx context.Context) (db.Storage, func() err
 	return &snap, tx.Rollback, nil
 }
 
-// InstanceUID returns the local kata installation's stable identifier. The
+// InstanceUID returns the local poomsae installation's stable identifier. The
 // value is read once at Open and used to stamp origin_instance_uid on every
 // event and purge_log row written by this daemon.
 func (d *Store) InstanceUID() string { return d.instanceUID }
@@ -271,7 +271,7 @@ func (d *Store) ensureInstanceUIDOnce(ctx context.Context) error {
 	if !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("read instance_uid: %w", err)
 	}
-	fresh, err := katauid.New()
+	fresh, err := poomsaeuid.New()
 	if err != nil {
 		return fmt.Errorf("generate instance_uid: %w", err)
 	}
@@ -308,7 +308,7 @@ func (d *Store) ensureInstanceUIDOnce(ctx context.Context) error {
 	return nil
 }
 
-// openReadOnly opens an existing kata database without bootstrapping. It is the
+// openReadOnly opens an existing poomsae database without bootstrapping. It is the
 // implementation behind Open(..., db.ReadOnly()).
 func openReadOnly(ctx context.Context, path string, busyTimeout time.Duration) (*Store, error) {
 	dsn := fmt.Sprintf(
@@ -445,7 +445,7 @@ func CheckpointForCutover(ctx context.Context, path string) error {
 	}
 	if busy != 0 {
 		_ = sdb.Close()
-		return fmt.Errorf("checkpoint %s: database is in use; stop other kata processes and retry", path)
+		return fmt.Errorf("checkpoint %s: database is in use; stop other poomsae processes and retry", path)
 	}
 	if err := sdb.Close(); err != nil {
 		return fmt.Errorf("close %s after checkpoint: %w", path, err)

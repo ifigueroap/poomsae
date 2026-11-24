@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { KataTaskDetail } from '../lib/kata/types'
+import type { PoomsaeTaskDetail } from '../lib/poomsae/types'
 
 import Checklist from './Checklist.svelte'
 
 function makeIssue(
-  checklist: KataTaskDetail['issue']['metadata']['checklist'] = [],
-  overrides: Partial<KataTaskDetail['issue']> = {},
-): KataTaskDetail {
+  checklist: PoomsaeTaskDetail['issue']['metadata']['checklist'] = [],
+  overrides: Partial<PoomsaeTaskDetail['issue']> = {},
+): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,

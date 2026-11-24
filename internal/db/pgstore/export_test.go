@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/testenv/sqlcount"
+	"github.com/ifigueroap/poomsae/internal/testenv/sqlcount"
 )
 
 const BatchProjectStatsSQLForTest = batchProjectStatsSQL

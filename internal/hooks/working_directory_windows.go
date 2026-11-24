@@ -22,7 +22,7 @@ func workingDirectoryAvailable(path string) bool {
 	if _, err := rand.Read(suffix[:]); err != nil {
 		return false
 	}
-	probePath, err := windows.UTF16PtrFromString(filepath.Join(path, ".kata-doctor-access-"+hex.EncodeToString(suffix[:])))
+	probePath, err := windows.UTF16PtrFromString(filepath.Join(path, ".poomsae-doctor-access-"+hex.EncodeToString(suffix[:])))
 	if err != nil {
 		return false
 	}

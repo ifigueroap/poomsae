@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/todoistsync"
 )
 
 // Contract: a new binding's history floor defaults to thirty days before

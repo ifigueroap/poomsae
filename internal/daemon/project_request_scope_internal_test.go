@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/projectscope"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/projectscope"
 )
 
 func TestRequestProjectScopeSurvivesClaimAuthority(t *testing.T) {

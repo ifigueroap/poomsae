@@ -8,12 +8,12 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // registerDestructiveHandlers installs /actions/delete, /actions/restore, and
-// /actions/purge. Delete and purge gate on the X-Kata-Confirm header per spec
+// /actions/purge. Delete and purge gate on the X-Poomsae-Confirm header per spec
 // §4.4 / §3.5. Restore is reversible and idempotent so it ships unguarded.
 func registerDestructiveHandlers(humaAPI huma.API, cfg ServerConfig) {
 	huma.Register(humaAPI, huma.Operation{
@@ -174,7 +174,7 @@ func refreshFederationBaselineAfterPurge(ctx context.Context, cfg ServerConfig, 
 	return err
 }
 
-// validateConfirm checks an X-Kata-Confirm header against the verb-specific
+// validateConfirm checks an X-Poomsae-Confirm header against the verb-specific
 // expected value ("DELETE <project>#<short_id>" or
 // "PURGE <project>#<short_id>"). Missing header → confirm_required; wrong
 // value → confirm_mismatch.
@@ -185,12 +185,12 @@ func validateConfirm(got, verb, projectName, shortID string) error {
 func validateExactConfirm(got, expected string) error {
 	if got == "" {
 		return api.NewError(412, "confirm_required",
-			"this action requires X-Kata-Confirm",
+			"this action requires X-Poomsae-Confirm",
 			"set the header to "+expected, nil)
 	}
 	if got != expected {
 		return api.NewError(412, "confirm_mismatch",
-			"X-Kata-Confirm header value does not match",
+			"X-Poomsae-Confirm header value does not match",
 			"expected "+expected, nil)
 	}
 	return nil

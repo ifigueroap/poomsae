@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestSoftDeleteIssue_SetsDeletedAtAndEmitsEvent(t *testing.T) {
@@ -221,7 +221,7 @@ func TestPurgeIssue_RemovesAllDependentsAndAudits(t *testing.T) {
 	assert.Equal(t, target.ID, pl.PurgedIssueID)
 	assert.Equal(t, target.UID, *pl.IssueUID)
 	assert.Equal(t, p.UID, *pl.ProjectUID)
-	assert.Equal(t, "kata", pl.ProjectName)
+	assert.Equal(t, "poomsae", pl.ProjectName)
 	assert.Equal(t, "delete me", pl.IssueTitle)
 	assert.Equal(t, "tester", pl.IssueAuthor)
 	assert.Equal(t, int64(1), pl.CommentCount)
@@ -313,13 +313,13 @@ func TestEditIssueAtomic_AddBlocksHandlesConcurrentInsertGracefully(t *testing.T
 }
 
 // TestPurgeIssue_PreservesSinglePeerAggregatedLinksChangedEvent pins
-// the consistency rule introduced by the kata#1 design call: aggregated
+// the consistency rule introduced by the poomsae#1 design call: aggregated
 // issue.links_changed events on OTHER live issues survive purge of the
 // referenced peer regardless of whether the iteration-16 envelope-peer
 // fix populated related_issue_id (single-peer case) or left it NULL
 // (multi-peer case). Without the type-aware purge cleanup, a single-peer
 // edit's aggregated event would be deleted via the related_issue_id =
-// purged-issue match — meaning a `kata edit subject --blocks target`
+// purged-issue match — meaning a `poomsae edit subject --blocks target`
 // loses subject's link history when target is purged, but the same
 // edit batched with a second peer survives. That's a batch-size-
 // dependent bug.
@@ -357,7 +357,7 @@ func TestPurgeIssue_PreservesSinglePeerAggregatedLinksChangedEvent(t *testing.T)
 }
 
 // TestPurgeIssue_PreservesAggregatedLinksChangedEventsOnOtherIssues
-// pins Jesse's design call on kata#1: purging an issue must not erase
+// pins Jesse's design call on poomsae#1: purging an issue must not erase
 // the historical context that ANOTHER live issue was once linked to
 // it. The aggregated issue.links_changed event on `subject` references
 // `target` in its payload; when `target` is purged, the FK cascade
@@ -373,7 +373,7 @@ func TestPurgeIssue_PreservesAggregatedLinksChangedEventsOnOtherIssues(t *testin
 
 	// Emit an aggregated issue.links_changed event on `subject` that
 	// references `target` in blocks_added — this is the shape produced
-	// by `kata edit subject --blocks target`. Iteration-16 set the
+	// by `poomsae edit subject --blocks target`. Iteration-16 set the
 	// envelope's related_issue_id to `target` for single-peer aggregated
 	// events; that's a real issue_id reference, so the FK cascade WILL
 	// delete this event. Use a multi-peer edit so related_issue_id stays
@@ -408,7 +408,7 @@ func TestPurgeIssue_PreservesAggregatedLinksChangedEventsOnOtherIssues(t *testin
 }
 
 // TestEditIssueAtomic_LinksChangedSetsEnvelopePeerForSingleEdge covers a
-// roborev finding from kata#1: the per-link issue.linked / issue.unlinked
+// roborev finding from poomsae#1: the per-link issue.linked / issue.unlinked
 // envelopes carry related_issue_id / related_issue_uid; consumers that
 // route on those envelope columns lose peer identity when the same edit
 // runs through PATCH and emits a single-peer issue.links_changed instead.
@@ -614,7 +614,7 @@ func TestPurgeIssue_SnapshotsShortIDIntoPurgeLog(t *testing.T) {
 // purge-tombstone regression. Without the tombstone, purging the first
 // issue would free its short_id and a later create whose ULID happens
 // to suffix-match would silently inherit the slot — re-targeting any
-// external "kata#abc4" ref that had been written against the purged
+// external "poomsae#abc4" ref that had been written against the purged
 // issue. With the tombstone, assignShortIDIn auto-extends past L=4
 // just as it would against a live sibling.
 func TestPurgeTombstone_BlocksReuseOfShortIDAtSameLength(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 const closedStateID = "66666666-6666-4666-8666-666666666666"
@@ -23,9 +23,9 @@ func TestStatusWriteRefreshesLiveTargetsAfterCachedRead(t *testing.T) {
 	c := mockClient(t, func(r *http.Request) (*http.Response, error) {
 		query, variables := requestBody(t, r)
 		switch {
-		case strings.Contains(query, "KataLinearScope"):
+		case strings.Contains(query, "PoomsaeLinearScope"):
 			return dataResponse(map[string]any{"viewer": map[string]any{"organization": map[string]any{"id": workspaceID}}, "team": map[string]any{"id": teamID, "name": "Example team", "organization": map[string]any{"id": workspaceID}, "archivedAt": nil}}), nil
-		case strings.Contains(query, "KataLinearStates"):
+		case strings.Contains(query, "PoomsaeLinearStates"):
 			closedType := "completed"
 			if changed {
 				closedType = "canceled"
@@ -35,11 +35,11 @@ func TestStatusWriteRefreshesLiveTargetsAfterCachedRead(t *testing.T) {
 				nodes = append(nodes, map[string]any{"id": projectID, "type": "completed", "position": 2, "team": map[string]any{"id": teamID}, "archivedAt": nil})
 			}
 			return dataResponse(map[string]any{"workflowStates": map[string]any{"nodes": nodes, "pageInfo": map[string]any{"hasNextPage": false}}}), nil
-		case strings.Contains(query, "KataLinearStatus"):
+		case strings.Contains(query, "PoomsaeLinearStatus"):
 			i := wireIssue()
 			i["state"] = map[string]any{"id": current}
 			return dataResponse(map[string]any{"issue": i}), nil
-		case strings.Contains(query, "KataLinearUpdate"):
+		case strings.Contains(query, "PoomsaeLinearUpdate"):
 			current = variables["input"].(map[string]any)["stateId"].(string)
 			writes = append(writes, current)
 			return dataResponse(map[string]any{"issueUpdate": map[string]any{"success": true, "issue": map[string]any{"id": issueID}}}), nil
@@ -111,16 +111,16 @@ func statusTransport(t *testing.T, mutation func(*http.Request, map[string]any) 
 	return func(r *http.Request) (*http.Response, error) {
 		query, v := requestBody(t, r)
 		switch {
-		case strings.Contains(query, "KataLinearScope"):
+		case strings.Contains(query, "PoomsaeLinearScope"):
 			return dataResponse(map[string]any{"viewer": map[string]any{"organization": map[string]any{"id": workspaceID}}, "team": map[string]any{"id": teamID, "name": "Example team", "organization": map[string]any{"id": workspaceID}, "archivedAt": nil}}), nil
-		case strings.Contains(query, "KataLinearStates"):
+		case strings.Contains(query, "PoomsaeLinearStates"):
 			return dataResponse(map[string]any{"workflowStates": map[string]any{"nodes": []any{map[string]any{"id": stateID, "type": "unstarted", "position": 0, "team": map[string]any{"id": teamID}, "archivedAt": nil}, map[string]any{"id": closedStateID, "type": "completed", "position": 1, "team": map[string]any{"id": teamID}, "archivedAt": nil}}, "pageInfo": map[string]any{"hasNextPage": false}}}), nil
-		case strings.Contains(query, "KataLinearStatus"):
+		case strings.Contains(query, "PoomsaeLinearStatus"):
 			require.Equal(t, issueID, v["id"])
 			return dataResponse(map[string]any{"issue": issue()}), nil
-		case strings.Contains(query, "KataLinearUpdate"):
+		case strings.Contains(query, "PoomsaeLinearUpdate"):
 			return mutation(r, v)
-		case strings.Contains(query, "KataLinearComments"):
+		case strings.Contains(query, "PoomsaeLinearComments"):
 			return dataResponse(map[string]any{"comments": map[string]any{"nodes": []any{}, "pageInfo": map[string]any{"hasNextPage": false}}}), nil
 		default:
 			t.Fatalf("unexpected query %s", query)
@@ -261,7 +261,7 @@ func TestStatusWriteLoadsWorkflowOnce(t *testing.T) {
 	c := mockClient(t, func(r *http.Request) (*http.Response, error) {
 		raw, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
-		if strings.Contains(string(raw), "KataLinearScope") || strings.Contains(string(raw), "KataLinearStates") {
+		if strings.Contains(string(raw), "PoomsaeLinearScope") || strings.Contains(string(raw), "PoomsaeLinearStates") {
 			workflowReads++
 		}
 		r.Body = io.NopCloser(strings.NewReader(string(raw)))

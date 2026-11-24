@@ -4,7 +4,7 @@ package release
 import "go.kenn.io/kit/selfupdate"
 
 // BinaryName is the executable name used in release archives.
-const BinaryName = "kata"
+const BinaryName = "poomsae"
 
 // AssetName returns the kit-compatible release archive name for a platform.
 func AssetName(version, goos, goarch string) string {

@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/version"
+	"github.com/ifigueroap/poomsae/internal/version"
 )
 
 func TestCoreActionSurfaceHeaders(t *testing.T) {
 	var surfaces []string
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		surfaces = append(surfaces, r.Header.Get("X-Kata-Surface"))
+		surfaces = append(surfaces, r.Header.Get("X-Poomsae-Surface"))
 		respondJSON(t, w, map[string]any{"changed": true})
 	})
 	_, err := c.CreateIssue(t.Context(), 7, CreateIssueBody{Title: "Example task", Actor: "user-a"})
@@ -25,7 +25,7 @@ func TestCoreActionSurfaceHeaders(t *testing.T) {
 	_, err = c.Reopen(t.Context(), 7, "abcd", "user-a")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"tui", "tui", "tui", ""}, surfaces)
-	for _, scenario := range []string{"KATA_TELEMETRY_ENABLED", "dev"} {
+	for _, scenario := range []string{"POOMSAE_TELEMETRY_ENABLED", "dev"} {
 		t.Run(scenario, func(t *testing.T) {
 			saved := version.Version
 			t.Cleanup(func() { version.Version = saved })
@@ -40,7 +40,7 @@ func TestCoreActionSurfaceHeaders(t *testing.T) {
 				if req.URL.Path == "/api/v1/ui/telemetry" {
 					posts++
 				} else {
-					surfaces = append(surfaces, req.Header.Get("X-Kata-Surface"))
+					surfaces = append(surfaces, req.Header.Get("X-Poomsae-Surface"))
 				}
 				return jsonResponse(t, map[string]any{"changed": true}), nil
 			})}
@@ -65,7 +65,7 @@ func TestUndoCloseSuppressesSurface(t *testing.T) {
 				"uid": "issue-1", "project_id": 7, "status": "open", "revision": 5,
 			}}), nil
 		case "/api/v1/projects/7/issues/issue-1/actions/close":
-			surfaces = append(surfaces, req.Header.Get("X-Kata-Surface"))
+			surfaces = append(surfaces, req.Header.Get("X-Poomsae-Surface"))
 			return jsonResponse(t, map[string]any{
 				"issue":   map[string]any{"uid": "issue-1", "project_id": 7, "status": "closed", "revision": 6},
 				"changed": true,

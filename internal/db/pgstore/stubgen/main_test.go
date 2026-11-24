@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/pgstore"
 )
 
 func TestGenerateOmitsUnusedStandardLibraryImports(t *testing.T) {
@@ -33,7 +33,7 @@ type Storage interface { Only(context.Context) error }
 		require.NoError(t, err)
 		imports = append(imports, path)
 	}
-	assert.Equal(t, []string{"context", "go.kenn.io/kata/internal/db"}, imports)
+	assert.Equal(t, []string{"context", "github.com/ifigueroap/poomsae/internal/db"}, imports)
 }
 
 func TestStorageMethodInventoryClassifiesEveryMethod(t *testing.T) {

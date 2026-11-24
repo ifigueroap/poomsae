@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"time"
 
-	"go.kenn.io/kata/internal/diagnostics"
+	"github.com/ifigueroap/poomsae/internal/diagnostics"
 	"go.kenn.io/kit/safefileio"
 )
 

@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
-func purgeTestIssueStatus(t *testing.T, service *kata.Service, method string, projectID int64, suffix, body string) int {
+func purgeTestIssueStatus(t *testing.T, service *poomsae.Service, method string, projectID int64, suffix, body string) int {
 	t.Helper()
 	request := httptest.NewRequestWithContext(t.Context(), method,
 		"/api/v1/projects/"+strconv.FormatInt(projectID, 10)+"/issues"+suffix, strings.NewReader(body))
@@ -29,15 +29,15 @@ func purgeTestIssueStatus(t *testing.T, service *kata.Service, method string, pr
 // checkServicePurgeArchivedHubProject covers the host workflow after a hub
 // project is replaced: archive it, then purge it so its identity and tasks no
 // longer occupy the hub.
-func checkServicePurgeArchivedHubProject(t *testing.T, service *kata.Service) {
+func checkServicePurgeArchivedHubProject(t *testing.T, service *poomsae.Service) {
 	ctx := t.Context()
-	spec := kata.ProjectSpec{UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "hub-project"}
+	spec := poomsae.ProjectSpec{UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "hub-project"}
 	ensured, err := service.EnsureProject(ctx, spec)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, purgeTestIssueStatus(t, service, http.MethodPost,
 		ensured.Project.ID, "", `{"title":"held task","actor":"user-a"}`))
 	// Creating an enrollment makes the project a federation hub.
-	enrollment, err := service.CreateFederationEnrollment(ctx, kata.FederationEnrollmentSpec{
+	enrollment, err := service.CreateFederationEnrollment(ctx, poomsae.FederationEnrollmentSpec{
 		ProjectUID: spec.UID, SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 		Capabilities: "pull,push", Actor: "Example Operator",
 	})
@@ -45,15 +45,15 @@ func checkServicePurgeArchivedHubProject(t *testing.T, service *kata.Service) {
 	assertFederationTokenStatus(t, service, ensured.Project.ID, enrollment.Token, http.StatusOK)
 
 	_, err = service.PurgeArchivedProject(ctx, spec.UID, "Example Operator", "replaced")
-	require.ErrorIs(t, err, kata.ErrProjectNotArchived, "an active project is refused")
+	require.ErrorIs(t, err, poomsae.ErrProjectNotArchived, "an active project is refused")
 	_, err = service.PurgeArchivedProject(ctx, "01HZNQ7VFPK1XGD8R5MABCD4EY", "Example Operator", "")
-	require.ErrorIs(t, err, kata.ErrProjectNotFound)
+	require.ErrorIs(t, err, poomsae.ErrProjectNotFound)
 
 	_, err = service.ArchiveProject(ctx, spec.UID, "Example Operator")
 	require.NoError(t, err)
 	// The project is now purgeable, so only the missing actor refuses it.
 	_, err = service.PurgeArchivedProject(ctx, spec.UID, " ", "replaced")
-	require.ErrorIs(t, err, kata.ErrProjectPurgeActorRequired, "the purge log names who purged")
+	require.ErrorIs(t, err, poomsae.ErrProjectPurgeActorRequired, "the purge log names who purged")
 	purged, err := service.PurgeArchivedProject(ctx, spec.UID, "Example Operator", "replaced")
 	require.NoError(t, err)
 	assert.Equal(t, spec.UID, purged.Project.UID)
@@ -73,10 +73,10 @@ func checkServicePurgeArchivedHubProject(t *testing.T, service *kata.Service) {
 	service.Handler().ServeHTTP(response, request)
 	assert.NotEqual(t, http.StatusOK, response.Code)
 	_, err = service.ListFederationEnrollments(ctx, spec.UID)
-	require.ErrorIs(t, err, kata.ErrProjectNotFound)
+	require.ErrorIs(t, err, poomsae.ErrProjectNotFound)
 
 	_, err = service.PurgeArchivedProject(ctx, spec.UID, "Example Operator", "replaced")
-	require.ErrorIs(t, err, kata.ErrProjectNotFound, "a repeated purge finds nothing")
+	require.ErrorIs(t, err, poomsae.ErrProjectNotFound, "a repeated purge finds nothing")
 
 	// The identity is free: the host can create the project again from scratch.
 	recreated, err := service.EnsureProject(ctx, spec)
@@ -87,9 +87,9 @@ func checkServicePurgeArchivedHubProject(t *testing.T, service *kata.Service) {
 }
 
 func TestServicePurgeArchivedHubProject(t *testing.T) {
-	service, err := kata.New(t.Context(), kata.Config{
+	service, err := poomsae.New(t.Context(), poomsae.Config{
 		DSN:  filepath.Join(t.TempDir(), "service.db"),
-		Auth: kata.AuthConfig{TrustCallerAuthentication: true},
+		Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
@@ -101,9 +101,9 @@ func TestServicePostgresPurgeArchivedHubProject(t *testing.T) {
 	defer cancel()
 	dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
 	t.Cleanup(cleanup)
-	service, err := kata.New(ctx, kata.Config{
-		DSN: dsn, Auth: kata.AuthConfig{TrustCallerAuthentication: true},
-		Postgres: kata.PostgresConfig{Schema: "kata", SchemaMode: kata.PostgresSchemaBootstrap},
+	service, err := poomsae.New(ctx, poomsae.Config{
+		DSN: dsn, Auth: poomsae.AuthConfig{TrustCallerAuthentication: true},
+		Postgres: poomsae.PostgresConfig{Schema: "poomsae", SchemaMode: poomsae.PostgresSchemaBootstrap},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })

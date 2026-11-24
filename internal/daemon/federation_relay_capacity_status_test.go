@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 // countingCheckpointMeasurer records which projects the status route measures
@@ -55,7 +55,7 @@ func (m *countingCheckpointMeasurer) count(projectID int64) int {
 // skips checkpoint measurement for compact project reads.
 func TestFederationStatusRelayMeasurementAndCompactRead(t *testing.T) {
 	ctx := t.Context()
-	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	wrapped := &countingCheckpointMeasurer{Storage: store, measurer: store, measured: map[int64]int{}}

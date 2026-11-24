@@ -13,8 +13,8 @@ VERCEL = ROOT / "vercel.json"
 VERCELIGNORE = ROOT.parent / ".vercelignore"
 
 TEMPORARY = {
-    "/install.sh": "https://raw.githubusercontent.com/kenn-io/kata/main/scripts/install.sh",
-    "/install.ps1": "https://raw.githubusercontent.com/kenn-io/kata/main/scripts/install.ps1",
+    "/install.sh": "https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.sh",
+    "/install.ps1": "https://raw.githubusercontent.com/ifigueroap/poomsae/main/scripts/install.ps1",
 }
 
 
@@ -122,7 +122,7 @@ def main() -> None:
         "docs/assets/screenshots/tui/hero.svg",
     )
     excluded_paths = (
-        "cmd/kata/main.go",
+        "cmd/poomsae/main.go",
         ".superpowers/sdd/progress.md",
         "docs/site/index.html",
         "docs/superpowers/plans/example.md",
@@ -145,8 +145,8 @@ def main() -> None:
         "docs/guide/draft~",
         "docs/.DS_Store",
         "docs/guide/.DS_Store",
-        "docs/.kata.local.toml",
-        "docs/guide/.kata.local.toml",
+        "docs/.poomsae.local.toml",
+        "docs/guide/.poomsae.local.toml",
         "docs/check.test",
         "docs/guide/check.test",
         "docs/check.out",

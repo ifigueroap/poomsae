@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
 )
 
 func TestFederationPollWakeReportsClosedAfterStoreClose(t *testing.T) {
@@ -59,16 +59,16 @@ func TestFederationPollWakeStaysWithinItsSchema(t *testing.T) {
 		defer cancel()
 		dsn, cleanup := pgstoretest.NewDatabase(t, ctx)
 		t.Cleanup(cleanup)
-		kata := openPollWakeStore(t, ctx, dsn, pgstore.DefaultSchema)
+		poomsae := openPollWakeStore(t, ctx, dsn, pgstore.DefaultSchema)
 		other := openPollWakeStore(t, ctx, dsn, "kata_other")
 		// An import into the second schema can copy the first installation's
 		// identity; the schemas must stay apart even then.
-		_, err := other.ExecContext(ctx, `UPDATE meta SET value=$1 WHERE key='instance_uid'`, kata.InstanceUID())
+		_, err := other.ExecContext(ctx, `UPDATE meta SET value=$1 WHERE key='instance_uid'`, poomsae.InstanceUID())
 		require.NoError(t, err)
 		require.NoError(t, other.RefreshInstanceUID(ctx))
 		otherWakes := listenForPollWakes(t, ctx, other)
 
-		require.NoError(t, kata.PublishFederationPollWake(ctx, "hub-a 7"))
+		require.NoError(t, poomsae.PublishFederationPollWake(ctx, "hub-a 7"))
 		require.NoError(t, other.PublishFederationPollWake(ctx, "hub-b 8"))
 		require.Equal(t, "hub-b 8", nextPollWake(t, ctx, otherWakes), "a wake crossed into another schema")
 	})

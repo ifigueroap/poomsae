@@ -19,25 +19,25 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/githubsync"
-	"go.kenn.io/kata/internal/hooks"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/linearsync"
-	"go.kenn.io/kata/internal/mcpevents"
-	"go.kenn.io/kata/internal/mcpicon"
-	"go.kenn.io/kata/internal/notionsync"
-	"go.kenn.io/kata/internal/planesync"
-	"go.kenn.io/kata/internal/rootbridge"
-	"go.kenn.io/kata/internal/tickticksync"
-	"go.kenn.io/kata/internal/todoistsync"
-	"go.kenn.io/kata/internal/twentysync"
-	"go.kenn.io/kata/internal/vector"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpicon"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
+	"github.com/ifigueroap/poomsae/internal/planesync"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/internal/tickticksync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"golang.org/x/net/netutil"
 )
 
@@ -208,7 +208,7 @@ type ServerConfig struct {
 	// not inferred from HTTP headers and never overrides HostAccess.
 	TrustCallerAuthentication bool
 
-	// HostFederationAccess optionally adds host-owned authorization after Kata
+	// HostFederationAccess optionally adds host-owned authorization after Poomsae
 	// authenticates a project-scoped federation enrollment.
 	HostFederationAccess         HostFederationAccessController
 	AuthorizeFederationReference func(context.Context, db.Transaction, HostFederationAccessRequest, HostFederationAccessRequest) error
@@ -254,7 +254,7 @@ func (c ServerConfig) Publish() EventPublisher {
 }
 
 // CloseThrottlePolicy is the runtime form of [close.throttle] in
-// <KATA_HOME>/config.toml.
+// <POOMSAE_HOME>/config.toml.
 type CloseThrottlePolicy struct {
 	SiblingBurstEnabled bool
 	SiblingBurstWindow  time.Duration
@@ -374,7 +374,7 @@ func NewServer(cfg ServerConfig) *Server {
 	}
 
 	mux := http.NewServeMux()
-	humaConfig := huma.DefaultConfig("kata", APISchemaVersion)
+	humaConfig := huma.DefaultConfig("poomsae", APISchemaVersion)
 	humaConfig.Components.Schemas = newAPISchemaRegistry()
 	jsonFormat := huma.Format{
 		Marshal: func(w io.Writer, value any) error {
@@ -388,7 +388,7 @@ func NewServer(cfg ServerConfig) *Server {
 		"application/json": jsonFormat,
 		"json":             jsonFormat,
 	}
-	humaConfig.OpenAPIPath = "" // Plan 1: no /openapi.json served at runtime; see `kata openapi` + OpenAPIDocument
+	humaConfig.OpenAPIPath = "" // Plan 1: no /openapi.json served at runtime; see `poomsae openapi` + OpenAPIDocument
 	humaConfig.DocsPath = ""
 	humaConfig.Transformers = append(humaConfig.Transformers, api.TransformHumaError, scopedNotificationTransformer(cfg.DB))
 	// Drop DefaultConfig's SchemaLinkTransformer: it rebuilds response structs

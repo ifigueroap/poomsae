@@ -1,8 +1,8 @@
 package client
 
-import "go.kenn.io/kata/internal/config"
+import "github.com/ifigueroap/poomsae/internal/config"
 
-// CatalogDaemon is one [[daemon]] entry in <KATA_HOME>/config.toml. It carries
+// CatalogDaemon is one [[daemon]] entry in <POOMSAE_HOME>/config.toml. It carries
 // no credentials.
 type CatalogDaemon struct {
 	Name string
@@ -18,9 +18,9 @@ type CatalogDaemon struct {
 	Active bool
 }
 
-// DaemonCatalog returns the daemon catalog in file order, as kata tui's daemon
+// DaemonCatalog returns the daemon catalog in file order, as poomsae tui's daemon
 // switcher lists it. A missing config file yields no entries; an invalid
-// catalog returns kata's configuration error.
+// catalog returns poomsae's configuration error.
 func DaemonCatalog() ([]CatalogDaemon, error) {
 	cfg, err := config.ReadDaemonCatalogAndAuthPolicy()
 	if err != nil {

@@ -9,15 +9,15 @@ import (
 	"testing"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/db/storeopen"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/testenv"
 	_ "modernc.org/sqlite"
 )
 
@@ -26,9 +26,9 @@ import (
 // real mutation. Open auto-bootstraps the schema in one transaction when the
 // file is fresh.
 func TestOpen_BarePathBootstrapsFreshSQLite(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	store, err := storeopen.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
@@ -39,9 +39,9 @@ func TestOpen_BarePathBootstrapsFreshSQLite(t *testing.T) {
 // TestOpen_SQLiteSchemeBootstrapsFreshSQLite opens a sqlite://-prefixed DSN
 // and confirms the trim leaves a working SQLite backend.
 func TestOpen_SQLiteSchemeBootstrapsFreshSQLite(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	store, err := storeopen.Open(ctx, "sqlite://"+path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
@@ -50,9 +50,9 @@ func TestOpen_SQLiteSchemeBootstrapsFreshSQLite(t *testing.T) {
 }
 
 func TestOpenSQLiteDoesNotInspectSourceWhileCutoverLockIsHeld(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	_, err = source.ExecContext(ctx, `PRAGMA journal_mode=WAL`)
@@ -80,8 +80,8 @@ func TestOpenSQLiteDoesNotInspectSourceWhileCutoverLockIsHeld(t *testing.T) {
 func TestValidateAcceptsPostgresSchemes(t *testing.T) {
 	t.Parallel()
 
-	assert.NoError(t, storeopen.Validate("postgres://db.example/kata"))
-	assert.NoError(t, storeopen.Validate("postgresql://db.example/kata"))
+	assert.NoError(t, storeopen.Validate("postgres://db.example/poomsae"))
+	assert.NoError(t, storeopen.Validate("postgresql://db.example/poomsae"))
 }
 
 // TestOpen_PostgresDSNRoundTripsThroughReadOnlyOpen proves production store
@@ -153,10 +153,10 @@ func TestOpen_PostgresHonorsResolvedValidationPolicy(t *testing.T) {
 	var schemaOwner string
 	require.NoError(t, admin.QueryRowContext(ctx, `SELECT current_user`).Scan(&schemaOwner))
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_POSTGRES_SCHEMA", "resolved_store")
-	t.Setenv("KATA_POSTGRES_SCHEMA_MODE", "validate")
-	t.Setenv("KATA_POSTGRES_SCHEMA_OWNER", schemaOwner)
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "resolved_store")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA_MODE", "validate")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA_OWNER", schemaOwner)
 
 	store, err := storeopen.Open(ctx, dsn)
 	assert.Nil(t, store)
@@ -185,9 +185,9 @@ const preIndexOnlySchemaVersion = 40
 // TestOpen_RunsCutoverOnPreCurrentSQLite confirms storeopen replaces schemas
 // that require more than index additions before opening.
 func TestOpen_RunsCutoverOnPreCurrentSQLite(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	stageLegacyPreCutoverFixture(t, path, preIndexOnlySchemaVersion)
 	upgraded, err := storeopen.Open(ctx, path)
 	require.NoError(t, err)
@@ -198,9 +198,9 @@ func TestOpen_RunsCutoverOnPreCurrentSQLite(t *testing.T) {
 }
 
 func TestOpen_RoutesVersionZeroExistingSQLiteThroughCutover(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	stageLegacyPreCutoverFixture(t, path, 0)
 
 	s, err := storeopen.Open(ctx, path)
@@ -213,13 +213,13 @@ func TestOpen_RoutesVersionZeroExistingSQLiteThroughCutover(t *testing.T) {
 	assert.Equal(t, 0, ver, "storeopen must not bootstrap over an existing version-0 DB")
 }
 
-// stageLegacyPreCutoverFixture creates a real kata-shaped SQLite DB at path
+// stageLegacyPreCutoverFixture creates a real poomsae-shaped SQLite DB at path
 // and rewrites meta.schema_version to a value below the current version so
 // jsonl.AutoCutover treats it as legacy. Open gives us all the tables
 // AutoCutover's export step expects without hand-writing a baseline schema.
 func stageLegacyPreCutoverFixture(t *testing.T, path string, version int) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -233,9 +233,9 @@ func stageLegacyPreCutoverFixture(t *testing.T, path string, version int) {
 // schema_version above the binary's current is refused with a distinct
 // error.
 func TestOpen_RejectsNewerThanBinary(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	stageNewerThanBinaryFixture(t, path)
 
 	_, err := storeopen.Open(ctx, path)
@@ -243,12 +243,12 @@ func TestOpen_RejectsNewerThanBinary(t *testing.T) {
 	assert.Contains(t, err.Error(), "newer than binary schema")
 }
 
-// stageNewerThanBinaryFixture creates a kata-shaped DB at path and rewrites
+// stageNewerThanBinaryFixture creates a poomsae-shaped DB at path and rewrites
 // meta.schema_version to a value above db.CurrentSchemaVersion() — the
 // "newer DB written by a newer binary" case.
 func stageNewerThanBinaryFixture(t *testing.T, path string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -262,9 +262,9 @@ func stageNewerThanBinaryFixture(t *testing.T, path string) {
 // TestOpenReadOnly_OnCurrentDBSucceeds confirms read-only opens against a
 // current-version DB return a usable handle.
 func TestOpenReadOnly_OnCurrentDBSucceeds(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 
 	// Stand up a current-version DB via storeopen (auto-bootstrap).
 	s, err := storeopen.Open(ctx, path)
@@ -280,15 +280,15 @@ func TestOpenReadOnly_OnCurrentDBSucceeds(t *testing.T) {
 	assert.Equal(t, db.CurrentSchemaVersion(), v)
 }
 
-// TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError proves KATA_DSN
+// TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError proves POOMSAE_DSN
 // plumbing reaches storeopen.Open end-to-end and that a connection failure
 // never echoes the password embedded in the DSN.
 func TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_DSN", "postgres://user:SECRET@127.0.0.1:1/kata?connect_timeout=1&sslmode=disable") //nolint:gosec // fixture
-	t.Setenv("KATA_DB", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_DSN", "postgres://user:SECRET@127.0.0.1:1/poomsae?connect_timeout=1&sslmode=disable") //nolint:gosec // fixture
+	t.Setenv("POOMSAE_DB", "")
 
-	dsn, err := config.KataDSN(t.Context())
+	dsn, err := config.PoomsaeDSN(t.Context())
 	require.NoError(t, err)
 	require.Contains(t, dsn, "SECRET", "raw DSN keeps the secret; redaction happens at error time")
 
@@ -302,13 +302,13 @@ func TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError(t *testing.T) {
 // but for the [storage].dsn TOML branch. Same connection-fail strategy.
 func TestOpenResolvedFromStorageDSNKeepsPasswordOutOfError(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_DSN", "")
-	t.Setenv("KATA_DB", "")
-	body := "[storage]\ndsn = \"postgres://user:SECRET@127.0.0.1:1/kata?connect_timeout=1&sslmode=disable\"\n" //nolint:gosec // fixture
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_DSN", "")
+	t.Setenv("POOMSAE_DB", "")
+	body := "[storage]\ndsn = \"postgres://user:SECRET@127.0.0.1:1/poomsae?connect_timeout=1&sslmode=disable\"\n" //nolint:gosec // fixture
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(body), 0o600))
 
-	dsn, err := config.KataDSN(t.Context())
+	dsn, err := config.PoomsaeDSN(t.Context())
 	require.NoError(t, err)
 	require.Contains(t, dsn, "SECRET")
 
@@ -334,9 +334,9 @@ func TestOpenResolvedFromStorageDSNKeepsPasswordOutOfError(t *testing.T) {
 // separately by TestImport_LinkWithStrayProjectIDKeyIsIgnored in
 // internal/jsonl/cutover_test.go.
 func TestOpen_V14CutoverCarriesLinks(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	seedV14DBWithLink(t, path)
 
 	s, err := storeopen.Open(ctx, path)
@@ -402,7 +402,7 @@ const (
 func seedV14DBWithLink(t *testing.T, path string) {
 	t.Helper()
 	ctx := t.Context()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -524,9 +524,9 @@ func tableColumns(t *testing.T, raw *sql.DB, table string) map[string]bool {
 func TestDatabaseOpenTerminologyAvoidsMigrationLanguage(t *testing.T) {
 	repoRoot := filepath.Clean("../../..")
 	files := []string{
-		"cmd/kata/testhelpers_test.go",
-		"cmd/kata/export_test.go",
-		"cmd/kata/import_test.go",
+		"cmd/poomsae/testhelpers_test.go",
+		"cmd/poomsae/export_test.go",
+		"cmd/poomsae/import_test.go",
 		"internal/db/pgstore/open.go",
 		"internal/db/pgstore/store.go",
 		"internal/db/pgstore/stubs_gen.go",
@@ -557,8 +557,8 @@ func TestDatabaseOpenTerminologyAvoidsMigrationLanguage(t *testing.T) {
 }
 
 func TestOpenMissingCutoverSourceDoesNotBootstrapEmptyDatabase(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	path := filepath.Join(t.TempDir(), "kata.db")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	require.NoError(t, os.WriteFile(path+".import.tmp.db-wal", []byte("partial"), 0o600))
 	store, err := storeopen.Open(t.Context(), path)
 	if store != nil {
@@ -570,8 +570,8 @@ func TestOpenMissingCutoverSourceDoesNotBootstrapEmptyDatabase(t *testing.T) {
 }
 
 func TestOpenEmptyCutoverSourceDoesNotBootstrapEmptyDatabase(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	path := filepath.Join(t.TempDir(), "kata.db")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	require.NoError(t, os.WriteFile(path, nil, 0o600))
 	require.NoError(t, os.WriteFile(path+".import.tmp.jsonl", []byte("partial"), 0o600))
 	store, err := storeopen.Open(t.Context(), path)
@@ -588,8 +588,8 @@ func TestOpenEmptyCutoverSourceDoesNotBootstrapEmptyDatabase(t *testing.T) {
 func TestOpenCutoverBackupWithoutSourceDoesNotBootstrap(t *testing.T) {
 	for _, empty := range []bool{false, true} {
 		t.Run(strconv.FormatBool(empty), func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
-			path := filepath.Join(t.TempDir(), "kata.db")
+			t.Setenv("POOMSAE_HOME", t.TempDir())
+			path := filepath.Join(t.TempDir(), "poomsae.db")
 			if empty {
 				require.NoError(t, os.WriteFile(path, nil, 0o600))
 			}
@@ -619,9 +619,9 @@ func TestOpenCutoverBackupWithoutSourceDoesNotBootstrap(t *testing.T) {
 // it must report the interrupted cutover, not create an empty database through
 // the link.
 func TestOpenRefusesInterruptedCutoverBehindSymlink(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	target := filepath.Join(t.TempDir(), "kata.db")
+	target := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(ctx, target)
 	require.NoError(t, err)
 	_, err = source.ExecContext(ctx, `UPDATE meta SET value='28' WHERE key='schema_version'`)
@@ -645,18 +645,18 @@ func TestOpenRefusesInterruptedCutoverBehindSymlink(t *testing.T) {
 // Interrupted-cutover recovery must find the backup when the configured path
 // reaches a relative link through a directory symlink.
 func TestOpenRefusesInterruptedCutoverBehindRelativeLinkInSymlinkedDirectory(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	physical := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(physical, "links"), 0o700))
 	require.NoError(t, os.Mkdir(filepath.Join(physical, "data"), 0o700))
-	target := filepath.Join(physical, "data", "kata.db")
+	target := filepath.Join(physical, "data", "poomsae.db")
 	source, err := sqlitestore.Open(ctx, target)
 	require.NoError(t, err)
 	_, err = source.ExecContext(ctx, `UPDATE meta SET value='28' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	require.NoError(t, source.Close())
-	if err := os.Symlink(filepath.Join("..", "data", "kata.db"), filepath.Join(physical, "links", "linked.db")); err != nil {
+	if err := os.Symlink(filepath.Join("..", "data", "poomsae.db"), filepath.Join(physical, "links", "linked.db")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	alias := filepath.Join(t.TempDir(), "alias")

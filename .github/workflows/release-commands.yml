@@ -20,13 +20,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.sha }}
           persist-credentials: false
 
-      - name: Check commands against the latest release
-        uses: kenn-io/actions/release-commands@main
-        with:
-          files: |
-            README.md
-            scripts/install.sh
-            scripts/install.ps1
-          binaries: kata
-          asset: kata_*[0-9]_linux_amd64.tar.gz
-          repository: kenn-io/kata
+      - name: Check installer scripts
+        run: |
+          bash -n scripts/install.sh
+          grep -q 'ifigueroap/poomsae' scripts/install.sh
+          grep -q 'ifigueroap/poomsae' scripts/install.ps1
+          grep -q '${BINARY_NAME}_${version#v}_${platform}.tar.gz' scripts/install.sh

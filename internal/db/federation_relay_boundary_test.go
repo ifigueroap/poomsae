@@ -4,8 +4,8 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/notification"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/notification"
 )
 
 func TestRelayEventPeerProjects(t *testing.T) {

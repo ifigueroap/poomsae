@@ -71,7 +71,7 @@ func TestDetailLiveEventsDoNotStarveActiveReads(t *testing.T) {
 }
 
 type completingDetailAPI struct {
-	KataAPI
+	PoomsaeAPI
 	entered chan context.Context
 	release chan struct{}
 }
@@ -365,7 +365,7 @@ func TestDetailBackRestoresFreshReadsAtEveryCompletionBoundary(t *testing.T) {
 // countingDetailAPI answers detail reads at once and counts issue fetches, so
 // a test can observe whether a refresh reached the daemon.
 type countingDetailAPI struct {
-	KataAPI
+	PoomsaeAPI
 	issueReads int
 }
 

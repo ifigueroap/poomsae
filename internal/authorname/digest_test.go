@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestGroupDigest(t *testing.T) {

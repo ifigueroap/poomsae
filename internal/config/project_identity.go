@@ -24,16 +24,16 @@ type NameChoice struct {
 	Name string
 }
 
-// ErrNameConflict signals that an existing .kata.toml declares a name
+// ErrNameConflict signals that an existing .poomsae.toml declares a name
 // different from the one the caller supplied. Callers must require an
 // explicit replace=true to override.
-var ErrNameConflict = errors.New(".kata.toml declares a different project name")
+var ErrNameConflict = errors.New(".poomsae.toml declares a different project name")
 
 // ErrNoNameSource signals that no project name could be derived: there is no
-// .kata.toml, no caller-supplied name, and no workspace root.
+// .poomsae.toml, no caller-supplied name, and no workspace root.
 var ErrNoNameSource = errors.New("cannot derive project name outside a workspace")
 
-// PickInitName decides the project name for kata init.
+// PickInitName decides the project name for poomsae init.
 func PickInitName(ctx context.Context, disc DiscoveredPaths, tomlCfg *ProjectConfig, inputName string, replace bool) (NameChoice, error) {
 	inputName = strings.TrimSpace(inputName)
 	switch {
@@ -63,7 +63,7 @@ func validateNameChoice(name string) (NameChoice, error) {
 }
 
 // PickName returns explicit if non-empty, otherwise the last `/` or
-// `:`-separated segment of identity (so "github.com/wesm/kata" → "kata").
+// `:`-separated segment of identity (so "github.com/wesm/poomsae" → "poomsae").
 func PickName(explicit, identity string) string {
 	if explicit != "" {
 		return explicit
@@ -95,8 +95,8 @@ func DeriveProjectName(ctx context.Context, d DiscoveredPaths) (string, error) {
 	return "", ErrNoNameSource
 }
 
-// WriteDestination returns the directory where .kata.toml should be
-// written for a kata init invocation: workspace root if discovered,
+// WriteDestination returns the directory where .poomsae.toml should be
+// written for a poomsae init invocation: workspace root if discovered,
 // else git root, else the absolute start path.
 func WriteDestination(disc DiscoveredPaths, startPath string) string {
 	if disc.WorkspaceRoot != "" {
@@ -109,9 +109,9 @@ func WriteDestination(disc DiscoveredPaths, startPath string) string {
 }
 
 // DiscoveredPaths is the result of walking upward from a start path.
-// Both fields may be empty (no .kata.toml and no .git ancestor).
+// Both fields may be empty (no .poomsae.toml and no .git ancestor).
 type DiscoveredPaths struct {
-	WorkspaceRoot string // first ancestor with .kata.toml (inclusive)
+	WorkspaceRoot string // first ancestor with .poomsae.toml (inclusive)
 	GitRoot       string // first ancestor with .git (inclusive)
 }
 
@@ -122,8 +122,8 @@ type AliasInfo struct {
 }
 
 // DiscoverPaths walks upward from startPath looking for .git (G), then for
-// .kata.toml (W). Both lookups are inclusive of startPath itself. When a git
-// root exists, it bounds the .kata.toml lookup so configuration outside the
+// .poomsae.toml (W). Both lookups are inclusive of startPath itself. When a git
+// root exists, it bounds the .poomsae.toml lookup so configuration outside the
 // repository cannot capture paths within it. Lexical traversal is used only
 // when its nearest Git root resolves to the physical Git root; differing roots
 // stay on the physical repository side. A lexical Git boundary is retained
@@ -148,7 +148,7 @@ func DiscoverPaths(startPath string) (DiscoveredPaths, error) {
 		return DiscoveredPaths{}, fmt.Errorf("resolve symlinks %s: %w", abs, err)
 	}
 	// If the start path is a file, walk from its parent directory so we don't
-	// stat <file>/.kata.toml (which fails with ENOTDIR rather than not-found).
+	// stat <file>/.poomsae.toml (which fails with ENOTDIR rather than not-found).
 	lexicalWalkRoot := abs
 	physicalWalkRoot := resolved
 	if !info.IsDir() {
@@ -194,6 +194,11 @@ func DiscoverPaths(startPath string) (DiscoveredPaths, error) {
 func walkUp(start, entry string, allowDir bool, stop string) (string, error) {
 	dir := start
 	for {
+		if entry == ProjectConfigFilename {
+			if _, err := AdoptLegacyProjectFiles(dir); err != nil {
+				return "", err
+			}
+		}
 		path := filepath.Join(dir, entry)
 		info, err := os.Stat(path)
 		switch {
@@ -276,7 +281,7 @@ func readGitRemote(ctx context.Context, gitRoot string) (string, error) {
 var gitRunner = gitcmd.New()
 
 // NormalizeRemoteURL strips credentials, normalizes SSH↔HTTPS, drops trailing
-// .git, and returns "host/path" form (e.g. "github.com/wesm/kata").
+// .git, and returns "host/path" form (e.g. "github.com/wesm/poomsae").
 // Percent-encoded characters are decoded and spaces replaced with hyphens so
 // the result satisfies the identity charset (Azure DevOps remotes commonly
 // contain %20 in org/project names).

@@ -1,4 +1,4 @@
-// Package sqliteconfig contains SQLite setup shared by kata's canonical and
+// Package sqliteconfig contains SQLite setup shared by poomsae's canonical and
 // derived-state databases.
 package sqliteconfig
 
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const testFastSQLiteEnv = "KATA_TEST_FAST_SQLITE"
+const testFastSQLiteEnv = "POOMSAE_TEST_FAST_SQLITE"
 
 // FastTestMode reports whether a Go test binary explicitly requested
 // reduced-durability SQLite settings. Production binaries ignore the

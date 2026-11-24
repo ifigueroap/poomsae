@@ -8,7 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/daemon"
 )
 
 func TestNewServerLeavesHumaErrorFactoryUntouched(t *testing.T) {
@@ -20,7 +20,7 @@ func TestNewServerLeavesHumaErrorFactoryUntouched(t *testing.T) {
 
 	require.Equal(t, originalPointer, reflect.ValueOf(huma.NewError).Pointer())
 	_, ok := huma.NewError(400, "foreign error").(*huma.ErrorModel)
-	require.True(t, ok, "constructing Kata must not change another Huma API's error model")
+	require.True(t, ok, "constructing Poomsae must not change another Huma API's error model")
 }
 
 func TestNewServerConcurrentConstructionLeavesHumaErrorFactoryUntouched(t *testing.T) {

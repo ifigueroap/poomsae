@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // JSONBlob is the storage type for TEXT columns that hold a JSON object,
@@ -96,7 +96,7 @@ func (JSONStringArray) Schema(huma.Registry) *huma.Schema {
 }
 
 // Project mirrors a row in projects. DeletedAt is set when the project has
-// been archived via kata projects remove (#24); the row stays in the table so
+// been archived via poomsae projects remove (#24); the row stays in the table so
 // events/issues keep referring to a valid FK target, but read paths filter it
 // out. Name is the user-facing unique project key.
 type Project struct {

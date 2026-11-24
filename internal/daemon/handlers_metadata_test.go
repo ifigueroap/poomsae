@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func seedProjectAndIssue(t *testing.T, env *testenv.Env) (db.Project, db.Issue) {
@@ -486,7 +486,7 @@ func TestPatchProjectMetadata_UnknownKey_Accepted(t *testing.T) {
 // TestPatchIssueMetadata_Broadcasts pins that a metadata patch that actually
 // changes something wakes SSE followers: the handler must broadcast the
 // issue.metadata_updated event through cfg.Broadcaster (the same path
-// kata events --tail subscribes to). A no-op patch must NOT broadcast.
+// poomsae events --tail subscribes to). A no-op patch must NOT broadcast.
 func TestPatchIssueMetadata_Broadcasts(t *testing.T) {
 	env := testenv.New(t, testenv.WithAuthToken("tok"))
 	p, iss := seedProjectAndIssue(t, env)

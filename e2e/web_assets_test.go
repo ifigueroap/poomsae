@@ -23,30 +23,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const productionWebMarker = `<meta name="kata-web-distribution" content="production"`
-const webReleaseCheckEnv = "KATA_RUN_WEB_RELEASE_CHECK"
+const productionWebMarker = `<meta name="poomsae-web-distribution" content="production"`
+const webReleaseCheckEnv = "POOMSAE_RUN_WEB_RELEASE_CHECK"
 
 func TestWebReleaseEnvironmentReplacesInheritedDaemonTargets(t *testing.T) {
 	env := webReleaseEnvironment([]string{
 		"PATH=/example/bin",
-		"KATA_HOME=/srv/kata",
-		"KATA_DB=/srv/kata/kata.db",
-		"KATA_DSN=postgres://daemon.example/kata",
-		"KATA_CONFIG=/srv/kata/config.toml",
-		"KATA_SERVER=https://daemon.example",
-		"KATA_WORKSPACE=/srv/example-workspace",
-		"KATA_AUTH_TOKEN=secret-value",
+		"POOMSAE_HOME=/srv/poomsae",
+		"POOMSAE_DB=/srv/poomsae/poomsae.db",
+		"POOMSAE_DSN=postgres://daemon.example/poomsae",
+		"POOMSAE_CONFIG=/srv/poomsae/config.toml",
+		"POOMSAE_SERVER=https://daemon.example",
+		"POOMSAE_WORKSPACE=/srv/example-workspace",
+		"POOMSAE_AUTH_TOKEN=secret-value",
 		"PORT=8080",
-	}, "/tmp/kata-web/home", "/tmp/kata-web/workspace")
+	}, "/tmp/poomsae-web/home", "/tmp/poomsae-web/workspace")
 
 	assertEnvironmentValue(t, env, "PATH", "/example/bin")
-	assertEnvironmentValue(t, env, "KATA_HOME", "/tmp/kata-web/home")
-	assertEnvironmentValue(t, env, "KATA_DB", "/tmp/kata-web/home/kata.db")
-	assertEnvironmentValue(t, env, "KATA_WORKSPACE", "/tmp/kata-web/workspace")
-	assertEnvironmentValue(t, env, "KATA_AUTH_TOKEN", "")
-	assertEnvironmentValue(t, env, "KATA_SERVER", "")
-	assertEnvironmentMissing(t, env, "KATA_DSN")
-	assertEnvironmentMissing(t, env, "KATA_CONFIG")
+	assertEnvironmentValue(t, env, "POOMSAE_HOME", "/tmp/poomsae-web/home")
+	assertEnvironmentValue(t, env, "POOMSAE_DB", "/tmp/poomsae-web/home/poomsae.db")
+	assertEnvironmentValue(t, env, "POOMSAE_WORKSPACE", "/tmp/poomsae-web/workspace")
+	assertEnvironmentValue(t, env, "POOMSAE_AUTH_TOKEN", "")
+	assertEnvironmentValue(t, env, "POOMSAE_SERVER", "")
+	assertEnvironmentMissing(t, env, "POOMSAE_DSN")
+	assertEnvironmentMissing(t, env, "POOMSAE_CONFIG")
 	assertEnvironmentMissing(t, env, "PORT")
 }
 
@@ -71,8 +71,8 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 	build.Stderr = &buildLog
 	require.NoErrorf(t, build.Run(), "stage validated web assets: %s", buildLog.String())
 
-	bin := filepath.Join(t.TempDir(), "kata")
-	compile := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, "./cmd/kata") //nolint:gosec // fixed build arguments and test-owned output
+	bin := filepath.Join(t.TempDir(), "poomsae")
+	compile := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, "./cmd/poomsae") //nolint:gosec // fixed build arguments and test-owned output
 	compile.Dir = repositoryRoot
 	compile.Env = os.Environ()
 	buildLog.Reset()
@@ -113,13 +113,13 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 
 	index := releaseGET(t, client, origin+"/")
 	require.Contains(t, index, productionWebMarker)
-	require.NotContains(t, index, "Kata UI assets are not built")
+	require.NotContains(t, index, "Poomsae UI assets are not built")
 	assetPath := regexp.MustCompile(`(?:src|href)="(\./assets/[^"]+)"`).FindStringSubmatch(index)
 	require.Len(t, assetPath, 2, "production index must reference a built asset")
 	releaseGET(t, client, origin+"/"+strings.TrimPrefix(assetPath[1], "./"))
-	require.Contains(t, releaseGET(t, client, origin+"/kata?view=all-open"), productionWebMarker)
+	require.Contains(t, releaseGET(t, client, origin+"/poomsae?view=all-open"), productionWebMarker)
 
-	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin+"/kata/?view=today&label=ready", nil)
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin+"/poomsae/?view=today&label=ready", nil)
 	require.NoError(t, err)
 	request.Header.Set("Accept", "text/html")
 	page, err := client.Do(request) //nolint:gosec // loopback origin selected by this test.
@@ -128,7 +128,7 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 	require.NoError(t, page.Body.Close())
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, page.StatusCode)
-	require.Equal(t, origin+"/kata?view=today&label=ready", page.Request.URL.String())
+	require.Equal(t, origin+"/poomsae?view=today&label=ready", page.Request.URL.String())
 	require.Contains(t, string(pageBody), productionWebMarker)
 	pageAsset := regexp.MustCompile(`(?:src|href)="(\./assets/[^"]+)"`).FindSubmatch(pageBody)
 	require.Len(t, pageAsset, 2)
@@ -138,7 +138,7 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 
 	waitForWebRuntime(t, home, origin, stderr)
 	sessionResponse := releaseJSON(t, client, http.MethodPost, origin+"/api/v1/ui/session/local",
-		map[string]string{"return_path": "/kata?view=all-open"}, map[string]string{"Origin": origin})
+		map[string]string{"return_path": "/poomsae?view=all-open"}, map[string]string{"Origin": origin})
 	var session struct {
 		Session string `json:"session"`
 	}
@@ -147,7 +147,7 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin+"/api/v1/ui/snapshot?view=all-open", nil)
 	require.NoError(t, err)
-	req.Header.Set("X-Kata-Web-Session", session.Session)
+	req.Header.Set("X-Poomsae-Web-Session", session.Session)
 	response, err := client.Do(req) //nolint:gosec // loopback origin selected by this test.
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()
@@ -158,14 +158,14 @@ func TestReleaseBinaryContainsValidatedWebUI(t *testing.T) {
 
 func webReleaseEnvironment(inherited []string, home, workspace string) []string {
 	blocked := map[string]bool{
-		"KATA_HOME":       true,
-		"KATA_DSN":        true,
-		"KATA_DB":         true,
-		"KATA_CONFIG":     true,
-		"KATA_SERVER":     true,
-		"KATA_WORKSPACE":  true,
-		"KATA_AUTH_TOKEN": true,
-		"PORT":            true,
+		"POOMSAE_HOME":       true,
+		"POOMSAE_DSN":        true,
+		"POOMSAE_DB":         true,
+		"POOMSAE_CONFIG":     true,
+		"POOMSAE_SERVER":     true,
+		"POOMSAE_WORKSPACE":  true,
+		"POOMSAE_AUTH_TOKEN": true,
+		"PORT":               true,
 	}
 	env := make([]string, 0, len(inherited)+5)
 	for _, entry := range inherited {
@@ -175,11 +175,11 @@ func webReleaseEnvironment(inherited []string, home, workspace string) []string 
 		}
 	}
 	return append(env,
-		"KATA_HOME="+home,
-		"KATA_WORKSPACE="+workspace,
-		"KATA_DB="+filepath.Join(home, "kata.db"),
-		"KATA_AUTH_TOKEN=",
-		"KATA_SERVER=",
+		"POOMSAE_HOME="+home,
+		"POOMSAE_WORKSPACE="+workspace,
+		"POOMSAE_DB="+filepath.Join(home, "poomsae.db"),
+		"POOMSAE_AUTH_TOKEN=",
+		"POOMSAE_SERVER=",
 	)
 }
 

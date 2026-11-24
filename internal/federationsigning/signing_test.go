@@ -17,14 +17,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 func testSource(t *testing.T) signingpolicy.Source {
 	t.Helper()
-	t.Setenv("KATA_TEST_SIGNING_KEY", strings.Repeat("a", 64))
-	return signingpolicy.Source{KeyID: "spoke-key", KeyEnv: "KATA_TEST_SIGNING_KEY"}
+	t.Setenv("POOMSAE_TEST_SIGNING_KEY", strings.Repeat("a", 64))
+	return signingpolicy.Source{KeyID: "spoke-key", KeyEnv: "POOMSAE_TEST_SIGNING_KEY"}
 }
 
 func testVerifier(t *testing.T, base string, source signingpolicy.Source) *Verifier {
@@ -179,7 +179,7 @@ func TestVerifierKeepsUnavailableKeysRejectedUntilSourceReturns(t *testing.T) {
 	for _, mode := range []string{"missing environment", "missing file", "short key", "nonregular file"} {
 		t.Run(mode, func(t *testing.T) {
 			source := testSource(t)
-			other := signingpolicy.Source{KeyID: "other-key", KeyEnv: "KATA_TEST_OTHER_SIGNING_KEY"}
+			other := signingpolicy.Source{KeyID: "other-key", KeyEnv: "POOMSAE_TEST_OTHER_SIGNING_KEY"}
 			t.Setenv(other.KeyEnv, strings.Repeat("b", 64))
 			rejected := signed(t, source)
 			if mode == "missing environment" {

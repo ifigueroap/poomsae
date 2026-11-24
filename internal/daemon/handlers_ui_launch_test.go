@@ -13,10 +13,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 type ambiguousUILaunchStore struct {
@@ -38,7 +38,7 @@ func TestReadUILaunchTargetReturnsConfiguredBrowserRoute(t *testing.T) {
 		ProjectID: project.ID, Title: "Example task", Author: "user-a",
 	})
 	require.NoError(t, err)
-	manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+	manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 	ts := startTestServer(t, daemon.ServerConfig{
 		DB: dbh.db, StartedAt: dbh.now, WebSessions: manager,
 		ActiveWebDaemon: "example-remote",
@@ -58,7 +58,7 @@ func TestReadUILaunchTargetReturnsConfiguredBrowserRoute(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(body, &out))
 	require.True(t, out.Available)
-	require.Equal(t, "https://kata.example/kata?issue="+issue.UID+"#direct=1", out.URL)
+	require.Equal(t, "https://poomsae.example/poomsae?issue="+issue.UID+"#direct=1", out.URL)
 	require.Empty(t, out.Reason)
 }
 
@@ -70,7 +70,7 @@ func TestReadUILaunchTargetRequiresExactUID(t *testing.T) {
 		ProjectID: project.ID, Title: "Example task", Author: "user-a",
 	})
 	require.NoError(t, err)
-	manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+	manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 	leakingMatches := []db.Issue{
 		{UID: "01J00000000000000000000001", ShortID: "secret-a", ProjectID: 4242},
 		{UID: "01J00000000000000000000002", ShortID: "secret-b", ProjectID: 8484},
@@ -100,15 +100,15 @@ func TestReadUILaunchTargetRequiresExactUID(t *testing.T) {
 
 	fullResp, fullBody := getUILaunchTarget(t, ts, "  "+issue.UID+"  ")
 	require.Equal(t, http.StatusOK, fullResp.StatusCode, string(fullBody))
-	require.Contains(t, string(fullBody), "/kata?issue="+issue.UID)
+	require.Contains(t, string(fullBody), "/poomsae?issue="+issue.UID)
 }
 
 func TestReadUILaunchTargetRejectsUnsafeBrowserOrigins(t *testing.T) {
 	unsafeOrigins := []string{
-		"https://user@kata.example",
-		"https://kata.example/prefix",
-		"https://kata.example?tenant=alpha",
-		"https://kata.example#fragment",
+		"https://user@poomsae.example",
+		"https://poomsae.example/prefix",
+		"https://poomsae.example?tenant=alpha",
+		"https://poomsae.example#fragment",
 	}
 	for _, origin := range unsafeOrigins {
 		t.Run(origin, func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestReadUILaunchTargetUnavailableWithoutBrowserOrigin(t *testing.T) {
 
 func TestReadUILaunchTargetRequiresAnActiveIssue(t *testing.T) {
 	dbh := openTestDB(t)
-	manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+	manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 	ts := startTestServer(t, daemon.ServerConfig{
 		DB: dbh.db, StartedAt: dbh.now, WebSessions: manager,
 	})
@@ -196,7 +196,7 @@ func TestReadUILaunchTargetHidesDeletedAndArchivedIssues(t *testing.T) {
 				})
 			}
 			require.NoError(t, err)
-			manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+			manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 			ts := startTestServer(t, daemon.ServerConfig{
 				DB: dbh.db, StartedAt: dbh.now, WebSessions: manager,
 			})
@@ -222,7 +222,7 @@ func TestReadUILaunchTargetHidesHostAccessDenial(t *testing.T) {
 		ProjectID: project.ID, Title: "Example task", Author: "user-a",
 	})
 	require.NoError(t, err)
-	manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+	manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 	server := daemon.NewServer(daemon.ServerConfig{
 		DB: dbh.db, StartedAt: dbh.now, WebSessions: manager,
 		HostAccess: denyingUILaunchHostAccess{},
@@ -283,7 +283,7 @@ func TestReadUILaunchTargetConcealsHostResourceState(t *testing.T) {
 	missingUID, err := uid.New()
 	require.NoError(t, err)
 
-	manager := newUILaunchTestManager(t, dbh, "https://kata.example")
+	manager := newUILaunchTestManager(t, dbh, "https://poomsae.example")
 	server := daemon.NewServer(daemon.ServerConfig{
 		DB: dbh.db, StartedAt: dbh.now, WebSessions: manager,
 		HostAccess: scopedUILaunchHostAccess{deniedProjectID: deniedProject.ID},

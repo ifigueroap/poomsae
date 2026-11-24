@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func registerCronDefinitionHandlers(h huma.API, cfg ServerConfig) {

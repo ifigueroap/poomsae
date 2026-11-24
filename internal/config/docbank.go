@@ -9,7 +9,7 @@ import (
 
 	"go.kenn.io/kit/embedconfig"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // DocbankConfig selects a vault shared by every issue reader and metadata writer
@@ -63,7 +63,7 @@ func normalizeDocbank(c *DocbankConfig) error {
 	c.URL = strings.TrimSpace(c.URL)
 	c.Folder = strings.TrimSpace(c.Folder)
 	if c.Folder == "" {
-		c.Folder = "/kata"
+		c.Folder = "/poomsae"
 	}
 	if !strings.HasPrefix(c.Folder, "/") || path.Clean(c.Folder) != c.Folder || strings.ContainsAny(c.Folder, `\`) || strings.ContainsFunc(c.Folder, unicode.IsControl) {
 		return fmt.Errorf("docbank.folder must be a clean absolute path")

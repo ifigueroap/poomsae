@@ -15,10 +15,10 @@ import (
 	"testing/iotest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
 	"github.com/yaronf/httpsign"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/testfix"
 	"hegel.dev/go/hegel"
 )
 

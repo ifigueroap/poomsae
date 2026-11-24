@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestImportReplayFreshTargetRejectsConcurrentWriter(t *testing.T) {
@@ -35,7 +35,7 @@ func TestImportReplayFreshTargetRejectsConcurrentWriter(t *testing.T) {
 	t.Cleanup(func() { _ = writerTx.Rollback() })
 	const writerUID = "01KATA00000000000000000001"
 	_, err = writerTx.ExecContext(ctx, `
-		INSERT INTO kata.projects(uid, name)
+		INSERT INTO poomsae.projects(uid, name)
 		VALUES($1, 'concurrent-project')`, writerUID)
 	require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestImportReplayFreshTargetRejectsConcurrentWriter(t *testing.T) {
 				FROM pg_catalog.pg_locks AS lock
 				JOIN pg_catalog.pg_class AS relation ON relation.oid = lock.relation
 				JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-				WHERE namespace.nspname = 'kata'
+				WHERE namespace.nspname = 'poomsae'
 				  AND relation.relname = 'projects'
 				  AND lock.mode = 'AccessExclusiveLock'
 				  AND NOT lock.granted
@@ -98,11 +98,11 @@ func TestImportReplayWaitsForConcurrentSchemaMigration(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = migrationTx.Rollback() })
 	_, err = migrationTx.ExecContext(ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('kata:pgstore:migrations', 0))`)
+		`SELECT pg_advisory_xact_lock(hashtextextended('poomsae:pgstore:migrations', 0))`)
 	require.NoError(t, err)
-	_, err = migrationTx.ExecContext(ctx, `CREATE TABLE kata.late_state(value TEXT NOT NULL)`)
+	_, err = migrationTx.ExecContext(ctx, `CREATE TABLE poomsae.late_state(value TEXT NOT NULL)`)
 	require.NoError(t, err)
-	_, err = migrationTx.ExecContext(ctx, `INSERT INTO kata.late_state(value) VALUES('must-be-cleared')`)
+	_, err = migrationTx.ExecContext(ctx, `INSERT INTO poomsae.late_state(value) VALUES('must-be-cleared')`)
 	require.NoError(t, err)
 
 	result := make(chan error, 1)
@@ -134,7 +134,7 @@ func TestImportReplayWaitsForConcurrentSchemaMigration(t *testing.T) {
 	}
 
 	var retainedRows int
-	require.NoError(t, migrator.QueryRowContext(ctx, `SELECT COUNT(*) FROM kata.late_state`).Scan(&retainedRows))
+	require.NoError(t, migrator.QueryRowContext(ctx, `SELECT COUNT(*) FROM poomsae.late_state`).Scan(&retainedRows))
 	assert.Zero(t, retainedRows, "replay must clear tables committed by a concurrent migration")
 }
 
@@ -198,7 +198,7 @@ func TestImportReplayRefusesCrossSchemaCascade(t *testing.T) {
 	_, err = admin.ExecContext(ctx, `CREATE SCHEMA unrelated`)
 	require.NoError(t, err)
 	_, err = admin.ExecContext(ctx, `CREATE TABLE unrelated.project_refs(
-			project_id bigint PRIMARY KEY REFERENCES kata.projects(id),
+			project_id bigint PRIMARY KEY REFERENCES poomsae.projects(id),
 			note text NOT NULL
 		)`)
 	require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestImportReplayRefusesCrossSchemaCascade(t *testing.T) {
 		`SELECT note FROM unrelated.project_refs WHERE project_id=$1`, project.ID).Scan(&note))
 	assert.Equal(t, "must survive", note)
 	_, err = store.ProjectByID(ctx, project.ID)
-	require.NoError(t, err, "failed replacement must roll back kata-owned state")
+	require.NoError(t, err, "failed replacement must roll back poomsae-owned state")
 }
 
 func TestImportReplayClearsTargetOnlyMetadata(t *testing.T) {

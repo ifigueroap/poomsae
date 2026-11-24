@@ -1,4 +1,4 @@
-kata — keybindings
+poomsae — keybindings
 
 Global
 ?         help

@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServicePostgresTransactionFenceRollsBackWithMutation(t *testing.T) {
@@ -23,20 +23,20 @@ func TestServicePostgresTransactionFenceRollsBackWithMutation(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	controller := &recordingAccessController{}
-	controller.transactionFence = func(ctx context.Context, tx kata.Transaction) error {
+	controller.transactionFence = func(ctx context.Context, tx poomsae.Transaction) error {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO kata.fence_markers(attempt) VALUES($1)`, 1); err != nil {
+			`INSERT INTO poomsae.fence_markers(attempt) VALUES($1)`, 1); err != nil {
 			return err
 		}
-		return kata.ErrAccessDenied
+		return poomsae.ErrAccessDenied
 	}
-	service, err := kata.New(ctx, kata.Config{
+	service, err := poomsae.New(ctx, poomsae.Config{
 		DSN: dsn, Access: controller,
-		Postgres: kata.PostgresConfig{Schema: "kata", SchemaMode: kata.PostgresSchemaBootstrap},
+		Postgres: poomsae.PostgresConfig{Schema: "poomsae", SchemaMode: poomsae.PostgresSchemaBootstrap},
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
-	project, err := service.EnsureProject(ctx, kata.ProjectSpec{
+	project, err := service.EnsureProject(ctx, poomsae.ProjectSpec{
 		UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 	})
 	require.NoError(t, err)
@@ -45,14 +45,14 @@ func TestServicePostgresTransactionFenceRollsBackWithMutation(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, inspection.Close()) })
 	_, err = inspection.ExecContext(ctx,
-		`CREATE TABLE kata.fence_markers (attempt BIGINT NOT NULL)`)
+		`CREATE TABLE poomsae.fence_markers (attempt BIGINT NOT NULL)`)
 	require.NoError(t, err)
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/projects/"+
 		strconv.FormatInt(project.Project.ID, 10)+"/issues",
 		bytes.NewBufferString(`{"actor":"ignored","title":"must roll back"}`))
 	request.Header.Set("Content-Type", "application/json")
-	request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{
+	request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{
 		Subject: "user-123", Actor: "Example User",
 	}))
 	response := httptest.NewRecorder()
@@ -61,9 +61,9 @@ func TestServicePostgresTransactionFenceRollsBackWithMutation(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	var markerCount, issueCount int
 	require.NoError(t, inspection.QueryRowContext(ctx,
-		`SELECT count(*) FROM kata.fence_markers`).Scan(&markerCount))
+		`SELECT count(*) FROM poomsae.fence_markers`).Scan(&markerCount))
 	require.NoError(t, inspection.QueryRowContext(ctx,
-		`SELECT count(*) FROM kata.issues WHERE title = $1`, "must roll back").Scan(&issueCount))
+		`SELECT count(*) FROM poomsae.issues WHERE title = $1`, "must roll back").Scan(&issueCount))
 	assert.Zero(t, markerCount)
 	assert.Zero(t, issueCount)
 }

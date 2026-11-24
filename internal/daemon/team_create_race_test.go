@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 type teamCreateBarrierStore struct {

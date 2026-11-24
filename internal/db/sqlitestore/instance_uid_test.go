@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // TestOpenSeedsInstanceUID covers the §8.2 invariant: a fresh db.Open writes
@@ -32,7 +32,7 @@ func TestOpenSeedsInstanceUID(t *testing.T) {
 func TestInstanceUIDStableAcrossReopen(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	first, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	original := first.InstanceUID()
@@ -112,7 +112,7 @@ func TestEventUIDNotNullRejected(t *testing.T) {
 	// uid omitted entirely.
 	_, err := d.ExecContext(ctx, `
 		INSERT INTO events(origin_instance_uid, project_id, project_name, type, actor, payload, created_at)
-		VALUES (?, ?, 'github.com/wesm/kata', 'issue.created', 'tester', '{}', strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
+		VALUES (?, ?, 'github.com/wesm/poomsae', 'issue.created', 'tester', '{}', strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
 		d.InstanceUID(), p.ID)
 	require.Error(t, err, "events.uid NOT NULL must reject INSERT without uid")
 
@@ -121,7 +121,7 @@ func TestEventUIDNotNullRejected(t *testing.T) {
 	require.NoError(t, err)
 	_, err = d.ExecContext(ctx, `
 		INSERT INTO events(uid, project_id, project_name, type, actor, payload, created_at)
-		VALUES (?, ?, 'github.com/wesm/kata', 'issue.created', 'tester', '{}', strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
+		VALUES (?, ?, 'github.com/wesm/poomsae', 'issue.created', 'tester', '{}', strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
 		freshUID, p.ID)
 	require.Error(t, err, "events.origin_instance_uid NOT NULL must reject INSERT without origin")
 }

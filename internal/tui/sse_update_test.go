@@ -10,11 +10,11 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/db"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 // sseUpdateFixture builds a minimal Model wired for the SSE Update-side
@@ -50,7 +50,7 @@ func sseUpdateFixtureAt(t time.Time) Model {
 func sseDetailFixture(projectID int64, issueShortID, issueUID string) Model {
 	m := sseUpdateFixture()
 	m.scope = scope{projectID: projectID}
-	m.api = NewClient("http://kata.invalid", nil)
+	m.api = NewClient("http://poomsae.invalid", nil)
 	m.view = viewDetail
 	m.detail.issue = &Issue{
 		ProjectID: projectID,
@@ -281,7 +281,7 @@ func TestHandleEventReceived_ParentLinkRefetchesOpenChildDetail(t *testing.T) {
 }
 
 // TestHandleEventReceived_LinksChangedRefetchesNewParent covers the
-// `kata edit --parent X` path: an issue.links_changed event with
+// `poomsae edit --parent X` path: an issue.links_changed event with
 // parent_set must refresh the new parent's detail pane when it's open.
 func TestHandleEventReceived_LinksChangedRefetchesNewParent(t *testing.T) {
 	m := sseDetailFixture(7, "abc4", "01UID-PARENT")
@@ -331,7 +331,7 @@ func TestHandleEventReceived_LinksChangedRefetchesOldAndNewParents(t *testing.T)
 // TestHandleEventReceived_LinksChangedRefetchesBlocksTarget covers the
 // iteration-11 fix carried over: non-parent link mutations (blocks,
 // blocked_by, related) must also drive an other-endpoint refetch.
-// Without scanning the full Refs slice, a `kata edit X --blocks Y`
+// Without scanning the full Refs slice, a `poomsae edit X --blocks Y`
 // would refresh X's pane only — Y's pane would stay stale until a
 // manual refresh.
 func TestHandleEventReceived_LinksChangedRefetchesBlocksTarget(t *testing.T) {
@@ -363,7 +363,7 @@ func TestHandleEventReceived_LinksChangedRefetchesBlocksTarget(t *testing.T) {
 }
 
 // TestHandleEventReceived_IssueCreatedRefreshesNonParentPeer covers
-// an iteration-14 finding (now baked in): a `kata create` with
+// an iteration-14 finding (now baked in): a `poomsae create` with
 // --blocked-by or --related folds those links into the issue.created
 // payload; the SSE decoder surfaces every peer in the payload's links
 // array so any open pane on the other end refreshes.
@@ -428,7 +428,7 @@ func TestHandleEventReceived_LinksChangedUIDMatchesAuthoritatively(t *testing.T)
 // TestHandleEventReceived_LinksChangedFallsBackToShortIDWhenNoUIDs
 // covers the legacy / synthetic-event path: a linksChangedParents
 // constructed without RefUIDs still drives a refetch via the
-// short_id-only Refs slice. The daemon's post-kata#1 events always
+// short_id-only Refs slice. The daemon's post-poomsae#1 events always
 // carry UIDs, so this is mainly belt-and-suspenders for hand-built
 // fixtures.
 func TestHandleEventReceived_LinksChangedFallsBackToShortIDWhenNoUIDs(t *testing.T) {
@@ -446,7 +446,7 @@ func TestHandleEventReceived_LinksChangedFallsBackToShortIDWhenNoUIDs(t *testing
 }
 
 // TestHandleEventReceived_LinksChangedChildSelfRefetches covers
-// `kata edit --remove-parent X`: the child issue's own detail must
+// `poomsae edit --remove-parent X`: the child issue's own detail must
 // refresh because issueUID == openUID (the parent_removed payload is
 // informational; the URL-issue match drives the refetch).
 func TestHandleEventReceived_LinksChangedChildSelfRefetches(t *testing.T) {
@@ -504,7 +504,7 @@ func TestDecodeEventReceived_IssueCreatedExtractsParentLink(t *testing.T) {
 		"issue_uid":"01UID-NEW",
 		"payload":{"links":[{"type":"parent","to_short_id":"abc4","to_issue_uid":"01UID-PARENT"}]}
 	}`)
-	got := decodeEventReceived(kataclient.Event{Type: "issue.created", Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Type: "issue.created", Data: body})
 	if got.eventType != "issue.created" {
 		t.Fatalf("eventType = %q, want issue.created", got.eventType)
 	}
@@ -646,17 +646,17 @@ func TestCommentArrivalMakesPendingReplyTargetNavigable(t *testing.T) {
 				}
 			})
 
-			unrelated := decodeEventReceived(kataclient.Event{Data: []byte(`{
+			unrelated := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{
 				"type":"issue.snapshot","project_id":8,"issue_uid":"other-issue",
 				"payload":{"uid":"other-issue","comments":[{"comment_uid":"unrelated-comment"}]}
 			}`)})
 			require.Nil(t, m.maybeRefetchOpenDetail(unrelated))
-			unrelatedComment := decodeEventReceived(kataclient.Event{Data: []byte(`{
+			unrelatedComment := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{
 				"type":"issue.commented","project_id":7,"issue_uid":"target-issue",
 				"payload":{"comment_uid":"unrelated-comment"}
 			}`)})
 			require.Nil(t, m.maybeRefetchOpenDetail(unrelatedComment))
-			arrival := decodeEventReceived(kataclient.Event{Data: []byte(tc.frame)})
+			arrival := decodeEventReceived(poomsaeclient.Event{Data: []byte(tc.frame)})
 			cmd := m.maybeRefetchOpenDetail(arrival)
 			require.NotNil(t, cmd, "the pending target's arrival must refetch its reply's open detail")
 			for _, fetch := range detailEventBatch(t, &m, cmd) {
@@ -700,12 +700,12 @@ func TestScopedCommentArrivalMakesRedactedReplyTargetNavigable(t *testing.T) {
 		}
 	})
 
-	otherProject := decodeEventReceived(kataclient.Event{Data: []byte(`{
+	otherProject := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{
 		"type":"issue.commented","project_id":8,"issue_uid":"other-issue",
 		"payload":{"comment_uid":"other-comment"}
 	}`)})
 	require.Nil(t, m.maybeRefetchOpenDetail(otherProject))
-	arrival := decodeEventReceived(kataclient.Event{Data: []byte(`{
+	arrival := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{
 		"type":"issue.commented","project_id":7,"issue_uid":"sibling-issue",
 		"payload":{"comment_uid":"target-comment"}
 	}`)})
@@ -1126,7 +1126,7 @@ func federatedCommentIdentityEvent(t *testing.T, eventType, commentUID string, r
 		Payload: jsontext.Value(payloadJSON),
 	})
 	require.NoError(t, err)
-	return decodeEventReceived(kataclient.Event{Data: eventJSON})
+	return decodeEventReceived(poomsaeclient.Event{Data: eventJSON})
 }
 
 // TestHandleEventReceived_CrossProjectMismatch_NoRefetch: in all-
@@ -1233,7 +1233,7 @@ func TestHandleResetRequired_DropsCacheAndShowsToast(t *testing.T) {
 func TestHandleRefetchTick_ClearsPendingAndDispatchesIfStale(t *testing.T) {
 	m := sseUpdateFixture()
 	m.scope = scope{projectID: 7}
-	m.api = NewClient("http://kata.invalid", nil)
+	m.api = NewClient("http://poomsae.invalid", nil)
 	m.cache.put(cacheKey{projectID: 7}, []Issue{{ShortID: "aaa1"}})
 	m.cache.markStale()
 	m.pendingRefetch = true
@@ -1314,7 +1314,7 @@ func TestHandleToastExpired_PreservesNewerToast(t *testing.T) {
 func TestProjectsView_StaleOnIssueEvent(t *testing.T) {
 	m := initialModel(Options{})
 	m.view = viewProjects
-	m.projectsByID = map[int64]string{7: "kata"}
+	m.projectsByID = map[int64]string{7: "poomsae"}
 	startGen := m.projectsGen
 
 	out, cmd := m.Update(eventReceivedMsg{eventType: "issue.created", projectID: 7})
@@ -1331,7 +1331,7 @@ func TestProjectsView_StaleOnIssueEvent(t *testing.T) {
 func TestProjectsView_IgnoresEventsWhenInactive(t *testing.T) {
 	m := initialModel(Options{})
 	m.view = viewList
-	m.projectsByID = map[int64]string{7: "kata"}
+	m.projectsByID = map[int64]string{7: "poomsae"}
 
 	out, _ := m.Update(eventReceivedMsg{eventType: "issue.created", projectID: 7})
 	nm := out.(Model)
@@ -1345,7 +1345,7 @@ func TestProjectsView_IgnoresEventsWhenInactive(t *testing.T) {
 func TestProjectsView_DebouncesRefetch(t *testing.T) {
 	m := sseUpdateFixture()
 	m.view = viewProjects
-	m.projectsByID = map[int64]string{7: "kata"}
+	m.projectsByID = map[int64]string{7: "poomsae"}
 
 	var debounceCmds int
 	for range 3 {
@@ -1366,13 +1366,13 @@ func TestProjectsView_DebouncesRefetch(t *testing.T) {
 // TestProjectsView_StaleOnUnknownProjectEvent pins that an event for a
 // projectID NOT in m.projectsByID still flips projectsStale and
 // schedules the debounce refetch. The unknown projectID is exactly the
-// signal that a new project has appeared (e.g. `kata init` ran in
+// signal that a new project has appeared (e.g. `poomsae init` ran in
 // another terminal); without this refresh, the all-projects table
 // would never learn about it until the user manually refetched.
 func TestProjectsView_StaleOnUnknownProjectEvent(t *testing.T) {
 	m := sseUpdateFixture()
 	m.view = viewProjects
-	m.projectsByID = map[int64]string{7: "kata"}
+	m.projectsByID = map[int64]string{7: "poomsae"}
 
 	out, cmd := m.Update(eventReceivedMsg{eventType: "issue.created", projectID: 99})
 	nm := out.(Model)
@@ -1444,8 +1444,8 @@ func TestProjectsLoadedMsg_ClearsStaleOnSuccessfulStatsFetch(t *testing.T) {
 	m.projectsStale = true
 
 	msg := projectsLoadedMsg{
-		projects: map[int64]string{1: "kata"},
-		idents:   map[int64]string{1: "github.com/wesm/kata"},
+		projects: map[int64]string{1: "poomsae"},
+		idents:   map[int64]string{1: "github.com/wesm/poomsae"},
 		stats:    map[int64]ProjectStatsSummary{1: {}},
 		gen:      m.projectsGen, // captures the current gen at "dispatch" time
 	}

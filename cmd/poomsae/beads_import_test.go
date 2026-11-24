@@ -1,0 +1,667 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/importlabels"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	kitdaemon "go.kenn.io/kit/daemon"
+)
+
+func TestImportBeadsRejectsInputAndTargetFlags(t *testing.T) {
+	setupKataEnv(t)
+
+	_, err := runCmdOutput(t, nil, "import", "--source-format", "beads", "--input", "beads.jsonl")
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "--input")
+
+	_, err = runCmdOutput(t, nil, "import", "--source-format", "beads", "--target", "target.db")
+	ce = requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "--target")
+}
+
+func TestImportRejectsUnsupportedSourceFormat(t *testing.T) {
+	setupKataEnv(t)
+
+	_, err := runCmdOutput(t, nil, "import", "--source-format", "bogus")
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "unsupported import format")
+}
+
+func TestImportLegacyFormatBeadsStillSelectsSource(t *testing.T) {
+	setupKataEnv(t)
+
+	_, err := runCmdOutput(t, nil, "import", "--format", "beads", "--input", "beads.jsonl")
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "--input")
+}
+
+func TestImportBeadsMissingProjectUnattended(t *testing.T) {
+	resetFlags(t)
+	env := testenv.New(t)
+	dir := t.TempDir()
+
+	_, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--json")
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "run poomsae init first")
+}
+
+func TestImportBeadsAgentMissingProjectDoesNotPrompt(t *testing.T) {
+	resetFlags(t)
+	stubIsTTY(t, true)
+	env := testenv.New(t)
+	dir := t.TempDir()
+
+	out, err := runBeadsImportTTY(t, env, dir, "y\n", "--agent")
+
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "run poomsae init first")
+	assert.NotContains(t, out, "Run poomsae init now?")
+}
+
+func TestImportBeadsFromLiveBD(t *testing.T) {
+	env, dir, pid := setupCLIWorkspace(t)
+	installFakeBD(t)
+
+	out, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--as", "importer")
+	require.NoError(t, err)
+	assert.Contains(t, out, "imported beads: created 1, updated 0, unchanged 0, comments 1, links 0")
+
+	// The importer created exactly one issue; look it up via the DB to get
+	// its short_id, then show it.
+	rows, err := env.DB.QueryContext(t.Context(),
+		"SELECT short_id FROM issues WHERE project_id = ? LIMIT 1", pid)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	require.True(t, rows.Next(), "imported issue not found")
+	var short string
+	require.NoError(t, rows.Scan(&short))
+
+	show := runCLI(t, env, dir, "show", short)
+	assert.Contains(t, show, "Imported from Beads")
+	assert.Contains(t, show, "beads_id: b1")
+	assert.Contains(t, show, "Comment body from beads")
+}
+
+func TestImportBeadsFromLegacyBD(t *testing.T) {
+	env, dir, pid := setupCLIWorkspace(t)
+	installLegacyFakeBD(t)
+
+	out, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--as", "importer")
+	require.NoError(t, err)
+	assert.Contains(t, out, "imported beads: created 1, updated 0, unchanged 0, comments 1, links 0")
+
+	rows, err := env.DB.QueryContext(t.Context(),
+		"SELECT short_id, owner FROM issues WHERE project_id = ? LIMIT 1", pid)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	require.True(t, rows.Next(), "imported issue not found")
+	var short, owner string
+	require.NoError(t, rows.Scan(&short, &owner))
+	assert.Equal(t, "user-a", owner)
+
+	show := runCLI(t, env, dir, "show", short)
+	assert.Contains(t, show, "Legacy comment")
+	assert.Contains(t, show, "beads_comment_count: 1")
+
+	out, err = runCLICapture(t, env, dir, "import", "--source-format", "beads", "--as", "importer")
+	require.NoError(t, err)
+	assert.Contains(t, out, "imported beads: created 0, updated 0, unchanged 1, comments 0, links 0")
+}
+
+func TestImportBeadsJSONSummaryFromLiveBD(t *testing.T) {
+	env, dir, _ := setupCLIWorkspace(t)
+	installFakeBD(t)
+
+	out, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--json", "--as", "importer")
+	require.NoError(t, err)
+
+	var summary struct {
+		Source    string   `json:"source"`
+		Created   int      `json:"created"`
+		Updated   int      `json:"updated"`
+		Unchanged int      `json:"unchanged"`
+		Comments  int      `json:"comments"`
+		Links     int      `json:"links"`
+		Errors    []string `json:"errors"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &summary), "json output: %s", out)
+	assert.Equal(t, "beads", summary.Source)
+	assert.Equal(t, 1, summary.Created)
+	assert.Equal(t, 0, summary.Updated)
+	assert.Equal(t, 0, summary.Unchanged)
+	assert.Equal(t, 1, summary.Comments)
+	assert.Equal(t, 0, summary.Links)
+	assert.Empty(t, summary.Errors)
+}
+
+func TestImportBeadsAgentSummaryFromLiveBD(t *testing.T) {
+	env, dir, pid := setupCLIWorkspace(t)
+	installFakeBD(t)
+
+	out, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--agent", "--as", "importer")
+	require.NoError(t, err)
+
+	assert.Equal(t, "OK import source_format=beads project="+itoa(pid)+" created=1 updated=0 unchanged=0 comments=1 links=0\n", out)
+	assert.NotContains(t, out, "target=")
+}
+
+// TestBeadsImport_AssignsShortIDs pins that imported beads issues pick
+// up a valid poomsae short_id from the auto-extend path — the importer
+// creates fresh poomsae ULIDs and the short_id flows through unchanged in
+// the per-item JSON output.
+func TestBeadsImport_AssignsShortIDs(t *testing.T) {
+	env, dir, _ := setupCLIWorkspace(t)
+	installFakeBD(t)
+
+	out, err := runCLICapture(t, env, dir, "import", "--source-format", "beads", "--json", "--as", "importer")
+	require.NoError(t, err)
+
+	var result struct {
+		Items []struct {
+			ExternalID   string `json:"external_id"`
+			IssueShortID string `json:"issue_short_id"`
+			Status       string `json:"status"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &result), "json output: %s", out)
+	require.NotEmpty(t, result.Items, "import should report per-item results: %s", out)
+	for _, item := range result.Items {
+		assert.NotEmpty(t, item.ExternalID, "external_id must round-trip")
+		assert.True(t, shortid.Valid(item.IssueShortID),
+			"short_id %q for external_id %q must be valid", item.IssueShortID, item.ExternalID)
+	}
+}
+
+func TestImportBeadsPromptsInitAndRetries(t *testing.T) {
+	resetFlags(t)
+	stubIsTTY(t, true)
+	env := testenv.New(t)
+	dir := t.TempDir()
+	runGit(t, dir, "init", "--quiet")
+	runGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
+	installFakeBD(t)
+
+	out, err := runBeadsImportTTY(t, env, dir, "y\n", "--as", "importer")
+	require.NoError(t, err)
+	assert.Contains(t, out, "No poomsae project found. Run poomsae init now? [y/N]")
+	assert.Contains(t, out, "created and bound project")
+	assert.Contains(t, out, "imported beads: created 1, updated 0, unchanged 0, comments 1, links 0")
+	assert.FileExists(t, filepath.Join(dir, ".poomsae.toml"))
+}
+
+func TestImportBeadsInitializesWithSelectedProfileCredential(t *testing.T) {
+	resetFlags(t)
+	stubIsTTY(t, true)
+	env := testenv.New(t, testenv.WithAuthToken("work-token"))
+	personalHome, dir := t.TempDir(), t.TempDir()
+	t.Setenv("POOMSAE_HOME", personalHome)
+	t.Setenv("POOMSAE_DB", filepath.Join(personalHome, "poomsae.db"))
+	t.Setenv("POOMSAE_DSN", "")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
+	installFakeBD(t)
+
+	uid := env.DB.InstanceUID()
+	require.NoError(t, os.WriteFile(filepath.Join(env.Home, "config.toml"),
+		[]byte("[auth]\ntoken = \"work-token\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(personalHome, "config.toml"),
+		[]byte(fmt.Sprintf("[[daemon]]\nname = \"work\"\nlocal = true\nhome = %q\ninstance_uid = %q\n", env.Home, uid)), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"),
+		[]byte("version = 1\n[project]\nname = \"spoke-project\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
+		[]byte("version = 1\n[server]\ndaemon = \"work\"\n"), 0o600))
+	profile, err := config.ResolveLocalProfile(config.CatalogDaemonConfig{
+		Name: "work", Local: true, Home: env.Home, InstanceUID: uid,
+	})
+	require.NoError(t, err)
+	ns, err := daemonruntime.NewNamespaceForHome(env.Home, profile.StorageID)
+	require.NoError(t, err)
+	require.NoError(t, ns.EnsureDirs())
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{
+		PID: os.Getpid(), Address: strings.TrimPrefix(env.URL, "http://"), Network: "tcp",
+	})
+	require.NoError(t, err)
+	_, err = env.DB.ProjectByName(t.Context(), "spoke-project")
+	require.ErrorIs(t, err, db.ErrNotFound)
+
+	out, err := runBeadsImportTTY(t, nil, dir, "y\n", "--as", "importer")
+
+	require.NoError(t, err)
+	assert.Contains(t, out, "imported beads: created 1, updated 0, unchanged 0, comments 1, links 0")
+	_, err = env.DB.ProjectByName(t.Context(), "spoke-project")
+	require.NoError(t, err)
+}
+
+func TestImportBeadsPromptNoReturnsInitValidation(t *testing.T) {
+	resetFlags(t)
+	stubIsTTY(t, true)
+	env := testenv.New(t)
+	dir := t.TempDir()
+
+	out, err := runBeadsImportTTY(t, env, dir, "n\n")
+	ce := requireCLIError(t, err, ExitValidation)
+	assert.Contains(t, ce.Message, "run poomsae init first")
+	assert.Contains(t, out, "No poomsae project found. Run poomsae init now? [y/N]")
+}
+
+func runBeadsImportTTY(t *testing.T, env *testenv.Env, dir, input string, args ...string) (string, error) {
+	t.Helper()
+	stdinPath := filepath.Join(t.TempDir(), "stdin")
+	require.NoError(t, os.WriteFile(stdinPath, []byte(input), 0o600))
+	stdin, err := os.Open(stdinPath) //nolint:gosec // test-controlled path
+	require.NoError(t, err)
+	defer func() { _ = stdin.Close() }()
+
+	stdoutPath := filepath.Join(t.TempDir(), "stdout")
+	stdout, err := os.Create(stdoutPath) //nolint:gosec // test-controlled path
+	require.NoError(t, err)
+	defer func() { _ = stdout.Close() }()
+
+	cmd := newRootCmd()
+	cmd.SetIn(stdin)
+	cmd.SetOut(stdout)
+	cmd.SetErr(stdout)
+	cmd.SetArgs(append([]string{"--workspace", dir, "import", "--source-format", "beads"}, args...))
+	ctx := t.Context()
+	if env != nil {
+		ctx = contextWithBaseURL(ctx, env.URL)
+	}
+	cmd.SetContext(ctx)
+	err = cmd.Execute()
+	require.NoError(t, stdout.Sync())
+	bs, readErr := os.ReadFile(stdoutPath) //nolint:gosec // test-controlled path
+	require.NoError(t, readErr)
+	return string(bs), err
+}
+
+func installFakeBD(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd is a POSIX shell script; beads-from-live-bd import isn't exercised on Windows")
+	}
+	bin := t.TempDir()
+	path := filepath.Join(bin, "bd")
+	script := `#!/bin/sh
+set -eu
+if [ "$1" = "export" ] && [ "$2" = "--no-memories" ]; then
+cat <<'JSONL'
+{"id":"b1","title":"Live bead","description":"Body from beads","status":"open","priority":1,"issue_type":"task","owner":"alice","created_at":"2026-05-01T10:00:00Z","created_by":"Alice","updated_at":"2026-05-01T10:00:00Z","labels":["Needs Review"],"comment_count":1}
+JSONL
+elif [ "$1" = "comments" ] && [ "$2" = "b1" ] && [ "$3" = "--json" ]; then
+cat <<'JSON'
+[{"id":"c1","issue_id":"b1","author":"Bob","text":"Comment body from beads","created_at":"2026-05-01T11:00:00Z"}]
+JSON
+else
+	echo "unexpected bd args: $*" >&2
+	exit 2
+fi
+`
+	require.NoError(t, os.WriteFile(path, []byte(script), 0o755)) //nolint:gosec // test fixture: fake bd script needs executable bit
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func installLegacyFakeBD(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd is a POSIX shell script; legacy beads import isn't exercised on Windows")
+	}
+	bin := t.TempDir()
+	path := filepath.Join(bin, "bd")
+	script := `#!/bin/sh
+set -eu
+if [ "$#" -eq 2 ] && [ "$1" = "export" ] && [ "$2" = "--no-memories" ]; then
+	echo "Error: unknown flag: --no-memories" >&2
+	exit 1
+elif [ "$#" -eq 1 ] && [ "$1" = "export" ]; then
+cat <<'JSONL'
+{"id":"legacy-1","title":"Legacy bead","description":"Legacy body","status":"open","priority":1,"issue_type":"task","assignee":" user-a ","created_at":"2025-10-20T10:00:00Z","updated_at":"2025-10-20T10:00:00Z"}
+JSONL
+elif [ "$#" -eq 3 ] && [ "$1" = "comments" ] && [ "$2" = "legacy-1" ] && [ "$3" = "--json" ]; then
+cat <<'JSON'
+[{"id":1,"issue_id":"legacy-1","author":"user-b","text":"Legacy comment","created_at":"2025-10-20T11:00:00Z"}]
+JSON
+else
+	echo "unexpected bd args: $*" >&2
+	exit 2
+fi
+`
+	require.NoError(t, os.WriteFile(path, []byte(script), 0o755)) //nolint:gosec // test fixture: fake bd script needs executable bit
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func TestRunBeadsExportFallsBackForUnsupportedNoMemories(t *testing.T) {
+	bdPath, callsPath := installBDExportFixture(t, "fallback-success")
+
+	got, err := runBeadsExport(t.Context(), t.TempDir(), bdPath)
+
+	require.NoError(t, err)
+	assert.Contains(t, string(got), `"id":"legacy-1"`)
+	assert.Equal(t, "export --no-memories\nexport\n", readFixtureCalls(t, callsPath))
+}
+
+func TestRunBeadsExportDoesNotFallbackForOtherErrors(t *testing.T) {
+	bdPath, callsPath := installBDExportFixture(t, "unrelated-error")
+
+	_, err := runBeadsExport(t.Context(), t.TempDir(), bdPath)
+
+	require.ErrorContains(t, err, "database unavailable")
+	assert.Equal(t, "export --no-memories\n", readFixtureCalls(t, callsPath))
+}
+
+func TestRunBeadsExportReturnsPlainExportFailure(t *testing.T) {
+	bdPath, callsPath := installBDExportFixture(t, "fallback-error")
+
+	_, err := runBeadsExport(t.Context(), t.TempDir(), bdPath)
+
+	require.ErrorContains(t, err, "legacy database corrupt")
+	assert.NotContains(t, err.Error(), "unknown flag")
+	assert.Equal(t, "export --no-memories\nexport\n", readFixtureCalls(t, callsPath))
+}
+
+func installBDExportFixture(t *testing.T, mode string) (string, string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd is a POSIX shell script; beads export fallback isn't exercised on Windows")
+	}
+	bin := t.TempDir()
+	bdPath := filepath.Join(bin, "bd")
+	callsPath := filepath.Join(bin, "calls")
+	script := `#!/bin/sh
+set -eu
+printf '%s\n' "$*" >> "$FAKE_BD_CALLS"
+case "$FAKE_BD_MODE:$*" in
+	"fallback-success:export --no-memories"|"fallback-error:export --no-memories")
+		echo "Error: unknown flag: --no-memories" >&2
+		exit 1
+		;;
+	"fallback-success:export")
+		echo '{"id":"legacy-1"}'
+		;;
+	"fallback-error:export")
+		echo "legacy database corrupt" >&2
+		exit 1
+		;;
+	"unrelated-error:export --no-memories")
+		echo "database unavailable" >&2
+		exit 1
+		;;
+	*)
+		echo "unexpected bd args: $*" >&2
+		exit 2
+		;;
+esac
+`
+	require.NoError(t, os.WriteFile(bdPath, []byte(script), 0o755)) //nolint:gosec // test fixture: fake bd script needs executable bit
+	t.Setenv("FAKE_BD_MODE", mode)
+	t.Setenv("FAKE_BD_CALLS", callsPath)
+	return bdPath, callsPath
+}
+
+func readFixtureCalls(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path) //nolint:gosec // test-controlled path
+	require.NoError(t, err)
+	return string(data)
+}
+
+func TestParseBeadsCommentsJSONAcceptsLegacyNumericID(t *testing.T) {
+	comments, err := parseBeadsCommentsJSON(strings.NewReader(
+		`[{"id":9007199254740993,"issue_id":"legacy-1","author":"user-a","text":"note","created_at":"2026-01-01T00:00:00Z"}]`,
+	))
+
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "9007199254740993", comments[0].ID)
+}
+
+func TestParseBeadsCommentsJSONRejectsInvalidIDShape(t *testing.T) {
+	_, err := parseBeadsCommentsJSON(strings.NewReader(
+		`[{"id":{},"issue_id":"legacy-1","created_at":"2026-01-01T00:00:00Z"}]`,
+	))
+
+	require.ErrorContains(t, err, "comment id")
+}
+
+func TestBuildBeadsImportRequestLegacyFields(t *testing.T) {
+	comment := beadsComment{
+		ID:        "1",
+		IssueID:   "legacy-1",
+		Author:    "user-c",
+		Text:      "Legacy comment",
+		CreatedAt: mustParseTime(t, "2025-10-20T11:00:00Z"),
+	}
+	tests := []struct {
+		name             string
+		export           string
+		wantOwner        string
+		wantCommentCount int
+	}{
+		{
+			name:             "owner wins and explicit count is preserved",
+			export:           `{"id":"legacy-1","title":"Legacy","owner":" user-a ","assignee":"user-b","created_at":"2025-10-20T10:00:00Z","updated_at":"2025-10-20T10:00:00Z","comment_count":0}`,
+			wantOwner:        "user-a",
+			wantCommentCount: 0,
+		},
+		{
+			name:             "blank owner falls back to assignee and omitted count uses comments",
+			export:           `{"id":"legacy-1","title":"Legacy","owner":"   ","assignee":" user-b ","created_at":"2025-10-20T10:00:00Z","updated_at":"2025-10-20T10:00:00Z"}`,
+			wantOwner:        "user-b",
+			wantCommentCount: 1,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := buildBeadsImportRequest(
+				strings.NewReader(tc.export),
+				map[string][]beadsComment{"legacy-1": {comment}},
+				"importer",
+			)
+
+			require.NoError(t, err)
+			require.Len(t, req.Items, 1)
+			require.NotNil(t, req.Items[0].Owner)
+			assert.Equal(t, tc.wantOwner, *req.Items[0].Owner)
+			assert.Contains(t, req.Items[0].Body, "beads_comment_count: "+itoa(int64(tc.wantCommentCount)))
+		})
+	}
+}
+
+func TestParseBeadsExportAndBuildImportRequest(t *testing.T) {
+	export := strings.NewReader(`{"id":"b1","title":"Blocker","description":"blocker body","status":"open","priority":1,"issue_type":"task","owner":"alice","created_at":"2026-05-01T10:00:00Z","created_by":"Alice","updated_at":"2026-05-01T10:00:00Z","labels":["Needs Review","bad label!","` + strings.Repeat("Very Long Label ", 8) + `"],"dependency_count":0,"dependent_count":1,"comment_count":0}
+{"id":"b2","title":"Blocked","description":"blocked body","status":"closed","priority":2,"issue_type":"bug","owner":"bob","created_at":"2026-05-01T11:00:00Z","created_by":"Bob","updated_at":"2026-05-01T12:00:00Z","closed_at":"2026-05-01T12:00:00Z","close_reason":"fixed elsewhere","labels":[],"dependencies":[{"issue_id":"b2","depends_on_id":"b1","type":"blocks","created_at":"2026-05-01T11:30:00Z","created_by":"Bob","metadata":"{}"}],"comment_count":1}
+`)
+	commentJSON := strings.NewReader(`[{"id":"c1","issue_id":"b2","author":"Bob","text":"comment","created_at":"2026-05-01T11:45:00Z"}]`)
+	parsedComments, err := parseBeadsCommentsJSON(commentJSON)
+	require.NoError(t, err)
+	comments := map[string][]beadsComment{"b2": parsedComments}
+
+	req, err := buildBeadsImportRequest(export, comments, "importer")
+	require.NoError(t, err)
+	assert.Equal(t, "importer", req.Actor)
+	assert.Equal(t, "beads", req.Source)
+	require.Len(t, req.Items, 2)
+
+	blocker := req.Items[0]
+	assert.Equal(t, "b1", blocker.ExternalID)
+	assert.Equal(t, "Blocker", blocker.Title)
+	assert.Equal(t, "blocker body", strings.Split(blocker.Body, "\n---\n")[0])
+	assert.Equal(t, "open", blocker.Status)
+	assert.Equal(t, "Alice", blocker.Author)
+	require.NotNil(t, blocker.Owner)
+	assert.Equal(t, "alice", *blocker.Owner)
+	assert.Equal(t, mustParseTime(t, "2026-05-01T10:00:00Z"), blocker.CreatedAt)
+	assert.Equal(t, mustParseTime(t, "2026-05-01T10:00:00Z"), blocker.UpdatedAt)
+	assert.Nil(t, blocker.ClosedAt)
+	assert.Nil(t, blocker.ClosedReason)
+	assert.Contains(t, blocker.Labels, "source:beads")
+	assert.Contains(t, blocker.Labels, "beads-id:b1")
+	assert.Contains(t, blocker.Labels, "needs-review")
+	assert.Contains(t, blocker.Labels, "bad-label")
+	for _, label := range blocker.Labels {
+		assert.LessOrEqual(t, len(label), 64, "label %q should satisfy poomsae max length", label)
+	}
+	assert.Contains(t, blocker.Body, "Imported from Beads")
+	assert.Contains(t, blocker.Body, "beads_id: b1")
+	assert.Contains(t, blocker.Body, "beads_type: task")
+	assert.NotContains(t, blocker.Body, "beads_priority:",
+		"priority is now a first-class field; footer should not duplicate it")
+	require.NotNil(t, blocker.Priority)
+	assert.Equal(t, int64(1), *blocker.Priority)
+	assert.Contains(t, blocker.Body, `beads_original_labels: ["Needs Review","bad label!"`)
+	assert.NotContains(t, blocker.Body, "beads_dependencies")
+	assert.NotContains(t, req.Items[1].Body, "beads_dependencies")
+	assert.NotContains(t, req.Items[1].Body, "metadata")
+	assert.NotContains(t, req.Items[1].Body, "created_by")
+	assert.Contains(t, blocker.Body, "beads_created_at: 2026-05-01T10:00:00Z")
+	assert.Contains(t, blocker.Body, "beads_updated_at: 2026-05-01T10:00:00Z")
+	assert.Contains(t, blocker.Body, "beads_comment_count: 0")
+	require.Len(t, blocker.Links, 1)
+	assert.Equal(t, "blocks", blocker.Links[0].Type)
+	assert.Equal(t, "b2", blocker.Links[0].TargetExternalID, "Beads A depends on B imports as B blocks A")
+
+	blocked := req.Items[1]
+	assert.Equal(t, "b2", blocked.ExternalID)
+	assert.Equal(t, "closed", blocked.Status)
+	require.NotNil(t, blocked.ClosedReason)
+	assert.Equal(t, "done", *blocked.ClosedReason)
+	require.NotNil(t, blocked.ClosedAt)
+	assert.Equal(t, mustParseTime(t, "2026-05-01T12:00:00Z"), *blocked.ClosedAt)
+	assert.Contains(t, blocked.Body, "beads_close_reason: fixed elsewhere")
+	assert.Contains(t, blocked.Labels, "source:beads")
+	assert.Contains(t, blocked.Labels, "beads-id:b2")
+	require.Len(t, blocked.Comments, 1)
+	assert.Equal(t, "c1", blocked.Comments[0].ExternalID)
+	assert.Equal(t, "Bob", blocked.Comments[0].Author)
+	assert.Equal(t, "comment", blocked.Comments[0].Body)
+	assert.Equal(t, mustParseTime(t, "2026-05-01T11:45:00Z"), blocked.Comments[0].CreatedAt)
+}
+
+func TestNormalizeKataLabel(t *testing.T) {
+	assert.Equal(t, "needs-review", importlabels.Normalize("Needs Review!"))
+	assert.Equal(t, "imported", importlabels.Normalize("!!!"))
+	assert.Equal(t, "source:beads", importlabels.Normalize("source:beads"))
+	long := importlabels.Normalize(strings.Repeat("x", 100))
+	assert.LessOrEqual(t, len(long), 64)
+	assert.Regexp(t, `^[a-z0-9._:-]+$`, long)
+}
+
+func TestMapBeadsPriority(t *testing.T) {
+	cases := []struct {
+		name string
+		in   int
+		want *int64
+	}{
+		{"zero is highest", 0, new(int64(0))},
+		{"in range one", 1, new(int64(1))},
+		{"top of range", 4, new(int64(4))},
+		{"out of range above drops", 5, nil},
+		{"negative drops", -1, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := mapBeadsPriority(tc.in)
+			if tc.want == nil {
+				assert.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			assert.Equal(t, *tc.want, *got)
+		})
+	}
+}
+
+func TestMapBeadsStatus(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want string
+	}{
+		{"", "open"},
+		{"open", "open"},
+		{"in_progress", "open"},
+		{"blocked", "open"},
+		{"ready", "open"},
+		{"triage", "open"},
+		{"todo", "open"},
+		{"closed", "closed"},
+		{"done", "closed"},
+		{"merged", "closed"},
+		{"resolved", "closed"},
+		{"some-future-status", "open"}, // unknown defaults to open
+	}
+	for _, tc := range cases {
+		t.Run(tc.raw, func(t *testing.T) {
+			assert.Equal(t, tc.want, mapBeadsStatus(tc.raw))
+		})
+	}
+}
+
+func TestBeadsImportsBlockedStatusAsOpenWithLabel(t *testing.T) {
+	export := strings.NewReader(`{"id":"b1","title":"Active work","description":"body","status":"blocked","created_at":"2026-05-01T10:00:00Z","created_by":"Alice","updated_at":"2026-05-01T10:00:00Z"}`)
+	req, err := buildBeadsImportRequest(export, nil, "importer")
+	require.NoError(t, err)
+	require.Len(t, req.Items, 1)
+	assert.Equal(t, "open", req.Items[0].Status,
+		"beads 'blocked' must collapse to poomsae 'open' so the import doesn't bail")
+	assert.Contains(t, req.Items[0].Labels, "beads-status:blocked",
+		"original beads status should be preserved as a label")
+}
+
+func TestBeadsImportsMergedStatusAsClosed(t *testing.T) {
+	export := strings.NewReader(`{"id":"b1","title":"Shipped","description":"body","status":"merged","close_reason":"shipped","closed_at":"2026-05-02T10:00:00Z","created_at":"2026-05-01T10:00:00Z","created_by":"Alice","updated_at":"2026-05-02T10:00:00Z"}`)
+	req, err := buildBeadsImportRequest(export, nil, "importer")
+	require.NoError(t, err)
+	require.Len(t, req.Items, 1)
+	assert.Equal(t, "closed", req.Items[0].Status)
+	require.NotNil(t, req.Items[0].ClosedReason)
+	assert.Equal(t, "done", *req.Items[0].ClosedReason,
+		"non-canonical close_reason 'shipped' falls back to poomsae's 'done'")
+}
+
+func TestBeadsRejectsDependencyTargetMissingFromExport(t *testing.T) {
+	export := strings.NewReader(`{"id":"b2","title":"Blocked","description":"body","status":"open","created_at":"2026-05-01T10:00:00Z","created_by":"Alice","updated_at":"2026-05-01T10:00:00Z","dependencies":[{"issue_id":"b2","depends_on_id":"missing","type":"blocks"}]}`)
+	_, err := buildBeadsImportRequest(export, nil, "importer")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency target")
+}
+
+func TestBeadsRejectsOversizedCommentsJSON(t *testing.T) {
+	_, err := parseBeadsCommentsJSON(io.LimitReader(repeatedByteReader(' '), maxBeadsCommentsJSONBytes+1))
+	require.Error(t, err)
+	var ce *cliError
+	require.True(t, errors.As(err, &ce), "expected validation cliError, got %T", err)
+	assert.Equal(t, kindValidation, ce.Kind)
+	assert.Equal(t, ExitValidation, ce.ExitCode)
+	assert.Contains(t, err.Error(), "beads comments JSON exceeds")
+}
+
+type repeatedByteReader byte
+
+func (r repeatedByteReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = byte(r)
+	}
+	return len(p), nil
+}
+
+func mustParseTime(t *testing.T, s string) time.Time {
+	t.Helper()
+	ts, err := time.Parse(time.RFC3339Nano, s)
+	require.NoError(t, err)
+	return ts
+}

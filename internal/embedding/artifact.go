@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	kitvec "go.kenn.io/kit/vector"
 )
 
@@ -159,7 +159,7 @@ func completeArtifactDigest(artifact EmbeddingArtifact) (string, error) {
 		return "", err
 	}
 	h := sha256.New()
-	_, _ = h.Write([]byte("kata.embedding-artifact.v1\x00"))
+	_, _ = h.Write([]byte("poomsae.embedding-artifact.v1\x00"))
 	artifactWriteSized(h, raw)
 	for _, chunk := range artifact.Chunks {
 		artifactWriteSized(h, chunk.VectorBytes)

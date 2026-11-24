@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestExportForCutoverPreservesAssignment(t *testing.T) {
@@ -27,7 +27,7 @@ func TestExportForCutoverPreservesAssignment(t *testing.T) {
 		{name: "v29_timed", version: 29, ttl: 30 * time.Minute},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			ctx := t.Context()
 			source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "source.db"))
 			require.NoError(t, err)
@@ -75,9 +75,9 @@ func TestExportForCutoverPreservesAssignment(t *testing.T) {
 }
 
 func TestExportSnapshotV14FederationEnrollmentPreservesAdoptionMarker(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = source.Close() })
 	project, err := source.CreateProject(ctx, "hub")
@@ -114,9 +114,9 @@ func TestMarshalLegacyGitHubSyncConfigUsesDeterministicJSON(t *testing.T) {
 }
 
 func TestExportSnapshotCarriesExternalRootStateWithoutLiveClaim(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = source.Close() })
 	project, err := source.CreateProject(ctx, "spoke-project")
@@ -133,7 +133,7 @@ func TestExportSnapshotCarriesExternalRootStateWithoutLiveClaim(t *testing.T) {
 	})
 	require.NoError(t, err)
 	mapping, err := source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "field-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "revision-one",
@@ -163,9 +163,9 @@ func TestExportSnapshotCarriesExternalRootStateWithoutLiveClaim(t *testing.T) {
 }
 
 func TestExportSnapshotProjectIncludesActiveMappingBeforeStateExists(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	source, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = source.Close() })
 	project, err := source.CreateProject(ctx, "spoke-project")
@@ -181,14 +181,14 @@ func TestExportSnapshotProjectIncludesActiveMappingBeforeStateExists(t *testing.
 	})
 	require.NoError(t, err)
 	_, err = source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-one", KataField: "scheduled_on",
+		ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "field-one", ExternalFieldName: "Schedule",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "revision-one",
 	})
 	require.NoError(t, err)
 	_, err = source.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "connector-unbound", KataField: "deadline_on",
+		ConnectorInstance: "connector-unbound", PoomsaeField: "deadline_on",
 		ExternalFieldID: "field-unbound", ExternalFieldName: "Deadline",
 		AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true,
 		SchemaRevision: "revision-unbound",

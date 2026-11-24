@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 type telemetryGate struct{ clientpkg.TelemetryGate }

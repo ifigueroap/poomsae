@@ -4,8 +4,8 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayRootAcceptanceParent exercises relay root acceptance parent on the supplied native store.

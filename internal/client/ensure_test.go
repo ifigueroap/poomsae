@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -50,11 +50,11 @@ func TestDiscoveryReplacesPlaceholderOnlyWithReleaseAssets(t *testing.T) {
 			if tc.skip {
 				skip = "1"
 			}
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", skip)
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", skip)
 			ctx := context.WithValue(t.Context(), requireWebAssetsKey{}, tc.assets)
 			scan := func(context.Context, string) iter.Seq2[liveDaemon, error] {
 				return func(yield func(liveDaemon, error) bool) {
-					yield(liveDaemon{Info: PingInfo{Service: "kata", Version: tc.version}, Record: kitdaemon.RuntimeRecord{Metadata: map[string]string{"web_capabilities": tc.capabilities}}}, nil)
+					yield(liveDaemon{Info: PingInfo{Service: "poomsae", Version: tc.version}, Record: kitdaemon.RuntimeRecord{Metadata: map[string]string{"web_capabilities": tc.capabilities}}}, nil)
 				}
 			}
 			found, err := discoverForEnsureUsing(ctx, "", scan)
@@ -67,11 +67,11 @@ func TestDiscoveryReplacesPlaceholderOnlyWithReleaseAssets(t *testing.T) {
 // A binary that cannot open the storage cannot replace the daemon serving it,
 // so the live daemon must keep running.
 func TestEnsureRunningKeepsDaemonWhenStorageSchemaIsNewerThanBinary(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
-	stageStorageSchema(t, filepath.Join(tmp, "kata.db"), db.CurrentSchemaVersion()+1)
+	stageStorageSchema(t, filepath.Join(tmp, "poomsae.db"), db.CurrentSchemaVersion()+1)
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "newer-build", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "newer-build", "pid": os.Getpid(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 	state := patchEnsureHooks(t, "older-build", "http://replacement-daemon")
@@ -85,7 +85,7 @@ func TestEnsureRunningKeepsDaemonWhenStorageSchemaIsNewerThanBinary(t *testing.T
 		"newer-build", "older-build",
 		fmt.Sprintf("schema_version %d", db.CurrentSchemaVersion()+1),
 		fmt.Sprintf("binary schema %d", db.CurrentSchemaVersion()),
-		"use a newer kata binary",
+		"use a newer poomsae binary",
 	} {
 		assert.Contains(t, err.Error(), want)
 	}
@@ -94,11 +94,11 @@ func TestEnsureRunningKeepsDaemonWhenStorageSchemaIsNewerThanBinary(t *testing.T
 // Client-only programs do not install a storage inspector. They cannot tell
 // whether a replacement could open the storage, so the live daemon stays.
 func TestEnsureRunningKeepsDaemonWithoutStorageInspector(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
-	stageStorageSchema(t, filepath.Join(tmp, "kata.db"), db.CurrentSchemaVersion())
+	stageStorageSchema(t, filepath.Join(tmp, "poomsae.db"), db.CurrentSchemaVersion())
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "old-build", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "old-build", "pid": os.Getpid(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 	state := patchEnsureHooks(t, "new-build", "http://replacement-daemon")
@@ -116,11 +116,11 @@ func TestEnsureRunningKeepsDaemonWithoutStorageInspector(t *testing.T) {
 func TestEnsureRunningReplacesDaemonWhenStorageSchemaIsSupported(t *testing.T) {
 	for _, schema := range []int{db.CurrentSchemaVersion() - 1, db.CurrentSchemaVersion()} {
 		t.Run(fmt.Sprint(schema), func(t *testing.T) {
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			tmp := setupKataEnv(t)
-			stageStorageSchema(t, filepath.Join(tmp, "kata.db"), schema)
+			stageStorageSchema(t, filepath.Join(tmp, "poomsae.db"), schema)
 			_, addr := startMockDaemonPing(t, map[string]any{
-				"ok": true, "service": "kata", "version": "old-build", "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": "old-build", "pid": os.Getpid(),
 			})
 			require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 			state := patchEnsureHooks(t, "new-build", "http://replacement-daemon")
@@ -136,10 +136,10 @@ func TestEnsureRunningReplacesDaemonWhenStorageSchemaIsSupported(t *testing.T) {
 }
 
 func TestEnsureRunningKeepsNewerReleaseDaemon(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "v0.19.0", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "v0.19.0", "pid": os.Getpid(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 	state := patchEnsureHooks(t, "v0.18.0", "http://replacement-daemon")
@@ -149,8 +149,8 @@ func TestEnsureRunningKeepsNewerReleaseDaemon(t *testing.T) {
 	require.ErrorIs(t, err, ErrDaemonNotReplaceable)
 	assert.Zero(t, state.stopCalls, "the newer daemon must not be stopped")
 	assert.Zero(t, state.startCalls)
-	assert.Contains(t, err.Error(), "kata daemon v0.19.0 is newer than this kata binary v0.18.0")
-	assert.Contains(t, err.Error(), "use a newer kata binary")
+	assert.Contains(t, err.Error(), "poomsae daemon v0.19.0 is newer than this poomsae binary v0.18.0")
+	assert.Contains(t, err.Error(), "use a newer poomsae binary")
 }
 
 // Only two release versions have a defined order. Development builds report a
@@ -164,10 +164,10 @@ func TestEnsureRunningReplacesDaemonUnlessItIsANewerRelease(t *testing.T) {
 		{daemon: "v0.20.0-rc.1", binary: "v0.19.0"},
 	} {
 		t.Run(tt.daemon+" from "+tt.binary, func(t *testing.T) {
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			tmp := setupKataEnv(t)
 			_, addr := startMockDaemonPing(t, map[string]any{
-				"ok": true, "service": "kata", "version": tt.daemon, "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": tt.daemon, "pid": os.Getpid(),
 			})
 			require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 			state := patchEnsureHooks(t, tt.binary, "http://replacement-daemon")
@@ -193,12 +193,12 @@ func stageStorageSchema(t *testing.T, path string, schema int) {
 }
 
 func TestEnsureRunningRestartsWhenDaemonVersionDiffers(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     os.Getpid(),
 	})
@@ -214,12 +214,12 @@ func TestEnsureRunningRestartsWhenDaemonVersionDiffers(t *testing.T) {
 }
 
 func TestEnsureRunningDiscoveryWaitsForStartLockBeforeStoppingDaemon(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     os.Getpid(),
 	})
@@ -241,7 +241,7 @@ func TestEnsureRunningDiscoveryWaitsForStartLockBeforeStoppingDaemon(t *testing.
 }
 
 func TestEnsureRunningDiscoveryWaitsForStartLockWhenDaemonUnreachable(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	require.NoError(t, writeRuntimeRecord(t, tmp, "unix://"+filepath.Join(tmp, "missing.sock")))
 	state := patchEnsureHooks(t, "new-version", "http://new-daemon")
@@ -278,7 +278,7 @@ func TestEnsureRunningDiscoveryWaitsForStartLockWhenDaemonUnreachable(t *testing
 	}
 
 	wantURL, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "new-version", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "new-version", "pid": os.Getpid(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, tmp, addr))
 	release()
@@ -313,7 +313,7 @@ func TestEnsureRunningReportsUnreachableDaemonWhenStartLockWaitExpires(t *testin
 }
 
 func TestEnsureRunningRestartsWhenDaemonVersionUnknown(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 
 	_, addr := startMockDaemonPing(t, map[string]any{"ok": true})
@@ -329,8 +329,8 @@ func TestEnsureRunningRestartsWhenDaemonVersionUnknown(t *testing.T) {
 }
 
 func TestEnsureLocalRunningIgnoresRemoteOverride(t *testing.T) {
-	t.Setenv("KATA_SERVER", "http://100.64.0.5:7777")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_SERVER", "http://100.64.0.5:7777")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 	setupKataEnv(t)
 	restore := patchEnsureHooks(t, currentVersionForEnsure(), "http://local-daemon")
 
@@ -343,7 +343,7 @@ func TestEnsureLocalRunningIgnoresRemoteOverride(t *testing.T) {
 
 func TestEnsureRunningTargetMarksEnvironmentRemote(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", srv.URL)
+	t.Setenv("POOMSAE_SERVER", srv.URL)
 
 	target, err := EnsureRunningTarget(t.Context())
 
@@ -354,13 +354,13 @@ func TestEnsureRunningTargetMarksEnvironmentRemote(t *testing.T) {
 
 func TestEnsureRunningTargetMarksWorkspaceConfigRemote(t *testing.T) {
 	srv := pingingServer(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	workspace := t.TempDir()
 	t.Chdir(workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"),
 		[]byte("version = 1\n\n[project]\nidentity = \"example.test/spoke-project\"\nname = \"spoke-project\"\n"),
 		0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte("version = 1\n\n[server]\nurl = \""+srv.URL+"\"\n"),
 		0o600))
 
@@ -372,7 +372,7 @@ func TestEnsureRunningTargetMarksWorkspaceConfigRemote(t *testing.T) {
 }
 
 func TestEnsureRunningTargetMarksLocalDiscovery(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	setupKataEnv(t)
 	restore := patchEnsureHooks(t, currentVersionForEnsure(), "http://local-daemon")
 
@@ -385,10 +385,10 @@ func TestEnsureRunningTargetMarksLocalDiscovery(t *testing.T) {
 }
 
 func TestEnsureRunningTargetRetainsSelectedLocalEndpoint(t *testing.T) {
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	home := setupKataEnv(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": currentVersionForEnsure(),
+		"ok": true, "service": "poomsae", "version": currentVersionForEnsure(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, home, addr))
 
@@ -411,21 +411,21 @@ func TestDiscoverForEnsureThreeOutcomes(t *testing.T) {
 		{
 			name: "live and compatible",
 			pingPayload: map[string]any{
-				"ok": true, "service": "kata", "version": "test-version", "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": "test-version", "pid": os.Getpid(),
 			},
 			want: daemonScanCompatible,
 		},
 		{
 			name: "live but stale build",
 			pingPayload: map[string]any{
-				"ok": true, "service": "kata", "version": "old-version", "pid": os.Getpid(),
+				"ok": true, "service": "poomsae", "version": "old-version", "pid": os.Getpid(),
 			},
 			want: daemonScanStale,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			tmp := setupKataEnv(t)
 			origVersion := currentVersionForEnsure
 			currentVersionForEnsure = func() string { return "test-version" }
@@ -500,7 +500,7 @@ func TestAutoStartUsesKitDetachedStarter(t *testing.T) {
 	require.NoError(t, err)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": currentVersionForEnsure(),
 		"pid":     os.Getpid(),
 	})
@@ -637,7 +637,7 @@ func TestAutoStartReportsPersistentUnreachableDaemonAfterReadinessDeadline(t *te
 	})
 
 	synctest.Test(t, func(t *testing.T) {
-		probeErr := fmt.Errorf("%w: daemon pid 123 at unix:///tmp/kata.sock", ErrLocalDaemonUnreachable)
+		probeErr := fmt.Errorf("%w: daemon pid 123 at unix:///tmp/poomsae.sock", ErrLocalDaemonUnreachable)
 		discoverDaemonForAutoStart = func(context.Context, string) (ensureDiscovery, error) {
 			return ensureDiscovery{}, probeErr
 		}
@@ -668,7 +668,7 @@ func TestStopRunningDaemonsDoesNotSignalUnverifiedRuntimePID(t *testing.T) {
 }
 
 func TestEnsureLocalRunningDoesNotStartWhenRestartProbeFails(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	var probes atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -677,7 +677,7 @@ func TestEnsureLocalRunningDoesNotStartWhenRestartProbeFails(t *testing.T) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok": true, "service": "kata", "version": "old-version", "pid": os.Getpid(),
+			"ok": true, "service": "poomsae", "version": "old-version", "pid": os.Getpid(),
 		})
 	}))
 	t.Cleanup(server.Close)
@@ -700,7 +700,7 @@ func TestNewHTTPClientWithoutAuthSkipsDeadRuntimeRecords(t *testing.T) {
 		t.Skip("Unix sockets are unsupported on Windows")
 	}
 	tmp := setupKataEnv(t)
-	socket := filepath.Join(t.TempDir(), "kata.sock")
+	socket := filepath.Join(t.TempDir(), "poomsae.sock")
 	ln, err := new(net.ListenConfig).Listen(t.Context(), "unix", socket)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = ln.Close() })
@@ -710,7 +710,7 @@ func TestNewHTTPClientWithoutAuthSkipsDeadRuntimeRecords(t *testing.T) {
 				http.NotFound(w, r)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "service": "kata"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "service": "poomsae"})
 		}),
 		ReadHeaderTimeout: time.Second,
 	}
@@ -719,7 +719,7 @@ func TestNewHTTPClientWithoutAuthSkipsDeadRuntimeRecords(t *testing.T) {
 
 	// A dead PID pointing at a socket path that does not exist, plus the
 	// live record. Construction must reach the live one.
-	require.NoError(t, writeRuntimeRecordForPID(t, tmp, deadPID(t), "unix:///nonexistent/kata.sock"))
+	require.NoError(t, writeRuntimeRecordForPID(t, tmp, deadPID(t), "unix:///nonexistent/poomsae.sock"))
 	require.NoError(t, writeRuntimeRecordForPID(t, tmp, os.Getpid(), "unix://"+socket))
 
 	c, err := newHTTPClientWithoutAuth(t.Context(), UnixBase, Opts{Timeout: 2 * time.Second})
@@ -739,7 +739,7 @@ func TestNewHTTPClientWithoutAuthSkipsLiveTCPRuntimeBeforeUnix(t *testing.T) {
 	}
 	tmp := setupKataEnv(t)
 	_, tcpAddress := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": currentVersionForEnsure(),
+		"ok": true, "service": "poomsae", "version": currentVersionForEnsure(),
 	})
 	tcpProcess, _ := startLongLivedTestProcess(t)
 	require.NoError(t, writeRuntimeRecordForPID(t, tmp, tcpProcess.Process.Pid, tcpAddress))
@@ -748,7 +748,7 @@ func TestNewHTTPClientWithoutAuthSkipsLiveTCPRuntimeBeforeUnix(t *testing.T) {
 	socketDir, err := os.MkdirTemp("", "sock-")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(socketDir)) })
-	socket := filepath.Join(socketDir, "kata.sock")
+	socket := filepath.Join(socketDir, "poomsae.sock")
 	ln, err := new(net.ListenConfig).Listen(t.Context(), "unix", socket)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = ln.Close() })
@@ -757,7 +757,7 @@ func TestNewHTTPClientWithoutAuthSkipsLiveTCPRuntimeBeforeUnix(t *testing.T) {
 			switch r.URL.Path {
 			case "/api/v1/ping":
 				_ = json.NewEncoder(w).Encode(map[string]any{
-					"ok": true, "service": "kata", "version": currentVersionForEnsure(),
+					"ok": true, "service": "poomsae", "version": currentVersionForEnsure(),
 				})
 			case "/ready":
 				w.WriteHeader(http.StatusNoContent)
@@ -786,7 +786,7 @@ func TestNewHTTPClientWithoutAuthSkipsLiveTCPRuntimeBeforeUnix(t *testing.T) {
 func deadPID(t *testing.T) int {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestEnsureSleepHelperProcess", "--") //nolint:gosec // test helper starts this test binary
-	cmd.Env = append(os.Environ(), "KATA_ENSURE_SLEEP_HELPER=1")
+	cmd.Env = append(os.Environ(), "POOMSAE_ENSURE_SLEEP_HELPER=1")
 	stdin, err := cmd.StdinPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
@@ -800,7 +800,7 @@ func startLongLivedTestProcess(t *testing.T) (*exec.Cmd, <-chan error) {
 	t.Helper()
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=TestEnsureSleepHelperProcess", "--") //nolint:gosec // test helper starts this test binary
-	cmd.Env = append(os.Environ(), "KATA_ENSURE_SLEEP_HELPER=1")
+	cmd.Env = append(os.Environ(), "POOMSAE_ENSURE_SLEEP_HELPER=1")
 	stdin, err := cmd.StdinPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
@@ -823,7 +823,7 @@ func startLongLivedTestProcess(t *testing.T) (*exec.Cmd, <-chan error) {
 }
 
 func TestEnsureSleepHelperProcess(_ *testing.T) {
-	if os.Getenv("KATA_ENSURE_SLEEP_HELPER") != "1" {
+	if os.Getenv("POOMSAE_ENSURE_SLEEP_HELPER") != "1" {
 		return
 	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
@@ -831,11 +831,11 @@ func TestEnsureSleepHelperProcess(_ *testing.T) {
 }
 
 func TestStopRunningDaemonsSignalsVerifiedIncompatibleRuntime(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     os.Getpid(),
 	})
@@ -859,7 +859,7 @@ func TestStopRunningDaemonsSignalsVerifiedIncompatibleRuntime(t *testing.T) {
 }
 
 func TestStopRunningDaemonsDoesNotSignalAfterProbeDeadline(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	child, _ := startLongLivedTestProcess(t)
 	oldPID, blockedPID := os.Getpid(), child.Process.Pid
@@ -867,7 +867,7 @@ func TestStopRunningDaemonsDoesNotSignalAfterProbeDeadline(t *testing.T) {
 		oldPID, blockedPID = blockedPID, oldPID
 	}
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "old-version", "pid": oldPID,
+		"ok": true, "service": "poomsae", "version": "old-version", "pid": oldPID,
 	})
 	require.NoError(t, writeRuntimeRecordForPID(t, tmp, oldPID, addr))
 	deadline := make(chan struct{})
@@ -917,17 +917,17 @@ func TestDaemonDiscoveryPreservesRecordPublishedDuringProbe(t *testing.T) {
 	store := kitdaemon.RuntimeStore{Dir: ns.DataDir}
 	other, _ := startLongLivedTestProcess(t)
 	replacementURL, replacementAddress := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": currentVersionForEnsure(), "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": currentVersionForEnsure(), "pid": os.Getpid(),
 	})
 	published := make(chan error, 1)
 	oldServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Startup publishes a fresh record at the reused PID path while
 		// discovery is waiting for the old endpoint's response.
-		_, writeErr := store.Write(kitdaemon.NewRuntimeRecord("kata", currentVersionForEnsure(),
+		_, writeErr := store.Write(kitdaemon.NewRuntimeRecord("poomsae", currentVersionForEnsure(),
 			kitdaemon.Endpoint{Network: "tcp", Address: replacementAddress}))
 		published <- writeErr
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok": true, "service": "kata", "version": "old-version", "pid": other.Process.Pid,
+			"ok": true, "service": "poomsae", "version": "old-version", "pid": other.Process.Pid,
 		})
 	}))
 	t.Cleanup(oldServer.Close)
@@ -949,7 +949,7 @@ func TestEnsureRunningStartsAfterLegacyDaemonExits(t *testing.T) {
 	unrelated, _ := startLongLivedTestProcess(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok": true, "service": "kata", "version": currentVersionForEnsure(), "pid": os.Getpid(),
+			"ok": true, "service": "poomsae", "version": currentVersionForEnsure(), "pid": os.Getpid(),
 		})
 	}))
 	t.Cleanup(server.Close)
@@ -979,12 +979,12 @@ func TestEnsureRunningStartsAfterLegacyDaemonExits(t *testing.T) {
 func TestDaemonDiscoverySkipsReusedPIDAtSameEndpoint(t *testing.T) {
 	for _, staleFirst := range []bool{true, false} {
 		t.Run(fmt.Sprintf("staleFirst=%t", staleFirst), func(t *testing.T) {
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			tmp := setupKataEnv(t)
 			unrelated, _ := startLongLivedTestProcess(t)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]any{
-					"ok": true, "service": "kata", "version": "old-version", "pid": os.Getpid(),
+					"ok": true, "service": "poomsae", "version": "old-version", "pid": os.Getpid(),
 				})
 			}))
 			t.Cleanup(server.Close)
@@ -1023,12 +1023,12 @@ func TestDaemonDiscoverySkipsReusedPIDAtSameEndpoint(t *testing.T) {
 }
 
 func TestStopRunningDaemonsReportsUnreachableDaemonRemainingAfterSignal(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	child, _ := startLongLivedTestProcess(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     child.Process.Pid,
 	})
@@ -1051,11 +1051,11 @@ func TestStopRunningDaemonsReportsUnreachableDaemonRemainingAfterSignal(t *testi
 }
 
 func TestStopRunningDaemonsReturnsSignalError(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     os.Getpid(),
 	})
@@ -1074,11 +1074,11 @@ func TestStopRunningDaemonsReturnsSignalError(t *testing.T) {
 }
 
 func TestStopRunningDaemonsErrorsOnUnverifiableIncompatibleRuntime(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 	})
 	require.NoError(t, writeRuntimeRecordForPID(t, tmp, os.Getpid(), addr))
@@ -1095,11 +1095,11 @@ func TestStopRunningDaemonsErrorsOnUnverifiableIncompatibleRuntime(t *testing.T)
 // Discovery can select a daemon whose process identity cannot be checked, but
 // automatic replacement must not signal it on that unverified identity.
 func TestStopRunningDaemonsRefusesUnverifiableIdentity(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	setupKataEnv(t)
 	helper, _ := startLongLivedTestProcess(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "old-version", "pid": helper.Process.Pid,
+		"ok": true, "service": "poomsae", "version": "old-version", "pid": helper.Process.Pid,
 	})
 	ns := writeUnverifiableRecord(t, helper.Process.Pid, addr, nil)
 	signals := 0
@@ -1117,11 +1117,11 @@ func TestStopRunningDaemonsRefusesUnverifiableIdentity(t *testing.T) {
 }
 
 func TestEnsureRunningRefusesUnverifiableCapableDaemon(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	home := setupKataEnv(t)
-	stageStorageSchema(t, filepath.Join(home, "kata.db"), db.CurrentSchemaVersion())
+	stageStorageSchema(t, filepath.Join(home, "poomsae.db"), db.CurrentSchemaVersion())
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "v0.1.0", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "v0.1.0", "pid": os.Getpid(),
 	})
 	writeUnverifiableRecord(t, os.Getpid(), addr, map[string]string{
 		daemonruntime.RuntimeRestartExecutableKey: "1",
@@ -1158,7 +1158,7 @@ func TestDiscoverWebRuntimeForUnverifiableRecordRequiresMatchingPID(t *testing.T
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			baseURL, addr := startMockDaemonPing(t, map[string]any{
-				"ok": true, "service": "kata", "version": "test-version", "pid": tc.pingPID,
+				"ok": true, "service": "poomsae", "version": "test-version", "pid": tc.pingPID,
 			})
 			ns := writeUnverifiableRecord(t, helper.Process.Pid, addr, map[string]string{
 				"web_origin": "http://127.0.0.1:27123", "web_origin_stable": "true", "web_capabilities": "loopback,sse",
@@ -1205,7 +1205,7 @@ func TestEnsureRunningReportsLiveUnreachableDaemonWithoutAutoStart(t *testing.T)
 			t.Cleanup(func() { require.NoError(t, os.RemoveAll(socketDir)) })
 			socket := filepath.Join(socketDir, "missing.sock")
 			if custom {
-				socket = socketDir + "/http://kata.invalid/missing.sock"
+				socket = socketDir + "/http://poomsae.invalid/missing.sock"
 			}
 			address := "unix://" + socket
 			require.NoError(t, writeRuntimeRecord(t, tmp, address))
@@ -1220,7 +1220,7 @@ func TestEnsureRunningReportsLiveUnreachableDaemonWithoutAutoStart(t *testing.T)
 			if custom {
 				assert.Contains(t, err.Error(), "dial unix "+socket)
 			} else {
-				assert.NotContains(t, err.Error(), "kata.invalid")
+				assert.NotContains(t, err.Error(), "poomsae.invalid")
 			}
 			unreachable, ok := errors.AsType[*LocalDaemonUnreachableError](err)
 			require.True(t, ok)
@@ -1228,19 +1228,19 @@ func TestEnsureRunningReportsLiveUnreachableDaemonWithoutAutoStart(t *testing.T)
 			assert.Equal(t, address, unreachable.Address)
 			urlErr, ok := errors.AsType[*url.Error](err)
 			require.True(t, ok)
-			assert.Equal(t, "http://kata.invalid/api/v1/ping", urlErr.URL)
+			assert.Equal(t, "http://poomsae.invalid/api/v1/ping", urlErr.URL)
 			assert.Zero(t, restore.startCalls)
 		})
 	}
 }
 
 func TestEnsureRunningPrioritizesUnreachableDaemonOverIncompatibleDaemon(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	tmp := setupKataEnv(t)
 	child, _ := startLongLivedTestProcess(t)
 	_, addr := startMockDaemonPing(t, map[string]any{
 		"ok":      true,
-		"service": "kata",
+		"service": "poomsae",
 		"version": "old-version",
 		"pid":     child.Process.Pid,
 	})
@@ -1322,7 +1322,7 @@ func TestDiscoverProbesUnverifiableRecord(t *testing.T) {
 func TestDiscoverSkipsUnverifiableRecordWithoutPingPID(t *testing.T) {
 	setupKataEnv(t)
 	helper, _ := startLongLivedTestProcess(t)
-	_, addr := startMockDaemonPing(t, map[string]any{"ok": true, "service": "kata", "version": "test-version"})
+	_, addr := startMockDaemonPing(t, map[string]any{"ok": true, "service": "poomsae", "version": "test-version"})
 	ns := writeUnverifiableRecord(t, helper.Process.Pid, addr, nil)
 
 	_, ok, err := Discover(t.Context(), ns.DataDir)
@@ -1370,7 +1370,7 @@ func startCountingPing(t *testing.T, hits *atomic.Int32, pid int) (url, addr str
 		}
 		hits.Add(1)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok": true, "service": "kata", "version": "test-version", "pid": pid,
+			"ok": true, "service": "poomsae", "version": "test-version", "pid": pid,
 		})
 	}))
 	t.Cleanup(server.Close)
@@ -1425,13 +1425,13 @@ func TestEnsureRunningAutoStartsWhenRuntimePIDIsDead(t *testing.T) {
 	assert.Equal(t, 1, restore.startCalls)
 }
 
-// setupKataEnv points KATA_HOME and KATA_DB at a fresh temp dir so the test
+// setupKataEnv points POOMSAE_HOME and POOMSAE_DB at a fresh temp dir so the test
 // runs in isolation from any developer-local state. Returns the temp dir.
 func setupKataEnv(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_DB", filepath.Join(tmp, "kata.db"))
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_DB", filepath.Join(tmp, "poomsae.db"))
 	return tmp
 }
 
@@ -1480,7 +1480,7 @@ func writeRuntimeRecordForPID(t *testing.T, home string, pid int, addr string) e
 		PID:               pid,
 		ProcessIdentityV2: identity,
 		Address:           addr,
-		Metadata:          map[string]string{"db_path": filepath.Join(home, "kata.db")},
+		Metadata:          map[string]string{"db_path": filepath.Join(home, "poomsae.db")},
 		StartedAt:         time.Now().UTC(),
 	})
 	return err
@@ -1515,11 +1515,11 @@ func patchEnsureHooks(t *testing.T, version, startedURL string) *ensurePatchStat
 }
 
 func TestEnsureRunningReplacesCapableDaemonInPlace(t *testing.T) {
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	home := setupKataEnv(t)
-	stageStorageSchema(t, filepath.Join(home, "kata.db"), db.CurrentSchemaVersion())
+	stageStorageSchema(t, filepath.Join(home, "poomsae.db"), db.CurrentSchemaVersion())
 	_, addr := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": "v0.1.0", "pid": os.Getpid(),
+		"ok": true, "service": "poomsae", "version": "v0.1.0", "pid": os.Getpid(),
 	})
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)

@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
-assets_branch="${KATA_DOCS_ASSETS_BRANCH:-docs-assets}"
+assets_branch="${POOMSAE_DOCS_ASSETS_BRANCH:-docs-assets}"
 source_dir=""
 generate=true
 push=false
@@ -86,7 +86,7 @@ done
 git -C "$asset_repo" init --quiet
 git -C "$asset_repo" add .
 git -C "$asset_repo" \
-  -c user.name="${GIT_AUTHOR_NAME:-kata docs bot}" \
+  -c user.name="${GIT_AUTHOR_NAME:-poomsae docs bot}" \
   -c user.email="${GIT_AUTHOR_EMAIL:-docs-bot@example.invalid}" \
   commit -m "docs assets" >/dev/null
 asset_commit="$(git -C "$asset_repo" rev-parse HEAD)"

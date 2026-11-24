@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // RemoveFreshSchema removes the default schema only when it is still the exact
@@ -52,7 +52,7 @@ func RemoveFreshSchemaWithConfig(
 		return err
 	}
 	if len(tables) == 0 {
-		return fmt.Errorf("remove fresh postgres schema: no kata tables found")
+		return fmt.Errorf("remove fresh postgres schema: no poomsae tables found")
 	}
 	quoted := make([]string, len(tables))
 	for i, table := range tables {

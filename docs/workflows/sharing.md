@@ -1,17 +1,17 @@
 # Sharing models
 
-Kata offers three ways to share project state. Pick the smallest setup that fits
+Poomsae offers three ways to share project state. Pick the smallest setup that fits
 how you work.
 
 ## Local shared project
 
 Use a local shared project when one person or one machine has multiple
 workspaces, worktrees, or agents. Each workspace commits the same project name
-in `.kata.toml` and shares the local `KATA_HOME` database. The daemon stays
+in `.poomsae.toml` and shares the local `POOMSAE_HOME` database. The daemon stays
 local and requires no network configuration.
 
 ```sh
-kata init --project product
+poomsae init --project product
 ```
 
 This is the default setup for coordinating agents on a single workstation.
@@ -20,8 +20,8 @@ This is the default setup for coordinating agents on a single workstation.
 
 Use a remote daemon when several trusted hosts need to share one daemon and one
 database. The daemon runs on the host that owns the SQLite database and listens
-on a private IP address, while clients connect by setting `KATA_SERVER` or
-`.kata.local.toml`.
+on a private IP address, while clients connect by setting `POOMSAE_SERVER` or
+`.poomsae.local.toml`.
 
 This gives everyone a single central copy of project state, assuming a trusted
 private network and a deliberately small auth model. Before you expose any TCP

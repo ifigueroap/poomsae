@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { KataTaskEvent } from '../lib/kata/types'
+import type { PoomsaeTaskEvent } from '../lib/poomsae/types'
 import IssueHistory from './IssueHistory.svelte'
 
-function event(uid: string, created_at: string): KataTaskEvent {
+function event(uid: string, created_at: string): PoomsaeTaskEvent {
   return {
     event_id: 1,
     event_uid: uid,
@@ -139,7 +139,7 @@ const frozenAttachment = {
   size: 12,
   docbank_version: '6f1c2e8a-2222-4222-8222-222222222222',
 }
-function attachmentEvent(snapshot: unknown = frozenAttachment): KataTaskEvent {
+function attachmentEvent(snapshot: unknown = frozenAttachment): PoomsaeTaskEvent {
   return {
     ...event('close-document', '2026-08-01T12:00:00Z'),
     type: 'issue.closed',
@@ -162,7 +162,7 @@ it('links frozen attachment evidence to the matching panel entry', async () => {
     },
   })
   expect(screen.getByRole('link', { name: /report.pdf/ }).getAttribute('href')).toBe(
-    `#kata-attachment-${attachmentID}`,
+    `#poomsae-attachment-${attachmentID}`,
   )
   expect(screen.getByRole('link', { name: 'report.pdf · 12 bytes' })).toBeTruthy()
 })

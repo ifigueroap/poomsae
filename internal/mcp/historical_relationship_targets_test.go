@@ -4,9 +4,9 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestHistoricalRelationshipTargetsUseCurrentIncludedProject(t *testing.T) {
@@ -20,7 +20,7 @@ func TestHistoricalRelationshipTargetsUseCurrentIncludedProject(t *testing.T) {
 				moved, _ := historicalOutputMove(t, store, source, target, peer)
 				historicalRef := source.Name + "#" + peer.ShortID
 				if operation == "create link" {
-					output := callWorkflowTool(t, session, "kata.create", map[string]any{
+					output := callWorkflowTool(t, session, "poomsae.create", map[string]any{
 						"project": source.Name, "title": "New related work", "related": []any{historicalRef}, "idempotency_key": "historical-related-create",
 					})
 					created, err := store.IssueByUID(t.Context(), output["issue"].(map[string]any)["uid"].(string), db.IncludeDeletedNo)
@@ -37,10 +37,10 @@ func TestHistoricalRelationshipTargetsUseCurrentIncludedProject(t *testing.T) {
 				if operation == "add link" || operation == "remove link" {
 					field := "add_related"
 					if operation == "remove link" {
-						callWorkflowTool(t, session, "kata.edit", map[string]any{"ref": subjectRef, "add_related": []any{target.Name + "#" + moved.ShortID}})
+						callWorkflowTool(t, session, "poomsae.edit", map[string]any{"ref": subjectRef, "add_related": []any{target.Name + "#" + moved.ShortID}})
 						field = "remove_related"
 					}
-					callWorkflowTool(t, session, "kata.edit", map[string]any{"ref": subjectRef, field: []any{historicalRef}})
+					callWorkflowTool(t, session, "poomsae.edit", map[string]any{"ref": subjectRef, field: []any{historicalRef}})
 					links, err := store.LinksByIssue(t.Context(), subject.ID)
 					require.NoError(t, err)
 					if operation == "remove link" {
@@ -55,7 +55,7 @@ func TestHistoricalRelationshipTargetsUseCurrentIncludedProject(t *testing.T) {
 				if operation == "superseded" {
 					evidenceType = "superseded-by"
 				}
-				callWorkflowTool(t, session, "kata.close", map[string]any{
+				callWorkflowTool(t, session, "poomsae.close", map[string]any{
 					"ref": subjectRef, "reason": operation, "message": "Recorded the existing replacement after checking the moved issue identity.",
 					"evidence": []any{map[string]any{"type": evidenceType, "issue_ref": historicalRef}},
 				})
@@ -98,10 +98,10 @@ func TestHistoricalRelationshipTargetsRejectExcludedAndArchivedProjects(t *testi
 				require.NoError(t, err)
 				subjectRef := source.Name + "#" + subject.ShortID
 				historicalRef := source.Name + "#" + peer.ShortID
-				tool := "kata.edit"
+				tool := "poomsae.edit"
 				args := map[string]any{"ref": subjectRef, "add_related": []any{historicalRef}}
 				if operation == "duplicate" {
-					tool = "kata.close"
+					tool = "poomsae.close"
 					args = map[string]any{
 						"ref": subjectRef, "reason": "duplicate", "message": "Recorded the existing replacement after checking the moved issue identity.",
 						"evidence": []any{map[string]any{"type": "duplicate-of", "issue_ref": historicalRef}},

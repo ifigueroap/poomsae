@@ -5,13 +5,13 @@ import RecurrenceEditorDialog from './RecurrenceEditorDialog.svelte'
 import RecurrenceDeleteDialog from './RecurrenceDeleteDialog.svelte'
 import { ADVANCED_LAST_WEEKDAY } from '../lib/recurrence/__fixtures__/advancedRules'
 import { MONTH_LONG } from '../lib/recurrence/rrule'
-import type { KataRecurrence } from '../lib/kata/types'
+import type { PoomsaeRecurrence } from '../lib/poomsae/types'
 
 afterEach(cleanup)
 
 const createMode = { kind: 'create', projectID: 1, initialIssueRef: 'abc4' } as const
 
-const sample: KataRecurrence = {
+const sample: PoomsaeRecurrence = {
   id: 7,
   uid: 'rec-uid',
   project_id: 1,
@@ -709,7 +709,7 @@ describe('RecurrenceEditor — edit diff', () => {
     // toggles WE off then on. The form's byDay should equal [MO,WE,FR]
     // (canonical), not [MO,FR,WE]. We assert by checking that Save stays
     // disabled (no changes detected) after the redundant toggle.
-    const rec: KataRecurrence = {
+    const rec: PoomsaeRecurrence = {
       id: 9,
       uid: 'rec-9',
       project_id: 1,

@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const identityBootstrapToken = "identity-bootstrap-token"
@@ -149,7 +149,7 @@ func TestTokenIdentity_FederationPersonalTokenBridgeConnectAndPush(t *testing.T)
 	bin := buildKataBinary(t)
 	hubAddr, hubHome, stopHub := startIdentityDaemon(t, bin)
 	defer stopHub()
-	hubDB, err := sqlitestore.Open(ctx, filepath.Join(hubHome, "kata.db"))
+	hubDB, err := sqlitestore.Open(ctx, filepath.Join(hubHome, "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = hubDB.Close() })
 
@@ -164,9 +164,9 @@ func TestTokenIdentity_FederationPersonalTokenBridgeConnectAndPush(t *testing.T)
 	spokeDirs := newE2EDirs(t)
 	spokeEnv := append(spokeDirs.env(),
 		"EXAMPLE_HUB_TOKEN="+userToken,
-		"KATA_AUTH_TOKEN=",
-		"KATA_FEDERATION_PULL_INTERVAL_MS=25",
-		"KATA_HTTP_TIMEOUT=10s",
+		"POOMSAE_AUTH_TOKEN=",
+		"POOMSAE_FEDERATION_PULL_INTERVAL_MS=25",
+		"POOMSAE_HTTP_TIMEOUT=10s",
 	)
 	spokeConfig := fmt.Sprintf("[[daemon]]\nname = \"hub\"\nurl = %q\ntoken_env = \"EXAMPLE_HUB_TOKEN\"\nallow_insecure = true\n", "http://"+hubAddr)
 	require.NoError(t, os.WriteFile(filepath.Join(spokeDirs.home, "config.toml"), []byte(spokeConfig), 0o600))
@@ -247,10 +247,10 @@ func startIdentityDaemon(t *testing.T, bin string) (addr, serverHome string, sto
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground", "--listen", addr) //nolint:gosec
 	cmd.Env = append(os.Environ(),
-		"KATA_HOME="+serverHome,
-		"KATA_DB="+filepath.Join(serverHome, "kata.db"),
-		"KATA_AUTH_TOKEN=",
-		"KATA_AUTOSTART=",
+		"POOMSAE_HOME="+serverHome,
+		"POOMSAE_DB="+filepath.Join(serverHome, "poomsae.db"),
+		"POOMSAE_AUTH_TOKEN=",
+		"POOMSAE_AUTOSTART=",
 	)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = stderr
@@ -277,11 +277,11 @@ func startIdentityDaemon(t *testing.T, bin string) (addr, serverHome string, sto
 
 func identityCLIEnv(home, addr, token string) []string {
 	return append(os.Environ(),
-		"KATA_HOME="+home,
-		"KATA_DB="+filepath.Join(home, "kata.db"),
-		"KATA_SERVER=http://"+addr,
-		"KATA_AUTH_TOKEN="+token,
-		"KATA_AUTHOR=e2e-client",
+		"POOMSAE_HOME="+home,
+		"POOMSAE_DB="+filepath.Join(home, "poomsae.db"),
+		"POOMSAE_SERVER=http://"+addr,
+		"POOMSAE_AUTH_TOKEN="+token,
+		"POOMSAE_AUTHOR=e2e-client",
 	)
 }
 

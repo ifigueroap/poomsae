@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/hooks"
 )
 
 // recordingSink captures every Enqueue for assertion. Lives only in tests;
@@ -83,7 +83,7 @@ func TestInitProjectDeliversCommittedEventWhenConfigWriteFails(t *testing.T) {
 	subscription := broadcaster.Subscribe(daemon.SubFilter{})
 	defer subscription.Unsub()
 	h := newServerWithGitWorkspace(t, "", withHooksSink(sink), withBroadcaster(broadcaster))
-	require.NoError(t, os.Mkdir(filepath.Join(h.dir, ".kata.toml"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(h.dir, ".poomsae.toml"), 0o700))
 
 	response, body := postJSON(t, h.ts.(*httptest.Server), "/api/v1/projects", map[string]any{
 		"name": "example-project", "start_path": h.dir, "actor": "user-a",

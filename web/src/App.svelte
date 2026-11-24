@@ -3,10 +3,10 @@
   import { startBrowserTelemetry } from '@kenn-io/kit-ui/utils/browser-telemetry'
   import { onMount } from 'svelte'
 
-  import { commentRetryIdentity } from './lib/kata/commentRetry'
-  import type { KataCommentReplyIntent } from './lib/kata/types'
+  import { commentRetryIdentity } from './lib/poomsae/commentRetry'
+  import type { PoomsaeCommentReplyIntent } from './lib/poomsae/types'
   import AppShell from './components/AppShell.svelte'
-  import KataDaemonSwitcher from './components/KataDaemonSwitcher.svelte'
+  import PoomsaeDaemonSwitcher from './components/PoomsaeDaemonSwitcher.svelte'
   import LaunchHint from './components/LaunchHint.svelte'
   import LoginView from './components/LoginView.svelte'
   import RouteError from './components/RouteError.svelte'
@@ -73,14 +73,14 @@
     RefreshScheduler,
   } from './lib/events/controller'
   import { openEventStream } from './lib/events/sse'
-  import { parseRoute, serializeRoute, screenNameForRoute, type KataRoute } from './lib/router'
+  import { parseRoute, serializeRoute, screenNameForRoute, type PoomsaeRoute } from './lib/router'
   import type {
-    KataCreateRecurrenceInput,
-    KataPatchRecurrenceInput,
-    KataRecurrence,
-    KataTaskCloseRequest,
-    KataTaskEditPatch,
-  } from './lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaePatchRecurrenceInput,
+    PoomsaeRecurrence,
+    PoomsaeTaskCloseRequest,
+    PoomsaeTaskEditPatch,
+  } from './lib/poomsae/types'
   import {
     MutationController,
     type MutationContext,
@@ -105,15 +105,15 @@
   import { startSessionEndedReporting } from './lib/session-ended'
 
   type ShellMode = 'loading' | 'launch' | 'login' | 'route-error' | 'ready'
-  type AppRoute = Exclude<KataRoute, { kind: 'route-error' }>
-  const requestActor = 'kata-web'
+  type AppRoute = Exclude<PoomsaeRoute, { kind: 'route-error' }>
+  const requestActor = 'poomsae-web'
   const routePath = applicationRoutePath()
   const mountedApplication = currentApplicationBaseURL().pathname !== '/'
 
-  initTheme({ storageKey: 'kata.kit-ui.theme.v1' })
+  initTheme({ storageKey: 'poomsae.kit-ui.theme.v1' })
 
   if (window.location.pathname === '/') {
-    history.replaceState(null, '', `/kata${window.location.search}${window.location.hash}`)
+    history.replaceState(null, '', `/poomsae${window.location.search}${window.location.hash}`)
   }
   const launch = consumeLaunchFragment(window.location, history.replaceState.bind(history))
   const launchDaemonID = launch.daemonID
@@ -191,7 +191,7 @@
   let destroyed = false
   const observedFetch: typeof fetch = async (input, init) => {
     const response = await fetch(input, init)
-    const authentication = response.headers.get('X-Kata-Web-Authentication')
+    const authentication = response.headers.get('X-Poomsae-Web-Authentication')
     if (
       authentication === 'loopback' ||
       authentication === 'login' ||
@@ -233,7 +233,7 @@
     browserTelemetry = startBrowserTelemetry({
       route: '/api/v1/ui/telemetry',
       surface: 'web',
-      storageKey: 'kata.web.app-opened.v1',
+      storageKey: 'poomsae.web.app-opened.v1',
       post: async (_route, event, options) => {
         const response = await captureTelemetryEvent(event, options)
         if (response.status === 401) {
@@ -360,7 +360,7 @@
 
   $effect(() => {
     if (
-      route.kind === 'kata' &&
+      route.kind === 'poomsae' &&
       route.view === 'credentials' &&
       authority?.snapshot &&
       authority.snapshot.capabilities.token_audit_read !== true &&
@@ -385,7 +385,7 @@
       route.kind === 'route-error' ||
       !authority?.snapshot
     ) {
-      document.title = 'Kata'
+      document.title = 'Poomsae'
     }
   })
 
@@ -419,7 +419,7 @@
     window.addEventListener('focus', focus)
     window.addEventListener('pageshow', environment)
     window.addEventListener('popstate', popstate)
-    window.addEventListener('kata:versionMismatch', showVersionMismatch)
+    window.addEventListener('poomsae:versionMismatch', showVersionMismatch)
     const credentialRefreshTimer = window.setInterval(() => {
       if (!document.hidden) {
         syncRefreshGeneration++
@@ -440,7 +440,7 @@
       window.removeEventListener('focus', focus)
       window.removeEventListener('pageshow', environment)
       window.removeEventListener('popstate', popstate)
-      window.removeEventListener('kata:versionMismatch', showVersionMismatch)
+      window.removeEventListener('poomsae:versionMismatch', showVersionMismatch)
       window.clearInterval(credentialRefreshTimer)
       stopQuietSubscription?.()
       browserTelemetry?.stop()
@@ -491,7 +491,7 @@
 
   function search(reference: string): void {
     navigate({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'all-open',
       graph: false,
       filters: { status: ['all'], owner: [], label: [], relationship: [], text: reference },
@@ -499,7 +499,7 @@
   }
 
   function navigate(next: AppRoute): void {
-    const current = route.kind === 'kata' ? route : undefined
+    const current = route.kind === 'poomsae' ? route : undefined
     if (
       next.link &&
       (!next.issueUID ||
@@ -561,7 +561,7 @@
 
   // Reads the route afresh after an await; TypeScript would keep a narrowing
   // of the route variable from before it.
-  function currentRoute(): KataRoute {
+  function currentRoute(): PoomsaeRoute {
     return route
   }
 
@@ -640,7 +640,7 @@
           },
           requestActor,
         ),
-        { headers: { 'Idempotency-Key': create.key, 'X-Kata-Surface': 'web' } },
+        { headers: { 'Idempotency-Key': create.key, 'X-Poomsae-Surface': 'web' } },
       ),
     )
     if (!accepted) throw new Error(mutationMessage(mutationState) ?? 'Could not create task.')
@@ -681,7 +681,7 @@
     return result.status === 200 ? (result.data.issues ?? []) : []
   }
 
-  async function editIssue(uid: string, patch: KataTaskEditPatch): Promise<boolean> {
+  async function editIssue(uid: string, patch: PoomsaeTaskEditPatch): Promise<boolean> {
     const target = selectedMutationTarget(uid)
     if (!target) return false
     const related = patch.links_delta?.add_related?.[0]
@@ -736,7 +736,7 @@
   async function addComment(
     uid: string,
     body: string,
-    reply?: KataCommentReplyIntent,
+    reply?: PoomsaeCommentReplyIntent,
   ): Promise<boolean> {
     const target = selectedMutationTarget(uid)
     if (!target) return false
@@ -765,7 +765,7 @@
 
   async function createRecurrence(
     projectID: number,
-    input: KataCreateRecurrenceInput,
+    input: PoomsaeCreateRecurrenceInput,
   ): Promise<void> {
     const body: CreateRecurrenceRequestBody = {
       initial_issue_ref: input.initialIssueRef,
@@ -785,8 +785,8 @@
   }
 
   async function patchRecurrence(
-    recurrence: KataRecurrence,
-    input: KataPatchRecurrenceInput,
+    recurrence: PoomsaeRecurrence,
+    input: PoomsaePatchRecurrenceInput,
     etag: string,
   ): Promise<void> {
     const body: PatchRecurrenceRequestBody = {}
@@ -814,7 +814,7 @@
     throw new Error(mutationMessage(mutationState) ?? 'Could not update recurrence.')
   }
 
-  async function deleteRecurrence(recurrence: KataRecurrence): Promise<void> {
+  async function deleteRecurrence(recurrence: PoomsaeRecurrence): Promise<void> {
     const accepted = await runMutation(
       { draft: recurrence, revision: `"rev-${recurrence.revision}"` },
       async (context) => {
@@ -838,7 +838,7 @@
   }
 
   function recurrenceTemplate(
-    input: KataCreateRecurrenceInput['template'],
+    input: PoomsaeCreateRecurrenceInput['template'],
   ): RecurrenceTemplateInput {
     const template: RecurrenceTemplateInput = {
       title: input.title,
@@ -852,7 +852,7 @@
   }
 
   function recurrenceTemplateUpdate(
-    input: NonNullable<KataPatchRecurrenceInput['template']>,
+    input: NonNullable<PoomsaePatchRecurrenceInput['template']>,
   ): RecurrenceTemplateUpdateInput {
     const template: RecurrenceTemplateUpdateInput = {}
     if (input.title !== undefined) template.title = input.title
@@ -949,7 +949,7 @@
     )
   }
 
-  async function closeIssue(request: KataTaskCloseRequest): Promise<boolean> {
+  async function closeIssue(request: PoomsaeTaskCloseRequest): Promise<boolean> {
     const selected = selectedIssue()
     const target = selected ? selectedMutationTarget(selected.uid) : undefined
     if (!target) return false
@@ -957,7 +957,7 @@
       closeIssueRequest(
         { projectId: target.project_id, ref: target.ref },
         context.body({ ...request }, requestActor),
-        { headers: { 'X-Kata-Surface': 'web' } },
+        { headers: { 'X-Poomsae-Surface': 'web' } },
       ),
     )
   }
@@ -1018,7 +1018,7 @@
     }
     if (state.kind === 'domain-error') return `${state.code}: ${state.detail}`
     if (state.kind === 'uncertain') {
-      return 'The write result is uncertain. Kata refreshed current authority before retry.'
+      return 'The write result is uncertain. Poomsae refreshed current authority before retry.'
     }
     if (state.kind === 'blocked') return "Can't make changes. Refresh or check access."
     return undefined
@@ -1026,7 +1026,7 @@
 
   function initialMode(
     launchState: LaunchState,
-    currentRoute: KataRoute,
+    currentRoute: PoomsaeRoute,
     authentication: AuthenticationMode | undefined,
   ): ShellMode {
     if (launchState.kind === 'login') return 'login'
@@ -1160,7 +1160,7 @@
       activeDaemonID = nextDaemonID
       if (!activeDaemonID) {
         snapshots.clear()
-        daemonError = 'No compatible Kata daemon is available'
+        daemonError = 'No compatible Poomsae daemon is available'
         return false
       }
       daemonError = undefined
@@ -1415,8 +1415,8 @@
   }
 </script>
 
-<main aria-label="Kata" class="kata-app" class:ready={mode === 'ready' && !versionMismatch}>
-  {#if mode === 'ready' && !versionMismatch}<h1 class="kit-sr-only">Kata</h1>{/if}
+<main aria-label="Poomsae" class="poomsae-app" class:ready={mode === 'ready' && !versionMismatch}>
+  {#if mode === 'ready' && !versionMismatch}<h1 class="kit-sr-only">Poomsae</h1>{/if}
   {#if versionMismatch}
     <VersionMismatch />
   {:else if mode === 'loading'}
@@ -1429,7 +1429,7 @@
           onclick={() => void startAuthority()}
         />
         {#if daemonInfos.length > 0}
-          <KataDaemonSwitcher
+          <PoomsaeDaemonSwitcher
             daemons={daemonInfos}
             activeId={activeDaemonID}
             activeStatusLabel={daemonError}
@@ -1444,12 +1444,12 @@
       <StatusPage
         alert
         tone="danger"
-        title="Kata couldn't load this workspace"
+        title="Poomsae couldn't load this workspace"
         description={authority.error}
       >
         <Button tone="info" surface="solid" label="Retry" onclick={() => void startAuthority()} />
         {#if daemonInfos.length > 0}
-          <KataDaemonSwitcher
+          <PoomsaeDaemonSwitcher
             daemons={daemonInfos}
             activeId={activeDaemonID}
             activeStatusLabel={daemonError}
@@ -1469,7 +1469,7 @@
       onSearch={search}
       onOpenInbox={() =>
         navigate({
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'inbox',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [], text: '' },
@@ -1482,7 +1482,7 @@
       <LoginView {returnPath} onLogin={login} />
     {/if}
     {#if daemonInfos.length > 0 && (mode === 'launch' || mode === 'login')}
-      <KataDaemonSwitcher
+      <PoomsaeDaemonSwitcher
         daemons={daemonInfos}
         activeId={activeDaemonID}
         activeStatusLabel={daemonError}

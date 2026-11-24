@@ -6,12 +6,12 @@ import (
 	"sort"
 	"testing"
 
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
 
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestSchemaBootstrapRejectsExtensionsOutsidePublic(t *testing.T) {
@@ -41,7 +41,7 @@ func TestSchemaBootstrapRejectsExtensionsOutsidePublic(t *testing.T) {
 			}
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), fmt.Sprintf(
-				`postgres extension %q is installed in schema "extension_source"; move it to "public" before installing kata`,
+				`postgres extension %q is installed in schema "extension_source"; move it to "public" before installing poomsae`,
 				extension))
 
 			var installedSchema string
@@ -53,13 +53,13 @@ func TestSchemaBootstrapRejectsExtensionsOutsidePublic(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "extension_source", installedSchema)
 
-			var kataSchemaExists bool
+			var poomsaeSchemaExists bool
 			err = admin.QueryRowContext(ctx, `
 				SELECT EXISTS (
-					SELECT 1 FROM pg_namespace WHERE nspname = 'kata'
-				)`).Scan(&kataSchemaExists)
+					SELECT 1 FROM pg_namespace WHERE nspname = 'poomsae'
+				)`).Scan(&poomsaeSchemaExists)
 			require.NoError(t, err)
-			assert.False(t, kataSchemaExists, "failed bootstrap must roll back the Kata schema")
+			assert.False(t, poomsaeSchemaExists, "failed bootstrap must roll back the Poomsae schema")
 		})
 	}
 }

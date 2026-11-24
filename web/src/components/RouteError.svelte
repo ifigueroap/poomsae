@@ -1,10 +1,10 @@
 <script lang="ts">
   import { Button } from '@kenn-io/kit-ui'
-  import type { KataRoute } from '../lib/router'
+  import type { PoomsaeRoute } from '../lib/router'
   import StatusPage from './shared/StatusPage.svelte'
 
   interface Props {
-    route: Extract<KataRoute, { kind: 'route-error' }>
+    route: Extract<PoomsaeRoute, { kind: 'route-error' }>
     onSearch: (reference: string) => void
     onOpenInbox: () => void
   }

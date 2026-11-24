@@ -1,8 +1,8 @@
 // Parse/serialize RRULE strings into a Common/Advanced/Invalid tri-state.
 // The classification rule of thumb:
-//   Invalid  = Kata (rrule-go) would reject the string
-//   Advanced = Kata accepts but the Common form cannot represent it
-//   Common   = Kata accepts and every part is form-representable
+//   Invalid  = Poomsae (rrule-go) would reject the string
+//   Advanced = Poomsae accepts but the Common form cannot represent it
+//   Common   = Poomsae accepts and every part is form-representable
 // The frontend MUST NOT reject any RRULE the server accepts.
 
 export type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'

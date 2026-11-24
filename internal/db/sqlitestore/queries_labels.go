@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // AddLabel attaches a label to an issue.

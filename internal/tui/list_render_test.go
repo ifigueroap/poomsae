@@ -149,9 +149,9 @@ func TestTitleBarLeft_SanitizeEmptyFallsBackToPlaceholder(t *testing.T) {
 	if got2 != "Project: —" {
 		t.Fatalf("titleBarLeft empty name = %q, want %q", got2, "Project: —")
 	}
-	got3 := titleBarLeft(scope{projectName: "kata"})
-	if got3 != "Project: kata" {
-		t.Fatalf("titleBarLeft happy path = %q, want %q", got3, "Project: kata")
+	got3 := titleBarLeft(scope{projectName: "poomsae"})
+	if got3 != "Project: poomsae" {
+		t.Fatalf("titleBarLeft happy path = %q, want %q", got3, "Project: poomsae")
 	}
 	got4 := titleBarLeft(scope{allProjects: true})
 	if got4 != "Project: all" {
@@ -161,21 +161,21 @@ func TestTitleBarLeft_SanitizeEmptyFallsBackToPlaceholder(t *testing.T) {
 
 func TestTitleBarShowsDaemonName(t *testing.T) {
 	useNoColor(t)
-	got := renderTitleBar(100, scope{projectName: "kata"}, "dev", "shared")
+	got := renderTitleBar(100, scope{projectName: "poomsae"}, "dev", "shared")
 
 	assertContains(t, stripANSI(got), "Daemon: shared", "title bar missing configured daemon name")
 }
 
 func TestTitleBarShowsTaggedVersion(t *testing.T) {
 	useNoColor(t)
-	got := stripANSI(renderTitleBar(100, scope{projectName: "kata"}, "v0.5.0"))
+	got := stripANSI(renderTitleBar(100, scope{projectName: "poomsae"}, "v0.5.0"))
 
-	assertContains(t, got, "kata カタ · v0.5.0", "title bar missing tagged version")
+	assertContains(t, got, "poomsae カタ · v0.5.0", "title bar missing tagged version")
 }
 
 func TestTitleBarShowsDaemonHostFallback(t *testing.T) {
 	useNoColor(t)
-	got := renderTitleBar(120, scope{projectName: "kata"}, "dev", "daemon.internal:7777")
+	got := renderTitleBar(120, scope{projectName: "poomsae"}, "dev", "daemon.internal:7777")
 
 	assertContains(t, stripANSI(got), "Daemon: daemon.internal:7777", "title bar missing daemon host fallback")
 }
@@ -183,7 +183,7 @@ func TestTitleBarShowsDaemonHostFallback(t *testing.T) {
 func TestTitleBarShowsLocalDaemonFallback(t *testing.T) {
 	useNoColor(t)
 	m := initialModel(Options{})
-	m.scope = scope{projectName: "kata"}
+	m.scope = scope{projectName: "poomsae"}
 	m.activeDaemon = daemonTarget{Local: true}
 	m.list.loading = false
 
@@ -194,7 +194,7 @@ func TestTitleBarShowsLocalDaemonFallback(t *testing.T) {
 
 func TestTitleBarSanitizesDaemonLabel(t *testing.T) {
 	useNoColor(t)
-	got := renderTitleBar(100, scope{projectName: "kata"}, "dev", "shared\nbad")
+	got := renderTitleBar(100, scope{projectName: "poomsae"}, "dev", "shared\nbad")
 
 	assertContains(t, stripANSI(got), `Daemon: shared\nbad`, "title bar did not sanitize daemon label")
 }
@@ -205,21 +205,21 @@ func TestDetailTitleBarShowsDaemon(t *testing.T) {
 	dm := detailModel{issue: &iss}
 
 	got := dm.View(100, 18, viewChrome{
-		scope:   scope{projectName: "kata"},
+		scope:   scope{projectName: "poomsae"},
 		version: "v0.5.0",
 		daemon:  "shared",
 	})
 
 	clean := stripANSI(got)
 	assertContains(t, clean, "Daemon: shared", "detail title bar missing daemon label")
-	assertContains(t, clean, "kata カタ · v0.5.0", "detail title bar missing tagged version")
+	assertContains(t, clean, "poomsae カタ · v0.5.0", "detail title bar missing tagged version")
 }
 
 func TestSplitTitleBarShowsDaemon(t *testing.T) {
 	useNoColor(t)
-	origVersion := kataVersion
-	kataVersion = "v0.5.0"
-	t.Cleanup(func() { kataVersion = origVersion })
+	origVersion := poomsaeVersion
+	poomsaeVersion = "v0.5.0"
+	t.Cleanup(func() { poomsaeVersion = origVersion })
 	m := resizeModel(newTestModel(), 130, 30)
 	m.layout = splitlayout.Split
 	m.activeDaemon = daemonTarget{Name: "shared"}
@@ -231,7 +231,7 @@ func TestSplitTitleBarShowsDaemon(t *testing.T) {
 
 	clean := stripANSI(got)
 	assertContains(t, clean, "Daemon: shared", "split title bar missing daemon label")
-	assertContains(t, clean, "kata カタ · v0.5.0", "split title bar missing tagged version")
+	assertContains(t, clean, "poomsae カタ · v0.5.0", "split title bar missing tagged version")
 }
 
 // TestRenderLabelChips_LargeOverflowReservesActualWidth pins the
@@ -523,7 +523,7 @@ func TestListView_BodyBudgetCountsOnlyTableHeader(t *testing.T) {
 		{UID: "01TEST-ddd4", ShortID: "ddd4", Title: "four", Status: "open"},
 	}}
 
-	got := stripANSI(lm.View(100, 10, viewChrome{scope: scope{projectName: "kata"}}))
+	got := stripANSI(lm.View(100, 10, viewChrome{scope: scope{projectName: "poomsae"}}))
 	assertContainsAll(t, got, "one", "two", "three", "four", "[1/4]")
 	if strings.Contains(got, "[1-3 of 4]") {
 		t.Fatalf("scroll indicator used stale header+separator budget:\n%s", got)

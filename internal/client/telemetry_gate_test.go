@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 func TestTelemetryGateWaitsAndRechecks(t *testing.T) {
 	for _, receipt := range []string{"queued", "disabled", "deadline"} {
 		t.Run(receipt, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			synctest.Test(t, func(t *testing.T) {
 				const target = "http://daemon.example"
 				day := time.Now().UTC().Format(time.DateOnly)
@@ -71,7 +71,7 @@ func TestTelemetryGateWaitsAndRechecks(t *testing.T) {
 func TestTelemetryGateSettledDayDoesNotWait(t *testing.T) {
 	for _, settled := range []string{"claimed", "disabled"} {
 		t.Run(settled, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			synctest.Test(t, func(t *testing.T) {
 				const target = "http://daemon.example"
 				day := time.Now().UTC().Format(time.DateOnly)
@@ -107,7 +107,7 @@ func TestTelemetryGateUnwritableHomeStillReports(t *testing.T) {
 	for _, home := range []string{"file", "read-only"} {
 		t.Run(home, func(t *testing.T) {
 			dir := t.TempDir()
-			t.Setenv("KATA_HOME", dir)
+			t.Setenv("POOMSAE_HOME", dir)
 			telemetryDir := filepath.Join(dir, "telemetry")
 			if home == "file" {
 				require.NoError(t, os.WriteFile(telemetryDir, nil, 0o600))

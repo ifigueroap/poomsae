@@ -18,7 +18,7 @@ daemon, or issue further credentials. The coordinator can revoke access, and
 access expires without depending on the worker shutting down correctly.
 
 The intended workflow is a worktree running on a disposable remote machine, or
-an independently credentialed teammate. The worker uses the normal Kata CLI or
+an independently credentialed teammate. The worker uses the normal Poomsae CLI or
 MCP tools against the issuing daemon. It does not receive a copy of the user's
 database, a hub administration credential, or a federation enrollment.
 
@@ -72,7 +72,7 @@ default parent. Children and later descendants become accessible immediately.
 Existing revision, claim, and completion-evidence rules still apply.
 
 The launcher reads the protected issuance file and supplies its value only to
-the worker process through `KATA_AUTH_TOKEN`, alongside `KATA_SERVER`. The file
+the worker process through `POOMSAE_AUTH_TOKEN`, alongside `POOMSAE_SERVER`. The file
 path alone is not an authentication input. A missing or unreadable file fails
 startup without falling back to a coordinator credential. See the
 [provisioning example](../operations/remote-daemon.md#identity-tokens).
@@ -411,7 +411,7 @@ The main implementation locations are:
   atomic authorization, lifecycle persistence, replay, and migration support.
 - `internal/daemon/handlers_events.go` and UI snapshot/session code for shared
   projections, stream revalidation, authority-aware caching, and browser scope.
-- `internal/api`, generated clients, `cmd/kata/tokens.go`, and
+- `internal/api`, generated clients, `cmd/poomsae/tokens.go`, and
   `internal/mcp/tokens.go` for the common issuance contract and safe file output.
 
 These responsibilities use existing daemon and storage interfaces.

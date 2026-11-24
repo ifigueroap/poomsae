@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestCreateIssue_IdentityModeOverridesBodyActor(t *testing.T) {
@@ -216,7 +216,7 @@ func TestGetIssue_ResolvesByShortID(t *testing.T) {
 	// QualifiedID is rendered via the IssueOut wire projection on the list
 	// surface; the show response keeps the raw db.Issue, so we assert the
 	// project name and short_id appear consistently.
-	assert.Equal(t, project.Name, "kata")
+	assert.Equal(t, project.Name, "poomsae")
 }
 
 // TestGetIssue_ResolvesByULID pins the ULID branch of the path resolver.
@@ -513,7 +513,7 @@ func TestEditIssueExternalRootContentOwnedReturnsNeutralConflict(t *testing.T) {
 		} `json:"error"`
 	}
 	require.NoError(t, json.Unmarshal(raw, &envelope))
-	assert.Contains(t, envelope.Error.Hint, "kata bridge unbind <issue-ref>")
+	assert.Contains(t, envelope.Error.Hint, "poomsae bridge unbind <issue-ref>")
 	assert.NotContains(t, string(raw), "example-connector")
 	assert.NotContains(t, string(raw), "opaque-root-key")
 	stored, readErr := env.DB.IssueByID(t.Context(), issue.ID)
@@ -845,7 +845,7 @@ func TestEditIssue_LinksDelta_SetParent(t *testing.T) {
 
 // TestEditIssue_LinksDelta_RemoveBlocksAfterPeerSoftDeleted pins that
 // soft-deleting one end of a link does NOT prevent the other end from
-// removing the link via `kata edit --remove-blocks N`. The link row is
+// removing the link via `poomsae edit --remove-blocks N`. The link row is
 // real and the user can still ask to clean it up; the peer's open/
 // closed/deleted state is irrelevant for addressing the link.
 func TestEditIssue_LinksDelta_RemoveBlocksAfterPeerSoftDeleted(t *testing.T) {
@@ -867,7 +867,7 @@ func TestEditIssue_LinksDelta_RemoveBlocksAfterPeerSoftDeleted(t *testing.T) {
 
 	// Soft-delete peer.
 	delResp := postWithHeader(t, ts, issueURLRef(pid, peer, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": "DELETE " + project.Name + "#" + peer},
+		map[string]string{"X-Poomsae-Confirm": "DELETE " + project.Name + "#" + peer},
 		map[string]any{"actor": "tester"})
 	require.Equalf(t, 200, delResp.status, "delete: %s", string(delResp.body))
 
@@ -915,7 +915,7 @@ func TestShowIssue_LinkPeerSoftDeletedReturns200(t *testing.T) {
 
 	// Soft-delete peer.
 	delResp := postWithHeader(t, ts, issueURLRef(pid, peer, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": "DELETE " + project.Name + "#" + peer},
+		map[string]string{"X-Poomsae-Confirm": "DELETE " + project.Name + "#" + peer},
 		map[string]any{"actor": "tester"})
 	require.Equalf(t, 200, delResp.status, "delete: %s", string(delResp.body))
 
@@ -967,7 +967,7 @@ func TestShowIssue_ParentPeerSoftDeletedReturns200(t *testing.T) {
 	})
 	require.Equal(t, 200, resp.StatusCode)
 	delResp := postWithHeader(t, ts, issueURLRef(pid, parRef, "actions/delete"),
-		map[string]string{"X-Kata-Confirm": "DELETE " + project.Name + "#" + parRef},
+		map[string]string{"X-Poomsae-Confirm": "DELETE " + project.Name + "#" + parRef},
 		map[string]any{"actor": "tester"})
 	require.Equalf(t, 200, delResp.status, "delete: %s", string(delResp.body))
 
@@ -1403,7 +1403,7 @@ func TestEditIssue_Priority_BothFlagsRejected(t *testing.T) {
 // a PATCH that includes a field flag whose value already matches the
 // row must NOT emit issue.updated, must NOT bump updated_at, and must
 // NOT report changed=true. Without this, a request like
-// `kata edit X --title "(current title)" --remove-blocks Y` fires
+// `poomsae edit X --title "(current title)" --remove-blocks Y` fires
 // hooks/digest activity for a non-mutation, breaking the
 // idempotency contract the patch establishes.
 func TestEditIssue_FieldsUnchanged_NoOp(t *testing.T) {
@@ -1694,7 +1694,7 @@ func TestCreateIssue_WithInitialState(t *testing.T) {
 
 func TestCreateIssue_InitialLinkToMissingTargetIs404(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	resp, _ := envDoRaw(t, env, http.MethodPost, projectPath(pid)+"/issues", map[string]any{
 		"actor": "tester", "title": "child",
 		"links": []map[string]any{{"type": "parent", "to_ref": "zzzz"}},
@@ -1722,7 +1722,7 @@ func TestCreateIssue_RejectsArchivedProject(t *testing.T) {
 
 func TestCreateIssue_InvalidLabelIs400(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	resp, _ := envDoRaw(t, env, http.MethodPost, projectPath(pid)+"/issues", map[string]any{
 		"actor": "tester", "title": "x",
 		"labels": []string{"BadCase"},
@@ -1732,12 +1732,12 @@ func TestCreateIssue_InvalidLabelIs400(t *testing.T) {
 
 func TestCreateIssue_PriorityLabelRejected(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	resp, body := envDoRaw(t, env, http.MethodPost, projectPath(pid)+"/issues", map[string]any{
 		"actor": "tester", "title": "priority label", "labels": []string{"p2"},
 	}, nil)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Contains(t, string(body), "kata create --priority N")
+	assert.Contains(t, string(body), "poomsae create --priority N")
 	labels := []string{"p2"}
 	_, _, err := env.DB.CreateIssue(t.Context(), db.CreateIssueParams{
 		ProjectID: pid, Title: "priority label", Author: "tester", Labels: labels,
@@ -1756,7 +1756,7 @@ func TestCreateIssue_PriorityLabelRejected(t *testing.T) {
 // catches this via ErrSelfLink and the handler must map it.
 func TestCreateIssue_InitialSelfLinkIs400(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	resp, _ := envDoRaw(t, env, http.MethodPost, projectPath(pid)+"/issues", map[string]any{
 		"actor": "tester", "title": "self",
 		"links": []map[string]any{{"type": "parent", "to_number": 1}},
@@ -2146,7 +2146,7 @@ func TestCreate_IdempotencyDeletedIs409(t *testing.T) {
 	// Look up the original issue's short_id to pin the hint format.
 	deletedIssue, err := h.DB().IssueByID(t.Context(), firstResp.Issue.ID)
 	require.NoError(t, err)
-	assert.Contains(t, string(second.body), "kata restore "+deletedIssue.ShortID,
+	assert.Contains(t, string(second.body), "poomsae restore "+deletedIssue.ShortID,
 		"hint must point at the restore command")
 }
 
@@ -2261,7 +2261,7 @@ func TestCreate_IdempotencyWinsOverForceNew(t *testing.T) {
 // can render label chips without an extra fetch per row.
 func TestListIssues_HydratesLabels(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	first := createIssueViaHTTP(t, env, pid, "first")
 	second := createIssueViaHTTP(t, env, pid, "second")
 	postLabel(t, env, pid, first, "prio-1")
@@ -2288,7 +2288,7 @@ func TestListIssues_HydratesLabels(t *testing.T) {
 
 func TestListIssues_IncludesHierarchyMetadata(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	parent := createIssueViaHTTP(t, env, pid, "parent")
 	child := createIssueViaHTTP(t, env, pid, "child")
 	postLink(t, env, pid, child, "parent", parent)
@@ -2323,7 +2323,7 @@ func TestListIssues_IncludesHierarchyMetadata(t *testing.T) {
 
 func TestListIssues_IncludesBlockerMetadata(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	project, err := env.DB.ProjectByID(t.Context(), pid)
 	require.NoError(t, err)
 	blocker := createIssueViaHTTP(t, env, pid, "blocker")
@@ -2352,12 +2352,12 @@ func TestListIssues_IncludesBlockerMetadata(t *testing.T) {
 
 // TestListIssues_BlockedByPeerCarriesStatus pins that a list response's
 // blocked_by LinkPeer entries carry the blocker issue's own status (0.9.0),
-// so `kata list` human output can render a blocked glyph without a
+// so `poomsae list` human output can render a blocked glyph without a
 // per-peer lookup. Status must reflect the blocker's current state: open
 // while unresolved, closed once the blocker is closed.
 func TestListIssues_BlockedByPeerCarriesStatus(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	blocker := createIssueViaHTTP(t, env, pid, "blocker")
 	blocked := createIssueViaHTTP(t, env, pid, "blocked")
 	postLink(t, env, pid, blocker, "blocks", blocked)
@@ -2396,7 +2396,7 @@ func TestListIssues_BlockedByPeerCarriesStatus(t *testing.T) {
 // project, false when the only blocker's project is archived — mirroring the
 // ready predicate. Crucially it also asserts wire completeness: the
 // archived-project blocker still appears in blocked_by (relationship
-// hydration is not display policy), so `kata show`/`kata list --json`
+// hydration is not display policy), so `poomsae show`/`poomsae list --json`
 // consumers see the full edge set even though the row reads as unblocked.
 func TestListIssues_BlockedFieldFollowsReadyPredicate(t *testing.T) {
 	env := testenv.New(t)
@@ -2532,7 +2532,7 @@ func TestListAllIssues_ProjectNotFound(t *testing.T) {
 
 // TestListAllIssues_RejectsRemovedViewParams guards against silent semantic
 // regressions for stale clients still sending the named-view query params or
-// the X-Kata-Client-TZ header that were removed when server-computed views
+// the X-Poomsae-Client-TZ header that were removed when server-computed views
 // moved client-side. Returning 200 with the unfiltered feed for ?view=logbook
 // would mislead a stale client; 400 makes the breakage obvious.
 func TestListAllIssues_RejectsRemovedViewParams(t *testing.T) {
@@ -2559,7 +2559,7 @@ func TestListAllIssues_RejectsRemovedClientTZHeader(t *testing.T) {
 	env := testenv.New(t)
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, env.URL+"/api/v1/issues", nil)
 	require.NoError(t, err)
-	req.Header.Set("X-Kata-Client-TZ", "America/New_York")
+	req.Header.Set("X-Poomsae-Client-TZ", "America/New_York")
 	resp, err := env.HTTP.Do(req) //nolint:gosec // test request to loopback URL
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -2681,7 +2681,7 @@ func TestShowIssue_IncludesLinksAndLabels(t *testing.T) {
 
 func TestShowIssue_IncludesParentAndChildren(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	parent := createIssueViaHTTP(t, env, pid, "parent")
 	child := createIssueViaHTTP(t, env, pid, "child")
 	grandchild := createIssueViaHTTP(t, env, pid, "grandchild")
@@ -2878,7 +2878,7 @@ func TestIssueBrowserURLs(t *testing.T) {
 		} `json:"issue"`
 	}
 	envGetJSON(t, env, issuePath(pid, parent, ""), &show)
-	assert.Equal(t, "https://tasks.example/kata?issue="+show.Issue.UID+"#direct=1", show.WebURL)
+	assert.Equal(t, "https://tasks.example/poomsae?issue="+show.Issue.UID+"#direct=1", show.WebURL)
 	for _, path := range []string{projectPath(pid) + "/issues", "/api/v1/issues", projectPath(pid) + "/ready", "/api/v1/ready"} {
 		var list struct {
 			Issues []struct {
@@ -2889,7 +2889,7 @@ func TestIssueBrowserURLs(t *testing.T) {
 		envGetJSON(t, env, path, &list)
 		require.NotEmpty(t, list.Issues)
 		for _, issue := range list.Issues {
-			assert.Equal(t, "https://tasks.example/kata?issue="+issue.UID+"#direct=1", issue.WebURL)
+			assert.Equal(t, "https://tasks.example/poomsae?issue="+issue.UID+"#direct=1", issue.WebURL)
 		}
 	}
 }

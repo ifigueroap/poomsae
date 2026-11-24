@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v7"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 // apiFixture serves one Todoist project in the shape of the published v1 spec.

@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestPublicationOperationIDIsStableForBindingAndComment(t *testing.T) {

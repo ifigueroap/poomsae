@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	"go.kenn.io/kit/safefileio"
 )
 
@@ -26,8 +26,8 @@ func TestAuthCredentialSources(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_AUTH_TOKEN", tc.legacy)
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_AUTH_TOKEN", tc.legacy)
 			t.Setenv("EXAMPLE_AUTH_TOKEN", tc.env)
 			file := filepath.Join(home, "mounted-token")
 			if !tc.missing {
@@ -62,15 +62,15 @@ func TestAuthCredentialSources(t *testing.T) {
 
 func TestAuthCredentialEnvironmentFileAndInvalidNamedEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	file := filepath.Join(home, "token")
 	writePrivateCredentialFixture(t, file, []byte("file-secret\n"))
-	t.Setenv("KATA_AUTH_TOKEN_FILE", file)
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", file)
 	cfg, err := config.ReadAuthConfig()
 	require.NoError(t, err)
 	require.Equal(t, "file-secret", cfg.Token)
-	t.Setenv("KATA_AUTH_TOKEN_FILE", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[auth]\ntoken_env = \"EXAMPLE_EMPTY_TOKEN\"\n"), 0o600))
 	for _, value := range []string{"", " \n"} {
 		t.Setenv("EXAMPLE_EMPTY_TOKEN", value)
@@ -83,13 +83,13 @@ func TestAuthCredentialEnvironmentFileAndInvalidNamedEnv(t *testing.T) {
 func TestAuthPolicyReadersPreservePolicyAndCatalogWithoutLocalCredential(t *testing.T) {
 	home := t.TempDir()
 	localTokenFile := filepath.Join(home, "missing-local-token")
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "environment-local-token")
-	t.Setenv("KATA_AUTH_TOKEN_FILE", localTokenFile)
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_BACKUP_DIR", "")
-	t.Setenv("KATA_BACKUP_INTERVAL", "1h")
-	t.Setenv("KATA_BACKUP_RETAIN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "environment-local-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", localTokenFile)
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_BACKUP_DIR", "")
+	t.Setenv("POOMSAE_BACKUP_INTERVAL", "1h")
+	t.Setenv("POOMSAE_BACKUP_RETAIN", "")
 	configBody := fmt.Sprintf(`[auth]
 trust_private_network = true
 token_file = %q
@@ -129,7 +129,7 @@ func TestLocalProfileForwardsAuthCredentialReference(t *testing.T) {
 	require.Contains(t, env, "EXAMPLE_PROFILE_TOKEN=profile-secret")
 }
 
-// A relative KATA_HOME must keep its persisted owner credential usable.
+// A relative POOMSAE_HOME must keep its persisted owner credential usable.
 func TestReadPersistedAuthTokenRelativeHome(t *testing.T) {
 	t.Chdir(t.TempDir())
 	home := filepath.Join(".", "data")

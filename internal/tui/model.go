@@ -12,7 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
@@ -55,7 +55,7 @@ type Model struct {
 	telemetryConnGen    uint64
 	telemetryDay        string
 	opts                Options
-	api                 KataAPI
+	api                 PoomsaeAPI
 	scope               scope
 	view                viewID
 	prevView            viewID
@@ -253,10 +253,10 @@ func initialModel(opts Options) Model {
 		uidFormat:             uidFormat}
 }
 
-// resolveTUIActor mirrors cmd/kata's actor precedence without --as or the
-// final git lookup: KATA_AUTHOR > USER > anonymous.
+// resolveTUIActor mirrors cmd/poomsae's actor precedence without --as or the
+// final git lookup: POOMSAE_AUTHOR > USER > anonymous.
 func resolveTUIActor() string {
-	if v := os.Getenv("KATA_AUTHOR"); v != "" {
+	if v := os.Getenv("POOMSAE_AUTHOR"); v != "" {
 		return v
 	}
 	if v := os.Getenv("USER"); v != "" {
@@ -879,7 +879,7 @@ func (m Model) routeTopLevel(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	case tea.BackgroundColorMsg:
 		// The terminal answered Init's in-loop background query. Only
-		// colorAuto consults the answer — explicit KATA_COLOR_MODE
+		// colorAuto consults the answer — explicit POOMSAE_COLOR_MODE
 		// values already pinned the palette at boot.
 		if activeColorMode == colorAuto {
 			applyColorMode(colorAuto, msg.IsDark())
@@ -955,7 +955,7 @@ func (m Model) routeTopLevel(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 			return next, cmd, true
 		}
 		if next, cmd, ok := m.routeGlobalKey(msg); ok {
-			// Global navigation leaves cron with Kata as its return target.
+			// Global navigation leaves cron with Poomsae as its return target.
 			if m.view == viewCron && next.view != viewCron {
 				next.prevView = m.prevView
 			}
@@ -2959,7 +2959,7 @@ func (m *Model) maybeRefetchOpenDetail(msg eventReceivedMsg) tea.Cmd {
 // and wins whenever the event carries any peer UID. ref is the
 // short_id snapshot used as a fallback only when no UIDs are present
 // (currently unused in steady state — all daemon-emitted events post-
-// kata#1 carry UIDs).
+// poomsae#1 carry UIDs).
 //
 // UID-priority rule: if the event carries any UIDs for a particular
 // match channel, the short_id fallback for THAT channel is suppressed.
@@ -3938,7 +3938,7 @@ func (m Model) chrome() viewChrome {
 		sseStatus:     m.sseStatus,
 		pending:       m.pendingRefetch,
 		toast:         m.toast,
-		version:       kataVersion,
+		version:       poomsaeVersion,
 		input:         m.input,
 		projectsByID:  m.projectsByID,
 		daemon:        activeDaemonDisplay(m.activeDaemon),

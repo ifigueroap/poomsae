@@ -12,11 +12,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
 )
 
 const (
@@ -434,7 +434,7 @@ func TestHubClientRejectsInvalidEnrollmentActor(t *testing.T) {
 
 func TestHubClientTokenEnvUsesOnlySelectedCatalogCredential(t *testing.T) {
 	unsetHubClientGlobalAuth(t)
-	t.Setenv("KATA_PRIMARY_HUB_TOKEN", testCatalogBearer)
+	t.Setenv("POOMSAE_PRIMARY_HUB_TOKEN", testCatalogBearer)
 	var authorization string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization = r.Header.Get("Authorization")
@@ -445,7 +445,7 @@ func TestHubClientTokenEnvUsesOnlySelectedCatalogCredential(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	hub, err := federation.NewHubClient(t.Context(), config.CatalogDaemonConfig{ //nolint:gosec // TokenEnv is an environment variable name, not credential material.
-		Name: "primary", URL: server.URL, TokenEnv: "KATA_PRIMARY_HUB_TOKEN", AllowInsecure: true,
+		Name: "primary", URL: server.URL, TokenEnv: "POOMSAE_PRIMARY_HUB_TOKEN", AllowInsecure: true,
 	})
 	require.NoError(t, err)
 
@@ -459,10 +459,10 @@ func TestHubClientTokenEnvUsesOnlySelectedCatalogCredential(t *testing.T) {
 
 func TestHubClientEmptyTokenEnvIsClassifiedBeforeHTTPWithoutGlobalFallback(t *testing.T) {
 	unsetHubClientGlobalAuth(t)
-	t.Setenv("KATA_AUTH_TOKEN", "global-env-secret")
-	t.Setenv("KATA_PRIMARY_HUB_TOKEN", "   ")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "global-env-secret")
+	t.Setenv("POOMSAE_PRIMARY_HUB_TOKEN", "   ")
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntoken = \"global-config-secret\"\n"), 0o600))
 
@@ -473,7 +473,7 @@ func TestHubClientEmptyTokenEnvIsClassifiedBeforeHTTPWithoutGlobalFallback(t *te
 	t.Cleanup(server.Close)
 
 	hub, err := federation.NewHubClient(t.Context(), config.CatalogDaemonConfig{ //nolint:gosec // TokenEnv is an environment variable name, not credential material.
-		Name: "primary", URL: server.URL, TokenEnv: "KATA_PRIMARY_HUB_TOKEN", AllowInsecure: true,
+		Name: "primary", URL: server.URL, TokenEnv: "POOMSAE_PRIMARY_HUB_TOKEN", AllowInsecure: true,
 	})
 	assert.Nil(t, hub)
 	require.Error(t, err)
@@ -486,7 +486,7 @@ func TestHubClientEmptyTokenEnvIsClassifiedBeforeHTTPWithoutGlobalFallback(t *te
 
 func TestHubClientUnsetTokenEnvIsClassifiedBeforeHTTP(t *testing.T) {
 	unsetHubClientGlobalAuth(t)
-	require.NoError(t, os.Unsetenv("KATA_PRIMARY_HUB_TOKEN"))
+	require.NoError(t, os.Unsetenv("POOMSAE_PRIMARY_HUB_TOKEN"))
 
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -495,7 +495,7 @@ func TestHubClientUnsetTokenEnvIsClassifiedBeforeHTTP(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	hub, err := federation.NewHubClient(t.Context(), config.CatalogDaemonConfig{ //nolint:gosec // TokenEnv is an environment variable name, not credential material.
-		Name: "primary", URL: server.URL, TokenEnv: "KATA_PRIMARY_HUB_TOKEN", AllowInsecure: true,
+		Name: "primary", URL: server.URL, TokenEnv: "POOMSAE_PRIMARY_HUB_TOKEN", AllowInsecure: true,
 	})
 	assert.Nil(t, hub)
 	require.Error(t, err)
@@ -750,7 +750,7 @@ func writeJSON(t *testing.T, w http.ResponseWriter, status int, value any) {
 
 func unsetHubClientGlobalAuth(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{"KATA_AUTH_TOKEN", "KATA_SERVER"} {
+	for _, name := range []string{"POOMSAE_AUTH_TOKEN", "POOMSAE_SERVER"} {
 		value, existed := os.LookupEnv(name)
 		require.NoError(t, os.Unsetenv(name))
 		t.Cleanup(func() {
@@ -761,5 +761,5 @@ func unsetHubClientGlobalAuth(t *testing.T) {
 			}
 		})
 	}
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 }

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/linearsync"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
 )
 
 const issueSyncProviderLinear = "linear"
@@ -112,7 +112,7 @@ func linearSyncEnableParams(ctx context.Context, cfg ServerConfig, in *api.Enabl
 		return empty, linearSyncValidation(err.Error())
 	}
 	if expected.ID != 0 && (existing.SourceKey != resolved.SourceKey() || existing.RemoteID != resolved.RemoteID()) {
-		return empty, linearSyncValidation("Linear source identity is immutable; use another Kata project")
+		return empty, linearSyncValidation("Linear source identity is immutable; use another Poomsae project")
 	}
 	if err := issueSyncEnableAuthority(ctx, cfg.DB, in.ProjectID, issueSyncProviderLinear); err != nil {
 		return empty, err

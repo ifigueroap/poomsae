@@ -126,7 +126,7 @@ func TestAttentionColumnsAlignSelectionMarker(t *testing.T) {
 			"selected and unselected cells must start in the same column")
 		if i == 0 {
 			require.Equal(t, listColumnWidths(m.width, false).nav, selectedOffset,
-				"attention rows must reserve the same navigation gutter as kata tui's issue list")
+				"attention rows must reserve the same navigation gutter as poomsae tui's issue list")
 		}
 	}
 }

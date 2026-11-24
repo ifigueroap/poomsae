@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // ErrPlanningDatesInvalid reports malformed native planning-date metadata.

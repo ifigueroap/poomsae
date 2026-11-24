@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func TestRoundtripPreservesPriority(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 
 	prio := int64(0)
@@ -69,7 +69,7 @@ func TestRoundtripPreservesPriority(t *testing.T) {
 func TestRoundtripOmitsPriorityKeyWhenUnset(t *testing.T) {
 	ctx := t.Context()
 	src := openExportTestDB(t)
-	p, err := src.CreateProject(ctx, "kata")
+	p, err := src.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	_, _, err = src.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: p.ID, Title: "no priority", Author: "tester",

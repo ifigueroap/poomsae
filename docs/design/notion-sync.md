@@ -8,14 +8,14 @@ required. Completion write-back and the future assessment below remain deferred.
 
 ## Purpose and assumptions
 
-Mirror one Notion task data source into one Kata project. A task created,
-reassigned, edited, completed, or reopened in Notion becomes a native Kata issue
+Mirror one Notion task data source into one Poomsae project. A task created,
+reassigned, edited, completed, or reopened in Notion becomes a native Poomsae issue
 on the next successful sync, subject to the existing import timestamp rules.
-An agent can work with those issues using normal Kata commands. Closing an
+An agent can work with those issues using normal Poomsae commands. Closing an
 issue locally does **not** complete the Notion task in v1.
 
 The requested behavior is the current [GitHub mirror](github-sync.md): Notion
-owns upstream state; Kata polls from the daemon and stores native issues,
+owns upstream state; Poomsae polls from the daemon and stores native issues,
 import mappings, events, and durable sync status. Polling is eventual, not an
 atomic cross-system snapshot. The default interval is five minutes.
 
@@ -23,7 +23,7 @@ Operating assumptions:
 
 - Operators can create a Notion internal connection with read-content access
   and share the task database with it. V1 uses one daemon-configured credential.
-- Operators can identify which status options mean completed. Kata must not
+- Operators can identify which status options mean completed. Poomsae must not
   guess completion from English names, colors, group order, or a localized UI.
 - A data source fits the bounded read limits below. Very large collections need
   a later partitioning or webhook design.
@@ -70,7 +70,7 @@ adapter interface, not a registration framework.
 
 `internal/notionsync` owns canonical config, Notion reads, property resolution,
 mapping, and safe error translation. Both the CLI-started daemon
-(`cmd/kata/daemon_cmd.go`) and embedded service (`service.go`) install scheduled
+(`cmd/poomsae/daemon_cmd.go`) and embedded service (`service.go`) install scheduled
 Notion runs. HTTP/manual and scheduled runners share their daemon's progress
 tracker and credential-aware HTTP client. Both entry points retain activity
 admission, event forking, shutdown cancellation, and shared scheduled/manual
@@ -93,11 +93,11 @@ API additions can apply even to pinned versions.
   The reviewed public database/data-source schemas do not document the task
   designation or selected task-property roles. This is an API limitation
   inferred from those schemas, not a claim that the UI lacks those roles.
-  Kata therefore resolves properties by type or explicit selection.
+  Poomsae therefore resolves properties by type or explicit selection.
   [Task databases](https://www.notion.com/help/sprints),
   [data-source retrieval](https://developers.notion.com/reference/retrieve-a-data-source)
 - Property and status-option IDs survive renames. Status schemas expose
-  options and groups but no universal Kata completion mapping. People values
+  options and groups but no universal Poomsae completion mapping. People values
   can be partial and can include groups; display names and email addresses are
   unsuitable as identity. Property-item pagination supplies complete values
   when page summaries omit people or title references.
@@ -131,12 +131,12 @@ API additions can apply even to pinned versions.
 Shipped commands:
 
 ```sh
-kata sync notion enable --data-source 11111111-1111-4111-8111-111111111111 \
+poomsae sync notion enable --data-source 11111111-1111-4111-8111-111111111111 \
   --status-property 'Workflow' --assignee-property 'Responsible' \
   --done-status 'Delivered' --interval 5m
-kata sync notion status
-kata sync notion once
-kata sync notion disable
+poomsae sync notion status
+poomsae sync notion once
+poomsae sync notion disable
 ```
 
 Initial enable requires exactly one of `--data-source <uuid>` and
@@ -226,10 +226,10 @@ schema change. GitHub callers omit it and retain their current behavior.
 
 One project still has at most one external issue source, including disabled
 bindings. A GitHub binding cannot be replaced with Notion, nor can a Notion
-binding be retargeted to a different source. Use another Kata project. `once`
+binding be retargeted to a different source. Use another Poomsae project. `once`
 requires an enabled binding. Disable preserves imports, mappings, cursor, and
 history while fencing further writes. Enabled federation spokes are rejected;
-a hub may import and replicate native Kata events to spokes.
+a hub may import and replicate native Poomsae events to spokes.
 
 ## Credentials and access
 
@@ -237,11 +237,11 @@ Proposed daemon configuration:
 
 ```toml
 [notion_sync]
-token_env = "KATA_NOTION_TOKEN"
+token_env = "POOMSAE_NOTION_TOKEN"
 ```
 
 The sole setting is the name of a daemon environment variable, defaulting to
-`KATA_NOTION_TOKEN`. There is no raw-token setting, CLI token flag, client-side
+`POOMSAE_NOTION_TOKEN`. There is no raw-token setting, CLI token flag, client-side
 login fallback, persisted credential, or per-binding environment selection.
 The embedding API exposes the same non-secret setting. Resolve the variable at
 the start of each validation/run, retaining one credential for that session so
@@ -250,7 +250,7 @@ rotation takes effect on the next operation.
 Send it only to fixed `https://api.notion.com:443` through the built-in client.
 Reject redirects. A page, database, markdown, or error URL is never an outbound
 request target. Use explicit ID-based API paths; validate returned parent and
-object IDs. Never forward the Kata daemon bearer, browser credentials, or actor
+object IDs. Never forward the Poomsae daemon bearer, browser credentials, or actor
 headers. Standard certificate verification is required. Tests inject an HTTP
 transport, not a production API-origin override.
 
@@ -263,7 +263,7 @@ request headers, or transport dumps in durable errors or logs.
 
 ## Issue projection and local edits
 
-| Notion value | Kata projection |
+| Notion value | Poomsae projection |
 | --- | --- |
 | Page UUID | Stable `page:<uuid>` import mapping under the data source key |
 | Title property's complete plain text | `[Notion] <title>` by default; `--title-prefix=false` retains the title and adds the `notion` label. Empty text becomes `(untitled)`, prefixed when enabled. |
@@ -274,7 +274,7 @@ request headers, or transport dumps in durable errors or logs.
 | Page creator | Author `notion:<user_uuid>`; missing creator uses `notion-unknown` |
 | `created_time`, `last_edited_time` | Source timestamps, normalized to UTC millisecond precision |
 
-Kata has `open` and `closed`, not a separate `in_progress` status. Notion's
+Poomsae has `open` and `closed`, not a separate `in_progress` status. Notion's
 in-progress tasks remain open. A later upstream non-completed status reopens a
 locally closed issue only when its source timestamp is newer than the local
 issue. A source completion timestamp is not supplied: use `last_edited_time`
@@ -391,7 +391,7 @@ or webhook reconciliation can address observations outside that window.
 ## Unavailable pages, progress, and persistence
 
 No absence-based deletion or closure. Archived, trashed, moved-out, deleted,
-or newly inaccessible pages can disappear from a query and remain in Kata.
+or newly inaccessible pages can disappear from a query and remain in Poomsae.
 Skip explicitly unavailable rows or a well-formed page whose parent now names
 a different source/page during enumeration; if a
 previously eligible row becomes unavailable during detail reads, fail the run
@@ -463,7 +463,7 @@ revision precondition. Read-before-write/readback cannot eliminate a concurrent
 human edit between those calls.
 [Page updates](https://developers.notion.com/reference/patch-page)
 
-Kata already has relevant machinery. `internal/rootbridge/reconciler.go` checks
+Poomsae already has relevant machinery. `internal/rootbridge/reconciler.go` checks
 local closure, current binding/claim authority and live completion enablement,
 renews authority before `CompleteRoot`, and verifies a fresh `ReadRoot` result.
 Its tests cover retries, reopening, binding changes, and disabled completion.

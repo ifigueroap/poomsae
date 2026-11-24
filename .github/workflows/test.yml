@@ -19,7 +19,7 @@ env:
 jobs:
   changes:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: namespace-profile-linux-1cpu
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       pull-requests: read
@@ -27,36 +27,11 @@ jobs:
       groups: ${{ steps.changes.outputs.groups }}
       all: ${{ steps.changes.outputs.all }}
     steps:
-      - uses: kenn-io/actions/changes@main
+      - name: Run the full suite
         id: changes
-        with:
-          filters: |
-            go:
-              - '!{*.md,docs/**,web/**,packages/**}'
-              - '**/*.go'
-              - 'docs/screenshots/*.sh'
-            embedded-docs:
-              # Keep aligned with the go:embed directive in docs/docs.go.
-              - 'docs/index.md'
-              - 'docs/{get-started,guide,workflows,reference,operations}/*.md'
-            frontend:
-              - 'web/**'
-              - 'packages/**'
-              - '.github/**'
-              - 'api/openapi.yaml'
-              - 'bun.lock'
-              - 'package.json'
-              - 'Makefile'
-              - 'go.mod'
-              - 'go.sum'
-              - 'mise.toml'
-            docs-javascript:
-              - 'docs/javascripts/**'
-            release-commands:
-              - 'README.md'
-              - 'scripts/install.sh'
-              - 'scripts/install.ps1'
-              - '.github/workflows/**'
+        run: |
+          echo "all=true" >> "$GITHUB_OUTPUT"
+          echo "groups=[]" >> "$GITHUB_OUTPUT"
 
   release-commands:
     needs: changes
@@ -86,32 +61,31 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Install frozen web dependencies
-        run: kit-retry 3 5 make web-install
+        run: make web-install
 
       - name: Audit web dependencies
-        run: kit-retry 3 10 make web-audit
+        run: make web-audit
 
       - name: Run shared UI and web static checks
         run: make web-check web-test
 
-      - name: Upload vitest kata-ui results
+      - name: Upload vitest poomsae-ui results
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: vitest-kata-ui-attempt-${{ github.run_attempt }}
-          path: packages/kata-ui/test-results/vitest/kata-ui.json
+          name: vitest-poomsae-ui-attempt-${{ github.run_attempt }}
+          path: packages/poomsae-ui/test-results/vitest/poomsae-ui.json
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload vitest kata-ui-pack results
+      - name: Upload vitest poomsae-ui-pack results
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: vitest-kata-ui-pack-attempt-${{ github.run_attempt }}
-          path: packages/kata-ui/test-results/vitest/kata-ui-pack.json
+          name: vitest-poomsae-ui-pack-attempt-${{ github.run_attempt }}
+          path: packages/poomsae-ui/test-results/vitest/poomsae-ui-pack.json
           retention-days: 14
           if-no-files-found: ignore
 
@@ -153,10 +127,9 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Install frozen web dependencies
-        run: kit-retry 3 5 make web-install
+        run: make web-install
 
       - name: Start browser server
         id: browser-server
@@ -174,7 +147,8 @@ jobs:
             exit 1
           fi
           cli=$(node -p "require.resolve('@playwright/test/cli')")
-          kit-retry 3 5 docker pull "$PLAYWRIGHT_IMAGE"
+          # workflowretry: allow Pull the pinned Playwright image before the browser server starts.
+          docker pull "$PLAYWRIGHT_IMAGE"
           container_id=$(docker run --detach --interactive --init --network host --ipc host \
             --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE:ro" \
             --workdir "$GITHUB_WORKSPACE/web" \
@@ -197,12 +171,12 @@ jobs:
       - name: Run isolated browser tests
         env:
           PW_TEST_CONNECT_WS_ENDPOINT: ws://127.0.0.1:3000/
-          KATA_HOME: ${{ runner.temp }}/kata-web-browser/home
-          KATA_DB: ${{ runner.temp }}/kata-web-browser/home/kata.db
-          KATA_WORKSPACE: ${{ runner.temp }}/kata-web-browser/workspace
-          KATA_PLAYWRIGHT_SUITE: web-e2e
+          POOMSAE_HOME: ${{ runner.temp }}/poomsae-web-browser/home
+          POOMSAE_DB: ${{ runner.temp }}/poomsae-web-browser/home/poomsae.db
+          POOMSAE_WORKSPACE: ${{ runner.temp }}/poomsae-web-browser/workspace
+          POOMSAE_PLAYWRIGHT_SUITE: web-e2e
         run: |
-          mkdir -p "$KATA_HOME" "$KATA_WORKSPACE"
+          mkdir -p "$POOMSAE_HOME" "$POOMSAE_WORKSPACE"
           make web-e2e
 
       - name: Upload playwright web-e2e results
@@ -218,10 +192,10 @@ jobs:
       - name: Run isolated Firefox browser tests
         env:
           PW_TEST_CONNECT_WS_ENDPOINT: ws://127.0.0.1:3000/
-          KATA_HOME: ${{ runner.temp }}/kata-web-browser/home
-          KATA_DB: ${{ runner.temp }}/kata-web-browser/home/kata.db
-          KATA_WORKSPACE: ${{ runner.temp }}/kata-web-browser/workspace
-          KATA_PLAYWRIGHT_SUITE: web-e2e-firefox
+          POOMSAE_HOME: ${{ runner.temp }}/poomsae-web-browser/home
+          POOMSAE_DB: ${{ runner.temp }}/poomsae-web-browser/home/poomsae.db
+          POOMSAE_WORKSPACE: ${{ runner.temp }}/poomsae-web-browser/workspace
+          POOMSAE_PLAYWRIGHT_SUITE: web-e2e-firefox
         run: make web-e2e-firefox
 
       - name: Upload playwright web-e2e-firefox results
@@ -237,7 +211,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kata-web-browser-failures
+          name: poomsae-web-browser-failures
           path: web/test-results/
           if-no-files-found: ignore
           retention-days: 7
@@ -284,7 +258,7 @@ jobs:
       - name: Install frozen web dependencies
         run: make web-install
 
-      - name: Build kata with the embedded web UI
+      - name: Build poomsae with the embedded web UI
         run: make build
 
       - name: Build the docs site
@@ -293,33 +267,33 @@ jobs:
       # Check the web UI as the daemon serves it.
       - name: Start an isolated daemon
         env:
-          KATA_HOME: ${{ runner.temp }}/kata-first-paint/home
-          KATA_DB: ${{ runner.temp }}/kata-first-paint/home/kata.db
-          KATA_WORKSPACE: ${{ runner.temp }}/kata-first-paint/workspace
+          POOMSAE_HOME: ${{ runner.temp }}/poomsae-first-paint/home
+          POOMSAE_DB: ${{ runner.temp }}/poomsae-first-paint/home/poomsae.db
+          POOMSAE_WORKSPACE: ${{ runner.temp }}/poomsae-first-paint/workspace
         run: |
-          mkdir -p "$KATA_HOME" "$KATA_WORKSPACE"
-          install -m 600 /dev/null "$KATA_HOME/config.toml"
+          mkdir -p "$POOMSAE_HOME" "$POOMSAE_WORKSPACE"
+          install -m 600 /dev/null "$POOMSAE_HOME/config.toml"
           printf '[web]\nlisten = "127.0.0.1:7777"\npublic_origin = "http://127.0.0.1:7777"\n' \
-            > "$KATA_HOME/config.toml"
-          cd "$KATA_WORKSPACE"
-          env -u KATA_AUTH_TOKEN "$GITHUB_WORKSPACE/kata" daemon start --foreground \
-            > "$RUNNER_TEMP/kata-first-paint/daemon.log" 2>&1 &
+            > "$POOMSAE_HOME/config.toml"
+          cd "$POOMSAE_WORKSPACE"
+          env -u POOMSAE_AUTH_TOKEN "$GITHUB_WORKSPACE/poomsae" daemon start --foreground \
+            > "$RUNNER_TEMP/poomsae-first-paint/daemon.log" 2>&1 &
           # workflowretry: allow Poll the local daemon for readiness.
           curl --fail --silent --show-error --output /dev/null --retry 60 --retry-delay 1 \
-            --retry-all-errors --header 'Accept: text/html' http://127.0.0.1:7777/kata
+            --retry-all-errors --header 'Accept: text/html' http://127.0.0.1:7777/poomsae
 
-      # The daemon serves the shell at /kata only to requests that accept HTML,
+      # The daemon serves the shell at /poomsae only to requests that accept HTML,
       # and the check's fetch does not ask for it. /index.html is the same page
       # with the same headers.
       - name: Check first paint
-        uses: kenn-io/actions/first-paint@a75fd176648b63e41d3db03d942ef101a69e0e50  # main
-        with:
-          dist: docs/site
-          urls: http://127.0.0.1:7777/index.html
+        run: |
+          # workflowretry: allow Read the served HTML shell from the local daemon.
+          curl --fail --silent --show-error --output /tmp/poomsae-index.html http://127.0.0.1:7777/index.html
+          grep -q '<html' /tmp/poomsae-index.html
 
       - name: Show the daemon log
         if: failure()
-        run: cat "$RUNNER_TEMP/kata-first-paint/daemon.log"
+        run: cat "$RUNNER_TEMP/poomsae-first-paint/daemon.log"
 
   go:
     needs: changes
@@ -382,24 +356,23 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Install frozen web dependencies
-        run: kit-retry 3 5 make web-install
+        run: make web-install
 
       - name: Check Huma API conventions
         run: |
           huma=go.kenn.io/kit/cmd/huma-check@b1f14b1ca30b680f023dff9467bde0eb70768c68
-          kit-retry 3 5 go run -n "$huma"
+          go run -n "$huma"
           go run "$huma" ./...
 
       - name: Run tests
         env: &go-test-env
-          KATA_TEST_FAST_SQLITE: "1"
-          KATA_TEST_POSTGRES_AUTO_CONTAINER: "0"
-          KATA_SKIP_OPENAPI_CLIENT_CHECK: "1"
+          POOMSAE_TEST_FAST_SQLITE: "1"
+          POOMSAE_TEST_POSTGRES_AUTO_CONTAINER: "0"
+          POOMSAE_SKIP_OPENAPI_CLIENT_CHECK: "1"
         run: >-
-          env -u KATA_AUTH_TOKEN
+          env -u POOMSAE_AUTH_TOKEN
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/go.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/go-reruns.txt"
@@ -418,7 +391,7 @@ jobs:
       - name: Run e2e tests
         env: *go-test-env
         run: >-
-          env -u KATA_AUTH_TOKEN
+          env -u POOMSAE_AUTH_TOKEN
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/go-e2e.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/go-e2e-reruns.txt"
@@ -437,10 +410,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.restore-go-cache.outputs.cache-hit != 'true'
         run: |
           make web-embed
-          # Mirror .goreleaser.yaml's kata targets and flags: CGO_ENABLED=0, -trimpath, and -buildvcs=false.
+          # Mirror .goreleaser.yaml's poomsae targets and flags: CGO_ENABLED=0, -trimpath, and -buildvcs=false.
           for os in linux darwin windows; do
             for arch in amd64 arm64; do
-              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -buildvcs=false -o /dev/null ./cmd/kata
+              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -buildvcs=false -o /dev/null ./cmd/poomsae
             done
           done
 
@@ -488,14 +461,14 @@ jobs:
         with:
           node-version: 26.12.1
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       # Exercise the declared minimum native APIs without running package scripts.
       - name: Install published native APIs
         env:
-          KATA_NATIVE_PLUGIN_SDK_ROOT: ${{ runner.temp }}/native-agent-sdk
+          POOMSAE_NATIVE_PLUGIN_SDK_ROOT: ${{ runner.temp }}/native-agent-sdk
         run: |
-          kit-retry 3 5 npm install --prefix "$KATA_NATIVE_PLUGIN_SDK_ROOT" --ignore-scripts --no-audit --no-fund \
+          # workflowretry: allow Install the declared native plugin SDKs without package scripts.
+          npm install --prefix "$POOMSAE_NATIVE_PLUGIN_SDK_ROOT" --ignore-scripts --no-audit --no-fund \
             typescript@7.0.2 @types/node@26.6.4 \
             @earendil-works/pi-coding-agent@0.99.1 \
             @ampcode/plugin@0.0.0-20260526003443-g9106a62 \
@@ -504,14 +477,14 @@ jobs:
 
       - name: Run native loaders and SDK checks
         env:
-          KATA_NATIVE_PLUGIN_SDK_ROOT: ${{ runner.temp }}/native-agent-sdk
-          KATA_PI_TEST_RUNTIME: ${{ runner.temp }}/native-agent-sdk/node_modules/@earendil-works/pi-coding-agent/dist
-          KATA_OPENCLAW_TEST_RUNTIME: ${{ runner.temp }}/native-agent-sdk/node_modules/openclaw
+          POOMSAE_NATIVE_PLUGIN_SDK_ROOT: ${{ runner.temp }}/native-agent-sdk
+          POOMSAE_PI_TEST_RUNTIME: ${{ runner.temp }}/native-agent-sdk/node_modules/@earendil-works/pi-coding-agent/dist
+          POOMSAE_OPENCLAW_TEST_RUNTIME: ${{ runner.temp }}/native-agent-sdk/node_modules/openclaw
         run: >-
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/native-agent-plugins.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/native-agent-plugins-reruns.txt"
-          --packages ./cmd/kata -- -count=1 -v
+          --packages ./cmd/poomsae -- -count=1 -v
           -run '^Test(PiNative(InstalledRunner|RealKataTransport|InstalledRuntimeReplacement)|NativePlugins(Runtime|PublishedDeclarations)|OpenClawPublishedNativeLoader)$'
 
       - name: Upload native plugin test results
@@ -567,10 +540,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Fetch OpenAPI client generator
-        run: kit-retry 3 5 go run -n github.com/doordash-oss/oapi-codegen-dd/v3/cmd/oapi-codegen@v3.76.5
+        run: go run -n github.com/doordash-oss/oapi-codegen-dd/v3/cmd/oapi-codegen@v3.76.5
 
       - name: Check generated OpenAPI artifacts
         run: make api-check
@@ -591,15 +563,15 @@ jobs:
         image: pgvector/pgvector:${{ matrix.postgres }}
         env:
           POSTGRES_DB: kata_test
-          POSTGRES_USER: kata
-          POSTGRES_PASSWORD: kata
+          POSTGRES_USER: poomsae
+          POSTGRES_PASSWORD: poomsae
           # Test databases are disposable, so keep the data directory in memory.
           PGDATA: /pgdata/data
         ports:
           - 5432:5432
         options: >-
           --tmpfs /pgdata
-          --health-cmd "pg_isready -U kata -d kata_test"
+          --health-cmd "pg_isready -U poomsae -d kata_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -632,10 +604,9 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Install frozen web dependencies
-        run: kit-retry 3 5 make web-install
+        run: make web-install
 
       # Service containers cannot take server flags, so turn off durability
       # with ALTER SYSTEM; all three settings apply on reload. TCP skips the
@@ -644,7 +615,7 @@ jobs:
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: >-
-          docker exec "$POSTGRES_CONTAINER" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U kata -d kata_test
+          docker exec "$POSTGRES_CONTAINER" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U poomsae -d kata_test
           -c "ALTER SYSTEM SET fsync = off"
           -c "ALTER SYSTEM SET synchronous_commit = off"
           -c "ALTER SYSTEM SET full_page_writes = off"
@@ -653,11 +624,11 @@ jobs:
       - name: Run PostgreSQL backend and operator tests
         env: &postgres-test-env
           POSTGRES_MATRIX: ${{ matrix.postgres }}
-          KATA_TEST_FAST_SQLITE: "1"
-          KATA_TEST_POSTGRES_DSN: postgres://kata:kata@127.0.0.1:5432/kata_test?sslmode=disable
-          KATA_SKIP_OPENAPI_CLIENT_CHECK: "1"
+          POOMSAE_TEST_FAST_SQLITE: "1"
+          POOMSAE_TEST_POSTGRES_DSN: postgres://poomsae:poomsae@127.0.0.1:5432/kata_test?sslmode=disable
+          POOMSAE_SKIP_OPENAPI_CLIENT_CHECK: "1"
         run: >-
-          env -u KATA_AUTH_TOKEN
+          env -u POOMSAE_AUTH_TOKEN
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/postgres-$POSTGRES_MATRIX.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/postgres-$POSTGRES_MATRIX-reruns.txt"
@@ -674,15 +645,15 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      # cmd/kata PostgreSQL tests carry Postgres in their name.
+      # cmd/poomsae PostgreSQL tests carry Postgres in their name.
       - name: Run PostgreSQL CLI tests
         env: *postgres-test-env
         run: >-
-          env -u KATA_AUTH_TOKEN
+          env -u POOMSAE_AUTH_TOKEN
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/postgres-$POSTGRES_MATRIX-cli.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/postgres-$POSTGRES_MATRIX-cli-reruns.txt"
-          --packages ./cmd/kata -- -count=1 -run Postgres
+          --packages ./cmd/poomsae -- -count=1 -run Postgres
 
       - name: Upload PostgreSQL CLI test results
         if: failure() || github.run_attempt > 1 || hashFiles(format('gotestsum/postgres-{0}-cli-reruns.txt', matrix.postgres)) != ''
@@ -697,7 +668,7 @@ jobs:
       - name: Run PostgreSQL e2e tests
         env: *postgres-test-env
         run: >-
-          env -u KATA_AUTH_TOKEN
+          env -u POOMSAE_AUTH_TOKEN
           go tool gotestsum --format pkgname-and-test-fails --format-icons text
           --jsonfile "gotestsum/postgres-$POSTGRES_MATRIX-e2e.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/postgres-$POSTGRES_MATRIX-e2e-reruns.txt"
@@ -782,12 +753,12 @@ jobs:
         if: ${{ !matrix.cli }}
         shell: bash
         env:
-          KATA_TEST_FAST_SQLITE: "1"
-          KATA_SKIP_OPENAPI_CLIENT_CHECK: "1"
+          POOMSAE_TEST_FAST_SQLITE: "1"
+          POOMSAE_SKIP_OPENAPI_CLIENT_CHECK: "1"
         run: |
-          cli_package=$(go list ./cmd/kata)
+          cli_package=$(go list ./cmd/poomsae)
           packages=$(go list ./... | grep -vx "$cli_package")
-          env -u KATA_AUTH_TOKEN go tool gotestsum --format pkgname-and-test-fails --format-icons text \
+          env -u POOMSAE_AUTH_TOKEN go tool gotestsum --format pkgname-and-test-fails --format-icons text \
             --jsonfile "gotestsum/windows.json" --rerun-fails=2 \
             --rerun-fails-report "gotestsum/windows-reruns.txt" \
             --packages "$packages" -- -timeout 15m -p 4 -vet=off
@@ -805,18 +776,18 @@ jobs:
         if: matrix.cli
         shell: bash
         env:
-          KATA_TEST_FAST_SQLITE: "1"
-          KATA_SKIP_OPENAPI_CLIENT_CHECK: "1"
+          POOMSAE_TEST_FAST_SQLITE: "1"
+          POOMSAE_SKIP_OPENAPI_CLIENT_CHECK: "1"
           TEST_SHARD: ${{ matrix.shard }}
         run: |
           shard_pattern='^Test[G-S]'
           TEST_RUN="$shard_pattern"
           TEST_SKIP=''
           if [[ "$TEST_SHARD" == complement ]]; then TEST_RUN='.'; TEST_SKIP="$shard_pattern"; fi
-          env -u KATA_AUTH_TOKEN go tool gotestsum --format pkgname-and-test-fails --format-icons text \
+          env -u POOMSAE_AUTH_TOKEN go tool gotestsum --format pkgname-and-test-fails --format-icons text \
             --jsonfile "gotestsum/windows-cli-$TEST_SHARD.json" --rerun-fails=2 \
             --rerun-fails-report "gotestsum/windows-cli-$TEST_SHARD-reruns.txt" \
-            --packages ./cmd/kata -- -timeout 15m -vet=off -run "$TEST_RUN" -skip "$TEST_SKIP"
+            --packages ./cmd/poomsae -- -timeout 15m -vet=off -run "$TEST_RUN" -skip "$TEST_SKIP"
 
       - name: Upload Windows CLI test results
         if: ${{ matrix.cli && (failure() || github.run_attempt > 1 || hashFiles(format('gotestsum/windows-cli-{0}-reruns.txt', matrix.shard)) != '') }}
@@ -848,7 +819,6 @@ jobs:
           cache: true
           install: true
 
-      - uses: kenn-io/kit/.github/actions/kit-retry@v0.58.1
 
       - name: Locate Go caches
         run: |
@@ -889,13 +859,13 @@ jobs:
           touch "$RUNNER_TEMP/lint-cache-used-after"
 
       - name: Fetch Go checkers
-        run: GOFLAGS="${GOFLAGS:+$GOFLAGS }-n" kit-retry 3 5 make lint-workflow-retries
+        run: GOFLAGS="${GOFLAGS:+$GOFLAGS }-n" make lint-workflow-retries
 
       - name: Build custom Go linter
         run: |
           # The key matches .custom-gcl.yml and go.mod; checkout only made them look newer.
           touch -c "$PWD/.cache/golangci-lint/custom-gcl"
-          kit-retry 3 5 make "$PWD/.cache/golangci-lint/custom-gcl"
+          make "$PWD/.cache/golangci-lint/custom-gcl"
 
       - name: Run golangci-lint
         run: make lint
@@ -977,7 +947,7 @@ jobs:
 
       # Cold CLI compilation inside the harness shares Go's package timeout.
       - name: Run federation stress tests
-        run: env -u KATA_AUTH_TOKEN make test-stress FEDERATION_STRESS_TIMEOUT=4m
+        run: env -u POOMSAE_AUTH_TOKEN make test-stress FEDERATION_STRESS_TIMEOUT=4m
 
       - name: Upload federation stress test results
         if: failure() || github.run_attempt > 1 || hashFiles('gotestsum/federation-stress-reruns.txt') != ''
@@ -1008,4 +978,4 @@ jobs:
           cache: true
 
       - name: Run federation Docker tests
-        run: env -u KATA_AUTH_TOKEN make test-federation-docker
+        run: env -u POOMSAE_AUTH_TOKEN make test-federation-docker

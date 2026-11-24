@@ -21,8 +21,8 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx as the "pgx" sql driver
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Store wraps a pgx-backed *sql.DB. Use Open to construct one with pool +

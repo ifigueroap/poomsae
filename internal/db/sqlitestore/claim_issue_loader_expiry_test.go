@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // newTimedAssignmentStore seeds a project and an issue whose assignment was
@@ -18,7 +18,7 @@ import (
 func newTimedAssignmentStore(t *testing.T) (*Store, context.Context, db.Project, db.Issue, time.Time) {
 	t.Helper()
 	ctx := t.Context()
-	d, err := Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	d, err := Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 

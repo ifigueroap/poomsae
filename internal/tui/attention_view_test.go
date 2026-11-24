@@ -10,13 +10,13 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/notification"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/notification"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
 type attentionTestAPI struct {
-	KataAPI
+	PoomsaeAPI
 	rows                           []attentionRequest
 	skipped, listCalls, clearCalls int
 	lastProjectID                  *int64
@@ -80,7 +80,7 @@ func (a *attentionBrowseTestAPI) ListAllIssues(context.Context, ListFilter) ([]I
 
 func attentionFixture(t *testing.T) (Model, *attentionTestAPI) {
 	t.Helper()
-	t.Setenv("KATA_INBOX_USER", "")
+	t.Setenv("POOMSAE_INBOX_USER", "")
 	m := newTestModel()
 	m.width = 120
 	m.height = 40
@@ -134,7 +134,7 @@ func TestAttentionRecipient(t *testing.T) {
 	}{{"alex/reviewer", "other", "alex/reviewer", false}, {"  ", "member", "member", false}, {"", "", "alex", false}, {"bad\x01", "member", "", true}} {
 		t.Run(tc.env+tc.auth, func(t *testing.T) {
 			m, a := attentionFixture(t)
-			t.Setenv("KATA_INBOX_USER", tc.env)
+			t.Setenv("POOMSAE_INBOX_USER", tc.env)
 			m.activeAuth.Actor = tc.auth
 			m.authCapabilitiesReady = true
 			m, cmd := m.transitionToAttention()
@@ -839,7 +839,7 @@ func TestAttentionRestoresAuxiliaryFocusedDetailWhenResizedToStacked(t *testing.
 func TestAttentionClear(t *testing.T) {
 	m, a := attentionFixture(t)
 	m.scope.allProjects = true
-	t.Setenv("KATA_INBOX_USER", "alex/reviewer")
+	t.Setenv("POOMSAE_INBOX_USER", "alex/reviewer")
 	m, cmd := m.transitionToAttention()
 	m = loadAttention(m, cmd)
 	m = sendRune(m, 'j')

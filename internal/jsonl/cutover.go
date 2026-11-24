@@ -11,9 +11,9 @@ import (
 
 	"github.com/gofrs/flock"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/linkpath"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/linkpath"
 	"go.kenn.io/kit/atomicfile"
 )
 
@@ -77,7 +77,7 @@ func withCutoverLocks(ctx context.Context, paths []string, fn func() error) erro
 		return fmt.Errorf("lock SQLite cutover: %w", err)
 	}
 	if !locked {
-		return fmt.Errorf("%w: another process holds %s; wait for migration and inspect kata daemon logs", ErrCutoverInProgress, lock.Path())
+		return fmt.Errorf("%w: another process holds %s; wait for migration and inspect poomsae daemon logs", ErrCutoverInProgress, lock.Path())
 	}
 	return withCutoverLocks(ctx, paths[1:], fn)
 }
@@ -256,7 +256,7 @@ func preserveCutoverTemps(path string) error {
 			return fmt.Errorf("preserve interrupted cutover in %s: %w", dir, err)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "kata: preserved interrupted SQLite import in %s; retrying migration from original source\n", dir)
+	fmt.Fprintf(os.Stderr, "poomsae: preserved interrupted SQLite import in %s; retrying migration from original source\n", dir)
 	return nil
 }
 
@@ -352,7 +352,7 @@ func formatOrphanSummary(report OrphanReport) string {
 	if total == 0 {
 		return ""
 	}
-	return fmt.Sprintf("kata cutover: discarded %d orphan rows from old DB (%s)",
+	return fmt.Sprintf("poomsae cutover: discarded %d orphan rows from old DB (%s)",
 		total, strings.Join(parts, ", "))
 }
 

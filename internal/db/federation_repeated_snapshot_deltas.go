@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/notification"
 )
 
 // RepeatedImportEventType is the event a hub writes for a winning repeated

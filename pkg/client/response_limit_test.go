@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 func TestWithResponseLimitEscapesStringPathParametersOnce(t *testing.T) {

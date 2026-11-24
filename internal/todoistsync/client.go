@@ -13,9 +13,9 @@ import (
 
 	"github.com/cenkalti/backoff/v7"
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/todoistsync/todoistapi"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync/todoistapi"
 )
 
 // Fetcher resolves credential identity and opens an account-pinned read session.
@@ -197,7 +197,7 @@ type retryingDoer struct {
 	backOff func() backoff.BackOff
 }
 
-// Do sends Todoist API requests to the configured provider origin, not the Kata API.
+// Do sends Todoist API requests to the configured provider origin, not the Poomsae API.
 // huma-check:external
 func (d retryingDoer) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	// The generated client builds every URL from the origin that

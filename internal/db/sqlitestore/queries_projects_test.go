@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestCreateProject_RoundTrips(t *testing.T) {
@@ -15,13 +15,13 @@ func TestCreateProject_RoundTrips(t *testing.T) {
 	d := openTestDB(t)
 	ctx := t.Context()
 
-	p, err := d.CreateProject(ctx, "kata")
+	p, err := d.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
-	assert.Equal(t, "kata", p.Name)
+	assert.Equal(t, "poomsae", p.Name)
 	assertValidUID(t, p.UID)
 	assert.False(t, p.CreatedAt.IsZero())
 
-	got, err := d.ProjectByName(ctx, "kata")
+	got, err := d.ProjectByName(ctx, "poomsae")
 	require.NoError(t, err)
 	assert.Equal(t, p.ID, got.ID)
 	assert.Equal(t, p.UID, got.UID)
@@ -74,16 +74,16 @@ func TestRenameProject_UpdatesNameOnly(t *testing.T) {
 	d := openTestDB(t)
 	ctx := t.Context()
 	p := createKataProject(ctx, t, d)
-	alias := attachAlias(ctx, t, d, p.ID, "github.com/wesm/kata", "/tmp/kata")
+	alias := attachAlias(ctx, t, d, p.ID, "github.com/wesm/poomsae", "/tmp/poomsae")
 
-	renamed, err := d.RenameProject(ctx, p.ID, "Kata Tracker")
+	renamed, err := d.RenameProject(ctx, p.ID, "Poomsae Tracker")
 	require.NoError(t, err)
 	assert.Equal(t, p.ID, renamed.ID)
-	assert.Equal(t, "Kata Tracker", renamed.Name)
+	assert.Equal(t, "Poomsae Tracker", renamed.Name)
 
 	got, err := d.ProjectByID(ctx, p.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "Kata Tracker", got.Name)
+	assert.Equal(t, "Poomsae Tracker", got.Name)
 	aliases, err := d.ProjectAliases(ctx, p.ID)
 	require.NoError(t, err)
 	require.Len(t, aliases, 1)
@@ -103,12 +103,12 @@ func TestAttachAlias_AndLookup(t *testing.T) {
 	ctx := t.Context()
 	p := createKataProject(ctx, t, d)
 
-	a, err := d.AttachAlias(ctx, p.ID, "github.com/wesm/kata", "git")
+	a, err := d.AttachAlias(ctx, p.ID, "github.com/wesm/poomsae", "git")
 	require.NoError(t, err)
 	assert.Equal(t, p.ID, a.ProjectID)
 	assert.Equal(t, "git", a.AliasKind)
 
-	got, err := d.AliasByIdentity(ctx, "github.com/wesm/kata")
+	got, err := d.AliasByIdentity(ctx, "github.com/wesm/poomsae")
 	require.NoError(t, err)
 	assert.Equal(t, a.ID, got.ID)
 }

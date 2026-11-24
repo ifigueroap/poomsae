@@ -7,13 +7,13 @@ import (
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
-// layoutTestSetup pins KATA_COLOR_MODE=none and rebuilds the styles
+// layoutTestSetup pins POOMSAE_COLOR_MODE=none and rebuilds the styles
 // against io.Discard so View() output is plain UTF-8 (no ANSI). It
 // also returns a fresh Model with no loading flag and the listFixture
 // seeded so the layout tests have content to render.
 func layoutTestSetup(t *testing.T) (Model, func()) {
 	t.Helper()
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	t.Setenv("NO_COLOR", "")
 	applyDefaultColorMode()
 	m := initialModel(Options{})

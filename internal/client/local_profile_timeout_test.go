@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestLocalProfileIdentityProbeHonorsTimeout(t *testing.T) {
-	t.Setenv("KATA_HTTP_TIMEOUT", "50ms")
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "50ms")
 	release := make(chan struct{})
 	s := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		select {
@@ -53,7 +53,7 @@ func TestNamedReadOnlyProfileDiscoveryDefersIdentityProbe(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/ping":
-			_, _ = fmt.Fprint(w, `{"ok":true,"service":"kata","version":"test"}`)
+			_, _ = fmt.Fprint(w, `{"ok":true,"service":"poomsae","version":"test"}`)
 		case "/api/v1/instance":
 			identityCalls.Add(1)
 			<-r.Context().Done()
@@ -66,17 +66,17 @@ func TestNamedReadOnlyProfileDiscoveryDefersIdentityProbe(t *testing.T) {
 		PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"),
 	})
 	require.NoError(t, err)
-	t.Setenv("KATA_HTTP_TIMEOUT", "50ms")
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "50ms")
 
 	resolved, _, err := DiscoverSelected(t.Context(), DiscoverRequest{Name: "work", ReadOnly: true})
 	require.NoError(t, err, "read-only named discovery defers profile identity checks to the caller's bounded client")
 	require.Equal(t, profile.InstanceUID, resolved.LocalProfile.InstanceUID)
 	require.Equal(t, server.URL, resolved.BaseURL)
-	require.Zero(t, identityCalls.Load(), "discovery must not make an identity request with KATA_HTTP_TIMEOUT")
+	require.Zero(t, identityCalls.Load(), "discovery must not make an identity request with POOMSAE_HTTP_TIMEOUT")
 }
 
 func TestLocalProfileStorageProbeHonorsTimeout(t *testing.T) {
-	t.Setenv("KATA_HTTP_TIMEOUT", "50ms")
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", "50ms")
 	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	release := make(chan struct{})

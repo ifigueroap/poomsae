@@ -1,12 +1,12 @@
 ---
 title: Web UI
-description: Browse and manage Kata projects and issues in the daemon-served browser application.
+description: Browse and manage Poomsae projects and issues in the daemon-served browser application.
 last_edited: 2026-11-21
 ---
 
 # Web UI
 
-Kata's Web UI is a browser client for the same daemon and issue data that the
+Poomsae's Web UI is a browser client for the same daemon and issue data that the
 CLI and TUI use. You can manage projects, issue collections, issue details,
 relationships, recurrences, and configured daemons without running a separate
 application server.
@@ -16,24 +16,24 @@ application server.
 From a bound workspace, run:
 
 ```sh
-kata ui
+poomsae ui
 ```
 
 That command starts or discovers the local daemon and opens its **Inbox**. To
-open an issue directly, pass any issue reference that `kata show` accepts:
+open an issue directly, pass any issue reference that `poomsae show` accepts:
 
 ```sh
-kata ui abc4
-kata ui example-project#abc4
+poomsae ui abc4
+poomsae ui example-project#abc4
 ```
 
-Kata prints the URL in the selected output format before opening the browser.
+Poomsae prints the URL in the selected output format before opening the browser.
 If the browser cannot open, the command succeeds and asks you to open that URL
 manually. Canceling the command still returns an error.
 
-Kata resolves the reference before opening the browser, then puts the issue and
+Poomsae resolves the reference before opening the browser, then puts the issue and
 project UIDs in the URL so the bookmark survives project renames and issue
-state changes. `kata daemon status` prints the same browser origin. See the
+state changes. `poomsae daemon status` prints the same browser origin. See the
 [CLI reference](../reference/cli.md#web-ui) for route and launch details.
 
 Show, list, ready, and search results also include browser links when the
@@ -42,13 +42,13 @@ in issue summaries. Daemons without a browser UI omit it.
 
 Release binaries contain the browser assets. A binary installed with
 `go install` does not, because that path skips the browser build; use a
-[release or `make install`](../get-started/install.md) when you need `kata ui`.
+[release or `make install`](../get-started/install.md) when you need `poomsae ui`.
 
 Embedding applications can serve the browser UI below a path such as
 `/tools/tasks/`. Navigation, assets, sessions, API requests, and live updates
 stay below that path. Hosts configure this through
 [`Service.HandlerAt`](../development/embedding.md#mount-below-a-url-path),
-while the standalone `kata ui` command keeps its existing route.
+while the standalone `poomsae ui` command keeps its existing route.
 
 ## Navigate projects and collections
 
@@ -62,7 +62,7 @@ The sidebar lists **Inbox**, **Today**, **Scheduled**, **Delegated**, **All open
   [Inbox project](../reference/metadata.md#project-inbox-designation) is the
   initial choice. With no projects, **New task** asks you to create one, makes
   it Inbox, and opens task capture.
-  This is separate from `kata inbox`,
+  This is separate from `poomsae inbox`,
   which reads
   [attention requests](../reference/cli.md#teammate-requests) for an actor or
   teammate.
@@ -106,7 +106,7 @@ At narrow window widths the task list stays primary: at 760px and below the menu
 in a drawer, and filter controls wrap to fit the list pane, including
 side-by-side detail layouts.
 
-![Kata Web UI showing a synthetic project and issue hierarchy](/docs/assets/screenshots/web-ui/workspace.png)
+![Poomsae Web UI showing a synthetic project and issue hierarchy](/docs/assets/screenshots/web-ui/workspace.png)
 
 ## Manage an issue
 
@@ -167,10 +167,10 @@ actions so it stays readable.
 Mutations use the same daemon validation, actor attribution, revision checks,
 events, and hooks as the CLI. Controls stay disabled while the latest data is
 loading, while you lack write access, or while another change is saving. A
-change that Kata cannot make shows
+change that Poomsae cannot make shows
 `Can't make changes. Refresh or check access.`
 
-![Kata Web UI issue detail with Markdown, properties, recurrence, links, checklist, and comment](/docs/assets/screenshots/web-ui/issue-detail.png)
+![Poomsae Web UI issue detail with Markdown, properties, recurrence, links, checklist, and comment](/docs/assets/screenshots/web-ui/issue-detail.png)
 
 ## Explore relationships
 
@@ -186,12 +186,12 @@ names each setting you change from its default.
 Select a node to open its issue beside the graph. With a link limit set, the graph shows tasks within that many links of
 the new issue. A minimap appears only when the graph is larger than the view.
 
-![Kata Web UI relationship graph generated from synthetic issues](/docs/assets/screenshots/web-ui/relationships.png)
+![Poomsae Web UI relationship graph generated from synthetic issues](/docs/assets/screenshots/web-ui/relationships.png)
 
 ## Work across daemons
 
-Running `kata ui` without `--daemon` opens the local browser gateway. When
-`<KATA_HOME>/config.toml` contains `[[daemon]]` entries, you can use the daemon
+Running `poomsae ui` without `--daemon` opens the local browser gateway. When
+`<POOMSAE_HOME>/config.toml` contains `[[daemon]]` entries, you can use the daemon
 switcher to move among them without leaving that browser origin. Configured
 bearer tokens stay server-side, and the application remembers the active route
 separately for each daemon.
@@ -207,9 +207,9 @@ returns when access recovers. An explicitly selected server stays listed with
 its connection status, and projects keep syncing. See
 [Project access](../reference/http-api.md#project-access) for the exact rules.
 
-![Kata Web UI switching between two synthetic configured daemons](/docs/assets/screenshots/web-ui/daemon-switcher.png)
+![Poomsae Web UI switching between two synthetic configured daemons](/docs/assets/screenshots/web-ui/daemon-switcher.png)
 
-To open one configured target directly instead, run `kata ui --daemon <name>`.
+To open one configured target directly instead, run `poomsae ui --daemon <name>`.
 See [Configuration](../reference/configuration.md#daemon-config) for catalog
 settings and [Remote daemon](../operations/remote-daemon.md) for network,
 authentication, and proxy setup.
@@ -242,7 +242,7 @@ proxy, and anonymous labels:
 
 When a configured target's `[[daemon]]` token belongs to an account, changes
 you make through the switcher are recorded as that account, the same as
-`kata --daemon <name>`.
+`poomsae --daemon <name>`.
 
 Switching daemons or losing current authority clears the previous account
 while reconnection is pending. Finite credentials show **Credential expired**
@@ -254,7 +254,7 @@ load the administrator credential inventory.
 An administrator session can open **Settings** > **Credentials** to inspect
 the daemon's read-only credential ledger. The view keeps live, expired, and
 revoked credentials. Each credential is one row. The row shows its name, ID,
-actor, state, and scope. Use the ID with `kata tokens revoke <id>`. The row
+actor, state, and scope. Use the ID with `poomsae tokens revoke <id>`. The row
 also shows when the credential was created and last used, or **Never used** if
 it has no last-use time. It shows when the credential expires or was revoked,
 if either applies. Expired and revoked credentials carry a badge. You can
@@ -285,7 +285,7 @@ daemon invalidates its browser sessions.
 Non-loopback, identity-authenticated, and proxied deployments do not receive
 local-web authority automatically. They require the configured login mechanism
 and an exact public origin. A static daemon token does not disable the direct
-loopback session, so `kata ui` remains local and passwordless when API clients
+loopback session, so `poomsae ui` remains local and passwordless when API clients
 also use that token. Plain HTTP outside loopback is limited to an explicitly
 trusted private network; otherwise, terminate HTTPS at the same origin.
 `--insecure-readonly` can serve an anonymous browser, but it never grants

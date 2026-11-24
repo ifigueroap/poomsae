@@ -19,19 +19,19 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // Contract: a real prefix-stripping HTTPS proxy reaches only native scoped
@@ -41,8 +41,8 @@ func TestSignedFederationRestrictedIngressRoundTrip(t *testing.T) {
 		t.Setenv("TEST_INGRESS_KEY", strings.Repeat("k", 64))
 		source := signingpolicy.Source{KeyID: "key-a", KeyEnv: "TEST_INGRESS_KEY"}
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_DB", filepath.Join(home, "spoke.db"))
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_DB", filepath.Join(home, "spoke.db"))
 		hubDB, err := sqlitestore.Open(t.Context(), filepath.Join(home, "hub.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, hubDB.Close()) })
@@ -332,12 +332,12 @@ func TestSignedRelayAcceptAllowsSupportedBulkBody(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Setenv("TEST_RELAY_SIGNING_KEY", strings.Repeat("k", 64))
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_WORKSPACE", filepath.Join(home, "workspace"))
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_WORKSPACE", filepath.Join(home, "workspace"))
 		source := signingpolicy.Source{KeyID: "relay-key", KeyEnv: "TEST_RELAY_SIGNING_KEY"}
 		state := filepath.Join(home, "replay.state")
 		require.NoError(t, federationsigning.InitializeReplayState(state))
-		store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+		store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, store.Close()) })
 		project, err := store.CreateProject(t.Context(), "spoke-project")

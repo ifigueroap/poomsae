@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 // Contract: durable local intent is delivered once; restart/replay cannot echo it.
@@ -176,7 +176,7 @@ func TestRunnerEmptyHistoryReplyKeepsSyncPoint(t *testing.T) {
 	require.True(t, binding.LastCursorAt.Equal(saved))
 }
 
-// Contract: when Todoist reports a null update time, a verified Kata reopen
+// Contract: when Todoist reports a null update time, a verified Poomsae reopen
 // still clears its pending intent, so a later Todoist completion stands.
 func TestRunnerReopenWithUnknownUpdateTimeClearsPendingIntent(t *testing.T) {
 	ctx := t.Context()
@@ -286,7 +286,7 @@ func TestRunnerReopensTaskWithUnknownUpdatedAt(t *testing.T) {
 }
 
 // Contract: a Todoist 404 covers both completed and deleted tasks. A saved
-// closed result never reopens-then-closes a Kata issue: after a local reopen
+// closed result never reopens-then-closes a Poomsae issue: after a local reopen
 // in one-way mode, a task that disappears from Todoist leaves the issue open.
 func TestRunnerMissingTaskDoesNotReuseClosedResultForOpenIssue(t *testing.T) {
 	ctx := t.Context()

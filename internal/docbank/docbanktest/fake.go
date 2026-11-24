@@ -19,7 +19,7 @@ import (
 
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank"
 )
 
 // Fake keeps uploaded bytes in memory and records API requests.

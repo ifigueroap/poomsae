@@ -70,7 +70,7 @@ func registerSectionLoaders(server *sdkmcp.Server, options Options) error {
 	if options.Events {
 		for i := range sections {
 			if sections[i].section == "coordination" {
-				sections[i].tools = []string{"kata.assign", "kata.event_subscriptions", "kata.inbox", "kata.status", "kata.unassign"}
+				sections[i].tools = []string{"poomsae.assign", "poomsae.event_subscriptions", "poomsae.inbox", "poomsae.status", "poomsae.unassign"}
 				sections[i].description += " Native Events can signal exact-recipient inbox changes. Includes the principal's webhook delivery health from the daemon."
 				sections[i].register = func(server *sdkmcp.Server, h toolHandlers) {
 					registerCoordinationTools(server, h)
@@ -131,109 +131,109 @@ func registerSectionLoaders(server *sdkmcp.Server, options Options) error {
 func toolSections(storageAvailable, tokenAdminAvailable bool) []toolSection {
 	return []toolSection{
 		{
-			loader: "kata.load_activity", section: "activity", title: "Load activity tools",
+			loader: "poomsae.load_activity", section: "activity", title: "Load activity tools",
 			description: "Load typed digest and event-stream tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.digest", "kata.events"}, available: true, register: registerActivityTools,
+			tools:       []string{"poomsae.digest", "poomsae.events"}, available: true, register: registerActivityTools,
 		},
 		{
-			loader: "kata.load_coordination", section: "coordination", title: "Load coordination tools",
+			loader: "poomsae.load_coordination", section: "coordination", title: "Load coordination tools",
 			description: "Load inbox, assign, unassign, and issue-status tools. Inbox reads are paginated. Refresh the MCP tool list.",
-			tools:       []string{"kata.assign", "kata.inbox", "kata.status", "kata.unassign"}, available: true, register: registerCoordinationTools,
+			tools:       []string{"poomsae.assign", "poomsae.inbox", "poomsae.status", "poomsae.unassign"}, available: true, register: registerCoordinationTools,
 		},
 		{
-			loader: "kata.load_cron", section: "cron", title: "Load cron tools",
+			loader: "poomsae.load_cron", section: "cron", title: "Load cron tools",
 			description: "Load native recurring notification jobs and external-adapter execution definitions. Run evidence does not launch work. Distinct from RRULE recurrence tools; refresh the MCP tool list.",
-			tools:       []string{"kata.cron_capabilities", "kata.cron_new_uid", "kata.cron_jobs", "kata.cron_job", "kata.cron_job_create", "kata.cron_job_update", "kata.cron_job_delete", "kata.cron_job_restore", "kata.cron_workflows", "kata.cron_workflow", "kata.cron_workflow_create", "kata.cron_workflow_update", "kata.cron_workflow_delete", "kata.cron_workflow_restore", "kata.cron_runs", "kata.cron_run", "kata.cron_run_observe"},
+			tools:       []string{"poomsae.cron_capabilities", "poomsae.cron_new_uid", "poomsae.cron_jobs", "poomsae.cron_job", "poomsae.cron_job_create", "poomsae.cron_job_update", "poomsae.cron_job_delete", "poomsae.cron_job_restore", "poomsae.cron_workflows", "poomsae.cron_workflow", "poomsae.cron_workflow_create", "poomsae.cron_workflow_update", "poomsae.cron_workflow_delete", "poomsae.cron_workflow_restore", "poomsae.cron_runs", "poomsae.cron_run", "poomsae.cron_run_observe"},
 			available:   true, register: registerCronTools,
 		},
 		{
-			loader: "kata.load_docs", section: "docs", title: "Load documentation tools",
-			description: "Load typed tools that search and read Kata's bundled user documentation, then refresh the MCP tool list.",
-			tools:       []string{"kata.read_doc", "kata.search_docs"}, available: true, register: registerDocsTools,
+			loader: "poomsae.load_docs", section: "docs", title: "Load documentation tools",
+			description: "Load typed tools that search and read Poomsae's bundled user documentation, then refresh the MCP tool list.",
+			tools:       []string{"poomsae.read_doc", "poomsae.search_docs"}, available: true, register: registerDocsTools,
 		},
 		{
-			loader: "kata.load_external_roots", section: "external_roots", title: "Load external-root tools",
+			loader: "poomsae.load_external_roots", section: "external_roots", title: "Load external-root tools",
 			description: "Load typed connector discovery, field mapping, and issue bridge tools, then refresh the MCP tool list.",
 			tools: []string{
-				"kata.bridge_bind", "kata.bridge_pause", "kata.bridge_reconcile",
-				"kata.bridge_resolve_comment", "kata.bridge_resolve_field", "kata.bridge_resume",
-				"kata.bridge_show", "kata.bridge_unbind", "kata.connector_field_map",
-				"kata.connector_field_unmap", "kata.connector_fields", "kata.connectors",
+				"poomsae.bridge_bind", "poomsae.bridge_pause", "poomsae.bridge_reconcile",
+				"poomsae.bridge_resolve_comment", "poomsae.bridge_resolve_field", "poomsae.bridge_resume",
+				"poomsae.bridge_show", "poomsae.bridge_unbind", "poomsae.connector_field_map",
+				"poomsae.connector_field_unmap", "poomsae.connector_fields", "poomsae.connectors",
 			},
 			available: true, register: registerExternalRootTools,
 		},
 		{
-			loader: "kata.load_federation", section: "federation", title: "Load federation tools",
+			loader: "poomsae.load_federation", section: "federation", title: "Load federation tools",
 			description: "Load typed project bridge connect/status/disconnect, federation status, enrollment revocation, rebind, leave, quarantine, and root key repin tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.federation_bridge_connect", "kata.federation_bridge_disconnect", "kata.federation_bridge_status", "kata.federation_enrollment_revoke", "kata.federation_leave", "kata.federation_quarantine", "kata.federation_rebind", "kata.federation_root_key_repin", "kata.federation_spoke_name", "kata.federation_status"},
+			tools:       []string{"poomsae.federation_bridge_connect", "poomsae.federation_bridge_disconnect", "poomsae.federation_bridge_status", "poomsae.federation_enrollment_revoke", "poomsae.federation_leave", "poomsae.federation_quarantine", "poomsae.federation_rebind", "poomsae.federation_root_key_repin", "poomsae.federation_spoke_name", "poomsae.federation_status"},
 			available:   true, register: registerFederationTools,
 		},
 		{
-			loader: "kata.load_import", section: "import", title: "Load import tools",
+			loader: "poomsae.load_import", section: "import", title: "Load import tools",
 			description: "Load the typed structured issue-import tool, then refresh the MCP tool list.",
-			tools:       []string{"kata.import_issues"}, available: true, register: registerImportTools,
+			tools:       []string{"poomsae.import_issues"}, available: true, register: registerImportTools,
 		},
 		{
-			loader: "kata.load_issue_discovery", section: "issue_discovery", title: "Load issue discovery tools",
+			loader: "poomsae.load_issue_discovery", section: "issue_discovery", title: "Load issue discovery tools",
 			description: "Load typed issue search, list, show, ready, next, label, and graph tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.graph", "kata.labels", "kata.list", "kata.next", "kata.ready", "kata.search", "kata.show"},
+			tools:       []string{"poomsae.graph", "poomsae.labels", "poomsae.list", "poomsae.next", "poomsae.ready", "poomsae.search", "poomsae.show"},
 			available:   true, register: registerIssueDiscoveryTools,
 		},
 		{
-			loader: "kata.load_issue_lifecycle", section: "issue_lifecycle", title: "Load issue lifecycle tools",
+			loader: "poomsae.load_issue_lifecycle", section: "issue_lifecycle", title: "Load issue lifecycle tools",
 			description: "Load typed close, reopen, delete, restore, purge, wait, and close-audit tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.audit_closes", "kata.close", "kata.delete", "kata.purge", "kata.reopen", "kata.restore", "kata.wait"},
+			tools:       []string{"poomsae.audit_closes", "poomsae.close", "poomsae.delete", "poomsae.purge", "poomsae.reopen", "poomsae.restore", "poomsae.wait"},
 			available:   true, register: registerIssueLifecycleTools,
 		},
 		{
-			loader: "kata.load_issue_mutation", section: "issue_mutation", title: "Load issue mutation tools",
+			loader: "poomsae.load_issue_mutation", section: "issue_mutation", title: "Load issue mutation tools",
 			description: "Load typed issue creation, edit, comment, claim, label, metadata, planning-date, and move tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.claim", "kata.comment", "kata.create", "kata.edit", "kata.edit_comment", "kata.move", "kata.set_deadline", "kata.set_label", "kata.set_metadata", "kata.set_schedule"},
+			tools:       []string{"poomsae.claim", "poomsae.comment", "poomsae.create", "poomsae.edit", "poomsae.edit_comment", "poomsae.move", "poomsae.set_deadline", "poomsae.set_label", "poomsae.set_metadata", "poomsae.set_schedule"},
 			available:   true, register: registerIssueMutationTools,
 		},
 		{
-			loader: "kata.load_leases", section: "leases", title: "Load lease tools",
+			loader: "poomsae.load_leases", section: "leases", title: "Load lease tools",
 			description: "Load typed federation lease status and mutation tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.lease", "kata.lease_force_release", "kata.lease_status", "kata.lease_steal"},
+			tools:       []string{"poomsae.lease", "poomsae.lease_force_release", "poomsae.lease_status", "poomsae.lease_steal"},
 			available:   true, register: registerLeaseTools,
 		},
 		{
-			loader: "kata.load_projects", section: "projects", title: "Load project tools",
+			loader: "poomsae.load_projects", section: "projects", title: "Load project tools",
 			description: "Load typed project discovery, detail, and administration tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.project_create", "kata.project_merge", "kata.project_purge", "kata.project_remove", "kata.project_restore", "kata.project_show", "kata.project_update", "kata.projects"},
+			tools:       []string{"poomsae.project_create", "poomsae.project_merge", "poomsae.project_purge", "poomsae.project_remove", "poomsae.project_restore", "poomsae.project_show", "poomsae.project_update", "poomsae.projects"},
 			available:   true, register: registerProjectTools,
 		},
 		{
-			loader: "kata.load_recurrence", section: "recurrence", title: "Load recurrence tools",
+			loader: "poomsae.load_recurrence", section: "recurrence", title: "Load recurrence tools",
 			description: "Load typed recurrence discovery and administration tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.recurrence_delete", "kata.recurrence_update", "kata.recurrences"},
+			tools:       []string{"poomsae.recurrence_delete", "poomsae.recurrence_update", "poomsae.recurrences"},
 			available:   true, register: registerRecurrenceTools,
 		},
 		{
-			loader: "kata.load_storage", section: "storage", title: "Load storage tools",
+			loader: "poomsae.load_storage", section: "storage", title: "Load storage tools",
 			description: "Load typed JSONL storage tools when host storage was enabled at startup, then refresh the MCP tool list.",
-			tools:       []string{"kata.storage_export", "kata.storage_import"}, available: storageAvailable, register: registerStorageTools,
+			tools:       []string{"poomsae.storage_export", "poomsae.storage_import"}, available: storageAvailable, register: registerStorageTools,
 		},
 		{
-			loader: "kata.load_sync", section: "sync", title: "Load synchronization tools",
+			loader: "poomsae.load_sync", section: "sync", title: "Load synchronization tools",
 			description: "Load typed GitHub synchronization tools, then refresh the MCP tool list.",
-			tools:       []string{"kata.sync_once", "kata.sync_status", "kata.sync_update"}, available: true, register: registerSyncTools,
+			tools:       []string{"poomsae.sync_once", "poomsae.sync_status", "poomsae.sync_update"}, available: true, register: registerSyncTools,
 		},
 		{
-			loader: "kata.load_system", section: "system", title: "Load system tools",
+			loader: "poomsae.load_system", section: "system", title: "Load system tools",
 			description: "Load the typed redacted daemon system-information tool, then refresh the MCP tool list.",
-			tools:       []string{"kata.system"}, available: true, register: registerSystemTools,
+			tools:       []string{"poomsae.system"}, available: true, register: registerSystemTools,
 		},
 		{
-			loader: "kata.load_teams", section: "teams", title: "Load team access tools",
+			loader: "poomsae.load_teams", section: "teams", title: "Load team access tools",
 			description: "Load owner team membership and project access tools when token administration is explicitly enabled with daemon-wide scope.",
-			tools:       []string{"kata.project_access_set", "kata.project_access_show", "kata.team_create", "kata.team_delete", "kata.team_member_set", "kata.team_show", "kata.teams"},
+			tools:       []string{"poomsae.project_access_set", "poomsae.project_access_show", "poomsae.team_create", "poomsae.team_delete", "poomsae.team_member_set", "poomsae.team_show", "poomsae.teams"},
 			available:   tokenAdminAvailable, register: registerTeamTools,
 		},
 		{
-			loader: "kata.load_tokens", section: "tokens", title: "Load token tools",
+			loader: "poomsae.load_tokens", section: "tokens", title: "Load token tools",
 			description: "Load typed token administration tools when explicitly enabled at startup, then refresh the MCP tool list.",
-			tools:       []string{"kata.token_create", "kata.token_revoke", "kata.tokens"}, available: tokenAdminAvailable, register: registerTokenTools,
+			tools:       []string{"poomsae.token_create", "poomsae.token_revoke", "poomsae.tokens"}, available: tokenAdminAvailable, register: registerTokenTools,
 		},
 	}
 }

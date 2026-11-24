@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"bytes"
@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
+	internalconfig "github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	internalconfig "go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/githubsync"
 )
 
 func TestServiceGitHubSyncConfigDrivesHandlersAndRunner(t *testing.T) {
-	t.Setenv("KATA_GITHUB_SYNC_ALLOWED_HOSTS", "github.example")
+	t.Setenv("POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS", "github.example")
 	fetcher := &serviceGitHubFetcher{
 		repositoryCalls: make(chan githubsync.Binding, 2),
 	}

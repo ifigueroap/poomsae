@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 type runnerSetup struct {
@@ -145,7 +145,7 @@ func TestRunner_AliasResolverInvokedOnce(t *testing.T) {
 	var calls atomic.Int32
 	rs.deps.Alias = func(_ context.Context, _ db.Event) (AliasSnapshot, bool, error) {
 		calls.Add(1)
-		return AliasSnapshot{Identity: "github.com/wesm/kata", Kind: "git"}, true, nil
+		return AliasSnapshot{Identity: "github.com/wesm/poomsae", Kind: "git"}, true, nil
 	}
 	rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"exit", "0"} })
 	if got := calls.Load(); got != 1 {
@@ -155,21 +155,21 @@ func TestRunner_AliasResolverInvokedOnce(t *testing.T) {
 
 // TestRunner_AliasResolverErr_NoEnvLeak pins the contract that a
 // resolver returning (snap, hasAlias=true, err) must NOT export
-// KATA_ALIAS_* env vars: stdin's buildAliasBlock omits the alias
+// POOMSAE_ALIAS_* env vars: stdin's buildAliasBlock omits the alias
 // block on err, so env must agree to keep the two views consistent.
 func TestRunner_AliasResolverErr_NoEnvLeak(t *testing.T) {
 	rs := newRunnerSetup(t)
 	rs.deps.Alias = func(_ context.Context, _ db.Event) (AliasSnapshot, bool, error) {
-		return AliasSnapshot{Identity: "github.com/wesm/kata", Kind: "git"},
+		return AliasSnapshot{Identity: "github.com/wesm/poomsae", Kind: "git"},
 			true, errors.New("resolver boom")
 	}
-	got := rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"env", "KATA_ALIAS_IDENTITY"} })
+	got := rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"env", "POOMSAE_ALIAS_IDENTITY"} })
 	if got.Result != "ok" {
 		t.Fatalf("expected ok, got %q", got.Result)
 	}
 	out := readRecordOut(t, got.StdoutPath)
 	if strings.TrimSpace(out) != "" {
-		t.Fatalf("KATA_ALIAS_IDENTITY must be empty when resolver returned err: %q", out)
+		t.Fatalf("POOMSAE_ALIAS_IDENTITY must be empty when resolver returned err: %q", out)
 	}
 }
 
@@ -298,16 +298,16 @@ func TestRunner_OutputCapture_BothStreams(t *testing.T) {
 
 func TestRunner_EnvKataVars(t *testing.T) {
 	rs := newRunnerSetup(t)
-	got := rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"env", "KATA_EVENT_ID"} })
+	got := rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"env", "POOMSAE_EVENT_ID"} })
 	out := readRecordOut(t, got.StdoutPath)
 	if strings.TrimSpace(out) != "81237" {
-		t.Fatalf("KATA_EVENT_ID = %q, want 81237", out)
+		t.Fatalf("POOMSAE_EVENT_ID = %q, want 81237", out)
 	}
 }
 
 func TestBuildEnvUsesTheConfiguredDaemonChildEnvironment(t *testing.T) {
 	env := buildEnv(
-		[]string{"PATH=/example/bin", "KATA_HOME=/example/home"},
+		[]string{"PATH=/example/bin", "POOMSAE_HOME=/example/home"},
 		nil,
 		db.Event{ID: 1, Type: "issue.created"},
 		AliasSnapshot{},
@@ -315,7 +315,7 @@ func TestBuildEnvUsesTheConfiguredDaemonChildEnvironment(t *testing.T) {
 	)
 
 	joined := strings.Join(env, "\n")
-	for _, want := range []string{"PATH=/example/bin", "KATA_HOME=/example/home"} {
+	for _, want := range []string{"PATH=/example/bin", "POOMSAE_HOME=/example/home"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("environment missing %q: %v", want, env)
 		}

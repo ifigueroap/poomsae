@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -7,34 +7,34 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ErrProjectConflict reports that a requested stable project identity or name
 // is already bound to a different project.
-var ErrProjectConflict = errors.New("kata: project identity conflict")
+var ErrProjectConflict = errors.New("poomsae: project identity conflict")
 
 // ErrProjectNotFound reports that no host-visible project has the requested
 // stable identity.
-var ErrProjectNotFound = errors.New("kata: project not found")
+var ErrProjectNotFound = errors.New("poomsae: project not found")
 
 // ErrProjectNotArchived reports that a project must be archived before it can
 // be purged.
-var ErrProjectNotArchived = errors.New("kata: project is not archived")
+var ErrProjectNotArchived = errors.New("poomsae: project is not archived")
 
 // ErrProjectFederationReplica reports that a project is a replica of a project
 // on another hub. It must leave that hub before it can be purged.
-var ErrProjectFederationReplica = errors.New("kata: project is a federation replica")
+var ErrProjectFederationReplica = errors.New("poomsae: project is a federation replica")
 
 // ErrProjectPurgeBlocked reports that a purge cannot proceed until the
 // operator resolves the wrapped condition.
-var ErrProjectPurgeBlocked = errors.New("kata: project purge is blocked")
+var ErrProjectPurgeBlocked = errors.New("poomsae: project purge is blocked")
 
 // ErrProjectPurgeActorRequired reports a purge without an actor. The purge log
 // records who purged the project.
-var ErrProjectPurgeActorRequired = errors.New("kata: purge actor is required")
+var ErrProjectPurgeActorRequired = errors.New("poomsae: purge actor is required")
 
 // ProjectState describes whether a host-managed project is available for
 // ordinary operations.
@@ -120,7 +120,7 @@ func (s *Service) EnsureProject(ctx context.Context, spec ProjectSpec) (EnsurePr
 	} else if found {
 		return exactProjectResult(existing, spec)
 	}
-	return EnsureProjectResult{}, fmt.Errorf("kata: ensure project: %w", createErr)
+	return EnsureProjectResult{}, fmt.Errorf("poomsae: ensure project: %w", createErr)
 }
 
 // ArchiveProject hides a project from ordinary operations while retaining its
@@ -131,11 +131,11 @@ func (s *Service) ArchiveProject(
 	projectUID string,
 	actor string,
 ) (ProjectMutationResult, error) {
-	if !katauid.Valid(projectUID) || projectUID == db.SystemProjectUID {
+	if !poomsaeuid.Valid(projectUID) || projectUID == db.SystemProjectUID {
 		return ProjectMutationResult{}, ErrProjectNotFound
 	}
 	if strings.TrimSpace(actor) == "" {
-		return ProjectMutationResult{}, errors.New("kata: archive actor is required")
+		return ProjectMutationResult{}, errors.New("poomsae: archive actor is required")
 	}
 	callCtx, done, err := s.beginHostCall(ctx)
 	if err != nil {
@@ -171,7 +171,7 @@ func (s *Service) ArchiveProject(
 		return ProjectMutationResult{}, ErrProjectNotFound
 	}
 	if err != nil {
-		return ProjectMutationResult{}, fmt.Errorf("kata: archive project: %w", err)
+		return ProjectMutationResult{}, fmt.Errorf("poomsae: archive project: %w", err)
 	}
 	if event != nil {
 		s.publish.Event(archived.ID, *event)
@@ -220,7 +220,7 @@ func (s *Service) PurgeArchivedProject(
 	actor string,
 	reason string,
 ) (ProjectPurgeResult, error) {
-	if !katauid.Valid(projectUID) || projectUID == db.SystemProjectUID {
+	if !poomsaeuid.Valid(projectUID) || projectUID == db.SystemProjectUID {
 		return ProjectPurgeResult{}, ErrProjectNotFound
 	}
 	if strings.TrimSpace(actor) == "" {
@@ -244,7 +244,7 @@ func (s *Service) PurgeArchivedProject(
 	}
 	enrollments, err := s.store.ListProjectFederationEnrollments(callCtx, existing.ID)
 	if err != nil {
-		return ProjectPurgeResult{}, fmt.Errorf("kata: list federation enrollments: %w", err)
+		return ProjectPurgeResult{}, fmt.Errorf("poomsae: list federation enrollments: %w", err)
 	}
 	params := db.PurgeProjectParams{ProjectID: existing.ID, Actor: actor, RetireHubBinding: true}
 	if reason = strings.TrimSpace(reason); reason != "" {
@@ -263,7 +263,7 @@ func (s *Service) PurgeArchivedProject(
 		return ProjectPurgeResult{}, ErrProjectFederationReplica
 	}
 	if err != nil {
-		return ProjectPurgeResult{}, fmt.Errorf("kata: purge project: %w", err)
+		return ProjectPurgeResult{}, fmt.Errorf("poomsae: purge project: %w", err)
 	}
 	if log.PurgeResetAfterEventID != nil {
 		s.publish.Reset(existing.ID, *log.PurgeResetAfterEventID)
@@ -276,14 +276,14 @@ func (s *Service) PurgeArchivedProject(
 }
 
 func validateProjectSpec(spec ProjectSpec) error {
-	if !katauid.Valid(spec.UID) || spec.UID == db.SystemProjectUID {
-		return fmt.Errorf("kata: invalid project UID")
+	if !poomsaeuid.Valid(spec.UID) || spec.UID == db.SystemProjectUID {
+		return fmt.Errorf("poomsae: invalid project UID")
 	}
 	if spec.Name == db.SystemProjectName || strings.Contains(spec.Name, "#") {
-		return fmt.Errorf("kata: invalid project name")
+		return fmt.Errorf("poomsae: invalid project name")
 	}
 	if err := config.ValidateProjectName(spec.Name); err != nil {
-		return fmt.Errorf("kata: invalid project name: %w", err)
+		return fmt.Errorf("poomsae: invalid project name: %w", err)
 	}
 	return nil
 }
@@ -294,7 +294,7 @@ func (s *Service) projectByUID(ctx context.Context, uid string) (db.Project, boo
 		return db.Project{}, false, nil
 	}
 	if err != nil {
-		return db.Project{}, false, fmt.Errorf("kata: find project by UID: %w", err)
+		return db.Project{}, false, fmt.Errorf("poomsae: find project by UID: %w", err)
 	}
 	return project, true, nil
 }
@@ -305,7 +305,7 @@ func (s *Service) projectByName(ctx context.Context, name string) (db.Project, b
 		return db.Project{}, false, nil
 	}
 	if err != nil {
-		return db.Project{}, false, fmt.Errorf("kata: find project by name: %w", err)
+		return db.Project{}, false, fmt.Errorf("poomsae: find project by name: %w", err)
 	}
 	return project, true, nil
 }
@@ -335,12 +335,12 @@ func publicProject(project db.Project) Project {
 
 func (s *Service) beginHostCall(ctx context.Context) (context.Context, func(), error) {
 	if ctx == nil {
-		return nil, nil, errors.New("kata: context is required")
+		return nil, nil, errors.New("poomsae: context is required")
 	}
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return nil, nil, errors.New("kata: service is closed")
+		return nil, nil, errors.New("poomsae: service is closed")
 	}
 	s.handlerWG.Add(1)
 	lifetimeCtx := s.lifetimeCtx

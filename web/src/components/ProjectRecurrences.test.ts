@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, expect, it, vi } from 'vitest'
 import ProjectRecurrences from './ProjectRecurrences.svelte'
 import { listRecurrences } from '../lib/api/generated/default/default'
-import type { KataRecurrence } from '../lib/kata/types'
+import type { PoomsaeRecurrence } from '../lib/poomsae/types'
 import { tick } from 'svelte'
 
 const recurrence = {
@@ -21,7 +21,7 @@ const recurrence = {
   revision: 1,
   created_at: '2026-11-22T12:00:00.000Z',
   updated_at: '2026-11-22T12:00:00.000Z',
-} satisfies KataRecurrence
+} satisfies PoomsaeRecurrence
 
 vi.mock('../lib/api/generated/default/default', () => ({ listRecurrences: vi.fn() }))
 afterEach(() => {

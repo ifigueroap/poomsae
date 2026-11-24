@@ -1,15 +1,15 @@
 ---
 title: Twenty sync
-description: Mirror Twenty workspace tasks into native Kata issues with self-hosted support and optional two-way status sync.
+description: Mirror Twenty workspace tasks into native Poomsae issues with self-hosted support and optional two-way status sync.
 last_edited: 2026-11-20
 ---
 
 # Twenty sync
 
-Twenty sync mirrors the built-in tasks from one Twenty workspace into one Kata
+Twenty sync mirrors the built-in tasks from one Twenty workspace into one Poomsae
 project. By default, the daemon polls every five minutes. Imported tasks become
-native Kata issues, and you can add comments, evidence, relationships, and edits
-with ordinary Kata commands. Status updates flow only from Twenty into Kata
+native Poomsae issues, and you can add comments, evidence, relationships, and edits
+with ordinary Poomsae commands. Status updates flow only from Twenty into Poomsae
 until you enable `--status-sync=two-way`.
 
 ## Credentials and instances
@@ -18,13 +18,13 @@ until you enable `--status-sync=two-way`.
    read workspace metadata, object metadata, and built-in task records. If you
    plan to use two-way mode, also grant permission to update task status.
 2. Provide the key to the daemon process, for example by setting
-   `KATA_TWENTY_TOKEN` in its service environment. Client workstations do not
-   need a Twenty key, and Kata never stores the key value in project
+   `POOMSAE_TWENTY_TOKEN` in its service environment. Client workstations do not
+   need a Twenty key, and Poomsae never stores the key value in project
    configuration or sync bindings.
 
-For Twenty Cloud, Kata defaults to `https://api.twenty.com` for API requests and
+For Twenty Cloud, Poomsae defaults to `https://api.twenty.com` for API requests and
 `https://app.twenty.com` for attribution links. For a self-hosted Twenty
-instance, add this section to the daemon's `<KATA_HOME>/config.toml` and restart
+instance, add this section to the daemon's `<POOMSAE_HOME>/config.toml` and restart
 the daemon:
 
 ```toml
@@ -34,11 +34,11 @@ web_origin = "https://twenty.example"
 token_env = "EXAMPLE_TWENTY_TOKEN"
 ```
 
-If you omit `web_origin`, Kata uses the self-hosted `api_origin` as the web
+If you omit `web_origin`, Poomsae uses the self-hosted `api_origin` as the web
 origin too. Both origins must be root HTTPS origins, with HTTP allowed only for
-literal loopback IPs. Kata rejects paths, credentials, queries, and fragments in
+literal loopback IPs. Poomsae rejects paths, credentials, queries, and fragments in
 origin values. Every API request uses the configured API origin and a credential
-captured for that run, and Kata rejects redirects. Binding requests cannot
+captured for that run, and Poomsae rejects redirects. Binding requests cannot
 supply keys or change origins.
 
 ## Enable and operate
@@ -46,25 +46,25 @@ supply keys or change origins.
 Run these commands to enable, inspect, or pause Twenty sync:
 
 ```sh
-kata sync twenty enable
-kata sync twenty once
-kata sync twenty status
-kata --agent sync twenty status
-kata --json sync twenty status
-kata sync twenty disable
+poomsae sync twenty enable
+poomsae sync twenty once
+poomsae sync twenty status
+poomsae --agent sync twenty status
+poomsae --json sync twenty status
+poomsae sync twenty disable
 ```
 
-When you run `enable`, Kata discovers the workspace UUID from the API key and
+When you run `enable`, Poomsae discovers the workspace UUID from the API key and
 validates the task schema before saving the binding. Use the global
-`--workspace` and `--project` flags to select the native Kata workspace and
+`--workspace` and `--project` flags to select the native Poomsae workspace and
 project. There is no source workspace flag; the authenticated Twenty workspace
 is the source. Once saved, a binding's API origin and workspace UUID cannot
 change. If you rotate the key to a different workspace, sync fails before any
 import or status write, even if both workspaces share the same origin.
 
-Each native Kata project can have only one external issue-sync binding. Twenty,
+Each native Poomsae project can have only one external issue-sync binding. Twenty,
 Plane, Notion, and GitHub bindings cannot replace each other, even after you
-disable one. To sync another source, use another Kata project. If you use
+disable one. To sync another source, use another Poomsae project. If you use
 federation spokes, they receive imports from their hub, and you enable Twenty
 sync on the hub.
 
@@ -79,17 +79,17 @@ sync on the hub.
 | `--open-statuses` | Comma-separated API option values classified open; initially `TODO,IN_PROGRESS`. |
 
 Re-enabling keeps any options you omit. Date values mean midnight UTC, timestamp
-offsets normalize to UTC, and Kata rejects fractional seconds. For custom
+offsets normalize to UTC, and Poomsae rejects fractional seconds. For custom
 statuses, pass the API option values rather than their display labels:
 
 ```sh
-kata sync twenty enable --status-sync=two-way \
+poomsae sync twenty enable --status-sync=two-way \
   --closed-status COMPLETE --open-status READY --open-statuses READY,ACTIVE
 ```
 
 Every live status option in Twenty must have an unambiguous classification. The
 closed value cannot also appear as an open value, and open values must be
-distinct and nonempty. A null status maps to open. If Kata sees an unknown
+distinct and nonempty. A null status maps to open. If Poomsae sees an unknown
 status value, it fails the run instead of guessing whether the task is closed.
 Enabling two-way mode requires both write targets to exist in the live schema.
 In one-way mode, a binding may keep removed targets as long as every current
@@ -105,7 +105,7 @@ polling rather than an atomic Twenty snapshot.
 
 ## Mapping and local edits
 
-| Twenty value | Kata issue |
+| Twenty value | Poomsae issue |
 | --- | --- |
 | Task UUID and title | `[Twenty <first-eight-UUID-characters>] Original title`; null or blank titles become `(untitled)`. |
 | `bodyV2.markdown` | Preserved Markdown with an attribution link under the configured web origin. |
@@ -115,7 +115,7 @@ polling rather than an atomic Twenty snapshot.
 | `createdBy.workspaceMemberId` | Author `twenty:<UUID>`, or `twenty-unknown` when absent. |
 | Source timestamps | UTC timestamps normalized to persisted milliseconds. |
 
-Kata does not map external member identities to local users automatically.
+Poomsae does not map external member identities to local users automatically.
 Title, body, and owner update only when Twenty's timestamps are strictly newer
 than the native issue, and equal or older imports keep your local scalar edits.
 Imported priority is unset, so a newer content import clears any local priority.
@@ -127,7 +127,7 @@ also apply.
 Two-way status observations do not depend on content timestamps or the cutoff,
 so they keep your local title, body, owner, and priority edits. In one-way mode,
 status arrives with content imports. Same-state observations keep native closure
-evidence. Deleted or unavailable tasks remain in Kata, and absence never closes
+evidence. Deleted or unavailable tasks remain in Poomsae, and absence never closes
 or deletes an imported issue. Dates, comments, relationships, attachments, other
 objects, and outbound fields other than status are outside this integration.
 
@@ -140,20 +140,20 @@ conversion fails.
 
 ## Two-way status and recovery
 
-Only explicit Kata close and reopen events accepted while two-way mode is active
+Only explicit Poomsae close and reopen events accepted while two-way mode is active
 queue outbound writes. Opting into two-way mode does not send bulk changes for
 existing issues. A close writes `closed_status`, and a reopen writes
 `open_status`. If the task is already in a matching open substate, such as
-`IN_PROGRESS`, Kata leaves it there. Pending local intent wins until a fresh
+`IN_PROGRESS`, Poomsae leaves it there. Pending local intent wins until a fresh
 readback verifies delivery for that exact event. Outbound writes change only
 task status.
 
-Kata attempts each `PATCH` once and never retries it blindly. If a reply is lost
-or readback fails, Kata keeps the pending intent, and a later scan checks the
+Poomsae attempts each `PATCH` once and never retries it blindly. If a reply is lost
+or readback fails, Poomsae keeps the pending intent, and a later scan checks the
 current state before writing again. Missing or deleted tasks, a mismatched
 workspace identity, unsupported metadata, or removed targets block delivery and
-keep the pending intent. Run `kata sync twenty status` to see the mode, pending
-count, and sanitized error. `kata sync twenty once` reports incoming status
+keep the pending intent. Run `poomsae sync twenty status` to see the mode, pending
+count, and sanitized error. `poomsae sync twenty once` reports incoming status
 updates separately from content import counts.
 
 Disabling pauses polling and delivery while keeping mappings and pending intent.

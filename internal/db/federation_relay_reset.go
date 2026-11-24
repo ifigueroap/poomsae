@@ -9,7 +9,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RootResetSnapshot commits every portable snapshot section. Empty sections
@@ -53,7 +53,7 @@ func RootResetSnapshotDigest(snapshot RootResetSnapshot) (string, error) {
 		data []byte
 	}{{"events", snapshot.Events}, {"entities", snapshot.Entities}, {"provenance", snapshot.Provenance}, {"artifacts", snapshot.Artifacts}}
 	h := sha256.New()
-	_, _ = h.Write([]byte("kata.root-reset-snapshot.v1\x00"))
+	_, _ = h.Write([]byte("poomsae.root-reset-snapshot.v1\x00"))
 	for _, section := range sections {
 		if section.data == nil {
 			return "", errors.New("root reset snapshot omits a committed section")
@@ -75,7 +75,7 @@ func rootResetSigningBytes(manifest RootResetManifest) ([]byte, error) {
 	return json.Marshal(struct {
 		Domain   string            `json:"domain"`
 		Manifest RootResetManifest `json:"manifest"`
-	}{"kata.root-reset.v1", manifest})
+	}{"poomsae.root-reset.v1", manifest})
 }
 
 // SignRootResetManifest signs the manifest with its pinned root authority.

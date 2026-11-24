@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"slices"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Recover original source deltas before applying an inbound move. A project

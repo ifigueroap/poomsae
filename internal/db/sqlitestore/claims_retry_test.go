@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
 func newLeaseRetryStore(t *testing.T) (*Store, db.Project, db.Issue) {
 	t.Helper()
 	ctx := t.Context()
-	d, err := Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	d, err := Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 
@@ -32,7 +32,7 @@ func newLeaseRetryStore(t *testing.T) (*Store, db.Project, db.Issue) {
 
 func newLeasePrincipal(t *testing.T, holder string) db.ClaimPrincipal {
 	t.Helper()
-	instanceUID, err := katauid.New()
+	instanceUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	return db.ClaimPrincipal{
 		HolderInstanceUID: instanceUID, Holder: holder, ClientKind: "agent",

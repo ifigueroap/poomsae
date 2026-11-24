@@ -8,12 +8,12 @@
     SelectDropdown,
   } from '@kenn-io/kit-ui'
   import type {
-    KataCreateRecurrenceInput,
-    KataPatchRecurrenceInput,
-    KataRecurrence,
-    KataRecurrenceTemplateInput,
-    KataRecurrenceTemplateUpdateInput,
-  } from '../lib/kata/types'
+    PoomsaeCreateRecurrenceInput,
+    PoomsaePatchRecurrenceInput,
+    PoomsaeRecurrence,
+    PoomsaeRecurrenceTemplateInput,
+    PoomsaeRecurrenceTemplateUpdateInput,
+  } from '../lib/poomsae/types'
   import DatePicker from './DatePicker.svelte'
   import {
     WEEKDAYS,
@@ -34,17 +34,17 @@
         kind: 'create'
         projectID: number
         initialIssueRef: string
-        prefill?: Omit<KataRecurrenceTemplateInput, 'metadata'> | undefined
+        prefill?: Omit<PoomsaeRecurrenceTemplateInput, 'metadata'> | undefined
       }
-    | { kind: 'edit'; recurrence: KataRecurrence; etag: string }
+    | { kind: 'edit'; recurrence: PoomsaeRecurrence; etag: string }
 
   interface Props {
     mode: Mode
     actor: string
-    onCreate: (projectID: number, input: KataCreateRecurrenceInput) => Promise<void>
+    onCreate: (projectID: number, input: PoomsaeCreateRecurrenceInput) => Promise<void>
     onPatch: (
-      recurrence: KataRecurrence,
-      input: KataPatchRecurrenceInput,
+      recurrence: PoomsaeRecurrence,
+      input: PoomsaePatchRecurrenceInput,
       etag: string,
     ) => Promise<void>
     onSaved: () => void
@@ -135,7 +135,7 @@
   let conflictBanner: string | null = $state(null)
 
   // --- Baseline tracking (edit mode) ----------------------------
-  let baselineRecurrence: KataRecurrence | null = $state(initialBaselineRecurrence())
+  let baselineRecurrence: PoomsaeRecurrence | null = $state(initialBaselineRecurrence())
   let baselineEtag: string | null = $state(initialBaselineEtag())
 
   // --- Prefill --------------------------------------------------
@@ -162,7 +162,7 @@
     labelsText = (task.labels ?? []).join(', ')
   }
 
-  function applyRecurrenceToForm(rec: KataRecurrence): void {
+  function applyRecurrenceToForm(rec: PoomsaeRecurrence): void {
     title = rec.template_title
     body = rec.template_body ?? ''
     owner = rec.template_owner ?? ''
@@ -331,7 +331,7 @@
 
     if (baselineRecurrence === null || baselineEtag === null) return
     const rec = baselineRecurrence
-    const patch: KataPatchRecurrenceInput = { actor }
+    const patch: PoomsaePatchRecurrenceInput = { actor }
 
     const templateDiff = templateChanges(rec, template)
     if (templateDiff) patch.template = templateDiff
@@ -370,10 +370,10 @@
   }
 
   function templateChanges(
-    rec: KataRecurrence,
+    rec: PoomsaeRecurrence,
     candidate: ReturnType<typeof templatePayload>,
-  ): KataRecurrenceTemplateUpdateInput | null {
-    const diff: KataRecurrenceTemplateUpdateInput = {}
+  ): PoomsaeRecurrenceTemplateUpdateInput | null {
+    const diff: PoomsaeRecurrenceTemplateUpdateInput = {}
     if (candidate.title !== rec.template_title) diff.title = candidate.title
     if ((candidate.body ?? '') !== (rec.template_body ?? '')) diff.body = candidate.body ?? ''
     if ((candidate.owner ?? '') !== (rec.template_owner ?? '')) {
@@ -518,7 +518,7 @@
     }
   }
 
-  function initialBaselineRecurrence(): KataRecurrence | null {
+  function initialBaselineRecurrence(): PoomsaeRecurrence | null {
     return mode.kind === 'edit' ? mode.recurrence : null
   }
   function initialBaselineEtag(): string | null {

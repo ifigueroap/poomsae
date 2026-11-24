@@ -1,4 +1,4 @@
-// Package config resolves the kata data directory, database path, and
+// Package config resolves the poomsae data directory, database path, and
 // per-database runtime namespace from environment variables.
 package config
 
@@ -13,30 +13,30 @@ import (
 	"strings"
 )
 
-// KataHome returns the resolved data directory honoring $KATA_HOME, falling back
-// to $HOME/.kata. The directory is not created here; callers materialize it.
-func KataHome() (string, error) {
-	if v := os.Getenv("KATA_HOME"); v != "" {
+// PoomsaeHome returns the resolved data directory honoring $POOMSAE_HOME, falling back
+// to $HOME/.poomsae. The directory is not created here; callers materialize it.
+func PoomsaeHome() (string, error) {
+	if v := os.Getenv("POOMSAE_HOME"); v != "" {
 		return v, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve user home: %w", err)
 	}
-	return filepath.Join(home, ".kata"), nil
+	return filepath.Join(home, ".poomsae"), nil
 }
 
-// KataDB returns the effective database DSN. It now delegates to KataDSN so
-// existing callers pick up the full precedence chain (KATA_DSN env >
-// [storage].dsn in config.toml > legacy KATA_DB env > default
-// <KataHome>/kata.db). The returned value is whatever the user supplied: a
-// bare filesystem path (default and KATA_DB cases) or a sqlite/postgres DSN
-// (KATA_DSN / [storage].dsn cases).
+// PoomsaeDB returns the effective database DSN. It now delegates to PoomsaeDSN so
+// existing callers pick up the full precedence chain (POOMSAE_DSN env >
+// [storage].dsn in config.toml > legacy POOMSAE_DB env > default
+// <PoomsaeHome>/poomsae.db). The returned value is whatever the user supplied: a
+// bare filesystem path (default and POOMSAE_DB cases) or a sqlite/postgres DSN
+// (POOMSAE_DSN / [storage].dsn cases).
 //
 // Kept under the old name so call sites and external scripts that spell it
 // the older way continue to resolve through the same path; new code should
-// prefer KataDSN.
-func KataDB() (string, error) { return KataDSN(context.Background()) }
+// prefer PoomsaeDSN.
+func PoomsaeDB() (string, error) { return PoomsaeDSN(context.Background()) }
 
 // DBHash returns the first 12 lower-hex chars of sha256(absolute(dbPath)).
 // Used to namespace runtime files, sockets, and hook output per database.
@@ -45,8 +45,8 @@ func KataDB() (string, error) { return KataDSN(context.Background()) }
 // host, port, database, or fallback routing differences.
 //
 // A sqlite:// DSN is reduced to the same filesystem path that storeopen
-// opens before hashing, so /path/kata.db and sqlite:///path/kata.db share a
-// runtime namespace and `kata daemon` running-daemon checks. Without this
+// opens before hashing, so /path/poomsae.db and sqlite:///path/poomsae.db share a
+// runtime namespace and `poomsae daemon` running-daemon checks. Without this
 // normalization the two forms produce different hashes and the second one
 // could start a duplicate daemon against the same database.
 func DBHash(dbPath string) string {
@@ -73,7 +73,7 @@ func DBHash(dbPath string) string {
 }
 
 // StorageHash identifies one logical storage target. PostgreSQL schemas are
-// independent databases from Kata's point of view even when they share a DSN,
+// independent databases from Poomsae's point of view even when they share a DSN,
 // so their runtime sockets and control files must not collide.
 func StorageHash(dsn, postgresSchema string) string {
 	hash, _ := storageHash(dsn, postgresSchema)
@@ -89,7 +89,7 @@ func storageHash(dsn, postgresSchema string) (string, error) {
 	}
 	schema := strings.TrimSpace(postgresSchema)
 	if schema == "" {
-		schema = "kata"
+		schema = "poomsae"
 	}
 	identity, err := postgresTargetIdentity(dsn)
 	if err != nil {
@@ -103,17 +103,17 @@ func storageHash(dsn, postgresSchema string) (string, error) {
 	return hash, nil
 }
 
-// RuntimeDir returns <KataHome>/runtime/<dbhash>. The directory is not created.
+// RuntimeDir returns <PoomsaeHome>/runtime/<dbhash>. The directory is not created.
 func RuntimeDir() (string, error) {
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
-	db, err := KataDB()
+	db, err := PoomsaeDB()
 	if err != nil {
 		return "", err
 	}
-	pgConfig, err := KataPostgresStorageConfig(context.Background())
+	pgConfig, err := PoomsaePostgresStorageConfig(context.Background())
 	if err != nil {
 		return "", err
 	}
@@ -124,39 +124,39 @@ func RuntimeDir() (string, error) {
 	return filepath.Join(home, "runtime", hash), nil
 }
 
-// HookConfigPath returns <KataHome>/hooks.toml. The file is not created here.
+// HookConfigPath returns <PoomsaeHome>/hooks.toml. The file is not created here.
 func HookConfigPath() (string, error) {
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, "hooks.toml"), nil
 }
 
-// DaemonConfigPath returns <KataHome>/config.toml — the optional
+// DaemonConfigPath returns <PoomsaeHome>/config.toml — the optional
 // daemon-side settings file. Today only `listen = "..."` is honored
-// (used by `kata daemon start` when --listen is not passed). The file
+// (used by `poomsae daemon start` when --listen is not passed). The file
 // is not created here.
 func DaemonConfigPath() (string, error) {
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, "config.toml"), nil
 }
 
-// FederationCredentialsPath returns <KataHome>/credentials.toml. It stores
+// FederationCredentialsPath returns <PoomsaeHome>/credentials.toml. It stores
 // local secrets such as federation bearer tokens and must not be committed to a
 // workspace.
 func FederationCredentialsPath() (string, error) {
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, "credentials.toml"), nil
 }
 
-// HookRootDir returns <KataHome>/hooks/<dbhash>. Per-DB so multiple kata
+// HookRootDir returns <PoomsaeHome>/hooks/<dbhash>. Per-DB so multiple poomsae
 // databases on the same host don't share output streams. Rejects any
 // dbhash that is not a 12-char lower-hex string so a malformed value
 // can't escape the hook root via "..", separators, or padding.
@@ -164,7 +164,7 @@ func HookRootDir(dbhash string) (string, error) {
 	if err := validateDBHash(dbhash); err != nil {
 		return "", err
 	}
-	home, err := KataHome()
+	home, err := PoomsaeHome()
 	if err != nil {
 		return "", err
 	}
@@ -188,7 +188,7 @@ func validateDBHash(dbhash string) error {
 	return nil
 }
 
-// HookOutputDir returns <KataHome>/hooks/<dbhash>/output. Holds per-run
+// HookOutputDir returns <PoomsaeHome>/hooks/<dbhash>/output. Holds per-run
 // .out and .err files keyed by <event_id>.<hook_index>.
 func HookOutputDir(dbhash string) (string, error) {
 	root, err := HookRootDir(dbhash)
@@ -198,7 +198,7 @@ func HookOutputDir(dbhash string) (string, error) {
 	return filepath.Join(root, "output"), nil
 }
 
-// HookRunsPath returns <KataHome>/hooks/<dbhash>/runs.jsonl, the active
+// HookRunsPath returns <PoomsaeHome>/hooks/<dbhash>/runs.jsonl, the active
 // (non-rotated) JSONL log of finished runs. Rotated copies live alongside
 // as runs.jsonl.1, runs.jsonl.2, ...
 func HookRunsPath(dbhash string) (string, error) {

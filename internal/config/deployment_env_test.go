@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 // Contract: plain environment settings replace packaging config seeding.
 func TestDeploymentEnvironmentOverridesFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`listen = "127.0.0.1:7000"
 [web]
 listen = "127.0.0.1:7001"
@@ -28,23 +28,23 @@ projects = ["old-project"]
 startup_sections = ["activity"]
 token_file = "/run/secrets/old-mcp-token"
 `), 0o600))
-	t.Setenv("KATA_LISTEN", " 127.0.0.1:7777 ")
-	t.Setenv("KATA_WEB_LISTEN", "127.0.0.1:7778")
-	t.Setenv("KATA_WEB_PUBLIC_ORIGIN", "http://daemon.example:80")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_BASE_URL", "https://embedding.example/v1")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_MODEL", "example-model")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_DIMS", "1024")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_API_KEY_FILE", "/run/secrets/embedding-key")
-	t.Setenv("KATA_DOCBANK_URL", "https://docbank.example")
-	t.Setenv("KATA_DOCBANK_API_KEY_FILE", "/run/secrets/docbank-key")
-	t.Setenv("KATA_DOCBANK_FOLDER", "/issues")
-	t.Setenv("KATA_MCP_ENABLED", " true ")
-	t.Setenv("KATA_MCP_ALL_PROJECTS", " true ")
-	t.Setenv("KATA_MCP_ACTOR", " gateway-agent ")
-	t.Setenv("KATA_MCP_PROJECTS", " alpha, beta ")
-	t.Setenv("KATA_MCP_STARTUP_SECTIONS", " issue_discovery, docs ")
-	t.Setenv("KATA_MCP_TOKEN_FILE", " /run/secrets/mcp-token ")
+	t.Setenv("POOMSAE_LISTEN", " 127.0.0.1:7777 ")
+	t.Setenv("POOMSAE_WEB_LISTEN", "127.0.0.1:7778")
+	t.Setenv("POOMSAE_WEB_PUBLIC_ORIGIN", "http://daemon.example:80")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_BASE_URL", "https://embedding.example/v1")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_MODEL", "example-model")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_DIMS", "1024")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE", "/run/secrets/embedding-key")
+	t.Setenv("POOMSAE_DOCBANK_URL", "https://docbank.example")
+	t.Setenv("POOMSAE_DOCBANK_API_KEY_FILE", "/run/secrets/docbank-key")
+	t.Setenv("POOMSAE_DOCBANK_FOLDER", "/issues")
+	t.Setenv("POOMSAE_MCP_ENABLED", " true ")
+	t.Setenv("POOMSAE_MCP_ALL_PROJECTS", " true ")
+	t.Setenv("POOMSAE_MCP_ACTOR", " gateway-agent ")
+	t.Setenv("POOMSAE_MCP_PROJECTS", " alpha, beta ")
+	t.Setenv("POOMSAE_MCP_STARTUP_SECTIONS", " issue_discovery, docs ")
+	t.Setenv("POOMSAE_MCP_TOKEN_FILE", " /run/secrets/mcp-token ")
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.Equal(t, "127.0.0.1:7777", cfg.Listen)
@@ -62,7 +62,7 @@ token_file = "/run/secrets/old-mcp-token"
 	require.Equal(t, "gateway-agent", cfg.MCP.Actor)
 	require.Equal(t, []string{"alpha", "beta"}, cfg.MCP.Projects)
 	require.Equal(t, []string{"issue_discovery", "docs"}, cfg.MCP.StartupSections)
-	require.Equal(t, "KATA_MCP_STARTUP_SECTIONS", cfg.Sources["mcp_startup_sections"])
+	require.Equal(t, "POOMSAE_MCP_STARTUP_SECTIONS", cfg.Sources["mcp_startup_sections"])
 	require.Equal(t, "/run/secrets/mcp-token", cfg.MCP.TokenFile)
 	for _, tt := range []struct {
 		name, value string
@@ -74,11 +74,11 @@ token_file = "/run/secrets/old-mcp-token"
 		{name: "repeated comma", value: "docs,,activity", want: []string{"docs", "", "activity"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("KATA_MCP_STARTUP_SECTIONS", tt.value)
+			t.Setenv("POOMSAE_MCP_STARTUP_SECTIONS", tt.value)
 			cfg, err := config.ReadDaemonConfig()
 			require.NoError(t, err)
 			require.Equal(t, tt.want, cfg.MCP.StartupSections)
-			require.Equal(t, "KATA_MCP_STARTUP_SECTIONS", cfg.Sources["mcp_startup_sections"])
+			require.Equal(t, "POOMSAE_MCP_STARTUP_SECTIONS", cfg.Sources["mcp_startup_sections"])
 		})
 	}
 	auth, err := config.ReadAuthConfig()
@@ -87,10 +87,10 @@ token_file = "/run/secrets/old-mcp-token"
 }
 
 func TestDeploymentInvalidEmbeddingDimensionsFailLoudly(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	for _, value := range []string{"wrong", "-1", "92233720368547758070"} {
 		t.Run(value, func(t *testing.T) {
-			t.Setenv("KATA_SEARCH_EMBEDDINGS_DIMS", value)
+			t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_DIMS", value)
 			_, err := config.ReadDaemonConfig()
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "DIMS")
@@ -102,7 +102,7 @@ func TestDeploymentInvalidEmbeddingDimensionsFailLoudly(t *testing.T) {
 // trailing spaces are part of the text sent to the provider.
 func TestDeploymentEmbeddingTextControlsOverrideFileVerbatim(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[search.embeddings]
 base_url = "https://embedding.example/v1"
 model = "example-model"
@@ -112,11 +112,11 @@ query_prefix = "file query: "
 query_suffix = " file end"
 request_dimensions = true
 `), 0o600))
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "title: none | text: ")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", " document end ")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX", "task: search result | query: ")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX", " query end ")
-	t.Setenv("KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", " false ")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "title: none | text: ")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", " document end ")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX", "task: search result | query: ")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX", " query end ")
+	t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", " false ")
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	ec := cfg.Search.Embeddings
@@ -128,8 +128,8 @@ request_dimensions = true
 }
 
 func TestDeploymentInvalidBoolEnvFailsLoudly(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	for _, name := range []string{"KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "KATA_MCP_ENABLED", "KATA_MCP_ALL_PROJECTS"} {
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	for _, name := range []string{"POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "POOMSAE_MCP_ENABLED", "POOMSAE_MCP_ALL_PROJECTS"} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv(name, "sometimes")
 			_, err := config.ReadDaemonConfig()
@@ -139,7 +139,7 @@ func TestDeploymentInvalidBoolEnvFailsLoudly(t *testing.T) {
 }
 
 func TestLocalProfileRejectsDeploymentControlReferences(t *testing.T) {
-	for _, key := range []string{"KATA_LISTEN", "KATA_WEB_LISTEN", "KATA_WEB_PUBLIC_ORIGIN", "KATA_MCP_ENABLED", "KATA_MCP_ACTOR", "KATA_MCP_PROJECTS", "KATA_MCP_ALL_PROJECTS", "KATA_MCP_STARTUP_SECTIONS", "KATA_MCP_TOKEN_FILE", "KATA_AUTH_TOKEN_FILE", "KATA_DOCBANK_URL", "KATA_DOCBANK_API_KEY_FILE", "KATA_DOCBANK_FOLDER", "KATA_DOCBANK_TRUST_PRIVATE_NETWORK", "KATA_SEARCH_EMBEDDINGS_BASE_URL", "KATA_SEARCH_EMBEDDINGS_MODEL", "KATA_SEARCH_EMBEDDINGS_DIMS", "KATA_SEARCH_EMBEDDINGS_API_KEY_FILE", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "KATA_BACKUP_DIR", "KATA_BACKUP_INTERVAL", "KATA_BACKUP_RETAIN"} {
+	for _, key := range []string{"POOMSAE_LISTEN", "POOMSAE_WEB_LISTEN", "POOMSAE_WEB_PUBLIC_ORIGIN", "POOMSAE_MCP_ENABLED", "POOMSAE_MCP_ACTOR", "POOMSAE_MCP_PROJECTS", "POOMSAE_MCP_ALL_PROJECTS", "POOMSAE_MCP_STARTUP_SECTIONS", "POOMSAE_MCP_TOKEN_FILE", "POOMSAE_AUTH_TOKEN_FILE", "POOMSAE_DOCBANK_URL", "POOMSAE_DOCBANK_API_KEY_FILE", "POOMSAE_DOCBANK_FOLDER", "POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK", "POOMSAE_SEARCH_EMBEDDINGS_BASE_URL", "POOMSAE_SEARCH_EMBEDDINGS_MODEL", "POOMSAE_SEARCH_EMBEDDINGS_DIMS", "POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "POOMSAE_BACKUP_DIR", "POOMSAE_BACKUP_INTERVAL", "POOMSAE_BACKUP_RETAIN"} {
 		t.Run(key, func(t *testing.T) {
 			_, err := config.LocalProfileEnvironment(config.LocalProfileConfig{Home: t.TempDir(), Catalog: config.CatalogDaemonConfig{TokenEnv: key}}, true)
 			require.ErrorContains(t, err, "reserved environment key")
@@ -152,7 +152,7 @@ func TestDeploymentEmptyEnvironmentPreservesFile(t *testing.T) {
 	for _, value := range []string{"", " \t "} {
 		t.Run(value, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`listen = "127.0.0.1:7000"
 [web]
 listen = "127.0.0.1:7001"
@@ -172,8 +172,8 @@ retain = "720h"
 [mcp]
 startup_sections = ["issue_discovery", "docs"]
 `), 0o600))
-			t.Setenv("KATA_MCP_STARTUP_SECTIONS", value)
-			for _, name := range []string{"KATA_LISTEN", "KATA_WEB_LISTEN", "KATA_WEB_PUBLIC_ORIGIN", "KATA_SEARCH_EMBEDDINGS_BASE_URL", "KATA_SEARCH_EMBEDDINGS_MODEL", "KATA_SEARCH_EMBEDDINGS_API_KEY_FILE", "KATA_SEARCH_EMBEDDINGS_DIMS", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "KATA_BACKUP_DIR", "KATA_BACKUP_INTERVAL", "KATA_BACKUP_RETAIN"} {
+			t.Setenv("POOMSAE_MCP_STARTUP_SECTIONS", value)
+			for _, name := range []string{"POOMSAE_LISTEN", "POOMSAE_WEB_LISTEN", "POOMSAE_WEB_PUBLIC_ORIGIN", "POOMSAE_SEARCH_EMBEDDINGS_BASE_URL", "POOMSAE_SEARCH_EMBEDDINGS_MODEL", "POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE", "POOMSAE_SEARCH_EMBEDDINGS_DIMS", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS", "POOMSAE_BACKUP_DIR", "POOMSAE_BACKUP_INTERVAL", "POOMSAE_BACKUP_RETAIN"} {
 				t.Setenv(name, value)
 			}
 			cfg, err := config.ReadDaemonConfig()
@@ -195,10 +195,10 @@ startup_sections = ["issue_discovery", "docs"]
 }
 
 func TestDeploymentDocbankPrivateNetworkEnvironment(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_DOCBANK_URL", "http://docbank:8485")
-	t.Setenv("KATA_DOCBANK_API_KEY_FILE", "/run/secrets/docbank-key")
-	t.Setenv("KATA_DOCBANK_TRUST_PRIVATE_NETWORK", "true")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_DOCBANK_URL", "http://docbank:8485")
+	t.Setenv("POOMSAE_DOCBANK_API_KEY_FILE", "/run/secrets/docbank-key")
+	t.Setenv("POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK", "true")
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.True(t, cfg.Docbank.TrustPrivateNetwork)

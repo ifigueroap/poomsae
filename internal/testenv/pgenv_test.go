@@ -7,18 +7,18 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx driver as "pgx"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestExplicitPostgresServiceUsesConfiguredServer(t *testing.T) {
 	if testing.Short() {
 		t.Skip("PostgreSQL service test skipped on -short")
 	}
-	baseDSN := os.Getenv("KATA_TEST_POSTGRES_DSN")
+	baseDSN := os.Getenv("POOMSAE_TEST_POSTGRES_DSN")
 	if baseDSN == "" {
-		t.Skip("explicit PostgreSQL service requires KATA_TEST_POSTGRES_DSN")
+		t.Skip("explicit PostgreSQL service requires POOMSAE_TEST_POSTGRES_DSN")
 	}
 	ctx := t.Context()
 	base, err := sql.Open("pgx", baseDSN)
@@ -45,7 +45,7 @@ func TestAutomaticPostgresContainersShareOneServerWithIsolatedDatabases(t *testi
 	if testing.Short() {
 		t.Skip("testcontainer requires docker; skip on -short")
 	}
-	t.Setenv("KATA_TEST_POSTGRES_DSN", "")
+	t.Setenv("POOMSAE_TEST_POSTGRES_DSN", "")
 	ctx := t.Context()
 	open := func(t *testing.T) (*sql.DB, func()) {
 		t.Helper()
@@ -129,7 +129,7 @@ func TestPostgresTemplateDropsAbandonedTemplates(t *testing.T) {
 	ctx := t.Context()
 	serverDSN, serverCleanup := testenv.NewPostgresContainer(t, ctx)
 	t.Cleanup(serverCleanup)
-	t.Setenv("KATA_TEST_POSTGRES_DSN", serverDSN)
+	t.Setenv("POOMSAE_TEST_POSTGRES_DSN", serverDSN)
 	server, err := sql.Open("pgx", serverDSN)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = server.Close() })
@@ -151,7 +151,7 @@ func TestPostgresTemplateDropsAbandonedTemplates(t *testing.T) {
 	t.Cleanup(firstCleanup)
 	require.False(t, exists(abandoned), "a template without a live owner must be dropped")
 	var live []string
-	rows, err := server.QueryContext(ctx, `SELECT datname FROM pg_database WHERE datname LIKE $1`, fmt.Sprintf(`kata\_template\_%d\_%%`, os.Getpid()))
+	rows, err := server.QueryContext(ctx, `SELECT datname FROM pg_database WHERE datname LIKE $1`, fmt.Sprintf(`poomsae\_template\_%d\_%%`, os.Getpid()))
 	require.NoError(t, err)
 	for rows.Next() {
 		var name string

@@ -1,4 +1,4 @@
-const preloadRecoveryStorageKey = 'kata.preload-recovery.v1'
+const preloadRecoveryStorageKey = 'poomsae.preload-recovery.v1'
 
 interface StorageLike {
   getItem(key: string): string | null

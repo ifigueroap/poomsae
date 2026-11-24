@@ -110,7 +110,7 @@ func BuildSourceArchive(ctx context.Context, opts SourceArchiveOptions) (SourceA
 		return SourceArchiveMetadata{}, fmt.Errorf("create temporary archive: %w", err)
 	}
 	defer func() { _ = tmp.Abort() }()
-	root := "kata-" + opts.Version
+	root := "poomsae-" + opts.Version
 	if err := writeSourceTarGzip(tmp, bytes.NewReader(archiveBytes), repoRoot, vendorRoot, root, commitTime.UTC()); err != nil {
 		return SourceArchiveMetadata{}, err
 	}
@@ -173,22 +173,22 @@ func VerifySourceArchive(ctx context.Context, archivePath string, meta SourceArc
 			return fmt.Errorf("source archive checksum mismatch: got %s want %s", got, meta.SHA256)
 		}
 	}
-	tmpDir, err := os.MkdirTemp("", "kata-source-verify-*")
+	tmpDir, err := os.MkdirTemp("", "poomsae-source-verify-*")
 	if err != nil {
 		return fmt.Errorf("create source verification directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
-	if err := extractSourceArchive(bytes.NewReader(contents), tmpDir, "kata-"+meta.Version); err != nil {
+	if err := extractSourceArchive(bytes.NewReader(contents), tmpDir, "poomsae-"+meta.Version); err != nil {
 		return err
 	}
-	sourceRoot := filepath.Join(tmpDir, "kata-"+meta.Version)
+	sourceRoot := filepath.Join(tmpDir, "poomsae-"+meta.Version)
 	bin := verificationBinaryPath(tmpDir, runtime.GOOS)
 	ldflags := strings.Join([]string{
-		"-X", "go.kenn.io/kata/internal/version.Version=v" + meta.Version,
-		"-X", "go.kenn.io/kata/internal/version.Distribution=homebrew",
-		"-X", "go.kenn.io/kata/internal/version.BuildDate=" + meta.BuildDate,
+		"-X", "github.com/ifigueroap/poomsae/internal/version.Version=v" + meta.Version,
+		"-X", "github.com/ifigueroap/poomsae/internal/version.Distribution=homebrew",
+		"-X", "github.com/ifigueroap/poomsae/internal/version.BuildDate=" + meta.BuildDate,
 	}, " ")
-	build := exec.CommandContext(ctx, "go", "build", "-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags", ldflags, "-o", bin, "./cmd/kata") //nolint:gosec // fixed build command with release metadata
+	build := exec.CommandContext(ctx, "go", "build", "-mod=vendor", "-trimpath", "-buildvcs=false", "-ldflags", ldflags, "-o", bin, "./cmd/poomsae") //nolint:gosec // fixed build command with release metadata
 	build.Dir = sourceRoot
 	build.Env = append(os.Environ(),
 		"CGO_ENABLED=0",
@@ -263,7 +263,7 @@ func gitArchive(ctx context.Context, repoRoot, ref string) ([]byte, error) {
 }
 
 func vendorDependencies(ctx context.Context, repoRoot string) (string, func(), error) {
-	tmpDir, err := os.MkdirTemp("", "kata-source-vendor-*")
+	tmpDir, err := os.MkdirTemp("", "poomsae-source-vendor-*")
 	if err != nil {
 		return "", func() {}, fmt.Errorf("create vendor directory: %w", err)
 	}
@@ -461,7 +461,7 @@ func runVerifiedBinary(ctx context.Context, bin string, args ...string) ([]byte,
 }
 
 func verificationBinaryPath(dir, goos string) string {
-	name := "kata"
+	name := "poomsae"
 	if goos == "windows" {
 		name += ".exe"
 	}

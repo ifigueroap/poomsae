@@ -1,8 +1,8 @@
-// Package client resolves a running kata daemon and builds matching
-// *http.Clients for both unix-socket and tcp endpoints. Both the kata CLI
-// (cmd/kata) and the kata TUI (internal/tui) consume this so the discovery
+// Package client resolves a running poomsae daemon and builds matching
+// *http.Clients for both unix-socket and tcp endpoints. Both the poomsae CLI
+// (cmd/poomsae) and the poomsae TUI (internal/tui) consume this so the discovery
 // rules — runtime-file scan, alive-pid filter, /ping handshake, magic
-// http://kata.invalid base URL for unix transport — stay in one place.
+// http://poomsae.invalid base URL for unix transport — stay in one place.
 package client
 
 import (
@@ -19,24 +19,24 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/shellquote"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/shellquote"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 // UnixBase is the synthetic base URL used when the daemon listens on a Unix
 // socket. NewHTTPClient/NewStreamingClient detect this prefix and route
 // requests through a unix-socket transport instead of TCP DNS.
-const UnixBase = "http://kata.invalid"
+const UnixBase = "http://poomsae.invalid"
 
 const (
 	// HTTPTimeoutEnvVar configures non-streaming request and configured-remote
 	// probe budgets.
-	HTTPTimeoutEnvVar = "KATA_HTTP_TIMEOUT"
+	HTTPTimeoutEnvVar = "POOMSAE_HTTP_TIMEOUT"
 
 	// DefaultHTTPTimeout is the normal non-streaming request and
 	// configured-remote probe budget.
@@ -129,9 +129,9 @@ func (e *LocalDaemonUnreachableError) RecoveryAdvice() string {
 	switch {
 	case e.Profile != "" && e.ProfileAutostart:
 		if goruntime.GOOS == "windows" {
-			return message + "Then run in PowerShell kata --daemon '" + strings.ReplaceAll(e.Profile, "'", "''") + "' daemon recover"
+			return message + "Then run in PowerShell poomsae --daemon '" + strings.ReplaceAll(e.Profile, "'", "''") + "' daemon recover"
 		}
-		return message + "Then run kata --daemon " + shellquote.Quote(e.Profile) + " daemon recover"
+		return message + "Then run poomsae --daemon " + shellquote.Quote(e.Profile) + " daemon recover"
 	case e.autoStarted:
 		return message + "Then rerun the original command or any command that autostarts the daemon. daemon status, daemon diagnose, and health only inspect"
 	default:

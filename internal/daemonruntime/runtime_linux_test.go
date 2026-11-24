@@ -11,20 +11,20 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestRuntimeProcessAliveRejectsForeignNamespace(t *testing.T) {
-	if os.Getenv("KATA_PIDNS_HELPER") == "1" {
+	if os.Getenv("POOMSAE_PIDNS_HELPER") == "1" {
 		_, _ = io.Copy(io.Discard, os.Stdin)
 		t.SkipNow()
 	}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	child := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=^TestRuntimeProcessAliveRejectsForeignNamespace$") //nolint:gosec // test binary
-	child.Env = append(os.Environ(), "KATA_PIDNS_HELPER=1")
+	child.Env = append(os.Environ(), "POOMSAE_PIDNS_HELPER=1")
 	child.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags:  syscall.CLONE_NEWUSER | syscall.CLONE_NEWPID,
 		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},

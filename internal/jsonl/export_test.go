@@ -15,17 +15,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func TestExportWritesOrderedRecordsWithSequenceLast(t *testing.T) {
 	ctx, d, p := newExportEnv(t)
-	attachAlias(ctx, t, d, p.ID, "github.com/wesm/kata", "git", "/tmp/kata")
+	attachAlias(ctx, t, d, p.ID, "github.com/wesm/poomsae", "git", "/tmp/poomsae")
 	issue := createTesterIssue(ctx, t, d, p.ID, "export me", "", "bug")
 	addTesterComment(ctx, t, d, issue.ID, "jsonl comment")
 
@@ -192,7 +192,7 @@ func TestIssueSyncCurrentExportOrderAndProjectFilter(t *testing.T) {
 
 func TestExportReadOnlyLegacyV17GitHubStatusMapsCounts(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	writeLegacyV17GitHubStatusDB(t, path)
 	assertLegacyTableExists(t, path, "github_sync_bindings")
 	assertLegacyTableExists(t, path, "github_sync_status")
@@ -237,7 +237,7 @@ func assertLegacyTableExists(t *testing.T, path, table string) {
 
 func TestExportReadOnlyLegacySQLiteUsesVersionAwareExporter(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	writeLegacyV1DB(t, path)
 	source, err := sqlitestore.Open(ctx, path, db.ReadOnly())
 	require.NoError(t, err)
@@ -255,7 +255,7 @@ func TestExportReadOnlyLegacySQLiteUsesVersionAwareExporter(t *testing.T) {
 
 func TestExportReadOnlyLegacyV12FederationRowsOmitMissingBoundActor(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	writeLegacyV12FederationDB(t, path)
 	source, err := sqlitestore.Open(ctx, path, db.ReadOnly())
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestExportReadOnlyLegacyV12FederationRowsOmitMissingBoundActor(t *testing.T
 
 func TestExportReadOnlyLegacyV13FederationRowsPreserveBoundActor(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	writeLegacyV13FederationDB(t, path)
 	source, err := sqlitestore.Open(ctx, path, db.ReadOnly())
 	require.NoError(t, err)
@@ -468,11 +468,11 @@ func indexOfKind(kinds []string, want string) int {
 func TestExportProjectIDFiltersProjectScopedRows(t *testing.T) {
 	ctx := t.Context()
 	d := openExportTestDB(t)
-	p1, err := d.CreateProject(ctx, "kata")
+	p1, err := d.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	p2, err := d.CreateProject(ctx, "other")
 	require.NoError(t, err)
-	attachAlias(ctx, t, d, p1.ID, "github.com/wesm/kata", "git", "/tmp/kata")
+	attachAlias(ctx, t, d, p1.ID, "github.com/wesm/poomsae", "git", "/tmp/poomsae")
 	attachAlias(ctx, t, d, p2.ID, "github.com/wesm/other", "git", "/tmp/other")
 	createTesterIssue(ctx, t, d, p1.ID, "keep me", "")
 	createTesterIssue(ctx, t, d, p2.ID, "drop me", "")
@@ -761,7 +761,7 @@ func TestExportNoIncludeDeletedOmitsSoftDeletedIssueDependents(t *testing.T) {
 // export must emit NULL for that FK because the peer's row is
 // intentionally omitted from the export. Without this scrub, the
 // importer would re-insert the FK and fail on the dangling reference.
-// The payload's *_uids slices retain the orphan UID per kata#1's
+// The payload's *_uids slices retain the orphan UID per poomsae#1's
 // preservation rule — the wire FK alone is sanitized.
 func TestExportNoIncludeDeletedNullsAggregatedEnvelopePeerOnSoftDelete(t *testing.T) {
 	ctx, d, p := newExportEnv(t)
@@ -863,7 +863,7 @@ func TestExportNoIncludeDeletedPreservesSinglePeerAggregatedEvent(t *testing.T) 
 }
 
 // TestExportNoIncludeDeletedPreservesLinksChangedReferencingDeleted
-// pins Jesse's design call on kata#1: the live-only export of a
+// pins Jesse's design call on poomsae#1: the live-only export of a
 // surviving issue must keep its mutation events intact even when the
 // payload references a now-soft-deleted peer. Erasing that history
 // would lose the context that the surviving issue was once linked to
@@ -1054,8 +1054,8 @@ func TestExportNoIncludeDeletedDropsFederatedEventForSoftDeletedIssueUID(t *test
 
 func openExportTestDB(t *testing.T) *sqlitestore.Store {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
-	d, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	d, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 	return d
@@ -1063,7 +1063,7 @@ func openExportTestDB(t *testing.T) *sqlitestore.Store {
 
 func writeLegacyV12FederationDB(t *testing.T, path string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	current, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -1161,7 +1161,7 @@ func writeLegacyV12FederationDB(t *testing.T, path string) {
 
 func writeLegacyV13FederationDB(t *testing.T, path string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	current, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -1191,7 +1191,7 @@ func writeLegacyV13FederationDB(t *testing.T, path string) {
 // read those legacy tables and emit current issue_sync_* records.
 func writeLegacyV17GitHubStatusDB(t *testing.T, path string) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	current, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -1271,13 +1271,13 @@ func writeLegacyV17GitHubStatusDB(t *testing.T, path string) {
 	require.Positive(t, binding.ID)
 }
 
-// newExportEnv opens a fresh test DB and seeds the canonical "kata" project
+// newExportEnv opens a fresh test DB and seeds the canonical "poomsae" project
 // used by most export tests.
 func newExportEnv(t *testing.T) (context.Context, *sqlitestore.Store, db.Project) {
 	t.Helper()
 	ctx := t.Context()
 	d := openExportTestDB(t)
-	p, err := d.CreateProject(ctx, "kata")
+	p, err := d.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	return ctx, d, p
 }

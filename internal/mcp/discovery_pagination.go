@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 func (h toolHandlers) requireDiscoveryAPI(ctx context.Context) error {

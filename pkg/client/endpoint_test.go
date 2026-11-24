@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
-	"go.kenn.io/kata/pkg/katatest"
+	"github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/poomsaetest"
 )
 
 func TestConstructorsAcceptUnixSocketEndpoints(t *testing.T) {
 	isolateKataHome(t)
-	open := katatest.New(t, katatest.WithUnixSocket())
-	secured := katatest.New(t, katatest.WithUnixSocket(), katatest.WithToken("socket-token"))
-	t.Setenv("KATA_AUTH_TOKEN", "socket-token")
+	open := poomsaetest.New(t, poomsaetest.WithUnixSocket())
+	secured := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("socket-token"))
+	t.Setenv("POOMSAE_AUTH_TOKEN", "socket-token")
 
 	constructors := map[string]func() (*client.Client, error){
 		"New": func() (*client.Client, error) {
@@ -50,7 +50,7 @@ func TestUnixSocketEndpointRequiresAbsolutePath(t *testing.T) {
 }
 
 func TestStatusCodeReportsDaemonErrorEnvelope(t *testing.T) {
-	server := katatest.New(t)
+	server := poomsaetest.New(t)
 
 	resp, err := server.Client(t).ShowProjectWithResponse(t.Context(), &generated.ShowProjectRequestOptions{
 		PathParams: &generated.ShowProjectPath{ProjectID: 424242},

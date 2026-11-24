@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/federation"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/federation"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestPostgresFederationRunnersElectOneLeaderPerSchema(t *testing.T) {
@@ -146,6 +146,6 @@ func federationRunnerLeasePID(ctx context.Context, database *sql.DB, schema stri
 		   AND granted
 		   AND classid = (pg_catalog.hashtext(pg_catalog.current_database())::bigint & 4294967295)
 		   AND objid = (pg_catalog.hashtext($1)::bigint & 4294967295)
-		 LIMIT 1`, "kata:federation:runner:"+schema).Scan(&pid)
+		 LIMIT 1`, "poomsae:federation:runner:"+schema).Scan(&pid)
 	return pid, err
 }

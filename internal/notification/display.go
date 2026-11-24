@@ -3,7 +3,7 @@ package notification
 import (
 	"strings"
 
-	"go.kenn.io/kata/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/authorname"
 )
 
 // DisplayValue formats sender attribution in a copy of a notification.

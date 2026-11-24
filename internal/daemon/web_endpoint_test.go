@@ -5,9 +5,9 @@ import (
 	"net"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -117,11 +117,11 @@ func TestWebEndpointAllowsTrustedProxySessionOnlyOnNamedListener(t *testing.T) {
 		Origin:   "https://daemon.example",
 	}
 	assert.True(t, endpoint.AllowsTrustedProxySession(config.AuthConfig{Proxy: config.ProxyConfig{
-		TrustedActorHeader:    "X-Kata-Actor",
+		TrustedActorHeader:    "X-Poomsae-Actor",
 		TrustedProxyListeners: []string{"127.0.0.1:27123"},
 	}}))
 	assert.False(t, endpoint.AllowsTrustedProxySession(config.AuthConfig{Proxy: config.ProxyConfig{
-		TrustedActorHeader:    "X-Kata-Actor",
+		TrustedActorHeader:    "X-Poomsae-Actor",
 		TrustedProxyListeners: []string{"127.0.0.1:27124"},
 	}}))
 }
@@ -132,7 +132,7 @@ func TestWebEndpointMatchesExpandedIPv6ListenerToCanonicalTrustedEntry(t *testin
 		Origin:   "https://daemon.example",
 	}
 	assert.True(t, endpoint.AllowsTrustedProxySession(config.AuthConfig{Proxy: config.ProxyConfig{
-		TrustedActorHeader:    "X-Kata-Actor",
+		TrustedActorHeader:    "X-Poomsae-Actor",
 		TrustedProxyListeners: []string{"[fd00::5]:27123"},
 	}}))
 }
@@ -143,7 +143,7 @@ func TestWebEndpointDoesNotTreatWildcardAsTrustedProxyListener(t *testing.T) {
 		Origin:   "https://daemon.example",
 	}
 	assert.False(t, endpoint.AllowsTrustedProxySession(config.AuthConfig{Proxy: config.ProxyConfig{
-		TrustedActorHeader:    "X-Kata-Actor",
+		TrustedActorHeader:    "X-Poomsae-Actor",
 		TrustedProxyListeners: []string{"0.0.0.0:27123"},
 	}}))
 }
@@ -156,7 +156,7 @@ func TestWebEndpointRequiresCanonicalTrustedProxyListenerAddress(t *testing.T) {
 				Origin:   "https://daemon.example",
 			}
 			assert.False(t, endpoint.AllowsTrustedProxySession(config.AuthConfig{Proxy: config.ProxyConfig{
-				TrustedActorHeader:    "X-Kata-Actor",
+				TrustedActorHeader:    "X-Poomsae-Actor",
 				TrustedProxyListeners: []string{address},
 			}}))
 		})

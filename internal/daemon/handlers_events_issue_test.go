@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type countingEventStore struct {
@@ -224,7 +224,7 @@ func TestPollProjectEventsIssuePagination(t *testing.T) {
 		for _, want := range []int64{created.ID, commented.ID, 0} {
 			resp, body := envGetRaw(t, env, fmt.Sprintf("%s?issue=%s&after_id=%d&limit=1", scopedProjectPath(project.ID, "events"), url.QueryEscape(ref), after))
 			require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-			require.Equal(t, issue.UID, resp.Header.Get("X-Kata-Events-Issue-UID"))
+			require.Equal(t, issue.UID, resp.Header.Get("X-Poomsae-Events-Issue-UID"))
 			var page api.PollEventsBody
 			require.NoError(t, json.Unmarshal(body, &page))
 			require.False(t, page.ResetRequired)
@@ -297,7 +297,7 @@ func TestPollProjectEventsIssueScopedHistory(t *testing.T) {
 	require.NoError(t, err)
 	resp, body = envDoRaw(t, env, http.MethodGet, fmt.Sprintf("%s?issue=%s&after_id=%d&limit=1", scopedProjectPath(project.ID, "events"), root.UID, after), nil, headers)
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	require.Equal(t, root.UID, resp.Header.Get("X-Kata-Events-Issue-UID"))
+	require.Equal(t, root.UID, resp.Header.Get("X-Poomsae-Events-Issue-UID"))
 	var page api.PollEventsBody
 	require.NoError(t, json.Unmarshal(body, &page))
 	require.False(t, page.ResetRequired)
@@ -396,7 +396,7 @@ func TestPollProjectEventsIssueReturnsEffectiveCloseEvent(t *testing.T) {
 		path := fmt.Sprintf("%s?issue=%s&include_effective_close_event_uid=true", scopedProjectPath(project.ID, "events"), url.QueryEscape(issue.UID))
 		resp, body := envDoRaw(t, env, http.MethodGet, path, nil, map[string]string{"Authorization": "Bearer worker-token"})
 		require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-		require.Equal(t, issue.UID, resp.Header.Get("X-Kata-Events-Issue-UID"))
+		require.Equal(t, issue.UID, resp.Header.Get("X-Poomsae-Events-Issue-UID"))
 		var raw map[string]json.RawMessage
 		require.NoError(t, json.Unmarshal(body, &raw))
 		var effectiveUID string
@@ -681,7 +681,7 @@ func TestPollProjectEventsIssueOmitsPrivatePeerEvents(t *testing.T) {
 		// truncating the read at it.
 		status, headers, body := f.request(t, http.MethodGet, fmt.Sprintf("%s?issue=%s&after_id=%d", scopedProjectPath(f.public.ID, "events"), f.visible.UID, after), "nonmember", nil, nil)
 		require.Equal(t, http.StatusOK, status, string(body))
-		require.Equal(t, f.visible.UID, headers.Get("X-Kata-Events-Issue-UID"))
+		require.Equal(t, f.visible.UID, headers.Get("X-Poomsae-Events-Issue-UID"))
 		var page api.PollEventsBody
 		require.NoError(t, json.Unmarshal(body, &page))
 		require.False(t, page.ResetRequired)

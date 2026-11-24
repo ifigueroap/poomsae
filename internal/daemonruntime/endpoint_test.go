@@ -3,9 +3,9 @@ package daemonruntime_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 )
 
 func TestValidateNonPublicAddress(t *testing.T) {

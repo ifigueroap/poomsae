@@ -31,8 +31,8 @@ function renderPanel() {
       <button data-install-platform-button="linux" aria-pressed="false">Linux</button>
       <button data-install-platform-button="windows" aria-pressed="false">Windows</button>
       <div data-install-platform-content="macos">brew</div>
-      <div class="kata-install-command--fallback-hidden" data-install-platform-content="linux" hidden>curl</div>
-      <div class="kata-install-command--fallback-hidden" data-install-platform-content="windows" hidden>irm</div>
+      <div class="poomsae-install-command--fallback-hidden" data-install-platform-content="linux" hidden>curl</div>
+      <div class="poomsae-install-command--fallback-hidden" data-install-platform-content="windows" hidden>irm</div>
       <p data-install-platform-status>legacy status</p>
     </section>`
 }
@@ -54,7 +54,7 @@ describe('initializeInstallPanel', () => {
     expect(button('macos')?.getAttribute('aria-pressed')).toBe('false')
     expect(content('windows')?.hidden).toBe(false)
     expect(content('macos')?.hidden).toBe(true)
-    expect(content('windows')?.classList).not.toContain('kata-install-command--fallback-hidden')
+    expect(content('windows')?.classList).not.toContain('poomsae-install-command--fallback-hidden')
     expect(document.querySelector('[data-install-platform-status]')?.textContent).toBe(
       'legacy status',
     )

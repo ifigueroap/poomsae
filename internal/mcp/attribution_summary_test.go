@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // R3/R9: every MCP issue and comment surface keeps accountable identity separate

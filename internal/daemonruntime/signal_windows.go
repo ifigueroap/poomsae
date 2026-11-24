@@ -10,21 +10,21 @@ import (
 )
 
 // StopEventName is the named-event endpoint a Windows daemon creates so
-// another kata process can request graceful shutdown.
+// another poomsae process can request graceful shutdown.
 func StopEventName(dbhash string, pid int) string {
-	return fmt.Sprintf(`Local\kata-stop-%s-%d`, dbhash, pid)
+	return fmt.Sprintf(`Local\poomsae-stop-%s-%d`, dbhash, pid)
 }
 
 // ReloadEventName is the named-event endpoint a Windows daemon creates so
-// another kata process can request hook reload.
+// another poomsae process can request hook reload.
 func ReloadEventName(dbhash string, pid int) string {
-	return fmt.Sprintf(`Local\kata-reload-%s-%d`, dbhash, pid)
+	return fmt.Sprintf(`Local\poomsae-reload-%s-%d`, dbhash, pid)
 }
 
 // RestartEventName is the named-event endpoint a Windows daemon creates so
-// another kata process can request that it re-execute itself.
+// another poomsae process can request that it re-execute itself.
 func RestartEventName(dbhash string, pid int) string {
-	return fmt.Sprintf(`Local\kata-restart-%s-%d`, dbhash, pid)
+	return fmt.Sprintf(`Local\poomsae-restart-%s-%d`, dbhash, pid)
 }
 
 // SignalDaemonStop asks a running daemon to shut down gracefully.

@@ -20,7 +20,7 @@ import (
 const defaultMaxMessageBytes = 8 << 20
 
 // StdioTransport carries one compact JSON-RPC message per line. It enforces
-// Kata's input and output bounds while leaving protocol negotiation to the SDK.
+// Poomsae's input and output bounds while leaving protocol negotiation to the SDK.
 type StdioTransport struct {
 	reader          io.ReadCloser
 	writer          io.Writer
@@ -184,7 +184,7 @@ func (c *stdioConnection) admit(ctx context.Context, line []byte) (jsonrpc.Messa
 	return request, true, nil
 }
 
-// Write implements mcp.Connection. Kata never sends calls to an MCP client.
+// Write implements mcp.Connection. Poomsae never sends calls to an MCP client.
 func (c *stdioConnection) Write(ctx context.Context, message jsonrpc.Message) error {
 	if request, ok := message.(*jsonrpc.Request); ok && request.IsCall() {
 		return errors.New("MCP server requests are not supported")

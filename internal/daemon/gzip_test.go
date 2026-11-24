@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	kataweb "go.kenn.io/kata/internal/web"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeweb "github.com/ifigueroap/poomsae/internal/web"
 )
 
 // The tests in this file set Accept-Encoding explicitly on every request so
@@ -32,7 +32,7 @@ func mkLargeIssue(t *testing.T, env *testenv.Env, projectID int64, title string)
 	is, _, err := env.DB.CreateIssue(t.Context(), db.CreateIssueParams{
 		ProjectID: projectID,
 		Title:     title,
-		Body:      strings.Repeat("kata compresses large JSON responses over slow links. ", 100),
+		Body:      strings.Repeat("poomsae compresses large JSON responses over slow links. ", 100),
 		Author:    "tester",
 	})
 	require.NoError(t, err)
@@ -120,10 +120,10 @@ func TestGzip_SSEStreamNotCompressedAndStillStreams(t *testing.T) {
 }
 
 func TestGzip_WebHandlerCompressesHTML(t *testing.T) {
-	webHandler, err := kataweb.NewEmbeddedHandler()
+	webHandler, err := poomsaeweb.NewEmbeddedHandler()
 	require.NoError(t, err)
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.WebHandler = webHandler })
-	resp, body := envDoRaw(t, env, http.MethodGet, "/kata", nil,
+	resp, body := envDoRaw(t, env, http.MethodGet, "/poomsae", nil,
 		map[string]string{"Accept": "text/html", "Accept-Encoding": "gzip"})
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
@@ -132,18 +132,18 @@ func TestGzip_WebHandlerCompressesHTML(t *testing.T) {
 	plain, err := io.ReadAll(reader)
 	require.NoError(t, err)
 	require.NoError(t, reader.Close())
-	assert.Contains(t, string(plain), "Kata UI assets are not built")
+	assert.Contains(t, string(plain), "Poomsae UI assets are not built")
 }
 
 func TestGzip_WebHandlerStaticShellBypassesBearer(t *testing.T) {
-	webHandler, err := kataweb.NewEmbeddedHandler()
+	webHandler, err := poomsaeweb.NewEmbeddedHandler()
 	require.NoError(t, err)
 	env := testenv.New(t, testenv.WithAuthToken("test-token"),
 		func(cfg *daemon.ServerConfig) { cfg.WebHandler = webHandler })
-	resp, body := envDoRaw(t, env, http.MethodGet, "/kata", nil,
+	resp, body := envDoRaw(t, env, http.MethodGet, "/poomsae", nil,
 		map[string]string{"Accept": "text/html", "Accept-Encoding": "identity"})
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Contains(t, string(body), "Kata UI assets are not built")
+	assert.Contains(t, string(body), "Poomsae UI assets are not built")
 
 	resp, _ = envDoRaw(t, env, http.MethodGet, "/api/v1/projects", nil, nil)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)

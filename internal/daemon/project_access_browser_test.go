@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 // R9: identity bootstrap can administer teams/ACLs in the browser, while
@@ -27,7 +27,7 @@ func TestIdentityBrowserAccessAdministration(t *testing.T) {
 		now := time.Now()
 		manager, err := daemon.NewWebSessionManager(daemon.WebSessionManagerConfig{Origin: origin, InstanceID: "browseradmin", Writable: true, Updates: "sse", Auth: auth, DB: store, Clock: func() time.Time { return now }})
 		require.NoError(t, err)
-		issued, err := manager.Login(t.Context(), "bootstrap-test-token", "/kata")
+		issued, err := manager.Login(t.Context(), "bootstrap-test-token", "/poomsae")
 		require.NoError(t, err)
 		require.False(t, issued.Writable)
 		require.False(t, manager.CanWrite(issued.Principal))
@@ -40,8 +40,8 @@ func TestIdentityBrowserAccessAdministration(t *testing.T) {
 			req.RemoteAddr = "127.0.0.1:40123"
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Origin", requestOrigin)
-			req.Header.Set("X-Kata-Web-Session", issued.Session)
-			req.Header.Set("X-Kata-CSRF", csrf)
+			req.Header.Set("X-Poomsae-Web-Session", issued.Session)
+			req.Header.Set("X-Poomsae-CSRF", csrf)
 			req.AddCookie(manager.Cookie(issued.Cookie))
 			req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, net.Addr(&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 27123})))
 			response := httptest.NewRecorder()

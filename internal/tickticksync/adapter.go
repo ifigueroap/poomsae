@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // Adapter stages complete validated observations before guarded native imports.
@@ -292,7 +292,7 @@ func (a *Adapter) unimportedMissingTasks(ctx context.Context, b db.IssueSyncBind
 }
 
 // openMissingTasks lists mapped tasks absent from the current collection whose
-// Kata issue is still open. The collection omits completed tasks, so only these
+// Poomsae issue is still open. The collection omits completed tasks, so only these
 // can still change status; closed history is not read again. A task that
 // reappears in the collection is imported again as a new observation.
 func (a *Adapter) openMissingTasks(ctx context.Context, b db.IssueSyncBinding, visible map[string]bool) ([]string, error) {

@@ -9,14 +9,14 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // APISchemaVersion is the version stamped into the daemon's OpenAPI document
 // (info.version). It tracks the HTTP API contract, not the build version, so
 // the committed schema artifact stays stable across builds and is bumped
 // deliberately when the wire contract changes.
-const APISchemaVersion = "0.69.0"
+const APISchemaVersion = "0.70.0"
 
 // OpenAPIDocument builds the daemon's complete OpenAPI model by wiring every
 // route through NewServer with a zero ServerConfig. It binds no listener and
@@ -32,7 +32,7 @@ func OpenAPIDocument() *huma.OpenAPI {
 }
 
 // openAPIClientDocument builds the document flavor consumed by code
-// generators (`kata openapi --version 3.0`). Response schemas leave
+// generators (`poomsae openapi --version 3.0`). Response schemas leave
 // additionalProperties unset instead of the published document's explicit
 // true: absence carries the same permissive semantics, but the Go client
 // generator (oapi-codegen-dd) models optional object-typed properties as
@@ -334,7 +334,7 @@ func applyErrorEnvelopeResponses(doc *huma.OpenAPI) {
 
 	// These framework schemas are no longer referenced after every error
 	// response is rewritten. Do not leak unrelated Huma error components into
-	// Kata's committed API artifact.
+	// Poomsae's committed API artifact.
 	delete(registry.Map(), "ErrorDetail")
 	delete(registry.Map(), "ErrorModel")
 }

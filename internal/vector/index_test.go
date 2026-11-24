@@ -9,7 +9,7 @@ import (
 )
 
 func TestOpenUsesFastSQLitePragmasWhenTestHarnessRequestsIt(t *testing.T) {
-	t.Setenv("KATA_TEST_FAST_SQLITE", "1")
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "1")
 
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "vectors.db")

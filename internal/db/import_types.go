@@ -188,7 +188,7 @@ type ImportComment struct {
 
 // ImportLink is one normalized outgoing link from an ImportItem. TargetExternalID
 // references another item's ExternalID in the same batch (or an existing mapped
-// item); the daemon resolves it to a kata issue number.
+// item); the daemon resolves it to a poomsae issue number.
 type ImportLink struct {
 	Type             string
 	TargetExternalID string

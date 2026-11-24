@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // ErrCronConflict reports a stale revision or different immutable identity.

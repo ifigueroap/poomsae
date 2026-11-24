@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
-// FederationConfig is the [federation] block of <KATA_HOME>/config.toml.
+// FederationConfig is the [federation] block of <POOMSAE_HOME>/config.toml.
 type FederationConfig struct {
 	Signing  FederationSigningConfig   `toml:"signing"`
 	Ingress  FederationIngressConfig   `toml:"ingress"`

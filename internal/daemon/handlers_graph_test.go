@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 type graphResponseTest struct {
@@ -55,7 +55,7 @@ func TestReachableGraph_SourceOnly(t *testing.T) {
 	assert.False(t, graph.HideDone)
 	require.Len(t, graph.Nodes, 1)
 	assert.Equal(t, source.UID, graph.Nodes[0].UID)
-	assert.Equal(t, "kata#"+source.ShortID, graph.Nodes[0].QualifiedID)
+	assert.Equal(t, "poomsae#"+source.ShortID, graph.Nodes[0].QualifiedID)
 	assert.Empty(t, graph.Edges)
 	assert.Empty(t, graph.UnresolvedRefs)
 }
@@ -118,7 +118,7 @@ func TestReachableGraph_TraversesCrossProjectLinksWithQualifiedIDs(t *testing.T)
 	graph := getGraph(t, ts, sourceProjectID, source.ShortID, "?depth=full")
 
 	assert.Equal(t, []string{source.UID, foreign.UID, foreignChild.UID}, graphNodeUIDs(graph))
-	assert.Equal(t, "kata#"+source.ShortID, graphNodeByUID(t, graph, source.UID).QualifiedID)
+	assert.Equal(t, "poomsae#"+source.ShortID, graphNodeByUID(t, graph, source.UID).QualifiedID)
 	assert.Equal(t, "foreign#"+foreign.ShortID, graphNodeByUID(t, graph, foreign.UID).QualifiedID)
 	assert.Equal(t, "foreign#"+foreignChild.ShortID, graphNodeByUID(t, graph, foreignChild.UID).QualifiedID)
 	assert.Equal(t, []string{

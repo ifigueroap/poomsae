@@ -9,9 +9,9 @@ import (
 
 // AutoStartMarkerEnv names the environment variable set on implicitly spawned
 // daemon processes so hosted $PORT detection can be skipped.
-const AutoStartMarkerEnv = "KATA_AUTOSTART"
+const AutoStartMarkerEnv = "POOMSAE_AUTOSTART"
 
-// ValidateNonPublicAddress applies kata's daemon listen policy: loopback,
+// ValidateNonPublicAddress applies poomsae's daemon listen policy: loopback,
 // RFC1918, CGNAT, link-local, ULA, and wildcard binds are accepted; public
 // addresses and hostnames are rejected.
 func ValidateNonPublicAddress(addr string) error {

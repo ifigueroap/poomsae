@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // defaultActor is the actor string used by the un-parameterized helpers
@@ -166,7 +166,7 @@ func initLocalWorkspace(t *testing.T, env *testenv.Env, projectName string) int6
 // setupOneIssue creates a workspace + one issue, returns (project_id, issue_number).
 func setupOneIssue(t *testing.T, env *testenv.Env) (int64, int64) {
 	t.Helper()
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	n := createIssueViaHTTP(t, env, pid, "x")
 	return pid, n
 }
@@ -174,7 +174,7 @@ func setupOneIssue(t *testing.T, env *testenv.Env) (int64, int64) {
 // setupTwoIssues creates a workspace + two issues, returns (project_id, a_number, b_number).
 func setupTwoIssues(t *testing.T, env *testenv.Env) (int64, int64, int64) {
 	t.Helper()
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	a := createIssueViaHTTP(t, env, pid, "a")
 	b := createIssueViaHTTP(t, env, pid, "b")
 	return pid, a, b

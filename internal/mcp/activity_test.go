@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func TestNextPriorityAgainstDaemon(t *testing.T) {
@@ -88,15 +88,15 @@ func TestWorkflowToolsArePublished(t *testing.T) {
 		names[tool.Name] = true
 	}
 	for _, name := range []string{
-		"kata.audit_closes", "kata.delete", "kata.edit_comment", "kata.graph",
-		"kata.move", "kata.next", "kata.purge", "kata.restore", "kata.wait",
+		"poomsae.audit_closes", "poomsae.delete", "poomsae.edit_comment", "poomsae.graph",
+		"poomsae.move", "poomsae.next", "poomsae.purge", "poomsae.restore", "poomsae.wait",
 	} {
 		require.True(t, names[name], name)
 	}
 }
 
 func TestWorkflowToolsRoundTripAgainstDaemon(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	spoke, err := store.CreateProject(t.Context(), "spoke-project")
@@ -107,7 +107,7 @@ func TestWorkflowToolsRoundTripAgainstDaemon(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	scope, err := NewAllowlistScope([]ProjectIdentity{
 		{ID: spoke.ID, UID: spoke.UID, Name: spoke.Name},
@@ -116,46 +116,46 @@ func TestWorkflowToolsRoundTripAgainstDaemon(t *testing.T) {
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, Scope: scope, Actor: "example-agent", Version: "test-version"})
 
-	created := callWorkflowTool(t, session, "kata.create", map[string]any{
+	created := callWorkflowTool(t, session, "poomsae.create", map[string]any{
 		"project": "spoke-project", "title": "Workflow issue", "priority": 1, "idempotency_key": "workflow-issue",
 	})
 	qualified := created["issue"].(map[string]any)["qualified_ref"].(string)
-	next := callWorkflowTool(t, session, "kata.next", map[string]any{"project": "spoke-project"})
+	next := callWorkflowTool(t, session, "poomsae.next", map[string]any{"project": "spoke-project"})
 	require.Equal(t, qualified, next["issue"].(map[string]any)["qualified_ref"])
 
-	commented := callWorkflowTool(t, session, "kata.comment", map[string]any{
+	commented := callWorkflowTool(t, session, "poomsae.comment", map[string]any{
 		"ref": qualified, "body": "Initial note", "idempotency_key": "workflow-note",
 	})
 	commentUID := commented["comment"].(map[string]any)["uid"].(string)
-	edited := callWorkflowTool(t, session, "kata.edit_comment", map[string]any{
+	edited := callWorkflowTool(t, session, "poomsae.edit_comment", map[string]any{
 		"ref": qualified, "comment_ref": commentUID, "body": "Updated note",
 	})
 	require.Equal(t, "Updated note", edited["comment"].(map[string]any)["body"])
-	graph := callWorkflowTool(t, session, "kata.graph", map[string]any{"ref": qualified, "depth": "1"})
+	graph := callWorkflowTool(t, session, "poomsae.graph", map[string]any{"ref": qualified, "depth": "1"})
 	require.NotEmpty(t, graph["nodes"])
 
-	moved := callWorkflowTool(t, session, "kata.move", map[string]any{"ref": qualified, "to_project": "hub-project"})
+	moved := callWorkflowTool(t, session, "poomsae.move", map[string]any{"ref": qualified, "to_project": "hub-project"})
 	movedRef := moved["issue"].(map[string]any)["qualified_ref"].(string)
 	require.Contains(t, movedRef, "hub-project#")
-	callWorkflowTool(t, session, "kata.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
-	callWorkflowTool(t, session, "kata.restore", map[string]any{"ref": movedRef})
-	callWorkflowTool(t, session, "kata.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
-	redeleted := callWorkflowTool(t, session, "kata.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
+	callWorkflowTool(t, session, "poomsae.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
+	callWorkflowTool(t, session, "poomsae.restore", map[string]any{"ref": movedRef})
+	callWorkflowTool(t, session, "poomsae.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
+	redeleted := callWorkflowTool(t, session, "poomsae.delete", map[string]any{"ref": movedRef, "confirm": "DELETE " + movedRef})
 	require.Equal(t, false, redeleted["changed"], "retrying a committed delete must reach the daemon's idempotent no-op")
-	purged := callWorkflowTool(t, session, "kata.purge", map[string]any{"ref": movedRef, "confirm": "PURGE " + movedRef})
+	purged := callWorkflowTool(t, session, "poomsae.purge", map[string]any{"ref": movedRef, "confirm": "PURGE " + movedRef})
 	require.Equal(t, true, purged["purged"])
 
-	completed := callWorkflowTool(t, session, "kata.create", map[string]any{
+	completed := callWorkflowTool(t, session, "poomsae.create", map[string]any{
 		"project": "spoke-project", "title": "Completed workflow", "idempotency_key": "completed-workflow",
 	})
 	completedRef := completed["issue"].(map[string]any)["qualified_ref"].(string)
-	callWorkflowTool(t, session, "kata.close", map[string]any{
+	callWorkflowTool(t, session, "poomsae.close", map[string]any{
 		"ref": completedRef, "reason": "done", "message": "Completed the workflow behavior with daemon evidence.",
 		"evidence": []any{map[string]any{"type": "test", "command": "go test ./internal/mcp"}},
 	})
-	waited := callWorkflowTool(t, session, "kata.wait", map[string]any{"refs": []any{completedRef}, "status": "closed", "timeout_seconds": 1})
+	waited := callWorkflowTool(t, session, "poomsae.wait", map[string]any{"refs": []any{completedRef}, "status": "closed", "timeout_seconds": 1})
 	require.Equal(t, "matched", waited["reason"])
-	audit := callWorkflowTool(t, session, "kata.audit_closes", map[string]any{"project": "spoke-project"})
+	audit := callWorkflowTool(t, session, "poomsae.audit_closes", map[string]any{"project": "spoke-project"})
 	require.NotEmpty(t, audit["rows"])
 }
 

@@ -15,13 +15,13 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/version"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -36,10 +36,10 @@ func TestLocalProfileReconnectAcrossRuntimeEndpoints(t *testing.T) {
 				t.Skip("unix")
 			}
 			personal, work := t.TempDir(), t.TempDir()
-			t.Setenv("KATA_HOME", personal)
-			t.Setenv("KATA_SERVER", "")
-			t.Setenv("KATA_AUTH_TOKEN", "personal-token")
-			store, err := sqlitestore.Open(t.Context(), filepath.Join(work, "kata.db"))
+			t.Setenv("POOMSAE_HOME", personal)
+			t.Setenv("POOMSAE_SERVER", "")
+			t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
+			store, err := sqlitestore.Open(t.Context(), filepath.Join(work, "poomsae.db"))
 			require.NoError(t, err)
 			uid := store.InstanceUID()
 			require.NoError(t, store.Close())
@@ -66,7 +66,7 @@ func TestLocalProfileReconnectAcrossRuntimeEndpoints(t *testing.T) {
 						mutations.Add(1)
 					}
 					if r.URL.Path == "/api/v1/ping" {
-						_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+						_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 						return
 					}
 					if r.Header.Get("Authorization") != "Bearer work-token" {
@@ -82,7 +82,7 @@ func TestLocalProfileReconnectAcrossRuntimeEndpoints(t *testing.T) {
 				})}
 				go func() { _ = srv.Serve(listener) }()
 				t.Cleanup(func() { _ = srv.Close() })
-				_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Network: network, Address: listener.Addr().String()})
+				_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Network: network, Address: listener.Addr().String()})
 				require.NoError(t, err)
 				return srv
 			}
@@ -122,14 +122,14 @@ func TestLocalProfileReconnectAcrossRuntimeEndpoints(t *testing.T) {
 
 func TestActiveLegacyLocalRetainsCatalogCredential(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Chdir(t.TempDir())
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("active_daemon=\"work\"\n[auth]\ntoken=\"bootstrap-token\"\n[[daemon]]\nname=\"work\"\nlocal=true\ntoken=\"identity-token\"\n"), 0600))
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 			return
 		}
 		if r.Header.Get("Authorization") != "Bearer identity-token" {
@@ -142,7 +142,7 @@ func TestActiveLegacyLocalRetainsCatalogCredential(t *testing.T) {
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
-	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(s.URL, "http://")})
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(s.URL, "http://")})
 	require.NoError(t, err)
 	conn, err := bootDaemonConnection(t.Context(), Options{ProjectName: "spoke-project"})
 	require.NoError(t, err)
@@ -155,12 +155,12 @@ func TestActiveLegacyLocalReconnectRetainsCatalogCredential(t *testing.T) {
 		t.Skip("Unix transport")
 	}
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_WORK_TOKEN", "identity-token")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_WORK_TOKEN", "identity-token")
 	t.Chdir(t.TempDir())
-	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("active_daemon=\"work\"\n[auth]\ntoken=\"bootstrap-token\"\n[[daemon]]\nname=\"work\"\nlocal=true\ntoken_env=\"KATA_WORK_TOKEN\"\n"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("active_daemon=\"work\"\n[auth]\ntoken=\"bootstrap-token\"\n[[daemon]]\nname=\"work\"\nlocal=true\ntoken_env=\"POOMSAE_WORK_TOKEN\"\n"), 0600))
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
@@ -173,7 +173,7 @@ func TestActiveLegacyLocalReconnectRetainsCatalogCredential(t *testing.T) {
 		require.NoError(t, listenErr)
 		srv := &http.Server{ReadHeaderTimeout: time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/ping" {
-				_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+				_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 				return
 			}
 			if r.Header.Get("Authorization") != "Bearer identity-token" {
@@ -190,7 +190,7 @@ func TestActiveLegacyLocalReconnectRetainsCatalogCredential(t *testing.T) {
 		go func() { _ = srv.Serve(listener) }()
 		t.Cleanup(func() { _ = srv.Close() })
 		_, writeErr := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{
-			Service: "kata", PID: os.Getpid(), Network: "unix", Address: socket,
+			Service: "poomsae", PID: os.Getpid(), Network: "unix", Address: socket,
 		})
 		require.NoError(t, writeErr)
 		return srv
@@ -225,10 +225,10 @@ func TestActiveLegacyLocalReconnectRetainsCatalogCredential(t *testing.T) {
 
 func TestLocalProfileConcurrentRefreshHonorsRequestDeadline(t *testing.T) {
 	personal, work := t.TempDir(), t.TempDir()
-	t.Setenv("KATA_HOME", personal)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(work, "kata.db"))
+	t.Setenv("POOMSAE_HOME", personal)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(work, "poomsae.db"))
 	require.NoError(t, err)
 	uid := store.InstanceUID()
 	require.NoError(t, store.Close())
@@ -242,7 +242,7 @@ func TestLocalProfileConcurrentRefreshHonorsRequestDeadline(t *testing.T) {
 	start := func(block bool) *httptest.Server {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/ping" {
-				_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+				_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 				return
 			}
 			if block && r.URL.Path == "/api/v1/instance" {
@@ -259,7 +259,7 @@ func TestLocalProfileConcurrentRefreshHonorsRequestDeadline(t *testing.T) {
 			_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, uid)
 		}))
 		t.Cleanup(s.Close)
-		_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(s.URL, "http://")})
+		_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Network: "tcp", Address: strings.TrimPrefix(s.URL, "http://")})
 		require.NoError(t, err)
 		return s
 	}
@@ -296,7 +296,7 @@ func TestLocalProfileConcurrentRefreshHonorsRequestDeadline(t *testing.T) {
 }
 
 func TestTelemetrySkipsLocalProfileRecovery(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	synctest.Test(t, func(t *testing.T) {
 		hc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, fmt.Errorf("original connection failure") })}
 		state := shareLocalProfileTransports(daemonTarget{resolved: client.ResolvedDaemon{BaseURL: "http://daemon.example"}}, hc, &http.Client{Transport: http.DefaultTransport})

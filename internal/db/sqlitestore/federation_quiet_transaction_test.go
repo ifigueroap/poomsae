@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv/sqlcount"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv/sqlcount"
 )
 
 func TestQuietFederationPollRetriesBusyRead(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	setup, err := sqlitestore.Open(t.Context(), path)
 	require.NoError(t, err)
 	project, err := setup.CreateProject(t.Context(), "quiet")
@@ -51,7 +51,7 @@ func TestQuietFederationPollRetriesBusyRead(t *testing.T) {
 
 func TestQuietFederationPollTransactions(t *testing.T) {
 	t.Cleanup(sqlitestore.CountStatementsForTest())
-	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, s.Close()) })
 	quiet, err := s.CreateProject(t.Context(), "quiet")

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 type daemonTarget struct {

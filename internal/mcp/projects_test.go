@@ -11,11 +11,11 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestDigestActorFiltersRoundTripAndAuditActorDisplay(t *testing.T) {
@@ -30,12 +30,12 @@ func TestDigestActorFiltersRoundTripAndAuditActorDisplay(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-	audit := callWorkflowTool(t, f.session, "kata.audit_closes", map[string]any{"project": f.project.Name})["rows"].([]any)
+	audit := callWorkflowTool(t, f.session, "poomsae.audit_closes", map[string]any{"project": f.project.Name})["rows"].([]any)
 	require.Len(t, audit, 1)
 	require.Equal(t, "Ana", audit[0].(map[string]any)["actor"])
 	require.Equal(t, first, audit[0].(map[string]any)["actor_filter"])
 	args := map[string]any{"project": f.project.Name, "since": "2020-01-01T00:00:00Z"}
-	result := callAdministrationTool(t, f.session, "kata.digest", args)
+	result := callAdministrationTool(t, f.session, "poomsae.digest", args)
 	digest := result["digests"].([]any)[0].(map[string]any)["digest"].(map[string]any)
 	actors := digest["actors"].([]any)
 	require.Len(t, actors, 2)
@@ -44,13 +44,13 @@ func TestDigestActorFiltersRoundTripAndAuditActorDisplay(t *testing.T) {
 	filters := ana["actor_filters"].([]any)
 	require.ElementsMatch(t, []any{first, second, "Ana"}, filters)
 	args["actors"] = filters
-	filtered := callAdministrationTool(t, f.session, "kata.digest", args)["digests"].([]any)[0].(map[string]any)["digest"].(map[string]any)["actors"].([]any)
+	filtered := callAdministrationTool(t, f.session, "poomsae.digest", args)["digests"].([]any)[0].(map[string]any)["digest"].(map[string]any)["actors"].([]any)
 	require.Len(t, filtered, 1)
 	require.Equal(t, ana, filtered[0])
 }
 
 func TestAdministrationToolsRoundTripAgainstDaemon(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	_, err = store.CreateProject(t.Context(), "initial-project")
@@ -59,43 +59,43 @@ func TestAdministrationToolsRoundTripAgainstDaemon(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, Scope: NewAllScope(), EnableTokenAdmin: true, Actor: "example-agent", Version: "test-version"})
 
-	created := callAdministrationTool(t, session, "kata.project_create", map[string]any{"name": "created-project"})
+	created := callAdministrationTool(t, session, "poomsae.project_create", map[string]any{"name": "created-project"})
 	require.Equal(t, "created-project", created["project"].(map[string]any)["name"])
-	updated := callAdministrationTool(t, session, "kata.project_update", map[string]any{"project": "created-project", "action": "rename", "name": "renamed-project"})
+	updated := callAdministrationTool(t, session, "poomsae.project_update", map[string]any{"project": "created-project", "action": "rename", "name": "renamed-project"})
 	require.Equal(t, "renamed-project", updated["project"].(map[string]any)["name"])
 
-	recurrence := callAdministrationTool(t, session, "kata.recurrence_update", map[string]any{
+	recurrence := callAdministrationTool(t, session, "poomsae.recurrence_update", map[string]any{
 		"project": "renamed-project", "action": "create", "dtstart": "2026-09-01", "rrule": "FREQ=WEEKLY", "timezone": "UTC",
 		"template": map[string]any{"title": "Weekly review", "owner": "example-agent"},
 	})["recurrence"].(map[string]any)
 	uid := recurrence["uid"].(string)
 	require.Equal(t, "example-agent", recurrence["template_owner"])
-	cleared := callAdministrationTool(t, session, "kata.recurrence_update", map[string]any{
+	cleared := callAdministrationTool(t, session, "poomsae.recurrence_update", map[string]any{
 		"project": "renamed-project", "action": "patch", "uid": uid, "revision": recurrence["revision"],
 		"template_patch": map[string]any{"clear_owner": true},
 	})["recurrence"].(map[string]any)
 	require.NotContains(t, cleared, "template_owner", "template_patch clear_owner must reach the daemon")
-	listed := callAdministrationTool(t, session, "kata.recurrences", map[string]any{"project": "renamed-project"})
+	listed := callAdministrationTool(t, session, "poomsae.recurrences", map[string]any{"project": "renamed-project"})
 	require.Len(t, listed["recurrences"], 1)
-	callAdministrationTool(t, session, "kata.recurrence_delete", map[string]any{"project": "renamed-project", "uid": uid, "revision": cleared["revision"]})
+	callAdministrationTool(t, session, "poomsae.recurrence_delete", map[string]any{"project": "renamed-project", "uid": uid, "revision": cleared["revision"]})
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	imported := callAdministrationTool(t, session, "kata.import_issues", map[string]any{
+	imported := callAdministrationTool(t, session, "poomsae.import_issues", map[string]any{
 		"project": "renamed-project", "source": "example-source", "items": []any{map[string]any{
 			"external_id": "example-1", "title": "Imported task", "author": "example-agent", "status": "open", "created_at": now, "updated_at": now,
 		}},
 	})
 	require.EqualValues(t, 1, imported["result"].(map[string]any)["created"])
 
-	digest := callAdministrationTool(t, session, "kata.digest", map[string]any{"project": "renamed-project", "since": time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339)})
+	digest := callAdministrationTool(t, session, "poomsae.digest", map[string]any{"project": "renamed-project", "since": time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339)})
 	require.NotEmpty(t, digest["digests"])
-	events := callAdministrationTool(t, session, "kata.events", map[string]any{"project": "renamed-project", "mode": "poll", "after": 0, "limit": 100})
+	events := callAdministrationTool(t, session, "poomsae.events", map[string]any{"project": "renamed-project", "mode": "poll", "after": 0, "limit": 100})
 	require.NotEmpty(t, events["events"])
-	system := callAdministrationTool(t, session, "kata.system", map[string]any{})
+	system := callAdministrationTool(t, session, "poomsae.system", map[string]any{})
 	require.NotEmpty(t, system["instance_uid"])
 	require.NotContains(t, system, "db_path")
 	// Enrollment credentials are minted through the CLI/daemon, never MCP.
@@ -114,33 +114,33 @@ func TestAdministrationToolsRoundTripAgainstDaemon(t *testing.T) {
 	require.NoError(t, err)
 	enrollmentID := enrolled.ID
 	spokeUID := system["instance_uid"].(string)
-	named := callAdministrationTool(t, session, "kata.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "name": "laptop"})
+	named := callAdministrationTool(t, session, "poomsae.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "name": "laptop"})
 	require.Equal(t, "laptop", named["spoke_name"])
-	federation := callAdministrationTool(t, session, "kata.federation_status", map[string]any{})
+	federation := callAdministrationTool(t, session, "poomsae.federation_status", map[string]any{})
 	require.NotEmpty(t, federation["enrollments"])
 	require.NotContains(t, federation["enrollments"].([]any)[0].(map[string]any), "token")
 	require.Equal(t, "laptop", federation["enrollments"].([]any)[0].(map[string]any)["spoke_name"])
-	callAdministrationTool(t, session, "kata.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "clear": true})
-	federation = callAdministrationTool(t, session, "kata.federation_status", map[string]any{})
+	callAdministrationTool(t, session, "poomsae.federation_spoke_name", map[string]any{"spoke_instance_uid": spokeUID, "clear": true})
+	federation = callAdministrationTool(t, session, "poomsae.federation_status", map[string]any{})
 	require.NotContains(t, federation["enrollments"].([]any)[0].(map[string]any), "spoke_name")
-	callAdministrationTool(t, session, "kata.federation_enrollment_revoke", map[string]any{"id": enrollmentID})
-	token := callAdministrationTool(t, session, "kata.token_create", map[string]any{"token_actor": "automation-agent", "name": "automation"})
+	callAdministrationTool(t, session, "poomsae.federation_enrollment_revoke", map[string]any{"id": enrollmentID})
+	token := callAdministrationTool(t, session, "poomsae.token_create", map[string]any{"token_actor": "automation-agent", "name": "automation"})
 	require.NotEmpty(t, token["token"])
 	tokenID := token["record"].(map[string]any)["id"]
-	tokens := callAdministrationTool(t, session, "kata.tokens", map[string]any{})
+	tokens := callAdministrationTool(t, session, "poomsae.tokens", map[string]any{})
 	require.NotEmpty(t, tokens["tokens"])
 	require.NotContains(t, tokens["tokens"].([]any)[0].(map[string]any), "token")
-	callAdministrationTool(t, session, "kata.token_revoke", map[string]any{"id": tokenID})
-	callAdministrationTool(t, session, "kata.project_create", map[string]any{"name": "lifecycle-project"})
-	callAdministrationTool(t, session, "kata.project_remove", map[string]any{"project": "lifecycle-project"})
-	callAdministrationTool(t, session, "kata.project_restore", map[string]any{"project": "lifecycle-project"})
-	callAdministrationTool(t, session, "kata.project_remove", map[string]any{"project": "lifecycle-project"})
-	purged := callAdministrationTool(t, session, "kata.project_purge", map[string]any{"project": "lifecycle-project", "confirm": "PURGE lifecycle-project"})
+	callAdministrationTool(t, session, "poomsae.token_revoke", map[string]any{"id": tokenID})
+	callAdministrationTool(t, session, "poomsae.project_create", map[string]any{"name": "lifecycle-project"})
+	callAdministrationTool(t, session, "poomsae.project_remove", map[string]any{"project": "lifecycle-project"})
+	callAdministrationTool(t, session, "poomsae.project_restore", map[string]any{"project": "lifecycle-project"})
+	callAdministrationTool(t, session, "poomsae.project_remove", map[string]any{"project": "lifecycle-project"})
+	purged := callAdministrationTool(t, session, "poomsae.project_purge", map[string]any{"project": "lifecycle-project", "confirm": "PURGE lifecycle-project"})
 	require.Equal(t, true, purged["purged"])
 }
 
 func TestProjectUpdateActionsReturnCompleteProjectSummary(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
@@ -152,7 +152,7 @@ func TestProjectUpdateActionsReturnCompleteProjectSummary(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test-version",
@@ -169,19 +169,19 @@ func TestProjectUpdateActionsReturnCompleteProjectSummary(t *testing.T) {
 		require.Equal(t, false, summary["archived"])
 	}
 
-	rewritten := callAdministrationTool(t, session, "kata.project_update", map[string]any{
+	rewritten := callAdministrationTool(t, session, "poomsae.project_update", map[string]any{
 		"project": project.Name, "action": "rewrite_author", "from": "user-a", "to": "user-b",
 	})
 	requireCompleteProject(rewritten)
 
-	detached := callAdministrationTool(t, session, "kata.project_update", map[string]any{
+	detached := callAdministrationTool(t, session, "poomsae.project_update", map[string]any{
 		"project": project.Name, "action": "detach_alias", "alias_id": alias.ID, "force": true,
 	})
 	requireCompleteProject(detached)
 }
 
 func TestProjectUpdateDetachAliasReturnsArchivedProjectSummary(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "archived-project")
@@ -197,13 +197,13 @@ func TestProjectUpdateDetachAliasReturnsArchivedProjectSummary(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test-version",
 	})
 
-	detached := callAdministrationTool(t, session, "kata.project_update", map[string]any{
+	detached := callAdministrationTool(t, session, "poomsae.project_update", map[string]any{
 		"project": archived.Name, "action": "detach_alias", "alias_id": alias.ID, "force": true,
 	})
 	summary := detached["project"].(map[string]any)
@@ -219,7 +219,7 @@ func TestProjectUpdateDetachAliasReturnsArchivedProjectSummary(t *testing.T) {
 func TestProjectUpdateDoesNotReadProjectAfterMutationCommit(t *testing.T) {
 	for _, action := range []string{"rewrite_author", "detach_alias"} {
 		t.Run(action, func(t *testing.T) {
-			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+			store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, store.Close()) })
 			project, err := store.CreateProject(t.Context(), "example-project")
@@ -248,7 +248,7 @@ func TestProjectUpdateDoesNotReadProjectAfterMutationCommit(t *testing.T) {
 				}
 			}))
 			t.Cleanup(httpServer.Close)
-			client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+			client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 			require.NoError(t, err)
 			session := connectTestServerWithOptions(t, Options{
 				Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test-version",
@@ -262,7 +262,7 @@ func TestProjectUpdateDoesNotReadProjectAfterMutationCommit(t *testing.T) {
 				arguments["alias_id"] = alias.ID
 				arguments["force"] = true
 			}
-			output := callAdministrationTool(t, session, "kata.project_update", arguments)
+			output := callAdministrationTool(t, session, "poomsae.project_update", arguments)
 			require.True(t, mutationCommitted.Load())
 			require.Zero(t, postMutationReads.Load())
 			summary := output["project"].(map[string]any)

@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestHostDenialFinalizesAfterRollback(t *testing.T) {
@@ -23,21 +23,21 @@ func TestHostDenialFinalizesAfterRollback(t *testing.T) {
 		t.Run(backend, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
-			config := kata.Config{DSN: filepath.Join(t.TempDir(), "service.db")}
+			config := poomsae.Config{DSN: filepath.Join(t.TempDir(), "service.db")}
 			driver, prefix := "sqlite", ""
 			if backend == "postgres" {
 				dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
 				t.Cleanup(cleanup)
 				config.DSN = dsn
-				config.Postgres = kata.PostgresConfig{Schema: "kata", SchemaMode: kata.PostgresSchemaBootstrap}
-				driver, prefix = "pgx", "kata."
+				config.Postgres = poomsae.PostgresConfig{Schema: "poomsae", SchemaMode: poomsae.PostgresSchemaBootstrap}
+				driver, prefix = "pgx", "poomsae."
 			}
 			controller := &recordingAccessController{}
 			config.Access = controller
-			service, err := kata.New(ctx, config)
+			service, err := poomsae.New(ctx, config)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, service.Close()) })
-			project, err := service.EnsureProject(ctx, kata.ProjectSpec{
+			project, err := service.EnsureProject(ctx, poomsae.ProjectSpec{
 				UID: "01HZNQ7VFPK1XGD8R5MABCD4EX", Name: "example-project",
 			})
 			require.NoError(t, err)
@@ -59,11 +59,11 @@ func TestHostDenialFinalizesAfterRollback(t *testing.T) {
 					_, err := inspection.ExecContext(ctx, `DELETE FROM `+prefix+`fence_markers`)
 					require.NoError(t, err)
 					calls := 0
-					controller.transactionFence = func(ctx context.Context, tx kata.Transaction) error {
+					controller.transactionFence = func(ctx context.Context, tx poomsae.Transaction) error {
 						if _, err := tx.ExecContext(ctx, `INSERT INTO `+prefix+`fence_markers VALUES (1)`); err != nil {
 							return err
 						}
-						return kata.AfterTransactionRollback(kata.ErrAccessDenied, func(ctx context.Context) error {
+						return poomsae.AfterTransactionRollback(poomsae.ErrAccessDenied, func(ctx context.Context) error {
 							calls++
 							var markers int
 							if err := inspection.QueryRowContext(ctx, `SELECT count(*) FROM `+prefix+`fence_markers`).Scan(&markers); err != nil {
@@ -82,7 +82,7 @@ func TestHostDenialFinalizesAfterRollback(t *testing.T) {
 						"/api/v1/projects/"+strconv.FormatInt(project.Project.ID, 10)+"/issues",
 						bytes.NewBufferString(`{"actor":"ignored","title":"must not be stored"}`))
 					request.Header.Set("Content-Type", "application/json")
-					request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{Subject: "user-a", Actor: "Example User"}))
+					request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{Subject: "user-a", Actor: "Example User"}))
 					response := httptest.NewRecorder()
 					service.Handler().ServeHTTP(response, request)
 					assert.Equal(t, testCase.wantStatus, response.Code)
@@ -105,9 +105,9 @@ func TestHostDenialFinalizesAfterRollback(t *testing.T) {
 func TestFederationDenialKeepsRollbackCallback(t *testing.T) {
 	for _, finishError := range []error{nil, errors.New("host recording unavailable")} {
 		calls := 0
-		controller := &recordingFederationAccessController{decide: func(kata.FederationAccessRequest) (kata.FederationAccessDecision, error) {
-			return kata.FederationAccessDecision{TransactionFence: func(context.Context, kata.Transaction) error {
-				return kata.AfterTransactionRollback(kata.ErrAccessDenied, func(context.Context) error {
+		controller := &recordingFederationAccessController{decide: func(poomsae.FederationAccessRequest) (poomsae.FederationAccessDecision, error) {
+			return poomsae.FederationAccessDecision{TransactionFence: func(context.Context, poomsae.Transaction) error {
+				return poomsae.AfterTransactionRollback(poomsae.ErrAccessDenied, func(context.Context) error {
 					calls++
 					return finishError
 				})

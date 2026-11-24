@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	"go.kenn.io/kit/safefileio"
 )
 
@@ -46,8 +46,8 @@ func TestTUIHubFileIsReadAgainAfterBrowse(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_AUTH_TOKEN", "local-only-token")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_AUTH_TOKEN", "local-only-token")
 			path := filepath.Join(home, "hub-token")
 			fields := tc.setup(t, path)
 			srv := startTUIPingServer(t)

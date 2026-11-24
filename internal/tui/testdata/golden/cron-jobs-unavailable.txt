@@ -1,5 +1,5 @@
- Project: example-project                                       kata カタ · dev
-kata カタ [jobs] runs workflows
+ Project: example-project                                    poomsae カタ · dev
+poomsae カタ [jobs] runs workflows
  / search                                                                0 jobs
 
   Job            State   Trigger           Action             Last loaded run
@@ -20,5 +20,5 @@ jobs unavailable: see error below
 
 
 jobs: no cron permission (403)
- j/k move▕ ↵/l open▕ / filter▕ n/e new/edit▕ h/esc kata▕ r refresh▕ 1-4 tabs
+ j/k move▕ ↵/l open▕ / filter▕ n/e new/edit▕ h/esc poomsae▕ r refresh▕ 1-4 tabs
  ? help  ▕ q quit

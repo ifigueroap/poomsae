@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	clientpkg "go.kenn.io/kata/internal/client"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federation"
 )
 
 // R3/R4/R9: a persisted candidate enrollment is a retry identity, not live

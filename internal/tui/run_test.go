@@ -14,10 +14,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/creack/pty"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestRunQuitReportsSessionWhileDeliveryIsStalled(t *testing.T) {
@@ -52,8 +52,8 @@ func TestRunQuitReportsSessionWhileDeliveryIsStalled(t *testing.T) {
 	env := testenv.New(t, func(cfg *daemon.ServerConfig) { cfg.Telemetry = recorder })
 	releaseReport := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(releaseReport)
-	t.Setenv("KATA_SERVER", env.URL)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_SERVER", env.URL)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 	workspace := t.TempDir()
@@ -104,8 +104,8 @@ func TestBoot_ResolvesProject(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"project": map[string]any{
 					"id":       7,
-					"identity": "github.com/wesm/kata",
-					"name":     "kata",
+					"identity": "github.com/wesm/poomsae",
+					"name":     "poomsae",
 				},
 				"workspace_root": "/tmp/x",
 			})
@@ -128,13 +128,13 @@ func TestBoot_ResolvesProject(t *testing.T) {
 	if sc.projectID != 7 {
 		t.Fatalf("got projectID %d, want 7", sc.projectID)
 	}
-	if sc.projectName != "kata" {
-		t.Fatalf("projectName = %q, want kata", sc.projectName)
+	if sc.projectName != "poomsae" {
+		t.Fatalf("projectName = %q, want poomsae", sc.projectName)
 	}
 	if sc.workspace != "/tmp/x" {
 		t.Fatalf("workspace = %q, want /tmp/x", sc.workspace)
 	}
-	if sc.homeProjectID != 7 || sc.homeProjectName != "kata" {
+	if sc.homeProjectID != 7 || sc.homeProjectName != "poomsae" {
 		t.Fatalf("home* not seeded: id=%d name=%q", sc.homeProjectID, sc.homeProjectName)
 	}
 	if _, err := c.ListIssues(t.Context(), sc.projectID, ListFilter{}); err != nil {
@@ -566,7 +566,7 @@ func TestSSERestartIgnoresStaleGeneration(t *testing.T) {
 	conn := daemonConnection{
 		sseHC:    &http.Client{},
 		endpoint: "https://daemon.example",
-		init:     bootInit{scope: homedScope(7, "kata")},
+		init:     bootInit{scope: homedScope(7, "poomsae")},
 	}
 
 	newer := state.restart(conn, 3, nil)
@@ -588,7 +588,7 @@ func TestBoot_UnresolvedWithProjects_LandsViewProjects(t *testing.T) {
 		"/api/v1/projects": func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "stats", r.URL.Query().Get("include"))
 			_, _ = w.Write([]byte(`{"projects":[
-				{"id":7,"identity":"github.com/wesm/kata","name":"kata",
+				{"id":7,"identity":"github.com/wesm/poomsae","name":"poomsae",
 				 "stats":{"open":3,"closed":1,"last_event_at":"2026-05-04T12:00:00.000Z"}}
 			]}`))
 		},
@@ -603,7 +603,7 @@ func TestBoot_UnresolvedWithProjects_LandsViewProjects(t *testing.T) {
 	assert.False(t, bi.scope.allProjects)
 	require.Len(t, bi.projects, 1, "boot fetched rows must be threaded through")
 	assert.Equal(t, int64(7), bi.projects[0].ID)
-	assert.Equal(t, "kata", bi.projects[0].Name)
+	assert.Equal(t, "poomsae", bi.projects[0].Name)
 }
 
 func TestBootRemoteUnboundPathLandsOnProjects(t *testing.T) {
@@ -658,15 +658,15 @@ func TestBuildRunModel_SeedsViewProjectsCacheFromBoot(t *testing.T) {
 		scope: scope{},
 		projects: []ProjectSummaryWithStats{
 			{
-				ID: 7, Name: "kata",
+				ID: 7, Name: "poomsae",
 				Stats: &ProjectStatsSummary{Open: 3, Closed: 1, LastEventAt: &t1},
 			},
 		},
 	}
 	m := buildRunModel(Options{}, NewClient("http://daemon.example", nil), bi)
 	assert.Equal(t, viewProjects, m.view)
-	assert.Equal(t, "kata", m.projectsByID[7])
-	assert.Equal(t, "kata", m.projectIdentByID[7])
+	assert.Equal(t, "poomsae", m.projectsByID[7])
+	assert.Equal(t, "poomsae", m.projectIdentByID[7])
 	require.Contains(t, m.projectStats, int64(7))
 	assert.Equal(t, 3, m.projectStats[7].Open)
 	assert.Equal(t, 1, m.projectStats[7].Closed)
@@ -693,7 +693,7 @@ func TestBuildRunModel_SeedsInitialIssue(t *testing.T) {
 }
 
 func TestInitialDetail_InitAddsFourDetailFetches(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	baseInit := bootInit{
 		scope: scope{projectID: 7, projectName: "example-project"},
 		view:  viewList,

@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 type rejectingIdleAdmission struct {
@@ -167,11 +167,11 @@ func TestServerIdleAdmissionRunsAfterRequestValidation(t *testing.T) {
 		server := newServer(t, admission)
 		handler, err := server.HandlerFor(ListenerPolicy{
 			Kind:   ListenerBrowser,
-			Origin: "https://kata.example",
+			Origin: "https://poomsae.example",
 		})
 		require.NoError(t, err)
-		request := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "https://kata.example/api/v1/ping", nil)
-		request.Host = "kata.example"
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "https://poomsae.example/api/v1/ping", nil)
+		request.Host = "poomsae.example"
 		request.Header.Set("Origin", "https://attacker.example")
 		request.Header.Set("Access-Control-Request-Method", http.MethodGet)
 		request.Header.Set("Access-Control-Request-Headers", IdleKeepaliveHeader)
@@ -187,7 +187,7 @@ func TestServerIdleAdmissionRunsAfterRequestValidation(t *testing.T) {
 		server := newServer(t, admission)
 		handler, err := server.HandlerFor(ListenerPolicy{
 			Kind:   ListenerBrowser,
-			Origin: "https://kata.example",
+			Origin: "https://poomsae.example",
 		})
 		require.NoError(t, err)
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/projects", nil)
@@ -201,17 +201,17 @@ func TestServerIdleAdmissionRunsAfterRequestValidation(t *testing.T) {
 
 	t.Run("missing browser session", func(t *testing.T) {
 		admission := &rejectingIdleAdmission{}
-		manager := newDeterministicSessionManager(t, "https://kata.example", "idle_test")
+		manager := newDeterministicSessionManager(t, "https://poomsae.example", "idle_test")
 		server := NewServer(ServerConfig{WebSessions: manager, IdleAdmission: admission})
 		handler, err := server.HandlerFor(ListenerPolicy{
 			Kind:                  ListenerBrowser,
-			Origin:                "https://kata.example",
+			Origin:                "https://poomsae.example",
 			RequireBrowserSession: true,
 		})
 		require.NoError(t, err)
-		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://kata.example/api/v1/projects", nil)
-		request.Host = "kata.example"
-		request.Header.Set("Origin", "https://kata.example")
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://poomsae.example/api/v1/projects", nil)
+		request.Host = "poomsae.example"
+		request.Header.Set("Origin", "https://poomsae.example")
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 

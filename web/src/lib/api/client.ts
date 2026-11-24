@@ -25,10 +25,10 @@ export function createCredentialedFetch(
     }
     const credentials = readCredentials()
     if (credentials) {
-      headers.set('X-Kata-Web-Session', credentials.session)
+      headers.set('X-Poomsae-Web-Session', credentials.session)
       const method = (init?.method ?? request?.method ?? 'GET').toUpperCase()
       if (mutationMethods.has(method)) {
-        headers.set('X-Kata-CSRF', credentials.csrf)
+        headers.set('X-Poomsae-CSRF', credentials.csrf)
       }
     }
     const response = await upstream(applicationRequest(input), {

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/pagination"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/pagination"
 )
 
 func normalizePageStrings(values []string, lower bool) []string {

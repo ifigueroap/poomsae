@@ -49,7 +49,7 @@ func newIssueFormFixture() Model {
 	return Model{
 		view:   viewList,
 		keymap: newKeymap(),
-		scope:  scope{projectID: 7, projectName: "kata"},
+		scope:  scope{projectID: 7, projectName: "poomsae"},
 		list:   listModel{actor: "tester"},
 		cache:  newIssueCache(),
 	}

@@ -1,0 +1,828 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestEnvHTTPTimeout(t *testing.T) {
+	const def = 5 * time.Second
+
+	cases := []struct {
+		name string
+		env  string
+		want time.Duration
+	}{
+		{name: "empty returns default", env: "", want: def},
+		{name: "valid override", env: "30s", want: 30 * time.Second},
+		{name: "minutes parse", env: "2m", want: 2 * time.Minute},
+		{name: "garbage falls back", env: "not-a-duration", want: def},
+		{name: "zero falls back", env: "0s", want: def},
+		{name: "negative falls back", env: "-10s", want: def},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assertEnvDurationOverride(t, "POOMSAE_HTTP_TIMEOUT", tc.env, def, tc.want, envHTTPTimeout)
+		})
+	}
+}
+
+func TestLongRunningClientForLeavesResponseHeadersUnbounded(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+
+	c, err := longRunningClientFor(t.Context(), "http://127.0.0.1:7373")
+	if err != nil {
+		t.Fatalf("longRunningClientFor: %v", err)
+	}
+
+	if c.Timeout != 0 {
+		t.Fatalf("long-running client timeout = %v, want no overall timeout", c.Timeout)
+	}
+	if tr, ok := c.Transport.(*http.Transport); ok && tr.ResponseHeaderTimeout != 0 {
+		t.Fatalf("response header timeout = %v, want no response-header cap", tr.ResponseHeaderTimeout)
+	}
+}
+
+func TestRemoteCommand_UnavailableMapsToCLIError(t *testing.T) {
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SERVER", "http://127.0.0.1:1") // closed port
+	t.Chdir(t.TempDir())
+
+	_, stderr, err := executeRootCapture(t, t.Context(), "projects", "list", "--json")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	ce := cliErrorForErr(err, true)
+	if ce.Kind != kindDaemonUnavail {
+		t.Errorf("expected Kind=%v, got %v", kindDaemonUnavail, ce.Kind)
+	}
+	if ce.ExitCode != ExitDaemonUnavail {
+		t.Errorf("expected ExitCode=%d, got %d", ExitDaemonUnavail, ce.ExitCode)
+	}
+	assert.Equal(t, ExitDaemonUnavail, exitCodeForErr(err, true))
+	assert.Contains(t, stderr, `"kind":"daemon_unavailable"`)
+}
+
+func TestFederationEnroll_UnavailableHubKeepsOperationalError(t *testing.T) {
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SERVER", "http://127.0.0.1:1")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Chdir(t.TempDir())
+
+	_, stderr, err := executeRootCapture(t, t.Context(), "federation", "enroll", "hub-project",
+		"--hub-url", "http://127.0.0.1:1", "--spoke-instance", "example-spoke",
+		"--capabilities", "pull", "--actor", "user-a", "--json")
+	require.Error(t, err)
+	assert.Equal(t, ExitInternal, exitCodeForErr(err, true))
+	assert.Contains(t, stderr, `"kind":"internal"`)
+	assert.NotContains(t, stderr, `"kind":"daemon_unavailable"`)
+}
+
+func TestDaemonClients_ClassifyOnlyTheirOwnDialFailures(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Chdir(t.TempDir())
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://127.0.0.1:1/external", http.StatusFound)
+	}))
+	t.Cleanup(redirect.Close)
+	sameOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/closed", http.StatusFound)
+			return
+		}
+		if hijacker, ok := w.(http.Hijacker); ok {
+			conn, _, err := hijacker.Hijack()
+			if err == nil {
+				_ = conn.Close()
+			}
+		}
+	}))
+	t.Cleanup(sameOrigin.Close)
+
+	for _, constructor := range []struct {
+		name     string
+		url      func(context.Context, string) (*http.Client, error)
+		resolved func(context.Context, client.ResolvedDaemon) (*http.Client, error)
+	}{
+		{name: "default", url: httpClientFor, resolved: httpClientForResolved},
+		{name: "long-running", url: longRunningClientFor, resolved: longRunningClientForResolved},
+		{name: "streaming", url: streamingClientFor, resolved: streamingClientForResolved},
+	} {
+		for _, resolved := range []bool{false, true} {
+			for _, target := range []struct {
+				name, url string
+				exit      int
+			}{
+				{name: "daemon", url: "http://127.0.0.1:1", exit: ExitDaemonUnavail},
+				{name: "same-origin redirect", url: sameOrigin.URL, exit: ExitDaemonUnavail},
+				{name: "redirect", url: redirect.URL, exit: ExitInternal},
+			} {
+				t.Run(fmt.Sprintf("%s/resolved=%t/%s", constructor.name, resolved, target.name), func(t *testing.T) {
+					var hc *http.Client
+					var err error
+					if resolved {
+						hc, err = constructor.resolved(t.Context(), client.ResolvedDaemon{BaseURL: target.url})
+					} else {
+						hc, err = constructor.url(t.Context(), target.url)
+					}
+					require.NoError(t, err)
+					req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, target.url, nil)
+					require.NoError(t, err)
+					resp, err := hc.Do(req) //nolint:gosec // loopback fixtures only
+					if resp != nil {
+						require.NoError(t, resp.Body.Close())
+					}
+					require.Error(t, err)
+					assert.Equal(t, target.exit, exitCodeForErr(fmt.Errorf("request failed: %w", err), true))
+				})
+			}
+		}
+	}
+
+	t.Run("redirect policy rejection is not a daemon transport failure", func(t *testing.T) {
+		hc, err := markDaemonHTTPClient(sameOrigin.URL, &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return fmt.Errorf("redirect refused by policy")
+			},
+		})
+		require.NoError(t, err)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, sameOrigin.URL, nil)
+		require.NoError(t, err)
+		resp, err := hc.Do(req) //nolint:gosec // loopback fixture only
+		if resp != nil {
+			require.NoError(t, resp.Body.Close())
+		}
+		require.Error(t, err)
+		var provenance daemonTransportProvenance
+		assert.NotErrorAs(t, err, &provenance)
+		assert.Equal(t, ExitInternal, exitCodeForErr(err, true))
+	})
+}
+
+type daemonTransportProvenance interface {
+	error
+	daemonPhase() string
+	selectedUnixSocket() bool
+}
+
+func TestDaemonClientClassifiesUnixFailuresAcrossGeneratedCall(t *testing.T) {
+	tests := []struct {
+		name      string
+		handler   http.Handler
+		wantPhase string
+		wantTime  bool
+		timeout   time.Duration
+	}{
+		{
+			name: "body timeout",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"ok":`))
+				if flusher, ok := w.(http.Flusher); ok {
+					flusher.Flush()
+				}
+				<-r.Context().Done()
+			}),
+			wantPhase: "body",
+			wantTime:  true,
+			timeout:   100 * time.Millisecond, //nolint:kennlint // deadlinetest: the handler holds the body until the client deadline fires
+		},
+		{
+			name: "connection closes before headers",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if hijacker, ok := w.(http.Hijacker); ok {
+					conn, _, err := hijacker.Hijack()
+					if err == nil {
+						_ = conn.Close()
+					}
+				}
+			}),
+			wantPhase: "headers",
+			timeout:   10 * time.Second,
+		},
+		{
+			name: "truncated body",
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", "100")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"ok":true}`))
+			}),
+			wantPhase: "body",
+			timeout:   10 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newUnixGeneratedTestClient(t, tt.handler, tt.timeout)
+
+			_, err := api.PingWithResponse(t.Context())
+
+			require.Error(t, err)
+			var provenance daemonTransportProvenance
+			require.ErrorAs(t, err, &provenance)
+			assert.Equal(t, tt.wantPhase, provenance.daemonPhase())
+			assert.True(t, provenance.selectedUnixSocket())
+			var netErr net.Error
+			if assert.ErrorAs(t, err, &netErr) {
+				assert.Equal(t, tt.wantTime, netErr.Timeout())
+			}
+			assert.Equal(t, ExitDaemonUnavail, exitCodeForErr(err, true))
+		})
+	}
+
+	t.Run("complete malformed JSON stays a decode error", func(t *testing.T) {
+		api := newUnixGeneratedTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"ok":`))
+		}), 10*time.Second)
+
+		resp, err := api.PingWithResponse(t.Context())
+
+		require.Error(t, err)
+		require.NotNil(t, resp)
+		var provenance daemonTransportProvenance
+		assert.NotErrorAs(t, err, &provenance)
+		assert.Equal(t, ExitInternal, exitCodeForErr(err, true))
+	})
+
+	t.Run("complete structured error keeps API classification", func(t *testing.T) {
+		api := newUnixGeneratedTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":{"code":"temporary_failure","message":"try later"}}`))
+		}), 10*time.Second)
+
+		resp, err := api.PingWithResponse(t.Context())
+
+		require.Error(t, err)
+		require.NotNil(t, resp)
+		var provenance daemonTransportProvenance
+		assert.NotErrorAs(t, err, &provenance)
+		classified := cliErrorForErr(externalCLIResponseError(resp.StatusCode, resp.Body, err), true)
+		assert.Equal(t, "temporary_failure", classified.Code)
+		assert.Equal(t, "try later", classified.Message)
+	})
+}
+
+func TestDaemonTransportErrorOutputModes(t *testing.T) {
+	api := newUnixGeneratedTestClient(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}), 100*time.Millisecond) //nolint:kennlint // deadlinetest: the handler waits for cancellation; timeout classification is the asserted result
+	_, err := api.PingWithResponse(t.Context())
+	require.Error(t, err)
+
+	classified := cliErrorForErr(err, true)
+	assert.Equal(t, kindDaemonUnavail, classified.Kind)
+	assert.Equal(t, ExitDaemonUnavail, classified.ExitCode)
+	assert.Equal(t, "local Unix-socket daemon timed out while reading response headers", classified.Message)
+
+	for _, mode := range []outputMode{outputHuman, outputJSON, outputAgent} {
+		var out bytes.Buffer
+		emitErrorForMode(&out, err, mode, true)
+		assert.NotContains(t, out.String(), "poomsae.invalid")
+		assert.NotContains(t, out.String(), "http://")
+		assert.Contains(t, out.String(), classified.Message)
+	}
+
+	var jsonOut bytes.Buffer
+	emitErrorForMode(&jsonOut, err, outputJSON, true)
+	envelope := parseErrorEnvelope(t, jsonOut.Bytes())
+	assert.Equal(t, string(kindDaemonUnavail), envelope.Error.Kind)
+	assert.Equal(t, ExitDaemonUnavail, envelope.Error.ExitCode)
+}
+
+func TestDaemonClientPreTransmissionFailure(t *testing.T) {
+	var requests atomic.Int64
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	t.Cleanup(server.Close)
+
+	for _, canceled := range []bool{false, true} {
+		name := "certificate rejection"
+		if canceled {
+			name = "canceled request"
+		}
+		t.Run(name, func(t *testing.T) {
+			hc, err := markDaemonHTTPClient(server.URL, &http.Client{})
+			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(t.Context())
+			t.Cleanup(cancel)
+			if canceled {
+				cancel()
+			}
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, nil)
+			require.NoError(t, err)
+			_, err = hc.Do(req) //nolint:gosec // loopback fixture only
+			require.Error(t, err)
+			if canceled {
+				require.ErrorIs(t, err, context.Canceled)
+			} else {
+				var certificateErr *tls.CertificateVerificationError
+				require.ErrorAs(t, err, &certificateErr)
+			}
+			assert.Zero(t, requests.Load())
+
+			for _, commandErr := range []error{err, createRequestError(err, false)} {
+				classified := cliErrorForErr(commandErr, true)
+				assert.Equal(t, "daemon_unavailable", classified.Code)
+				assert.NotContains(t, classified.Message, "mutation result may be unknown")
+				assert.NotContains(t, classified.Message, "create outcome unknown")
+				if canceled {
+					assert.Contains(t, classified.Message, "canceled")
+				} else {
+					assert.Contains(t, classified.Message, "certificate")
+				}
+			}
+		})
+	}
+}
+
+func TestDaemonTransportErrorMutationUncertainty(t *testing.T) {
+	failures := []struct {
+		name                string
+		phase               string
+		cause               error
+		possiblyTransmitted bool
+	}{
+		{name: "headers timeout", phase: "headers", cause: context.DeadlineExceeded, possiblyTransmitted: true},
+		{name: "body timeout", phase: "body", cause: context.DeadlineExceeded, possiblyTransmitted: true},
+		{name: "unexpected EOF", phase: "body", cause: io.ErrUnexpectedEOF, possiblyTransmitted: true},
+		{name: "connection drop", phase: "headers", cause: io.EOF, possiblyTransmitted: true},
+		{name: "connection refusal", phase: "connect", cause: &net.OpError{Op: "dial", Err: os.ErrNotExist}},
+	}
+	methods := []struct {
+		method string
+		safe   bool
+	}{
+		{method: http.MethodGet, safe: true},
+		{method: http.MethodHead, safe: true},
+		{method: http.MethodOptions, safe: true},
+		{method: http.MethodPost},
+		{method: http.MethodPut},
+		{method: http.MethodPatch},
+		{method: http.MethodDelete},
+		{method: http.MethodConnect},
+	}
+
+	for _, failure := range failures {
+		for _, method := range methods {
+			t.Run(failure.name+"/"+method.method, func(t *testing.T) {
+				err := &daemonTransportError{
+					selectedOrigin:      "http://poomsae.invalid",
+					unixSocket:          true,
+					method:              method.method,
+					phase:               failure.phase,
+					possiblyTransmitted: failure.possiblyTransmitted,
+					cause:               failure.cause,
+				}
+
+				classified := cliErrorForErr(err, true)
+
+				wantUnknown := failure.possiblyTransmitted && !method.safe
+				assert.Equal(t, wantUnknown, strings.Contains(classified.Message, "mutation result may be unknown"))
+				assert.Equal(t, kindDaemonUnavail, classified.Kind)
+				assert.Equal(t, ExitDaemonUnavail, classified.ExitCode)
+			})
+		}
+	}
+}
+
+func TestSameOriginRedirectPreservesMutationUncertainty(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		crossOrigin bool
+	}{
+		{name: "same origin"},
+		{name: "cross origin", crossOrigin: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			target := "/stall"
+			if tt.crossOrigin {
+				external := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+					<-r.Context().Done()
+				}))
+				t.Cleanup(external.Close)
+				target = external.URL + "/stall"
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/start" {
+					http.Redirect(w, r, target, http.StatusFound)
+					return
+				}
+				<-r.Context().Done()
+			}))
+			t.Cleanup(server.Close)
+			hc, err := markDaemonHTTPClient(server.URL, &http.Client{Timeout: 100 * time.Millisecond}) //nolint:kennlint // deadlinetest: the redirected handler waits for cancellation; the test asserts timeout provenance
+			require.NoError(t, err)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/start", nil)
+			require.NoError(t, err)
+
+			_, err = hc.Do(req) //nolint:gosec // loopback fixtures only
+
+			require.Error(t, err)
+			if tt.crossOrigin {
+				var provenance daemonTransportProvenance
+				assert.NotErrorAs(t, err, &provenance)
+				assert.NotContains(t, cliErrorForErr(err, true).Message, "mutation result may be unknown")
+				return
+			}
+			transportErr, ok := errors.AsType[*daemonTransportError](err)
+			require.True(t, ok)
+			assert.Equal(t, http.MethodPost, transportErr.method)
+			assert.Contains(t, cliErrorForErr(err, true).Message, "mutation result may be unknown")
+		})
+	}
+}
+
+func TestSameOriginRedirectFinalBodyFailurePreservesMutationUncertainty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/truncated", http.StatusTemporaryRedirect)
+			return
+		}
+		w.Header().Set("Content-Length", "10")
+		_, _ = w.Write([]byte("short"))
+	}))
+	t.Cleanup(server.Close)
+	hc, err := markDaemonHTTPClient(server.URL, &http.Client{Timeout: time.Second})
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/start", nil)
+	require.NoError(t, err)
+
+	resp, err := hc.Do(req) //nolint:gosec // loopback fixture only
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	_, err = io.ReadAll(resp.Body)
+
+	require.Error(t, err)
+	transportErr, ok := errors.AsType[*daemonTransportError](err)
+	require.True(t, ok)
+	assert.Equal(t, "body", transportErr.phase)
+	assert.Equal(t, http.MethodPost, transportErr.method)
+	assert.Contains(t, cliErrorForErr(err, true).Message, "mutation result may be unknown")
+}
+
+func TestSameOriginRedirectFinalBodyCloseStopsRequestBudget(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/complete", http.StatusTemporaryRedirect)
+			return
+		}
+		_, _ = w.Write([]byte("complete"))
+	}))
+	t.Cleanup(server.Close)
+	hc, err := markDaemonHTTPClient(server.URL, &http.Client{Timeout: time.Second})
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/start", nil)
+	require.NoError(t, err)
+
+	resp, err := hc.Do(req) //nolint:gosec // loopback fixture only
+	require.NoError(t, err)
+	state := daemonBudgetFromContext(resp.Request.Context())
+	require.NotNil(t, state)
+	select {
+	case <-state.ctx.Done():
+		t.Fatal("request budget stopped before final response body closed")
+	default:
+	}
+
+	require.NoError(t, resp.Body.Close())
+	select {
+	case <-state.ctx.Done():
+		require.ErrorIs(t, state.ctx.Err(), context.Canceled, "the 1s client timeout ended the budget, not the body close")
+	case <-time.After(5 * time.Second):
+		t.Fatal("request budget did not stop when final response body closed")
+	}
+}
+
+func newUnixGeneratedTestClient(t *testing.T, handler http.Handler, timeout time.Duration) *poomsaeclient.Client {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix-socket transport is not selected on Windows")
+	}
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HTTP_TIMEOUT", timeout.String())
+	// Unix socket names include the full path; subtest names can exceed the
+	// platform limit even with a short TMPDIR. Keep this owned fixture short.
+	socketDir, err := os.MkdirTemp("", "poomsae-uds-")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(socketDir)) })
+	socketPath := filepath.Join(socketDir, "daemon.sock")
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "unix", socketPath)
+	require.NoError(t, err)
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: time.Second}
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(func() {
+		_ = server.Close()
+		_ = listener.Close()
+	})
+
+	httpClient, err := httpClientForResolved(t.Context(), client.ResolvedDaemon{
+		BaseURL:    client.UnixBase,
+		UnixSocket: socketPath,
+	})
+	require.NoError(t, err)
+	api, err := poomsaeclient.NewWithHTTPClient(client.UnixBase, httpClient)
+	require.NoError(t, err)
+	return api
+}
+
+func TestDaemonDialTimeoutDoesNotClaimCreateOutcomeUnknown(t *testing.T) {
+	hc, err := markDaemonHTTPClient("https://daemon.example", &http.Client{
+		Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return nil, &net.OpError{Op: "dial", Net: "tcp", Err: &net.DNSError{IsTimeout: true}}
+		}),
+	})
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://daemon.example/issues", nil)
+	require.NoError(t, err)
+	_, err = hc.Do(req) //nolint:gosec // fixture transport does not make network requests
+	require.Error(t, err)
+	classified := cliErrorForErr(createRequestError(err, false), true)
+	assert.Equal(t, "daemon_unavailable", classified.Code)
+	assert.Equal(t, ExitDaemonUnavail, classified.ExitCode)
+	assert.NotContains(t, classified.Message, "outcome unknown")
+	assert.NotContains(t, classified.Message, "mutation result may be unknown")
+}
+
+func TestEnsureDaemonResolvedPreservesInjectedResolution(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "injected-token")
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, "https://daemon.example")
+
+	resolved, err := ensureDaemonResolved(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, client.DaemonSourceInjected, resolved.Source)
+	assert.Equal(t, "https://daemon.example", resolved.BaseURL)
+	assert.Equal(t, "injected-token", resolved.Token)
+}
+
+func TestDiscoverDaemonResolvedPreservesInjectedResolution(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "discover-injected-token")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
+	ctx := context.WithValue(t.Context(), client.BaseURLKey{}, "https://daemon.example")
+
+	resolved, err := discoverDaemonResolved(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, client.DaemonSourceInjected, resolved.Source)
+	assert.Equal(t, "https://daemon.example", resolved.BaseURL)
+	assert.Equal(t, "discover-injected-token", resolved.Token)
+	assert.True(t, resolved.TrustPrivateNetwork)
+}
+
+func TestHTTPClientForResolvedUsesResolvedPolicy(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "")
+
+	resolved := client.ResolvedDaemon{
+		Source:        client.DaemonSourceNamedCatalog,
+		Name:          "example-daemon",
+		BaseURL:       "http://daemon.example:7777",
+		Token:         "catalog-token",
+		AllowInsecure: true,
+	}
+	constructors := []struct {
+		name string
+		new  func(context.Context, client.ResolvedDaemon) (*http.Client, error)
+	}{
+		{name: "default", new: httpClientForResolved},
+		{name: "long running", new: longRunningClientForResolved},
+		{name: "streaming", new: streamingClientForResolved},
+	}
+	for _, tt := range constructors {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.new(t.Context(), resolved)
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+		})
+	}
+}
+
+func TestHTTPClientForResolvedRefusesUnsafeTargetWithoutPolicy(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "")
+
+	_, err := httpClientForResolved(t.Context(), client.ResolvedDaemon{
+		Source:  client.DaemonSourceNamedCatalog,
+		BaseURL: "http://daemon.example:7777",
+		Token:   "catalog-token",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plaintext")
+}
+
+func TestHTTPClientForCompatibilityCarriesMatchedAllowInsecure(t *testing.T) {
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "")
+	const baseURL = "http://daemon.example:7777"
+
+	for _, tt := range []struct {
+		name          string
+		allowInsecure bool
+		wantErr       bool
+	}{
+		{name: "rejects without opt-in", wantErr: true},
+		{name: "accepts matched opt-in", allowInsecure: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetFlags(t)
+			workspace := t.TempDir()
+			flags.Workspace = workspace
+			t.Setenv("POOMSAE_HOME", t.TempDir())
+			require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"), []byte(
+				"version = 1\n\n[project]\nidentity = \"example.test/spoke-project\"\nname = \"spoke-project\"\n",
+			), 0o600))
+			localConfig := "version = 1\n\n[server]\nurl = \"" + baseURL + "\"\n"
+			if tt.allowInsecure {
+				localConfig += "allow_insecure = true\n"
+			}
+			require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
+				[]byte(localConfig), 0o600))
+
+			got, err := httpClientFor(t.Context(), baseURL)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, got)
+				return
+			}
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+		})
+	}
+}
+
+func TestEnsureDaemonHTTPClientForUsesNamedCatalogCredential(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		catalogAuth  string
+		authOverride string
+		tokenEnv     string
+		want         string
+	}{
+		{name: "catalog token", catalogAuth: `token = "catalog-token"`, want: "Bearer catalog-token"},
+		{ //nolint:gosec // Fake credential literals exercise catalog precedence.
+			name: "catalog token env", catalogAuth: `token_env = "POOMSAE_SHARED_TOKEN"`,
+			tokenEnv: "catalog-env-token", want: "Bearer catalog-env-token",
+		},
+		{ //nolint:gosec // Fake credential literals exercise catalog precedence.
+			name: "auth token env override", catalogAuth: `token_env = "POOMSAE_SHARED_TOKEN"`,
+			authOverride: "override-token", tokenEnv: "catalog-env-token", want: "Bearer override-token",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetFlags(t)
+			flags.Daemon = "shared"
+			t.Setenv("POOMSAE_AUTH_TOKEN", tt.authOverride)
+			t.Setenv("POOMSAE_SHARED_TOKEN", tt.tokenEnv)
+
+			var got string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/v1/ping" {
+					_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
+					return
+				}
+				got = r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			t.Cleanup(srv.Close)
+
+			home := t.TempDir()
+			t.Setenv("POOMSAE_HOME", home)
+			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
+[auth]
+token = "global-token"
+
+[[daemon]]
+name = "shared"
+url = "`+srv.URL+`"
+`+tt.catalogAuth+`
+`), 0o600))
+
+			baseURL, err := ensureDaemon(t.Context())
+			require.NoError(t, err)
+			hc, err := httpClientFor(t.Context(), baseURL)
+			require.NoError(t, err)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, baseURL+"/protected", nil)
+			require.NoError(t, err)
+			resp, err := hc.Do(req) //nolint:gosec // baseURL is the test's own httptest.Server
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = resp.Body.Close() })
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestEnsureDaemonHTTPClientForUsesActiveCatalogToken(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_SERVER", "")
+
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/ping" {
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
+			return
+		}
+		got = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	home := t.TempDir()
+	t.Setenv("POOMSAE_HOME", home)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
+active_daemon = "shared"
+
+[auth]
+token = "global-token"
+
+[[daemon]]
+name = "shared"
+url = "`+srv.URL+`"
+token = "catalog-token"
+`), 0o600))
+
+	baseURL, err := ensureDaemon(t.Context())
+	require.NoError(t, err)
+	hc, err := httpClientFor(t.Context(), baseURL)
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, baseURL+"/protected", nil)
+	require.NoError(t, err)
+	resp, err := hc.Do(req) //nolint:gosec // baseURL is the test's own httptest.Server
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = resp.Body.Close() })
+
+	assert.Equal(t, "Bearer catalog-token", got)
+}
+
+func assertEnvDurationOverride(t *testing.T, envKey, envVal string, fallback, want time.Duration, parseFn func(time.Duration) time.Duration) {
+	t.Helper()
+	t.Setenv(envKey, envVal)
+	got := parseFn(fallback)
+	if got != want {
+		t.Fatalf("%s=%q override failed: got %v, want %v", envKey, envVal, got, want)
+	}
+}
+
+func TestLocalProfileCompatibilityClientsKeepResolvedCredential(t *testing.T) {
+	resetFlags(t)
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
+	t.Setenv("POOMSAE_SERVER", "")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer work-token", r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	resolved := client.ResolvedDaemon{BaseURL: server.URL, Token: "work-token", LocalProfile: &client.LocalProfileIdentity{Home: t.TempDir()}}
+	ctx := context.WithValue(t.Context(), resolvedDaemonContextKey{}, resolved)
+	for _, build := range []func(context.Context, string) (*http.Client, error){httpClientFor, longRunningClientFor, streamingClientFor, federationSpokeHTTPClient} {
+		hc, err := build(ctx, server.URL)
+		require.NoError(t, err)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/api/v1/projects", nil)
+		require.NoError(t, err)
+		resp, err := hc.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+	}
+}

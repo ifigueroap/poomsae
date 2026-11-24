@@ -16,20 +16,20 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/version"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestLocalProfileStorageIdentityReadOnly(t *testing.T) {
 	ctx := t.Context()
 	home := t.TempDir()
-	path := filepath.Join(home, "kata.db")
+	path := filepath.Join(home, "poomsae.db")
 	store, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	uid := store.InstanceUID()
@@ -55,7 +55,7 @@ func TestLocalProfileStorageIdentityReadOnly(t *testing.T) {
 
 func TestLocalProfileSQLiteInspectionIgnoresInvalidAmbientBusyTimeout(t *testing.T) {
 	profile, _ := localProfileFixture(t)
-	t.Setenv("KATA_SQLITE_BUSY_TIMEOUT", "invalid")
+	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "invalid")
 
 	identity, err := InspectLocalProfileStorage(t.Context(), profile)
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestLocalProfileUnreadableMetadataIsStorageUnavailable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := t.Context()
 			home := t.TempDir()
-			store, err := sqlitestore.Open(ctx, filepath.Join(home, "kata.db"))
+			store, err := sqlitestore.Open(ctx, filepath.Join(home, "poomsae.db"))
 			require.NoError(t, err)
 			instanceUID := store.InstanceUID()
 			require.NoError(t, test.corrupt(store))
@@ -119,7 +119,7 @@ func TestLocalProfileStorageInspectionRetainsUnsupportedSchema(t *testing.T) {
 		t.Run(fmt.Sprint(version), func(t *testing.T) {
 			ctx := t.Context()
 			home := t.TempDir()
-			path := filepath.Join(home, "kata.db")
+			path := filepath.Join(home, "poomsae.db")
 			store, err := sqlitestore.Open(ctx, path)
 			require.NoError(t, err)
 			uid := store.InstanceUID()
@@ -141,13 +141,13 @@ func TestLocalProfileStorageInspectionRetainsUnsupportedSchema(t *testing.T) {
 func localProfileFixture(t *testing.T) (config.LocalProfileConfig, string) {
 	t.Helper()
 	setupKataEnv(t)
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_SERVER", "")
 	home := t.TempDir()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	uid := store.InstanceUID()
 	require.NoError(t, store.Close())
-	personalHome := os.Getenv("KATA_HOME")
+	personalHome := os.Getenv("POOMSAE_HOME")
 	//nolint:gosec // The fixture created and assigned this temporary home.
 	require.NoError(t, os.WriteFile(filepath.Join(personalHome, "config.toml"), []byte(fmt.Sprintf(`active_daemon = "work"
 [[daemon]]
@@ -158,7 +158,7 @@ instance_uid = %q
 `, home, uid)), 0600))
 	root := t.TempDir()
 	writeNeutralWorkspaceMarker(t, root)
-	require.NoError(t, os.WriteFile(filepath.Join(root, ".kata.local.toml"), []byte("version = 1\n[server]\ndaemon = \"work\"\n"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, ".poomsae.local.toml"), []byte("version = 1\n[server]\ndaemon = \"work\"\n"), 0600))
 	profile, err := config.ResolveLocalProfile(config.CatalogDaemonConfig{Name: "work", Local: true, Home: home, InstanceUID: uid})
 	require.NoError(t, err)
 	return profile, root
@@ -167,7 +167,7 @@ instance_uid = %q
 func TestLocalProfileDiscoveryRetainsStoppedSelection(t *testing.T) {
 	profile, root := localProfileFixture(t)
 	personal := startResolvableDaemon(t)
-	require.NoError(t, writeRuntimeRecord(t, os.Getenv("KATA_HOME"), strings.TrimPrefix(personal.URL, "http://")))
+	require.NoError(t, writeRuntimeRecord(t, os.Getenv("POOMSAE_HOME"), strings.TrimPrefix(personal.URL, "http://")))
 	selected, err := InspectSelection(t.Context(), root, "")
 	require.NoError(t, err)
 	require.NotNil(t, selected.Profile)
@@ -187,7 +187,7 @@ func TestLocalProfileDiscoveryRetainsStoppedSelection(t *testing.T) {
 func TestLocalProfileSelectionPrecedenceAndRefresh(t *testing.T) {
 	profile, root := localProfileFixture(t)
 	server := startResolvableDaemon(t)
-	t.Setenv("KATA_SERVER", server.URL)
+	t.Setenv("POOMSAE_SERVER", server.URL)
 	selected, err := InspectSelection(t.Context(), root, "")
 	require.NoError(t, err)
 	assert.Nil(t, selected.Profile)
@@ -196,7 +196,7 @@ func TestLocalProfileSelectionPrecedenceAndRefresh(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, selected.Profile)
 	assert.Equal(t, profile.Home, selected.Profile.Home)
-	assert.Equal(t, filepath.Join(os.Getenv("KATA_HOME"), "config.toml"), selected.Resolved.SourcePath)
+	assert.Equal(t, filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml"), selected.Resolved.SourcePath)
 	refreshed := selected.Resolved.WithRunning(localRunningDaemon(UnixBase, "unix:///tmp/work.sock"))
 	require.NotNil(t, refreshed.LocalProfile)
 	assert.Equal(t, profile.InstanceUID, refreshed.LocalProfile.InstanceUID)
@@ -205,12 +205,12 @@ func TestLocalProfileSelectionPrecedenceAndRefresh(t *testing.T) {
 
 func TestLocalProfileLiveIdentityUsesWorkCredential(t *testing.T) {
 	profile, root := localProfileFixture(t)
-	t.Setenv("KATA_AUTH_TOKEN", "personal-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
 	require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("[auth]\ntoken = \"work-token\"\n"), 0600))
 	var got string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprint(w, `{"ok":true,"service":"kata","version":"test"}`)
+			_, _ = fmt.Fprint(w, `{"ok":true,"service":"poomsae","version":"test"}`)
 			return
 		}
 		got = r.Header.Get("Authorization")
@@ -220,7 +220,7 @@ func TestLocalProfileLiveIdentityUsesWorkCredential(t *testing.T) {
 	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
-	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Address: strings.TrimPrefix(server.URL, "http://"), Network: "tcp"})
+	_, err = (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Address: strings.TrimPrefix(server.URL, "http://"), Network: "tcp"})
 	require.NoError(t, err)
 	resolved, ok, err := DiscoverSelected(t.Context(), DiscoverRequest{WorkspaceStart: root})
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ local = true
 home = %q
 instance_uid = "01HZZZZZZZZZZZZZZZZZZZZZ01"
 `, profile.Home)
-	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("KATA_HOME"), "config.toml"), []byte(cfg), 0600)) //nolint:gosec // KATA_HOME is the test fixture temporary home. //nolint:gosec // KATA_HOME is the test fixture temporary home.
+	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml"), []byte(cfg), 0600)) //nolint:gosec // POOMSAE_HOME is the test fixture temporary home. //nolint:gosec // POOMSAE_HOME is the test fixture temporary home.
 	calls := 0
 	previous := startDetachedDaemonForEnsure
 	startDetachedDaemonForEnsure = func(context.Context, kitdaemon.StartDetachedOptions) error {
@@ -253,7 +253,7 @@ instance_uid = "01HZZZZZZZZZZZZZZZZZZZZZ01"
 
 func TestLocalProfileStartUsesSelectedEnvironment(t *testing.T) {
 	profile, root := localProfileFixture(t)
-	t.Setenv("KATA_AUTH_TOKEN", "personal-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
 	t.Setenv("PORT", "8888")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
@@ -270,8 +270,8 @@ func TestLocalProfileStartUsesSelectedEnvironment(t *testing.T) {
 	resolved, err := EnsureResolvedInWorkspace(t.Context(), root)
 	require.NoError(t, err)
 	assert.Equal(t, profile.Home, resolved.LocalProfile.Home)
-	assert.Contains(t, childEnv, "KATA_HOME="+profile.Home)
-	assert.NotContains(t, childEnv, "KATA_AUTH_TOKEN=personal-token")
+	assert.Contains(t, childEnv, "POOMSAE_HOME="+profile.Home)
+	assert.NotContains(t, childEnv, "POOMSAE_AUTH_TOKEN=personal-token")
 	assert.NotContains(t, childEnv, "PORT=8888")
 }
 
@@ -294,10 +294,10 @@ func TestLocalProfileUnsupportedSchemaCannotReplaceProcess(t *testing.T) {
 
 func TestLocalProfileKeepsNewerReleaseDaemon(t *testing.T) {
 	profile, root := localProfileFixture(t)
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	live := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":"v0.19.0","pid":%d}`, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":"v0.19.0","pid":%d}`, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
@@ -320,16 +320,16 @@ func TestLocalProfileKeepsNewerReleaseDaemon(t *testing.T) {
 	_, err = EnsureResolvedInWorkspace(t.Context(), root)
 
 	require.ErrorIs(t, err, ErrDaemonNotReplaceable)
-	assert.Contains(t, err.Error(), "kata daemon v0.19.0 is newer than this kata binary v0.18.0")
+	assert.Contains(t, err.Error(), "poomsae daemon v0.19.0 is newer than this poomsae binary v0.18.0")
 	assert.Zero(t, calls)
 }
 
 func TestLocalProfileDiscoveryWaitsForStartLockBeforeStoppingDaemon(t *testing.T) {
 	profile, root := localProfileFixture(t)
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	live := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":"v0.19.0","pid":%d}`, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":"v0.19.0","pid":%d}`, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
@@ -365,7 +365,7 @@ func TestLocalProfileDiscoveryWaitsForStartLockBeforeStoppingDaemon(t *testing.T
 func TestLocalProfileNamedDiscoveryCannotUsePersonalRuntime(t *testing.T) {
 	profile, _ := localProfileFixture(t)
 	personal := startResolvableDaemon(t)
-	require.NoError(t, writeRuntimeRecord(t, os.Getenv("KATA_HOME"), strings.TrimPrefix(personal.URL, "http://")))
+	require.NoError(t, writeRuntimeRecord(t, os.Getenv("POOMSAE_HOME"), strings.TrimPrefix(personal.URL, "http://")))
 	resolved, _, err := DiscoverSelected(t.Context(), DiscoverRequest{Name: "work"})
 	require.NoError(t, err)
 	assert.Empty(t, resolved.BaseURL)
@@ -392,7 +392,7 @@ func TestLocalProfileWorkspaceRequiresExplicitHome(t *testing.T) {
 	for _, target := range []string{"local = true", `url = "https://daemon.example"`} {
 		t.Run(target, func(t *testing.T) {
 			_, root := localProfileFixture(t)
-			require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("KATA_HOME"), "config.toml"), []byte("[[daemon]]\nname = \"work\"\n"+target+"\n"), 0600)) //nolint:gosec // KATA_HOME is the test fixture temporary home.
+			require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml"), []byte("[[daemon]]\nname = \"work\"\n"+target+"\n"), 0600)) //nolint:gosec // POOMSAE_HOME is the test fixture temporary home.
 			_, err := InspectSelection(t.Context(), root, "")
 			require.Error(t, err)
 		})
@@ -443,7 +443,7 @@ instance_uid = %q
 name = "shared"
 url = "http://127.0.0.1:1"
 `, profile.Home, profile.InstanceUID)
-	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("KATA_HOME"), "config.toml"), []byte(cfg), 0600)) //nolint:gosec // KATA_HOME is the test fixture temporary home. //nolint:gosec // KATA_HOME is the test fixture temporary home.
+	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml"), []byte(cfg), 0600)) //nolint:gosec // POOMSAE_HOME is the test fixture temporary home. //nolint:gosec // POOMSAE_HOME is the test fixture temporary home.
 	base, remote, err := ResolveRemote(t.Context(), root)
 	require.NoError(t, err)
 	assert.False(t, remote)
@@ -454,7 +454,7 @@ func TestLocalProfileEnsureSelectionKeepsSnapshot(t *testing.T) {
 	profile, root := localProfileFixture(t)
 	selection, err := InspectSelection(t.Context(), root, "")
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("KATA_HOME"), "config.toml"), []byte("[[daemon]]\nname = \"work\"\nlocal = true\n"), 0600)) //nolint:gosec // KATA_HOME is the test fixture temporary home.
+	require.NoError(t, os.WriteFile(filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml"), []byte("[[daemon]]\nname = \"work\"\nlocal = true\n"), 0600)) //nolint:gosec // POOMSAE_HOME is the test fixture temporary home.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
 	}))
@@ -462,8 +462,8 @@ func TestLocalProfileEnsureSelectionKeepsSnapshot(t *testing.T) {
 	oldStart, oldDiscover := startDetachedDaemonForEnsure, discoverDaemonForAutoStart
 	defer func() { startDetachedDaemonForEnsure = oldStart; discoverDaemonForAutoStart = oldDiscover }()
 	startDetachedDaemonForEnsure = func(_ context.Context, opts kitdaemon.StartDetachedOptions) error {
-		assert.Contains(t, opts.Env, "KATA_HOME="+profile.Home)
-		assert.Contains(t, opts.Env, "KATA_DSN="+profile.DSN)
+		assert.Contains(t, opts.Env, "POOMSAE_HOME="+profile.Home)
+		assert.Contains(t, opts.Env, "POOMSAE_DSN="+profile.DSN)
 		return nil
 	}
 	discoverDaemonForAutoStart = func(_ context.Context, _ string) (ensureDiscovery, error) {
@@ -487,7 +487,7 @@ func TestLocalProfileWrongLiveUIDCannotReplace(t *testing.T) {
 			_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, observed)
 			return
 		}
-		_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":"earlier-test-version","pid":%d}`, os.Getpid())
+		_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":"earlier-test-version","pid":%d}`, os.Getpid())
 	}))
 	defer server.Close()
 	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
@@ -536,14 +536,14 @@ func TestLocalProfileEnsureSelectsAndVerifiesCompatibleRuntime(t *testing.T) {
 	for _, wrongUID := range []bool{false, true} {
 		t.Run(fmt.Sprint(wrongUID), func(t *testing.T) {
 			profile, root := localProfileFixture(t)
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("[auth]\ntoken=\"work-token\"\n"), 0600))
 			var probes atomic.Int32
 			server := func(v string, pid int, uid string) *httptest.Server {
 				s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					probes.Add(1)
 					if r.URL.Path == "/api/v1/ping" {
-						_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, v, pid)
+						_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, v, pid)
 						return
 					}
 					assert.Equal(t, "Bearer work-token", r.Header.Get("Authorization"))
@@ -583,8 +583,8 @@ func TestLocalProfileEnsureSelectsAndVerifiesCompatibleRuntime(t *testing.T) {
 
 func TestActivePlainLocalDaemonKeepsLocalDiscovery(t *testing.T) {
 	home := setupKataEnv(t)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "global-token")
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
 	require.NoError(t, writeRawConfig(home, `active_daemon = "local"
 [[daemon]]
 name = "local"
@@ -593,7 +593,7 @@ token = "stale-catalog-token"
 `))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version, os.Getpid())
 			return
 		}
 		if r.Header.Get("Authorization") != "Bearer global-token" {
@@ -630,7 +630,7 @@ func TestLocalProfileDiscoveryUsesLiveIdentityWithoutStorage(t *testing.T) {
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/api/v1/ping" {
-					_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","pid":%d}`, os.Getpid())
+					_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","pid":%d}`, os.Getpid())
 					return
 				}
 				_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, uid)
@@ -667,7 +667,7 @@ func TestLocalProfileWithoutInstalledStorageDiscoversButCannotStart(t *testing.T
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","pid":%d}`, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","pid":%d}`, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)
@@ -709,10 +709,10 @@ func testLocalProfileStaleCapableDaemon(t *testing.T, autostart bool) {
 	if !autostart {
 		require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("autostart = false\n"), 0600))
 	}
-	t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	live := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":"v0.1.0","pid":%d}`, os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":"v0.1.0","pid":%d}`, os.Getpid())
 			return
 		}
 		_, _ = fmt.Fprintf(w, `{"instance_uid":%q}`, profile.InstanceUID)

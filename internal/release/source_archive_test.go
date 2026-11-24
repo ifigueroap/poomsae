@@ -29,12 +29,12 @@ func TestBuildSourceArchive_TaggedReleaseUsesExactTagAndProductionAssets(t *test
 	assert.Equal(t, "v0.14.2", meta.Tag)
 	assert.False(t, meta.Snapshot)
 	entries := readSourceArchive(t, out)
-	assert.Equal(t, "release tree\n", string(entries["kata-0.14.2/README.md"].body))
-	asset := string(entries["kata-0.14.2/internal/web/dist/index.html"].body)
+	assert.Equal(t, "release tree\n", string(entries["poomsae-0.14.2/README.md"].body))
+	asset := string(entries["poomsae-0.14.2/internal/web/dist/index.html"].body)
 	assert.Contains(t, asset, "production-assets")
 	assert.NotContains(t, asset, "compilation stub")
 	for name, entry := range entries {
-		assert.True(t, strings.HasPrefix(name, "kata-0.14.2/"), name)
+		assert.True(t, strings.HasPrefix(name, "poomsae-0.14.2/"), name)
 		assert.Zero(t, entry.uid, name)
 		assert.Zero(t, entry.gid, name)
 		assert.Equal(t, meta.BuildDate, entry.modTime, name)
@@ -56,7 +56,7 @@ func TestBuildSourceArchive_SnapshotUsesHEADAndSnapshotVersion(t *testing.T) {
 	assert.True(t, meta.Snapshot)
 	assert.Empty(t, meta.Tag)
 	entries := readSourceArchive(t, out)
-	assert.Equal(t, "snapshot head\n", string(entries["kata-0.14.2-SNAPSHOT/README.md"].body))
+	assert.Equal(t, "snapshot head\n", string(entries["poomsae-0.14.2-SNAPSHOT/README.md"].body))
 }
 
 func TestBuildSourceArchive_RealReleaseRejectsMissingOrMismatchedTag(t *testing.T) {
@@ -107,7 +107,7 @@ func TestBuildSourceArchive_IgnoresGitLineEndingConfiguration(t *testing.T) {
 
 	require.NoError(t, err)
 	entries := readSourceArchive(t, out)
-	assert.Equal(t, "release tree\n", string(entries["kata-0.14.2/README.md"].body))
+	assert.Equal(t, "release tree\n", string(entries["poomsae-0.14.2/README.md"].body))
 }
 
 func TestBuildSourceArchive_IncludesVendoredDependencies(t *testing.T) {
@@ -120,8 +120,8 @@ func TestBuildSourceArchive_IncludesVendoredDependencies(t *testing.T) {
 
 	require.NoError(t, err)
 	entries := readSourceArchive(t, out)
-	assert.Contains(t, entries, "kata-0.14.2/vendor/modules.txt")
-	assert.Contains(t, entries, "kata-0.14.2/vendor/example.test/dependency/dependency.go")
+	assert.Contains(t, entries, "poomsae-0.14.2/vendor/modules.txt")
+	assert.Contains(t, entries, "poomsae-0.14.2/vendor/example.test/dependency/dependency.go")
 }
 
 func TestVerifySourceArchive_BuildsCoreBinaryFromCleanTree(t *testing.T) {
@@ -142,14 +142,14 @@ func TestVerifySourceArchive_RejectsCompilationStub(t *testing.T) {
 
 func TestVerificationBinaryPath(t *testing.T) {
 	root := filepath.Join("tmp", "verify")
-	assert.Equal(t, filepath.Join(root, "kata.exe"), verificationBinaryPath(root, "windows"))
-	assert.Equal(t, filepath.Join(root, "kata"), verificationBinaryPath(root, "linux"))
+	assert.Equal(t, filepath.Join(root, "poomsae.exe"), verificationBinaryPath(root, "windows"))
+	assert.Equal(t, filepath.Join(root, "poomsae"), verificationBinaryPath(root, "linux"))
 }
 
 func TestRenderHomebrewCoreFormula_UsesSourceMetadata(t *testing.T) {
-	templatePath := filepath.Join(t.TempDir(), "kata.rb.tmpl")
+	templatePath := filepath.Join(t.TempDir(), "poomsae.rb.tmpl")
 	require.NoError(t, os.WriteFile(templatePath, []byte("version={{ .Version }} sha={{ .SHA256 }} built={{ .BuildDate }}\n"), 0o600))
-	output := filepath.Join(t.TempDir(), "Formula", "kata.rb")
+	output := filepath.Join(t.TempDir(), "Formula", "poomsae.rb")
 	meta := SourceArchiveMetadata{Version: "0.14.2", SHA256: "abc123", BuildDate: "2026-08-08T01:02:03Z"}
 
 	require.NoError(t, RenderHomebrewCoreFormula(templatePath, output, meta))
@@ -163,8 +163,8 @@ func TestRenderHomebrewCoreFormula_ProducesValidRuby(t *testing.T) {
 	if err != nil {
 		t.Skip("ruby is not installed")
 	}
-	templatePath := filepath.Join("..", "..", "packaging", "homebrew-core", "kata.rb.tmpl")
-	output := filepath.Join(t.TempDir(), "kata.rb")
+	templatePath := filepath.Join("..", "..", "packaging", "homebrew-core", "poomsae.rb.tmpl")
+	output := filepath.Join(t.TempDir(), "poomsae.rb")
 	meta := SourceArchiveMetadata{
 		Version: "0.14.2", SHA256: strings.Repeat("a", 64), BuildDate: "2026-08-08T01:02:03Z",
 	}
@@ -179,8 +179,8 @@ func TestRenderHomebrewCoreFormula_ProducesValidRuby(t *testing.T) {
 }
 
 func TestRenderHomebrewCoreFormula_OrdersLivecheckBeforeDependencies(t *testing.T) {
-	templatePath := filepath.Join("..", "..", "packaging", "homebrew-core", "kata.rb.tmpl")
-	output := filepath.Join(t.TempDir(), "kata.rb")
+	templatePath := filepath.Join("..", "..", "packaging", "homebrew-core", "poomsae.rb.tmpl")
+	output := filepath.Join(t.TempDir(), "poomsae.rb")
 	meta := SourceArchiveMetadata{
 		Version: "0.14.2", SHA256: strings.Repeat("a", 64), BuildDate: "2026-08-08T01:02:03Z",
 	}
@@ -231,7 +231,7 @@ func newSourceFixture(t *testing.T, readme, productionAsset string) string {
 	runGit(t, repo, "init", "-q")
 	runGit(t, repo, "config", "user.name", "Example User")
 	runGit(t, repo, "config", "user.email", "example@example.test")
-	goMod := `module go.kenn.io/kata
+	goMod := `module github.com/ifigueroap/poomsae
 
 go 1.26.3
 
@@ -240,7 +240,7 @@ require example.test/dependency v0.0.0
 replace example.test/dependency => ./third_party/dependency
 `
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(repo, "fixture.go"), []byte("package kata\n\nimport _ \"example.test/dependency\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "fixture.go"), []byte("package poomsae\n\nimport _ \"example.test/dependency\"\n"), 0o600))
 	require.NoError(t, os.MkdirAll(filepath.Join(repo, "third_party", "dependency"), 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "third_party", "dependency", "go.mod"), []byte("module example.test/dependency\n\ngo 1.26.3\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "third_party", "dependency", "dependency.go"), []byte("package dependency\n\nconst Name = \"fixture\"\n"), 0o600))
@@ -265,7 +265,7 @@ func newBuildableSourceFixture(t *testing.T, stub bool) string {
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "internal/version/version.go"), []byte("package version\nvar Version = \"dev\"\nvar Commit = \"unknown\"\nvar BuildDate = \"unknown\"\nvar Distribution string\n"), 0o600))
 	require.NoError(t, os.MkdirAll(filepath.Join(repo, "internal/web"), 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "internal/web/embed.go"), []byte("package web\nimport _ \"embed\"\n//go:embed dist/index.html\nvar Asset string\n"), 0o600))
-	require.NoError(t, os.MkdirAll(filepath.Join(repo, "cmd/kata"), 0o750))
+	require.NoError(t, os.MkdirAll(filepath.Join(repo, "cmd/poomsae"), 0o750))
 	mainSource := `package main
 import (
   "encoding/json"
@@ -273,8 +273,8 @@ import (
   "os"
   "strings"
   "example.test/dependency"
-  "go.kenn.io/kata/internal/version"
-  "go.kenn.io/kata/internal/web"
+  "github.com/ifigueroap/poomsae/internal/version"
+  "github.com/ifigueroap/poomsae/internal/web"
 )
 func main() {
 	_ = dependency.Name
@@ -290,7 +290,7 @@ func main() {
   os.Exit(2)
 }
 `
-	require.NoError(t, os.WriteFile(filepath.Join(repo, "cmd/kata/main.go"), []byte(mainSource), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "cmd/poomsae/main.go"), []byte(mainSource), 0o600))
 	runGit(t, repo, "add", ".")
 	runGitEnv(t, repo, []string{"GIT_AUTHOR_DATE=2026-08-08T01:02:03Z", "GIT_COMMITTER_DATE=2026-08-08T01:02:03Z"}, "commit", "-m", "buildable fixture")
 	runGit(t, repo, "tag", "-f", "v0.14.2")

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/mcpevents"
 )
 
 func TestSealOpenRoundTrip(t *testing.T) {

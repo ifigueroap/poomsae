@@ -21,7 +21,7 @@ function selectInstallPlatform(panel, platform) {
   }
 
   for (const content of panel.querySelectorAll('[data-install-platform-content]')) {
-    content.classList.remove('kata-install-command--fallback-hidden')
+    content.classList.remove('poomsae-install-command--fallback-hidden')
     content.hidden = content.dataset.installPlatformContent !== platform
   }
 }

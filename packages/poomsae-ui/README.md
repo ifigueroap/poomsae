@@ -1,0 +1,62 @@
+# `@ifigueroap/poomsae-ui`
+
+Poomsae-owned Svelte presentation components for embedding read-only Poomsae issue details in trusted hosts.
+
+The package performs no networking and owns no routing or persistence state. Hosts fetch a canonical Poomsae issue-detail response, verify its API schema with `supportsKataAPISchema`, project the response with `projectIssueDetail`, and render `IssueDetail`. Optional host actions remain neutral callbacks supplied by the embedding application.
+
+Pass `onOpenIssue` to let readers open parent, child, and linked issues: the
+package calls it with the peer issue UID and the host decides how to navigate.
+Without it, those references render as plain text.
+
+API `0.28.x` adds comment handles, typed reply lines, backlinks, and edit markers.
+Pass `onOpenComment` to open an endpoint; it receives the owning issue UID and
+comment UID, plus an optional source `{ issueUID, commentUID }` for a return
+route. Keep that source in the host and pass it as `returnComment` to show the
+return control. Pass `onReplyComment` to start a composer with the selected comment
+UID and reply kind. The host owns the write. Set `commentActionsDisabled` while
+write authority is stale, read-only, or busy. Set `selectedCommentUID` after
+navigation to focus and highlight the destination comment. Incoming kind
+buttons count direct authorized replies and open chronological author/time/body
+evidence. A `backlinks_truncated` result shows partial counts. Keep conflicting
+assertions visible; a superseding reply does not hide the original body.
+
+`IssueDetail` lays itself out from its own width, so give it a definite width
+from its container. Inside a shrink-to-fit parent, such as an inline-block,
+a float, or `width: max-content`, it collapses to zero width.
+
+Forge linkage and other host metadata stay in the host. The package receives
+only Poomsae wire data and host-supplied actions.
+
+```svelte
+<script lang="ts">
+  import {
+    IssueDetail,
+    projectIssueDetail,
+    supportsKataAPISchema,
+    type PoomsaeIssueDetailModel,
+    type PoomsaeIssueDetailWire,
+  } from '@ifigueroap/poomsae-ui'
+
+  let { apiSchemaVersion, wire }: { apiSchemaVersion?: string; wire: PoomsaeIssueDetailWire } =
+    $props()
+
+  const compatible = $derived(supportsKataAPISchema(apiSchemaVersion ?? ''))
+  const detail: PoomsaeIssueDetailModel | undefined = $derived(
+    compatible ? projectIssueDetail(wire) : undefined,
+  )
+</script>
+
+{#if detail}
+  <IssueDetail {detail} />
+{:else}
+  <p>This Poomsae daemon is not compatible with the embedded issue detail.</p>
+{/if}
+```
+
+`supportsKataAPISchema` accepts Poomsae API schemas `>=0.9.0 <0.12.0` and `0.28.x`. A missing
+or empty `api_schema_version` is incompatible for an embedding host. Read the
+version from `GET /api/v1/health`; issue-detail responses do not carry it.
+The embedding host must fetch health and issue data through its authenticated
+backend or credential broker, then pass the resulting version and wire data to
+the component. Do not expose daemon bearer tokens or browser-session headers to
+the package.

@@ -13,15 +13,15 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/docbank/docbanktest"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/docbank/docbanktest"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 const linkVersion = "6f1c2e8a-2222-4222-8222-222222222222"
@@ -78,13 +78,13 @@ func TestAttachmentWritesRefreshStaleFederatedClaimDenials(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			f := docbanktest.New(t)
 			if operation == "link" {
-				f.Seed("/kata/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: uuid.MustParse(linkVersion)}, map[uuid.UUID][]byte{
+				f.Seed("/poomsae/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: uuid.MustParse(linkVersion)}, map[uuid.UUID][]byte{
 					uuid.MustParse(linkVersion): []byte("sample bytes"),
 				})
 			}
 			hub, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim,push,pull", func(cfg *daemon.ServerConfig) {
 				cfg.Docbank = docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-				cfg.DocbankFolder = "/kata"
+				cfg.DocbankFolder = "/poomsae"
 			})
 			require.NoError(t, config.WriteFederationCredential(spokeProject.UID, config.FederationCredential{
 				HubURL: hub.URL, HubProjectID: hubProject.ID, Token: token, Capabilities: "claim,push,pull",
@@ -112,7 +112,7 @@ func TestAttachmentWritesRefreshStaleFederatedClaimDenials(t *testing.T) {
 				status, raw = attachmentUpload(t, spoke, endpoint, "shot.png", strings.NewReader("image bytes"))
 			} else {
 				var err error
-				status, raw, err = postAttachmentLink(t, spoke, endpoint+"/links", `{"path":"/kata/report.pdf","actor":"operator"}`)
+				status, raw, err = postAttachmentLink(t, spoke, endpoint+"/links", `{"path":"/poomsae/report.pdf","actor":"operator"}`)
 				require.NoError(t, err)
 			}
 			require.Equal(t, http.StatusOK, status, string(raw))
@@ -127,7 +127,7 @@ func TestFederatedAttachmentUploadPreservesBodyLimitError(t *testing.T) {
 	f := docbanktest.New(t)
 	hub, spoke, hubProject, spokeProject, issue, token := createClaimForwardingPair(t, "claim,push,pull", func(cfg *daemon.ServerConfig) {
 		cfg.Docbank = docbank.NewClient(f.Server.URL, func() (string, error) { return "test-key", nil })
-		cfg.DocbankFolder = "/kata"
+		cfg.DocbankFolder = "/poomsae"
 	})
 	require.NoError(t, config.WriteFederationCredential(spokeProject.UID, config.FederationCredential{
 		HubURL: hub.URL, HubProjectID: hubProject.ID, Token: token, Capabilities: "claim,push,pull",
@@ -449,9 +449,9 @@ func TestAttachmentLinkReuseLegacyOnHub(t *testing.T) {
 	env, vault := attachmentEnv(t)
 	project, issue := seedProjectAndIssue(t, env)
 	version := uuid.MustParse(linkVersion)
-	vault.Seed("/kata/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("sample bytes")})
+	vault.Seed("/poomsae/report.pdf", docbank.Node{ID: 42, Name: "report.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("sample bytes")})
 	endpoint := fmt.Sprintf("/api/v1/projects/%d/issues/%s/attachments/links", project.ID, issue.ShortID)
-	status, raw, err := postAttachmentLink(t, env, endpoint, `{"path":"/kata/report.pdf","actor":"operator"}`)
+	status, raw, err := postAttachmentLink(t, env, endpoint, `{"path":"/poomsae/report.pdf","actor":"operator"}`)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, status, string(raw))
 	var original api.AddAttachmentResponseBody

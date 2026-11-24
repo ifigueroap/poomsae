@@ -11,11 +11,11 @@ const off = {
 
 test('Settings keeps status colors, spacing, and title alignment consistent', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   let current = off as Record<string, unknown>
   await page.route('**/api/v1/embeddings/local', (route) => route.fulfill({ json: current }))
-  await kata.launch(page)
+  await poomsae.launch(page)
   const colors: Array<{ color: string; background: string }> = []
   const positions: number[] = []
   const gaps: number[] = []
@@ -54,7 +54,7 @@ test('Settings keeps status colors, spacing, and title alignment consistent', as
     { provider: 'built_in', download_bytes: 0, can_change: false },
   ]) {
     current = { ...off, ...patch }
-    await page.goto(`${kata.origin}/kata?view=settings`)
+    await page.goto(`${poomsae.origin}/poomsae?view=settings`)
     const title = page.getByRole('heading', { name: 'Search by meaning' })
     await expect(title).toBeVisible()
     if (!patch.indexing || (patch.indexing.total > 0 && !patch.indexing.failed)) {

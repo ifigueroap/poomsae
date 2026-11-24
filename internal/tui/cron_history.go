@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // cronProjectObservations preserves the project's loaded link order and uses

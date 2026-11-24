@@ -12,10 +12,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestCommentFormPreventsUndoingEarlierEdit(t *testing.T) {

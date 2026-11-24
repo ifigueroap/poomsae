@@ -17,10 +17,10 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/mod/semver"
 
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/shortid"
-	"go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // NextInput selects the highest-priority ready issue.
@@ -240,8 +240,8 @@ type StreamEvent struct {
 
 func registerActivityTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
-	addTool(server, "kata.digest", "Activity digest", "Read an actor-grouped activity digest for an explicit time window.", read, handlers.digest)
-	addTool(server, "kata.events", "Read events", "Poll events or wait on the live event stream with a resumable cursor.", read, handlers.events)
+	addTool(server, "poomsae.digest", "Activity digest", "Read an actor-grouped activity digest for an explicit time window.", read, handlers.digest)
+	addTool(server, "poomsae.events", "Read events", "Poll events or wait on the live event stream with a resumable cursor.", read, handlers.events)
 }
 
 func (h toolHandlers) next(ctx context.Context, _ *sdkmcp.CallToolRequest, input NextInput) (*sdkmcp.CallToolResult, NextOutput, error) {
@@ -508,7 +508,7 @@ func (h toolHandlers) deleteIssue(ctx context.Context, _ *sdkmcp.CallToolRequest
 	response, err := h.options.Client.DeleteIssue(ctx, &generated.DeleteIssueRequestOptions{
 		PathParams: &generated.DeleteIssuePath{ProjectID: project.ID, Ref: target.UID},
 		Body:       &generated.DeleteIssueBody{Actor: h.options.Actor, Reason: optionalString(input.Reason)},
-		Header:     &generated.DeleteIssueHeaders{XKataConfirm: &qualified},
+		Header:     &generated.DeleteIssueHeaders{XPoomsaeConfirm: &qualified},
 	})
 	if err != nil {
 		return nil, MutationOutput{}, err
@@ -539,7 +539,7 @@ func (h toolHandlers) purgeIssue(ctx context.Context, _ *sdkmcp.CallToolRequest,
 	response, err := h.options.Client.PurgeIssue(ctx, &generated.PurgeIssueRequestOptions{
 		PathParams: &generated.PurgeIssuePath{ProjectID: project.ID, Ref: target.UID},
 		Body:       &generated.PurgeIssueBody{Actor: h.options.Actor, Reason: optionalString(input.Reason)},
-		Header:     &generated.PurgeIssueHeaders{XKataConfirm: &qualified},
+		Header:     &generated.PurgeIssueHeaders{XPoomsaeConfirm: &qualified},
 	})
 	if err != nil {
 		return nil, PurgeOutput{}, err

@@ -14,14 +14,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestDaemonConfigLocalProfile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	workHome := filepath.Join(t.TempDir(), "work-home")
 	body := fmt.Sprintf(`[[daemon]]
 name = "work"
@@ -63,7 +63,7 @@ func TestDaemonConfigLocalProfileRejectsIncompleteIdentity(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			fields := tc.fields
 			if strings.Contains(fields, "%q") {
 				fields = fmt.Sprintf(fields, filepath.Join(t.TempDir(), "work-home"))
@@ -79,7 +79,7 @@ func TestDaemonConfigLocalProfileRejectsIncompleteIdentity(t *testing.T) {
 func TestDaemonConfigLocalProfileExpandsUserHome(t *testing.T) {
 	home := t.TempDir()
 	userHome := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("HOME", userHome)
 	t.Setenv("USERPROFILE", userHome)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[[daemon]]
@@ -97,10 +97,10 @@ instance_uid = " 01HZZZZZZZZZZZZZZZZZZZZZ01 "
 func TestReadDaemonConfigForHomeIgnoresParentOverrides(t *testing.T) {
 	personalHome := t.TempDir()
 	workHome := t.TempDir()
-	t.Setenv("KATA_HOME", personalHome)
-	t.Setenv("KATA_AUTH_TOKEN", "personal-token")
-	t.Setenv("KATA_POSTGRES_SCHEMA", "personal_schema")
-	t.Setenv("KATA_AUTOSTART_IDLE_TIMEOUT", "invalid")
+	t.Setenv("POOMSAE_HOME", personalHome)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "personal-token")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "personal_schema")
+	t.Setenv("POOMSAE_AUTOSTART_IDLE_TIMEOUT", "invalid")
 	require.NoError(t, os.WriteFile(filepath.Join(workHome, "config.toml"), []byte(`
 listen = "127.0.0.1:7780"
 [auth]
@@ -115,21 +115,21 @@ schema = "work_schema"
 	assert.Equal(t, "work-token", cfg.Auth.Token)
 	assert.Equal(t, "work_schema", cfg.Storage.Postgres.Schema)
 	assert.Empty(t, cfg.AutostartIdleTimeout)
-	assert.Equal(t, personalHome, os.Getenv("KATA_HOME"))
+	assert.Equal(t, personalHome, os.Getenv("POOMSAE_HOME"))
 }
 
 func TestResolveLocalProfileStorageIgnoresParentDatabase(t *testing.T) {
 	personalHome := t.TempDir()
 	workHome := t.TempDir()
-	t.Setenv("KATA_HOME", personalHome)
-	t.Setenv("KATA_DB", filepath.Join(personalHome, "kata.db"))
-	t.Setenv("KATA_DSN", "postgres://operator:personal-secret@daemon.example/personal_store")
+	t.Setenv("POOMSAE_HOME", personalHome)
+	t.Setenv("POOMSAE_DB", filepath.Join(personalHome, "poomsae.db"))
+	t.Setenv("POOMSAE_DSN", "postgres://operator:personal-secret@daemon.example/personal_store")
 	profile, err := config.ResolveLocalProfile(config.CatalogDaemonConfig{
 		Name: "work", Local: true, Home: workHome, InstanceUID: "01HZZZZZZZZZZZZZZZZZZZZZ01",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, workHome, profile.Home)
-	assert.Equal(t, filepath.Join(workHome, "kata.db"), profile.DSN)
+	assert.Equal(t, filepath.Join(workHome, "poomsae.db"), profile.DSN)
 	assert.Equal(t, "01HZZZZZZZZZZZZZZZZZZZZZ01", profile.InstanceUID)
 	_, err = os.Stat(profile.DSN)
 	assert.ErrorIs(t, err, os.ErrNotExist, "configuration inspection must not create a database")
@@ -169,7 +169,7 @@ func TestResolveLocalProfilePostgresKeepsExplicitTargetAndSchema(t *testing.T) {
 	t.Setenv("PGDATABASE", "personal_store")
 	t.Setenv("PGUSER", "personal_operator")
 	t.Setenv("PGSSLMODE", "invalid")
-	t.Setenv("KATA_POSTGRES_SCHEMA", "personal_schema")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "personal_schema")
 	home := t.TempDir()
 	dsn := "postgres://operator:profile-secret@127.0.0.1:5432/work_store?sslmode=disable" //nolint:gosec // Synthetic credential verifies namespace redaction.
 	body := fmt.Sprintf("[storage]\ndsn = %q\n[storage.postgres]\nschema = \"work_schema\"\n", dsn)
@@ -221,7 +221,7 @@ func TestMergeLocalProfileReplacesRoutingAsOneTarget(t *testing.T) {
 
 func TestLocalProfileEnvironmentIsolatesDaemonOverrides(t *testing.T) {
 	for key, value := range map[string]string{
-		"KATA_HOME": "personal-home", "KATA_DB": "personal.db", "KATA_DSN": "personal-dsn", "KATA_SERVER": "http://127.0.0.1:7790", "KATA_AUTH_TOKEN": "personal-token", "KATA_POSTGRES_SCHEMA": "personal_schema", "PGPASSWORD": "personal-secret", "HTTP_PROXY": "http://proxy.example", "HTTPS_PROXY": "http://proxy.example", "PORT": "8888", "WORK_TOKEN": "work-token", "EXAMPLE_DOCBANK_KEY": "example-secret", "PATH": os.Getenv("PATH"),
+		"POOMSAE_HOME": "personal-home", "POOMSAE_DB": "personal.db", "POOMSAE_DSN": "personal-dsn", "POOMSAE_SERVER": "http://127.0.0.1:7790", "POOMSAE_AUTH_TOKEN": "personal-token", "POOMSAE_POSTGRES_SCHEMA": "personal_schema", "PGPASSWORD": "personal-secret", "HTTP_PROXY": "http://proxy.example", "HTTPS_PROXY": "http://proxy.example", "PORT": "8888", "WORK_TOKEN": "work-token", "EXAMPLE_DOCBANK_KEY": "example-secret", "PATH": os.Getenv("PATH"),
 	} {
 		t.Setenv(key, value)
 	}
@@ -233,26 +233,26 @@ func TestLocalProfileEnvironmentIsolatesDaemonOverrides(t *testing.T) {
 		key, value, _ := strings.Cut(item, "=")
 		values[key] = value
 	}
-	assert.Equal(t, profile.Home, values["KATA_HOME"])
+	assert.Equal(t, profile.Home, values["POOMSAE_HOME"])
 	assert.Equal(t, "work-token", values["WORK_TOKEN"])
 	assert.Equal(t, "example-secret", values["EXAMPLE_DOCBANK_KEY"])
 	assert.Equal(t, os.Getenv("PATH"), values["PATH"])
-	assert.Equal(t, "1", values["KATA_AUTOSTART"])
-	for _, key := range []string{"KATA_DB", "KATA_DSN", "KATA_SERVER", "KATA_AUTH_TOKEN", "KATA_POSTGRES_SCHEMA", "PGPASSWORD", "HTTP_PROXY", "HTTPS_PROXY", "PORT"} {
+	assert.Equal(t, "1", values["POOMSAE_AUTOSTART"])
+	for _, key := range []string{"POOMSAE_DB", "POOMSAE_DSN", "POOMSAE_SERVER", "POOMSAE_AUTH_TOKEN", "POOMSAE_POSTGRES_SCHEMA", "PGPASSWORD", "HTTP_PROXY", "HTTPS_PROXY", "PORT"} {
 		assert.NotContains(t, values, key)
 	}
-	assert.Equal(t, "personal-token", os.Getenv("KATA_AUTH_TOKEN"))
+	assert.Equal(t, "personal-token", os.Getenv("POOMSAE_AUTH_TOKEN"))
 }
 
 func TestLocalProfileEnvironmentPassesThroughTelemetrySettings(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
-		{"KATA_TELEMETRY_ENABLED", "0"},
+		{"POOMSAE_TELEMETRY_ENABLED", "0"},
 		{"TELEMETRY_ENABLED", "0"},
 		{"DO_NOT_TRACK", "1"},
 		{"CI", ""},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
-			for _, key := range []string{"KATA_TELEMETRY_ENABLED", "TELEMETRY_ENABLED", "DO_NOT_TRACK", "CI"} {
+			for _, key := range []string{"POOMSAE_TELEMETRY_ENABLED", "TELEMETRY_ENABLED", "DO_NOT_TRACK", "CI"} {
 				t.Setenv(key, "")
 				require.NoError(t, os.Unsetenv(key))
 			}
@@ -267,41 +267,41 @@ func TestLocalProfileEnvironmentPassesThroughTelemetrySettings(t *testing.T) {
 func TestLocalProfileEnvironmentPassesThroughHTTPTimeout(t *testing.T) {
 	for _, timeout := range []string{"15m", "", "invalid"} {
 		t.Run(timeout, func(t *testing.T) {
-			t.Setenv("KATA_HTTP_TIMEOUT", timeout)
+			t.Setenv("POOMSAE_HTTP_TIMEOUT", timeout)
 			env, err := config.LocalProfileEnvironment(config.LocalProfileConfig{Home: t.TempDir()}, true)
 			require.NoError(t, err)
-			require.Contains(t, env, "KATA_HTTP_TIMEOUT="+timeout)
-			require.Equal(t, timeout, os.Getenv("KATA_HTTP_TIMEOUT"))
+			require.Contains(t, env, "POOMSAE_HTTP_TIMEOUT="+timeout)
+			require.Equal(t, timeout, os.Getenv("POOMSAE_HTTP_TIMEOUT"))
 		})
 	}
 	t.Run("unset", func(t *testing.T) {
-		t.Setenv("KATA_HTTP_TIMEOUT", "")
-		require.NoError(t, os.Unsetenv("KATA_HTTP_TIMEOUT"))
+		t.Setenv("POOMSAE_HTTP_TIMEOUT", "")
+		require.NoError(t, os.Unsetenv("POOMSAE_HTTP_TIMEOUT"))
 		env, err := config.LocalProfileEnvironment(config.LocalProfileConfig{Home: t.TempDir()}, true)
 		require.NoError(t, err)
 		for _, entry := range env {
-			require.False(t, strings.HasPrefix(entry, "KATA_HTTP_TIMEOUT="))
+			require.False(t, strings.HasPrefix(entry, "POOMSAE_HTTP_TIMEOUT="))
 		}
 	})
 }
 
 func TestLocalProfileEnvironmentIncludesDefaultGitHubTokenEnv(t *testing.T) {
-	t.Setenv("KATA_GITHUB_TOKEN", "profile-github-token")
+	t.Setenv("POOMSAE_GITHUB_TOKEN", "profile-github-token")
 	profile := config.LocalProfileConfig{Home: t.TempDir(), Config: &config.DaemonConfig{}}
 
 	env, err := config.LocalProfileEnvironment(profile, true)
 
 	require.NoError(t, err)
-	assert.Contains(t, env, "KATA_GITHUB_TOKEN=profile-github-token")
+	assert.Contains(t, env, "POOMSAE_GITHUB_TOKEN=profile-github-token")
 }
 
 func TestLocalProfileEnvironmentIncludesPlaneToken(t *testing.T) {
-	t.Setenv("KATA_PLANE_TOKEN", "default-plane-token")
+	t.Setenv("POOMSAE_PLANE_TOKEN", "default-plane-token")
 	t.Setenv("EXAMPLE_PLANE_TOKEN", "custom-plane-token")
 	for _, tc := range []struct {
 		name, config, want string
 	}{
-		{"default", "", "KATA_PLANE_TOKEN=default-plane-token"},
+		{"default", "", "POOMSAE_PLANE_TOKEN=default-plane-token"},
 		{"custom", "[plane_sync]\ntoken_env = \"EXAMPLE_PLANE_TOKEN\"\n", "EXAMPLE_PLANE_TOKEN=custom-plane-token"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -356,7 +356,7 @@ func TestLocalProfileEnvironmentIncludesConfiguredMCPNotionAndPlaneTokenEnvs(t *
 }
 
 func TestLocalProfileEnvironmentRejectsReservedCredentialReferences(t *testing.T) {
-	for _, key := range []string{"KATA_AUTH_TOKEN", "KATA_SERVER", "KATA_GITHUB_SYNC_ALLOWED_HOSTS", "PGPASSWORD", "HTTPS_PROXY", "PORT", "PATH", "TELEMETRY_ENABLED", "DO_NOT_TRACK", "CI"} {
+	for _, key := range []string{"POOMSAE_AUTH_TOKEN", "POOMSAE_SERVER", "POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS", "PGPASSWORD", "HTTPS_PROXY", "PORT", "PATH", "TELEMETRY_ENABLED", "DO_NOT_TRACK", "CI"} {
 		t.Run(key, func(t *testing.T) {
 			if key == "TELEMETRY_ENABLED" || key == "DO_NOT_TRACK" || key == "CI" {
 				t.Setenv(key, "")
@@ -370,20 +370,20 @@ func TestLocalProfileEnvironmentRejectsReservedCredentialReferences(t *testing.T
 }
 
 func TestLocalProfileEnvironmentPinsSelectedStorageSnapshot(t *testing.T) {
-	t.Setenv("KATA_DSN", "personal-store")
-	t.Setenv("KATA_POSTGRES_SCHEMA", "personal_schema")
+	t.Setenv("POOMSAE_DSN", "personal-store")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "personal_schema")
 	//nolint:gosec // Synthetic credential verifies explicit child storage settings.
 	profile := config.LocalProfileConfig{Home: t.TempDir(), DSN: "postgres://operator:work-secret@127.0.0.1:5432/work_store?sslmode=disable", Config: &config.DaemonConfig{Storage: config.StorageConfig{Postgres: config.PostgresStorageConfig{Schema: "work_schema"}}}}
 	env, err := config.LocalProfileEnvironment(profile, true)
 	require.NoError(t, err)
-	assert.Contains(t, env, "KATA_DSN="+profile.DSN)
-	assert.Contains(t, env, "KATA_POSTGRES_SCHEMA=work_schema")
-	assert.NotContains(t, env, "KATA_DSN=personal-store")
-	assert.NotContains(t, env, "KATA_POSTGRES_SCHEMA=personal_schema")
+	assert.Contains(t, env, "POOMSAE_DSN="+profile.DSN)
+	assert.Contains(t, env, "POOMSAE_POSTGRES_SCHEMA=work_schema")
+	assert.NotContains(t, env, "POOMSAE_DSN=personal-store")
+	assert.NotContains(t, env, "POOMSAE_POSTGRES_SCHEMA=personal_schema")
 }
 
 func TestLocalProfileEnvironmentIncludesDocumentedHubCredentials(t *testing.T) {
-	for _, key := range []string{"KATA_TEAM_HUB_TOKEN", "KATA_SHARED_TOKEN"} {
+	for _, key := range []string{"POOMSAE_TEAM_HUB_TOKEN", "POOMSAE_SHARED_TOKEN"} {
 		t.Run(key, func(t *testing.T) {
 			t.Setenv(key, "hub-token")
 			profile := config.LocalProfileConfig{Home: t.TempDir(), Config: &config.DaemonConfig{
@@ -449,7 +449,7 @@ func TestLocalProfileEnvironmentTrustsConfiguredCertificateAuthority(t *testing.
 // Contract: a local-profile daemon receives the signing secrets named by its
 // own home's hub keys and saved spoke credentials, not the invoking home's.
 func TestLocalProfileEnvironmentIncludesFederationSigningKeyEnvs(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("EXAMPLE_HUB_SIGNING_KEY", "hub-signing-secret")
 	t.Setenv("EXAMPLE_SPOKE_SIGNING_KEY", "spoke-signing-secret")
 	home := t.TempDir()
@@ -512,13 +512,13 @@ key_env = "EXAMPLE_SHARED_SIGNING_KEY"
 }
 
 func TestLocalProfileEnvironmentIncludesLinearToken(t *testing.T) {
-	t.Setenv("KATA_LINEAR_TOKEN", "default-linear-credential")
+	t.Setenv("POOMSAE_LINEAR_TOKEN", "default-linear-credential")
 	t.Setenv("EXAMPLE_LINEAR_TOKEN", "custom-linear-credential")
 	for _, tc := range []struct {
 		name, config, want, excluded string
 	}{
-		{"default", "", "KATA_LINEAR_TOKEN=default-linear-credential", "EXAMPLE_LINEAR_TOKEN=custom-linear-credential"},
-		{"custom", "[linear_sync]\ntoken_env = \"EXAMPLE_LINEAR_TOKEN\"\n", "EXAMPLE_LINEAR_TOKEN=custom-linear-credential", "KATA_LINEAR_TOKEN=default-linear-credential"},
+		{"default", "", "POOMSAE_LINEAR_TOKEN=default-linear-credential", "EXAMPLE_LINEAR_TOKEN=custom-linear-credential"},
+		{"custom", "[linear_sync]\ntoken_env = \"EXAMPLE_LINEAR_TOKEN\"\n", "EXAMPLE_LINEAR_TOKEN=custom-linear-credential", "POOMSAE_LINEAR_TOKEN=default-linear-credential"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()

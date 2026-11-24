@@ -31,7 +31,7 @@ func TestMakeBuildBakesGitDescribeVersion(t *testing.T) {
 	require.NotEmpty(t, expectedCommit)
 	require.NotEmpty(t, expectedBuilt)
 
-	bin := filepath.Join(root, "kata")
+	bin := filepath.Join(root, "poomsae")
 	preserveExistingFile(t, bin)
 
 	_ = commandOutput(t, root, "make", "build")
@@ -65,7 +65,7 @@ func TestMakeInstallBakesGitDescribeVersion(t *testing.T) {
 	gobin := t.TempDir()
 	_ = commandOutputEnv(t, root, append(os.Environ(), "GOBIN="+gobin), "make", "install")
 
-	out := commandOutput(t, root, filepath.Join(gobin, "kata"), "--json", "version")
+	out := commandOutput(t, root, filepath.Join(gobin, "poomsae"), "--json", "version")
 	var got struct {
 		Version      string `json:"version"`
 		Distribution string `json:"distribution"`

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/planesync"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/planesync"
 )
 
 const issueSyncProviderPlane = "plane"
@@ -109,7 +109,7 @@ func planeSyncEnableParams(ctx context.Context, cfg ServerConfig, in *api.Enable
 		return empty, planeSyncValidation(err.Error())
 	}
 	if expected.ID != 0 && (existing.SourceKey != resolved.SourceKey() || existing.RemoteID != resolved.RemoteID()) {
-		return empty, planeSyncValidation("Plane source identity is immutable; use another Kata project")
+		return empty, planeSyncValidation("Plane source identity is immutable; use another Poomsae project")
 	}
 	if err := issueSyncEnableAuthority(ctx, cfg.DB, in.ProjectID, issueSyncProviderPlane); err != nil {
 		return empty, err

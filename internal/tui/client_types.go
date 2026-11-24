@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
 )
 
 // Issue is a strict subset of the daemon's wire shape. Labels rides on
@@ -139,7 +139,7 @@ func (i Issue) deadlineOn() string  { return rawString(i.Metadata.DeadlineOn) }
 func (i Issue) timezone() string    { return rawString(i.Metadata.Timezone) }
 
 // The work.attention levels the TUI shows, in the issue list, the issue
-// detail and the Attention view. cmd/kata keeps its own copy in package main.
+// detail and the Attention view. cmd/poomsae keeps its own copy in package main.
 const (
 	workAttentionOK         = "ok"
 	workAttentionStuck      = "stuck"
@@ -234,13 +234,13 @@ type ListFilter struct {
 }
 
 // CreateInitialLinkBody requests a link created atomically with a new
-// issue. ToRef is a short_id, qualified short_id ("kata#abc4"), or a
+// issue. ToRef is a short_id, qualified short_id ("poomsae#abc4"), or a
 // 26-char ULID; the daemon resolves it to the target issue at request
 // time.
 //
 // Incoming reverses direction for type=blocks: when true, the new issue
 // is the link's "to" side (i.e. the new issue is BLOCKED BY the named
-// target — the `kata create --blocked-by N` shape). Default (false)
+// target — the `poomsae create --blocked-by N` shape). Default (false)
 // leaves the new issue as the link's "from" side (`--blocks N`).
 // Rejected by the daemon for type=parent (no inverse parent direction
 // is exposed) and meaningless for type=related (which is symmetric).

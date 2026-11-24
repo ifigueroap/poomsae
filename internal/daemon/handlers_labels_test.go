@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestAddLabel_PriorityLabelRejected(t *testing.T) {
@@ -19,17 +19,17 @@ func TestAddLabel_PriorityLabelRejected(t *testing.T) {
 		t.Run(label, func(t *testing.T) {
 			resp, body := envDoRaw(t, env, http.MethodPost, issuePath(pid, n, "labels"), map[string]string{"actor": "tester", "label": label}, nil)
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-			assert.Contains(t, string(body), "kata edit kata#"+issue.ShortID+" --priority N")
+			assert.Contains(t, string(body), "poomsae edit poomsae#"+issue.ShortID+" --priority N")
 		})
 	}
 	resp, body := envDoRaw(t, env, http.MethodPost, issuePathRef(pid, issue.UID, "labels"), map[string]string{"actor": "tester", "label": "p2"}, nil)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Contains(t, string(body), "kata edit kata#"+issue.ShortID+" --priority N")
+	assert.Contains(t, string(body), "poomsae edit poomsae#"+issue.ShortID+" --priority N")
 	_, _, err = env.DB.AddLabelAndEvent(t.Context(), n, db.LabelEventParams{EventType: "issue.labeled", Label: "p2", Actor: "tester"})
 	require.NoError(t, err)
 	resp, body = envDoRaw(t, env, http.MethodPost, issuePath(pid, n, "labels"), map[string]string{"actor": "tester", "label": "p2"}, nil)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode, string(body))
-	assert.Contains(t, string(body), "kata edit kata#"+issue.ShortID+" --priority N")
+	assert.Contains(t, string(body), "poomsae edit poomsae#"+issue.ShortID+" --priority N")
 	for _, label := range []string{"p5", "priority"} {
 		postLabel(t, env, pid, n, label)
 	}

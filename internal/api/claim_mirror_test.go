@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
 )
 
 // TestMirrorDeprecatedClaimFieldsCopiesEveryPair is the enforcement point that

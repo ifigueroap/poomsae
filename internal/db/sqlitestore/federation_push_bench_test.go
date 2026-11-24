@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 // BenchmarkPendingFederationPushSnapshotRun grows the uninterrupted snapshot
@@ -22,12 +22,12 @@ func BenchmarkPendingFederationPushSnapshotRun(b *testing.B) {
 			require.NoError(b, err)
 			defer func() { _ = tx.Rollback() }()
 			for i := range count {
-				issueUID, err := katauid.New()
+				issueUID, err := poomsaeuid.New()
 				require.NoError(b, err)
 				_, err = tx.ExecContext(ctx, `INSERT INTO issues(uid, project_id, short_id, title, author)
 					VALUES(?, ?, ?, 'imported issue', 'tester')`, issueUID, project.ID, strings.ToLower(issueUID[18:]))
 				require.NoError(b, err)
-				eventUID, err := katauid.New()
+				eventUID, err := poomsaeuid.New()
 				require.NoError(b, err)
 				payload := fmt.Sprintf(`{"uid":%q,"title":"imported issue","author":"tester","status":"open"}`, issueUID)
 				_, err = tx.ExecContext(ctx, `INSERT INTO events(

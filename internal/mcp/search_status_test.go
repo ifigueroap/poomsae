@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestMCPSearchStatusCompatibilityAndForwarding(t *testing.T) {
@@ -32,10 +32,10 @@ func TestMCPSearchStatusCompatibilityAndForwarding(t *testing.T) {
 				_, _ = w.Write(daemonResponse(r))
 			}))
 			t.Cleanup(daemon.Close)
-			client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+			client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 			require.NoError(t, err)
 			session := connectTestServerWithClient(t, client)
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "work", "status": "closed", "limit": 3, "labels": []string{"bug"}}})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "work", "status": "closed", "limit": 3, "labels": []string{"bug"}}})
 			require.NoError(t, err)
 			if version == "0.20.0" {
 				require.False(t, result.IsError, "%s", mustJSON(t, result))
@@ -59,11 +59,11 @@ func TestMCPSearchStatusRejectsInvalidExplicitValues(t *testing.T) {
 		_, _ = w.Write(daemonResponse(r))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 	for _, status := range []string{"", " ", "OPEN", "all", "pending"} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "work", "status": status}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "work", "status": status}})
 		require.NoError(t, err)
 		require.True(t, result.IsError, "status=%q", status)
 	}

@@ -1,6 +1,6 @@
 import { parseRoute, serializeRoute } from '../router'
 
-export const daemonWorkspaceStorageKey = 'kata.web.workspace-state.v1'
+export const daemonWorkspaceStorageKey = 'poomsae.web.workspace-state.v1'
 
 interface StoredRoutes {
   version: 1
@@ -52,7 +52,7 @@ function canonicalRoute(value: string | undefined): string | undefined {
   if (!value) return undefined
   try {
     const url = new URL(value, window.location.origin)
-    if (url.origin !== window.location.origin || url.pathname !== '/kata' || url.hash)
+    if (url.origin !== window.location.origin || url.pathname !== '/poomsae' || url.hash)
       return undefined
     const parsed = parseRoute(url)
     return parsed.kind === 'route-error' ? undefined : serializeRoute(parsed)

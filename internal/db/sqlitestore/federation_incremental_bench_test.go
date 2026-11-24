@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/shortid"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 // BenchmarkFederationIngestWriterInterval reports both total ingest time and
@@ -76,9 +76,9 @@ func seedFederationBenchmarkHistory(b testing.TB, d *Store, p db.Project, count 
 		typ := "issue.updated"
 		payload := ""
 		if i%50 == 0 {
-			issueUID, err = katauid.New()
+			issueUID, err = poomsaeuid.New()
 			require.NoError(b, err)
-			commentUID, err := katauid.New()
+			commentUID, err := poomsaeuid.New()
 			require.NoError(b, err)
 			// Seed the already-materialized baseline directly. Replaying thousands
 			// of new issues here would benchmark fixture setup's short-ID allocation.

@@ -8,7 +8,7 @@ import (
 )
 
 func federationFailpoint(name string) error {
-	spec := strings.TrimSpace(os.Getenv("KATA_TEST_FEDERATION_FAILPOINTS"))
+	spec := strings.TrimSpace(os.Getenv("POOMSAE_TEST_FEDERATION_FAILPOINTS"))
 	if spec == "" {
 		return nil
 	}
@@ -25,7 +25,7 @@ func federationFailpoint(name string) error {
 func runFederationFailpointAction(name, action string) error {
 	switch {
 	case action == "exit":
-		_, _ = fmt.Fprintf(os.Stderr, "kata federation failpoint %s: exit\n", name)
+		_, _ = fmt.Fprintf(os.Stderr, "poomsae federation failpoint %s: exit\n", name)
 		_ = os.Stderr.Sync()
 		os.Exit(23)
 	case strings.HasPrefix(action, "sleep:"):

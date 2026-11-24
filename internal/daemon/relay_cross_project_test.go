@@ -10,10 +10,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestRelayCrossProjectLinksHTTP(t *testing.T) {
@@ -47,7 +47,7 @@ func TestRelayCrossProjectLinksHTTP(t *testing.T) {
 func TestFederationBridgeCrossProjectLinks(t *testing.T) {
 	for _, phase := range []string{"metadata", "enrollment"} {
 		t.Run(phase, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			hub := newBridgeHubFixture(t)
 			other, err := hub.store.CreateProject(t.Context(), "other-project")
 			require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestFederationBridgeCrossProjectLinks(t *testing.T) {
 }
 
 func TestFederationBridgePreflightReportsUncheckedOldHub(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	oldHub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Older hubs ignore the relay metadata query parameter.
@@ -121,7 +121,7 @@ func TestFederationBridgePreflightReportsUncheckedOldHub(t *testing.T) {
 }
 
 func TestFederationBridgePreflightReportsCheckedHub(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	local := newBridgeLocalDaemon(t, openReplicaServiceStore(t), hub.catalog(hub.root.server.URL))
 	code, _, raw := local.request(t, http.MethodPost, "/api/v1/federation/bridges", "", bridgeConnectBody(hub.root.private.Name, true), bridgeOwnerHeaders)
@@ -158,7 +158,7 @@ func TestRelayCrossProjectLinksHTTPProjectGone(t *testing.T) {
 }
 
 func TestFederationBridgeLocalCrossProjectLinks(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProjectWithUID(t.Context(), "shared-replica", hub.root.private.UID)
@@ -189,7 +189,7 @@ func TestFederationBridgeLocalCrossProjectLinks(t *testing.T) {
 }
 
 func TestFederationBridgeLocalProjectGoneDuringLinkCheck(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	store := openReplicaServiceStore(t)
 	_, err := store.CreateProjectWithUID(t.Context(), "shared-replica", hub.root.private.UID)

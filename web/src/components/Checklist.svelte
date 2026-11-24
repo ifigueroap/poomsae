@@ -5,11 +5,11 @@
   import PencilIcon from '@lucide/svelte/icons/pencil'
   import XIcon from '@lucide/svelte/icons/x'
 
-  import type { KataTaskChecklistItem, KataTaskDetail } from '../lib/kata/types'
+  import type { PoomsaeTaskChecklistItem, PoomsaeTaskDetail } from '../lib/poomsae/types'
   import { createULID } from '../lib/ulid'
 
   interface Props {
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     disabled?: boolean
     draftResetGeneration?: number
     draftFenceGeneration?: number
@@ -82,7 +82,7 @@
     }
   })
 
-  function checklistItems(): KataTaskChecklistItem[] {
+  function checklistItems(): PoomsaeTaskChecklistItem[] {
     return issue.issue.metadata.checklist ?? []
   }
 
@@ -160,7 +160,7 @@
   }
 </script>
 
-{#snippet checklistRow(item: KataTaskChecklistItem)}
+{#snippet checklistRow(item: PoomsaeTaskChecklistItem)}
   <div class="checklist-row" class:done={item.done}>
     {#if renamingID === item.id}
       <input

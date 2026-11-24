@@ -3,9 +3,9 @@ package federation
 import (
 	"context"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
 )
 
 // PinRelayRootAuthority validates and installs the trusted enrollment pin using

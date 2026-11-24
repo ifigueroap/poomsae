@@ -3,9 +3,9 @@ package sqlitestore_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestPurgeProject_DeletesArchivedProjectAndFreesName(t *testing.T) {
@@ -99,7 +99,7 @@ func TestPurgeProject_RefusesFederatedSpoke(t *testing.T) {
 	_, _, err = d.RemoveProject(ctx, db.RemoveProjectParams{ProjectID: p.ID, Actor: "tester"})
 	require.NoError(t, err)
 	// A spoke binding must also block purge, with a role-aware error. Federation
-	// must be torn down (kata federation leave) before the project can be purged.
+	// must be torn down (poomsae federation leave) before the project can be purged.
 	// Spoke rows require a non-empty hub_url and a positive hub_project_id (schema
 	// CHECKs), unlike hub rows where those default to empty/zero.
 	_, err = d.ExecContext(ctx,

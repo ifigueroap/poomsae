@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // maxEventBytes caps one frame, comments and field names included. The daemon

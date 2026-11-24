@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
 	"github.com/mattn/go-runewidth"
-	"go.kenn.io/kata/internal/textsafe"
 )
 
 // viewChrome carries the cross-cutting render inputs that lm.View
@@ -164,13 +164,13 @@ func (lm listModel) renderBodyArea(width, bodyRows int, chrome viewChrome) strin
 
 // renderTitleBar formats the top brand strip:
 //
-//	Project: {name}                         kata カタ · vX.Y.Z
+//	Project: {name}                         poomsae カタ · vX.Y.Z
 //
 // Project context lives on the left because it's what the user is
 // actually working in; brand + version are window-chrome and pin to
-// the right. `カタ` is katakana for "form/pattern" — the romaji
+// the right. `カタ` is poomsaekana for "form/pattern" — the romaji
 // disambiguator for the brand vs. a project that happens to also be
-// named "kata". All-projects scope and the empty-scope hint render
+// named "poomsae". All-projects scope and the empty-scope hint render
 // in the project slot so the left side is never blank.
 func renderTitleBar(width int, sc scope, version string, daemon ...string) string {
 	left := titleBarLeft(sc)
@@ -211,7 +211,7 @@ func titleBarRight(version, daemon string) string {
 	if cleanDaemon != "" {
 		parts = append(parts, "Daemon: "+cleanDaemon)
 	}
-	brand := "kata カタ"
+	brand := "poomsae カタ"
 	if version == "" {
 		parts = append(parts, brand)
 		return strings.Join(parts, " · ")
@@ -336,9 +336,9 @@ func renderInfoBar(s inputState, innerWidth int) string {
 func sseDegradedFlash(state sseConnState) string {
 	switch state {
 	case sseReconnecting:
-		return "kata: reconnecting…"
+		return "poomsae: reconnecting…"
 	case sseDisconnected:
-		return "kata: disconnected (retrying)"
+		return "poomsae: disconnected (retrying)"
 	}
 	return ""
 }
@@ -698,9 +698,9 @@ func windowBounds(n, cursor, budget int) (int, int) {
 func renderSSEStatus(state sseConnState) string {
 	switch state {
 	case sseReconnecting:
-		return statusStyle.Render("kata: reconnecting…")
+		return statusStyle.Render("poomsae: reconnecting…")
 	case sseDisconnected:
-		return statusStyle.Render("kata: disconnected (retrying)")
+		return statusStyle.Render("poomsae: disconnected (retrying)")
 	}
 	return ""
 }

@@ -15,14 +15,14 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/federation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/federation"
 )
 
 const (
@@ -3401,8 +3401,8 @@ func upsertSpokeBinding(
 func openReconcileStore(t *testing.T) *sqlitestore.Store {
 	t.Helper()
 	unsetReconcileAuthToken(t)
-	t.Setenv("KATA_HOME", t.TempDir())
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	return store
@@ -3410,13 +3410,13 @@ func openReconcileStore(t *testing.T) *sqlitestore.Store {
 
 func unsetReconcileAuthToken(t *testing.T) {
 	t.Helper()
-	value, existed := os.LookupEnv("KATA_AUTH_TOKEN")
-	require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+	value, existed := os.LookupEnv("POOMSAE_AUTH_TOKEN")
+	require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 	t.Cleanup(func() {
 		if existed {
-			require.NoError(t, os.Setenv("KATA_AUTH_TOKEN", value))
+			require.NoError(t, os.Setenv("POOMSAE_AUTH_TOKEN", value))
 		} else {
-			require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN"))
+			require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN"))
 		}
 	})
 }

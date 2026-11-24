@@ -35,8 +35,8 @@ func TestProjectsView_RendersWithoutPanic(t *testing.T) {
 func TestProjectsRows_SentinelSumsAndPinsFirst(t *testing.T) {
 	t1 := time.Date(2026, 5, 4, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC) // newer
-	byID := map[int64]string{1: "kata", 2: "roborev", 3: "msgvault"}
-	idents := map[int64]string{1: "github.com/wesm/kata", 2: "...", 3: "..."}
+	byID := map[int64]string{1: "poomsae", 2: "roborev", 3: "msgvault"}
+	idents := map[int64]string{1: "github.com/wesm/poomsae", 2: "...", 3: "..."}
 	stats := map[int64]ProjectStatsSummary{
 		1: {Open: 5, Closed: 2, LastEventAt: &t2},
 		2: {Open: 3, Closed: 1, LastEventAt: &t1},
@@ -80,10 +80,10 @@ func TestProjectsRows_SortByLastEventDesc(t *testing.T) {
 func TestProjectsRows_StableTiebreakerOnEqualNamesAndTimes(t *testing.T) {
 	t1 := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC)
 	byID := map[int64]string{
-		100: "Kata",
-		50:  "kata", // same fold
+		100: "Poomsae",
+		50:  "poomsae", // same fold
 	}
-	idents := map[int64]string{100: "github.com/wesm/kata-100", 50: "github.com/wesm/kata-50"}
+	idents := map[int64]string{100: "github.com/wesm/poomsae-100", 50: "github.com/wesm/poomsae-50"}
 	stats := map[int64]ProjectStatsSummary{
 		100: {LastEventAt: &t1},
 		50:  {LastEventAt: &t1},
@@ -102,14 +102,14 @@ func TestProjectsRows_StableTiebreakerOnEqualNamesAndTimes(t *testing.T) {
 func TestProjectsView_RendersTable(t *testing.T) {
 	t1 := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC)
 	m := setupProjectsView(
-		mockProject{ID: 1, Name: "kata", Ident: "github.com/wesm/kata", Stats: ProjectStatsSummary{Open: 12, Closed: 3, LastEventAt: &t1}},
+		mockProject{ID: 1, Name: "poomsae", Ident: "github.com/wesm/poomsae", Stats: ProjectStatsSummary{Open: 12, Closed: 3, LastEventAt: &t1}},
 		mockProject{ID: 2, Name: "roborev", Ident: "github.com/wesm/roborev", Stats: ProjectStatsSummary{Open: 7, Closed: 2, LastEventAt: &t1}},
 	)
 
 	out := m.viewContent()
 	for _, want := range []string{
-		"kata / projects", "Project", "Open", "Closed", "Total", "Updated",
-		"All projects", "kata", "roborev",
+		"poomsae / projects", "Project", "Open", "Closed", "Total", "Updated",
+		"All projects", "poomsae", "roborev",
 	} {
 		assert.Contains(t, out, want, "missing %q in viewProjects output", want)
 	}
@@ -233,16 +233,16 @@ func TestProjectsView_DashWhenNoEvents(t *testing.T) {
 // highlighting the sentinel renders the description.
 func TestProjectsView_ProjectFooterOnHighlight(t *testing.T) {
 	m := setupProjectsView(
-		mockProject{ID: 1, Name: "kata", Ident: "github.com/wesm/kata"},
+		mockProject{ID: 1, Name: "poomsae", Ident: "github.com/wesm/poomsae"},
 	)
 
 	m.projectsCursor = 0 // sentinel row
 	out := m.viewContent()
 	assert.Contains(t, out, "issue queue across every registered project")
 
-	m.projectsCursor = 1 // kata row
+	m.projectsCursor = 1 // poomsae row
 	out = m.viewContent()
-	assert.Contains(t, out, "project: kata")
+	assert.Contains(t, out, "project: poomsae")
 }
 
 // TestProjectsView_JKMoveCursor pins basic vertical navigation. Cursor
@@ -272,23 +272,23 @@ func TestProjectsView_JKMoveCursor(t *testing.T) {
 // with a fresh fetch dispatched.
 func TestProjectsView_EnterOnProjectTransitions(t *testing.T) {
 	m := setupProjectsView(
-		mockProject{ID: 7, Name: "kata", Ident: "..."},
+		mockProject{ID: 7, Name: "poomsae", Ident: "..."},
 		mockProject{ID: 9, Name: "roborev", Ident: "..."},
 	)
 	// Prime the cache so isStale() can register invalidation
 	// (isStale requires cache.set==true; see cache.go:51-52).
 	m.cache.put(cacheKey{allProjects: true}, []Issue{{UID: "01TEST-aaa1", ShortID: "aaa1"}})
 	// Cursor on the first real project (sentinel + sorted rows; see
-	// projectsRows for ordering — alpha tiebreak means 'kata' first).
+	// projectsRows for ordering — alpha tiebreak means 'poomsae' first).
 	m.projectsCursor = 1
 
 	out, cmd := m.routeProjectsViewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, viewList, out.view)
 	assert.False(t, out.scope.allProjects, "concrete project, not all-projects")
 	assert.Equal(t, int64(7), out.scope.projectID)
-	assert.Equal(t, "kata", out.scope.projectName)
+	assert.Equal(t, "poomsae", out.scope.projectName)
 	require.NotNil(t, cmd, "must dispatch a fetch")
-	assert.Equal(t, "kata", out.scope.homeProjectName, "home project tracked for R-toggle")
+	assert.Equal(t, "poomsae", out.scope.homeProjectName, "home project tracked for R-toggle")
 	assert.Equal(t, int64(7), out.scope.homeProjectID)
 	assert.True(t, out.cache.isStale(), "issue cache must be invalidated on scope change")
 }
@@ -317,10 +317,10 @@ func TestProjectsView_EnterOnSentinelTransitions(t *testing.T) {
 // scope just returns to viewList — no cache invalidation, no refetch.
 func TestProjectsView_EnterOnCurrentScopeIsIdempotent(t *testing.T) {
 	m := setupProjectsView(
-		mockProject{ID: 7, Name: "kata", Ident: "..."},
+		mockProject{ID: 7, Name: "poomsae", Ident: "..."},
 	)
-	m.scope = homedScope(7, "kata")
-	m.projectsCursor = 1 // the kata row
+	m.scope = homedScope(7, "poomsae")
+	m.projectsCursor = 1 // the poomsae row
 
 	out, cmd := m.routeProjectsViewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, viewList, out.view, "transitions to viewList")
@@ -333,7 +333,7 @@ func TestProjectsView_EnterOnCurrentScopeIsIdempotent(t *testing.T) {
 // (the user came from a list via P).
 func TestProjectsView_EscReturnsToPriorList(t *testing.T) {
 	m := setupProjectsView()
-	m.scope = homedScope(7, "kata")
+	m.scope = homedScope(7, "poomsae")
 
 	out, cmd := m.routeProjectsViewKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 	assert.Equal(t, viewList, out.view, "Esc → viewList")
@@ -369,7 +369,7 @@ func TestProjectsView_RRefreshes(t *testing.T) {
 func TestProjectsView_PFromListTransitions(t *testing.T) {
 	m := initialModel(Options{})
 	m.view = viewList
-	m.scope = homedScope(7, "kata")
+	m.scope = homedScope(7, "poomsae")
 	// Need a stub api so the cmd can be dispatched without crashing —
 	// the cmd doesn't run to completion in this test.
 	m.api = NewClient("http://daemon.example", nil)
@@ -386,7 +386,7 @@ func TestProjectsView_PFromListTransitions(t *testing.T) {
 func TestProjectsView_PWhileInputFocusedRoutesToPrompt(t *testing.T) {
 	m := initialModel(Options{})
 	m.view = viewList
-	m.scope = scope{projectID: 7, projectName: "kata"}
+	m.scope = scope{projectID: 7, projectName: "poomsae"}
 	m.input = newSearchBar(ListFilter{})
 
 	nm, _ := updateModel(m, keyRune('P'))

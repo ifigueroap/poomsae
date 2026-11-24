@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
 )
 
 func purgeProjectPath(projectID int64) string {
@@ -31,7 +31,7 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 		archiveProject(t, h, pid, false)
 
 		resp := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE kata"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 			map[string]any{"actor": "tester"})
 		require.Equalf(t, 200, resp.status, "purge status: %s", string(resp.body))
 
@@ -41,9 +41,9 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 			} `json:"project_purge_log"`
 		}
 		require.NoError(t, json.Unmarshal(resp.body, &body), string(resp.body))
-		assert.Equal(t, "kata", body.ProjectPurgeLog.ProjectName)
+		assert.Equal(t, "poomsae", body.ProjectPurgeLog.ProjectName)
 
-		_, err := h.DB().ProjectByNameIncludingArchived(t.Context(), "kata")
+		_, err := h.DB().ProjectByNameIncludingArchived(t.Context(), "poomsae")
 		assert.True(t, errors.Is(err, db.ErrNotFound),
 			"name should be freed after purge, got err=%v", err)
 	})
@@ -54,12 +54,12 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 		archiveProject(t, h, pid, false)
 
 		first := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE kata"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 			map[string]any{"actor": "tester"})
 		require.Equalf(t, 200, first.status, "first purge: %s", string(first.body))
 
 		second := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE kata"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 			map[string]any{"actor": "tester"})
 		assertAPIError(t, second.status, second.body, 404, "not_found")
 	})
@@ -69,7 +69,7 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 		ts := h.ts.(*httptest.Server)
 
 		resp := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE kata"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 			map[string]any{"actor": "tester"})
 		assertAPIError(t, resp.status, resp.body, 409, "project_not_archived")
 	})
@@ -90,7 +90,7 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 		archiveProject(t, h, pid, false)
 
 		resp := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE wrong-name"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE wrong-name"},
 			map[string]any{"actor": "tester"})
 		assertAPIError(t, resp.status, resp.body, 412, "confirm_mismatch")
 	})
@@ -106,7 +106,7 @@ func TestPurgeProjectHandler_PurgesArchived(t *testing.T) {
 		require.NoError(t, err)
 
 		resp := postWithHeader(t, ts, purgeProjectPath(pid),
-			map[string]string{"X-Kata-Confirm": "PURGE kata"},
+			map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 			map[string]any{"actor": "tester"})
 		assertAPIError(t, resp.status, resp.body, 409, "project_federated")
 
@@ -139,7 +139,7 @@ func TestPurgeProjectHandler_RequiresExternalRootsToBeUnboundFirst(t *testing.T)
 	archiveProject(t, h, pid, true)
 
 	resp := postWithHeader(t, ts, purgeProjectPath(pid),
-		map[string]string{"X-Kata-Confirm": "PURGE kata"},
+		map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 		map[string]any{"actor": "tester"})
 
 	assertAPIError(t, resp.status, resp.body, 409, "external_root_content_owned")
@@ -154,7 +154,7 @@ func TestPurgeProjectHandler_RequiresExternalRootsToBeUnboundFirst(t *testing.T)
 	require.Equal(t, http.StatusOK, unbindStatus, string(unbindBody))
 
 	resp = postWithHeader(t, ts, purgeProjectPath(pid),
-		map[string]string{"X-Kata-Confirm": "PURGE kata"},
+		map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 		map[string]any{"actor": "tester"})
 	require.Equal(t, http.StatusOK, resp.status, string(resp.body))
 	_, err = h.DB().ProjectByID(t.Context(), pid)
@@ -185,7 +185,7 @@ func TestPurgeProjectHandler_BroadcastsResetToScopedSubscribers(t *testing.T) {
 	defer otherSub.Unsub()
 
 	purge := postWithHeader(t, ts, purgeProjectPath(pid),
-		map[string]string{"X-Kata-Confirm": "PURGE kata"},
+		map[string]string{"X-Poomsae-Confirm": "PURGE poomsae"},
 		map[string]any{"actor": "tester"})
 	require.Equalf(t, 200, purge.status, "purge status: %s", string(purge.body))
 

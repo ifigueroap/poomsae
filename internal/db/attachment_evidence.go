@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // ErrAttachmentEvidence identifies a missing or invalid close-time reference.

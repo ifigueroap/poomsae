@@ -1,4 +1,4 @@
-// Package rootbridge translates planning fields between Kata metadata and a
+// Package rootbridge translates planning fields between Poomsae metadata and a
 // connector's typed field values.
 package rootbridge
 
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 const (
@@ -24,11 +24,11 @@ const (
 	localSecondLayout = "2006-01-02T15:04:05"
 )
 
-// FieldCodec translates one Kata planning field to and from connector values.
+// FieldCodec translates one Poomsae planning field to and from connector values.
 type FieldCodec interface {
-	KataField() string
+	PoomsaeField() string
 	ReadKata(db.Issue) (connector.FieldValue, error)
-	KataPatch(db.Issue, connector.FieldValue) (map[string]jsontext.Value, error)
+	PoomsaePatch(db.Issue, connector.FieldValue) (map[string]jsontext.Value, error)
 	ValidateExternalDescriptor(connector.FieldDescriptor) error
 }
 
@@ -50,7 +50,7 @@ type scheduleCodec struct {
 	defaultTimezone string
 }
 
-func (c scheduleCodec) KataField() string {
+func (c scheduleCodec) PoomsaeField() string {
 	return c.key
 }
 
@@ -71,14 +71,14 @@ func (c scheduleCodec) ReadKata(issue db.Issue) (connector.FieldValue, error) {
 	if err := json.Unmarshal(raw, &value); err != nil {
 		return connector.FieldValue{}, fmt.Errorf("decode %s: %w", c.key, err)
 	}
-	field, err := kataScheduleFieldValue(value, values, c.defaultTimezone)
+	field, err := poomsaeScheduleFieldValue(value, values, c.defaultTimezone)
 	if err != nil {
 		return connector.FieldValue{}, fmt.Errorf("decode %s: %w", c.key, err)
 	}
 	return field, nil
 }
 
-func (c scheduleCodec) KataPatch(issue db.Issue, value connector.FieldValue) (map[string]jsontext.Value, error) {
+func (c scheduleCodec) PoomsaePatch(issue db.Issue, value connector.FieldValue) (map[string]jsontext.Value, error) {
 	canonical, err := canonicalFieldValue(value)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func metadataObject(raw db.JSONBlob) (map[string]jsontext.Value, error) {
 	return values, nil
 }
 
-func kataScheduleFieldValue(
+func poomsaeScheduleFieldValue(
 	value string,
 	metadataValues map[string]jsontext.Value,
 	defaultTimezone string,

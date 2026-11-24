@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 // R9: disconnect removes only the credential it observed, preserving newer
 // reconnect/rebind credentials and making crash-after-delete retries harmless.
 func TestFederationCredentialExactCleanup(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	store := config.DefaultFederationCredentialStore()
 	cleanup, ok := store.(interface {
 		DeleteFederationCredentialIfUnchanged(context.Context, string, config.FederationCredential) error

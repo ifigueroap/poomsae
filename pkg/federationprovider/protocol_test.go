@@ -9,8 +9,8 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/federationprovider"
 )
 
 const requestID = "8b60f249-b495-4f17-8999-c64382e05680"

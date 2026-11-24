@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	katauid "go.kenn.io/kata/internal/uid"
 	kitdaemon "go.kenn.io/kit/daemon"
 	"go.kenn.io/kit/stacktest"
 )
@@ -84,7 +84,7 @@ func TestApplyForwardedPendingClaimResponsePreservesCachedLease(t *testing.T) {
 }
 
 func TestNewClaimHubClientHonorsTrustedPrivateNetwork(t *testing.T) {
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 
 	client, err := newClaimHubClient(t.Context(), "http://100.64.0.5:7787", "enrollment-token", false, nil)
 
@@ -154,11 +154,11 @@ func TestClaimHubClientUsesUnixRuntimeForKataInvalid(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix sockets unsupported on windows")
 	}
-	tmp, err := os.MkdirTemp("/tmp", "kata-claim-unix-*")
+	tmp, err := os.MkdirTemp("/tmp", "poomsae-claim-unix-*")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_DB", filepath.Join(tmp, "kata.db"))
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_DB", filepath.Join(tmp, "poomsae.db"))
 	t.Setenv("TMPDIR", tmp)
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
@@ -176,7 +176,7 @@ func TestClaimHubClientUsesUnixRuntimeForKataInvalid(t *testing.T) {
 			case "/api/v1/ping":
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"ok":      true,
-					"service": "kata",
+					"service": "poomsae",
 					"version": "test",
 					"pid":     os.Getpid(),
 				})
@@ -197,12 +197,12 @@ func TestClaimHubClientUsesUnixRuntimeForKataInvalid(t *testing.T) {
 		PID:       os.Getpid(),
 		Network:   "unix",
 		Address:   sock,
-		Metadata:  map[string]string{"db_path": filepath.Join(tmp, "kata.db")},
+		Metadata:  map[string]string{"db_path": filepath.Join(tmp, "poomsae.db")},
 		StartedAt: time.Now().UTC(),
 	})
 	require.NoError(t, err)
 
-	client, err := newClaimHubClient(t.Context(), "http://kata.invalid", "enrollment-token", false, nil)
+	client, err := newClaimHubClient(t.Context(), "http://poomsae.invalid", "enrollment-token", false, nil)
 	require.NoError(t, err)
 	_, err = client.AcquireClaim(t.Context(), 42, "ABC", api.ClaimActionBody{})
 
@@ -217,7 +217,7 @@ func TestClaimHubClientUsesUnixRuntimeForKataInvalid(t *testing.T) {
 // array rather than relying on the encoder's nil-slice rendering.
 func TestApplyForwardedAssignmentClaimNoOpNormalizesEmptyEvents(t *testing.T) {
 	ctx := t.Context()
-	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "example-project")
@@ -259,7 +259,7 @@ func TestApplyForwardedAssignmentClaimFollowsMovedIssueProject(t *testing.T) {
 	require.NoError(t, err)
 	hubTarget, err := hub.CreateProject(ctx, "example-target")
 	require.NoError(t, err)
-	issueUID, err := katauid.New()
+	issueUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	hubIssue, created, err := hub.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: hubSource.ID, UID: issueUID, Title: "claim after move", Author: "worker",
@@ -343,7 +343,7 @@ func forwardedHubWireEvent(
 	payload string,
 ) db.Event {
 	t.Helper()
-	eventUID, err := katauid.New()
+	eventUID, err := poomsaeuid.New()
 	require.NoError(t, err)
 	event := db.Event{
 		UID: eventUID, OriginInstanceUID: originInstanceUID,
@@ -373,7 +373,7 @@ func forwardedHubWireEvent(
 // tokens on spokes, so this seam test exercises the response projection only.
 func TestApplyForwardedAssignmentClaimProjectsScopedResponseAndPublishesRaw(t *testing.T) {
 	ctx := t.Context()
-	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "example-project")
@@ -468,7 +468,7 @@ func receiveInternalMsg(t *testing.T, ch <-chan StreamMsg, label string) StreamM
 // access recheck withholds it from a member who lost the project.
 func TestApplyForwardedAssignmentClaimRecordsReloadedIssue(t *testing.T) {
 	ctx := t.Context()
-	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "example-project")

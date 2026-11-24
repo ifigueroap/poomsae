@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"go.kenn.io/kata/internal/transcript"
+	"github.com/ifigueroap/poomsae/internal/transcript"
 )
 
 // CloseTranscriptMode says when a close attaches the closing session.
@@ -26,7 +26,7 @@ const (
 )
 
 // CloseTranscriptConfig is a client preference, read from the invoking
-// client's Kata home even when it targets a remote daemon.
+// client's Poomsae home even when it targets a remote daemon.
 type CloseTranscriptConfig struct {
 	Mode          CloseTranscriptMode
 	AgentsViewURL string
@@ -43,7 +43,7 @@ type CloseTranscriptTarget struct {
 }
 
 // closeTranscriptFile is [close.transcript] as written. The daemon decodes it
-// only to accept its keys; enabled stays raw so only kata close checks it.
+// only to accept its keys; enabled stays raw so only poomsae close checks it.
 type closeTranscriptFile struct {
 	Enabled       any                                  `toml:"enabled"`
 	AgentsViewURL string                               `toml:"agentsview_url"`
@@ -103,11 +103,11 @@ func (cfg CloseTranscriptConfig) ForceEnabled() bool {
 }
 
 // ReadCloseTranscriptConfig avoids daemon policy and credential resolution.
-// KATA_CLOSE_TRANSCRIPT_ENABLED (true, false or auto) overrides the file's
+// POOMSAE_CLOSE_TRANSCRIPT_ENABLED (true, false or auto) overrides the file's
 // enabled setting for one process; false skips the file, so its transcript
 // settings cannot warn.
 func ReadCloseTranscriptConfig() (CloseTranscriptConfig, error) {
-	value := strings.TrimSpace(os.Getenv("KATA_CLOSE_TRANSCRIPT_ENABLED"))
+	value := strings.TrimSpace(os.Getenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED"))
 	if value == "" {
 		return readCloseTranscriptFile()
 	}
@@ -115,7 +115,7 @@ func ReadCloseTranscriptConfig() (CloseTranscriptConfig, error) {
 	if !strings.EqualFold(value, "auto") {
 		on, err := strconv.ParseBool(value)
 		if err != nil {
-			return CloseTranscriptConfig{}, errors.New("KATA_CLOSE_TRANSCRIPT_ENABLED must be true, false or auto")
+			return CloseTranscriptConfig{}, errors.New("POOMSAE_CLOSE_TRANSCRIPT_ENABLED must be true, false or auto")
 		}
 		if !on {
 			return CloseTranscriptConfig{}, nil
@@ -136,7 +136,7 @@ func readCloseTranscriptFile() (CloseTranscriptConfig, error) {
 	if err != nil {
 		return CloseTranscriptConfig{}, err
 	}
-	data, err := os.ReadFile(path) // #nosec G304 -- derived from KATA_HOME
+	data, err := os.ReadFile(path) // #nosec G304 -- derived from POOMSAE_HOME
 	if errors.Is(err, os.ErrNotExist) {
 		return CloseTranscriptConfig{}, nil
 	}

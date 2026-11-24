@@ -8,7 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/notification"
+	"github.com/ifigueroap/poomsae/internal/notification"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
@@ -142,7 +142,7 @@ func (m Model) reloadAttention() (Model, tea.Cmd) {
 	m.attention.gen++
 	m.attention.loading = true
 	m.attention.err = nil
-	env := os.Getenv("KATA_INBOX_USER")
+	env := os.Getenv("POOMSAE_INBOX_USER")
 	m.attention.recipient, m.attention.recipientErr = resolveAttentionRecipient(env, m.activeAuth, m.list.actor)
 	if m.attention.recipientErr != nil {
 		m.attention.loading = false

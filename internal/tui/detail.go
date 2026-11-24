@@ -5,9 +5,9 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
 
 	tea "charm.land/bubbletea/v2"
 )

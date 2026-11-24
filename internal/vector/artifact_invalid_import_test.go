@@ -11,13 +11,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/vector"
 )
 
 // A retained artifact can claim an input that the issue later returns to while
@@ -115,7 +115,7 @@ func mismatchedInputArtifact(t *testing.T, identity embedding.ArtifactIdentity, 
 	raw, err := json.Marshal(manifest)
 	require.NoError(t, err)
 	h := sha256.New()
-	_, _ = h.Write([]byte("kata.embedding-artifact.v1\x00"))
+	_, _ = h.Write([]byte("poomsae.embedding-artifact.v1\x00"))
 	sized := func(b []byte) {
 		var size [8]byte
 		binary.LittleEndian.PutUint64(size[:], uint64(len(b)))

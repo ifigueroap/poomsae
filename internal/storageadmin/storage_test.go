@@ -10,10 +10,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/storeopen"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 func TestResolveArtifactRejectsPathEscape(t *testing.T) {
@@ -323,7 +323,7 @@ func TestNewRejectsPairwiseOverlappingSQLiteTargets(t *testing.T) {
 	// Pairwise overlap is enforced even when the active source is not
 	// SQLite, since force-importing one alias moves and deletes the whole
 	// sidecar set of its target.
-	for _, source := range []string{filepath.Join(t.TempDir(), "active.db"), "postgres://db.example/kata"} {
+	for _, source := range []string{filepath.Join(t.TempDir(), "active.db"), "postgres://db.example/poomsae"} {
 		_, err := New(Config{
 			Root: root, SourceDSN: source,
 			Targets: map[string]string{"primary": "restore.db", "secondary": "restore.db-wal"},
@@ -344,8 +344,8 @@ func TestFailedPostgresImportRemovesFreshSchema(t *testing.T) {
 	}
 	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
 	t.Cleanup(cleanup)
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_POSTGRES_SCHEMA", "mcp_restore_cleanup")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_cleanup")
 
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "invalid.jsonl"), []byte("not-json\n"), 0o600))
@@ -369,10 +369,10 @@ func TestPostgresImportRejectsInitializedTargetWithoutMutation(t *testing.T) {
 	}
 	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
 	t.Cleanup(cleanup)
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_POSTGRES_SCHEMA", "mcp_restore_initialized")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_initialized")
 
-	// Initialize the target so it is a real, non-fresh Kata database that
+	// Initialize the target so it is a real, non-fresh Poomsae database that
 	// is not the active source.
 	initialized, err := storeopen.Open(t.Context(), dsn)
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestPostgresImportRejectsInitializedTargetWithoutMutation(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, admin.Close()) })
 
 	_, err = admin.Import(t.Context(), ImportOptions{Artifact: "backup.jsonl", Target: "restore"})
-	require.ErrorContains(t, err, "already contains a Kata schema")
+	require.ErrorContains(t, err, "already contains a Poomsae schema")
 	after, err := storeopen.PeekSchemaVersion(t.Context(), dsn)
 	require.NoError(t, err)
 	require.Equal(t, version, after, "the preflight rejection must not touch the initialized schema")
@@ -404,8 +404,8 @@ func TestPostgresImportRefusesActiveDatabaseByIdentity(t *testing.T) {
 	}
 	dsn, cleanup := testenv.NewPostgresContainer(t, t.Context())
 	t.Cleanup(cleanup)
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_POSTGRES_SCHEMA", "mcp_restore_identity")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "mcp_restore_identity")
 
 	alias, swappable := swapPostgresHost(t, dsn)
 	if !swappable {

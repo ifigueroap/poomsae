@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // CheckCronDependencies checks the live dependencies of a new job/run.

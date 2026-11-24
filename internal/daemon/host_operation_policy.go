@@ -40,7 +40,7 @@ const (
 	hostOperationIntegrationAdministration HostOperationKind = "integration_administration"
 )
 
-// HostOperationPolicy carries Kata-owned route metadata through the public adapter.
+// HostOperationPolicy carries Poomsae-owned route metadata through the public adapter.
 type HostOperationPolicy struct {
 	Kind       HostOperationKind
 	Capability HostCapability

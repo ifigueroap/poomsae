@@ -3,7 +3,7 @@ package sqlitestore
 import (
 	"context"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func (b relayResetBackend) RelayPostCheckpointReceipts(ctx context.Context, projectID int64, projectUID string, epoch, sequence int64) ([]db.RelayRetainedReceiptRow, error) {

@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/diagnostics"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/diagnostics"
 )
 
 type doctorSink struct{ reads atomic.Int32 }
@@ -149,7 +149,7 @@ func TestDoctorAllowsOwnerLocalRequestWithTokenlessPrivateWritesEnabled(t *testi
 		Auth: config.AuthConfig{AllowUnauthenticatedPrivateNetworkWrites: true},
 	})
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+"/api/v1/doctor", nil)
-	req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, &net.UnixAddr{Name: "/tmp/kata.sock", Net: "unix"}))
+	req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, &net.UnixAddr{Name: "/tmp/poomsae.sock", Net: "unix"}))
 	rr := httptest.NewRecorder()
 	ts.Config.Handler.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())

@@ -3,14 +3,14 @@
   import FunnelIcon from '@lucide/svelte/icons/funnel'
   import { tick } from 'svelte'
   import {
-    KATA_LINK_RELATIONS,
-    type KataLinkFilters,
-    type KataLinkRelation,
-  } from '../lib/kata/linkFilters'
+    POOMSAE_LINK_RELATIONS,
+    type PoomsaeLinkFilters,
+    type PoomsaeLinkRelation,
+  } from '../lib/poomsae/linkFilters'
 
   interface Props {
-    filters: KataLinkFilters
-    onChange: (next: KataLinkFilters) => void
+    filters: PoomsaeLinkFilters
+    onChange: (next: PoomsaeLinkFilters) => void
   }
 
   let { filters, onChange }: Props = $props()
@@ -19,7 +19,7 @@
   let panel = $state<HTMLDivElement>()
   let panelStyle = $state('')
 
-  const relationLabels: Record<KataLinkRelation, string> = {
+  const relationLabels: Record<PoomsaeLinkRelation, string> = {
     parent: 'Parent',
     child: 'Child',
     blocks: 'Blocks',
@@ -69,7 +69,7 @@
     onChange({ ...filters, statuses: { ...filters.statuses, [status]: checked } })
   }
 
-  function changeRelation(relation: KataLinkRelation, checked: boolean): void {
+  function changeRelation(relation: PoomsaeLinkRelation, checked: boolean): void {
     onChange({ ...filters, relations: { ...filters.relations, [relation]: checked } })
   }
 </script>
@@ -110,7 +110,7 @@
       </fieldset>
       <fieldset>
         <legend>Relationship</legend>
-        {#each KATA_LINK_RELATIONS as relation (relation)}
+        {#each POOMSAE_LINK_RELATIONS as relation (relation)}
           <Checkbox
             label={relationLabels[relation]}
             checked={filters.relations[relation]}

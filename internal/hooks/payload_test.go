@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func nowZero() time.Time { return time.Date(2026, 4, 30, 14, 22, 11, 482_000_000, time.UTC) }
@@ -22,7 +22,7 @@ func sampleEvent(t string) db.Event {
 		Type:        t,
 		Actor:       "claude-4.7-wesm-laptop",
 		ProjectID:   3,
-		ProjectName: "github.com/wesm/kata",
+		ProjectName: "github.com/wesm/poomsae",
 		IssueID:     &id,
 		IssueUID:    &uid,
 		Payload:     `{"comment_id":104}`,
@@ -43,11 +43,11 @@ func okComment(_ context.Context, _ int64) (CommentSnapshot, error) {
 }
 
 func okProject(_ context.Context, _ int64) (ProjectSnapshot, error) {
-	return ProjectSnapshot{Name: "kata"}, nil
+	return ProjectSnapshot{Name: "poomsae"}, nil
 }
 
 func okAlias(_ context.Context, _ db.Event) (AliasSnapshot, bool, error) {
-	return AliasSnapshot{Identity: "github.com/wesm/kata", Kind: "git"}, true, nil
+	return AliasSnapshot{Identity: "github.com/wesm/poomsae", Kind: "git"}, true, nil
 }
 
 // buildOpts captures the resolver/logger inputs to buildStdinJSON; tests
@@ -97,7 +97,7 @@ func TestBuildStdin_HappyPath(t *testing.T) {
 		t.Fatalf("type: %v", got["type"])
 	}
 	proj := got["project"].(map[string]any)
-	if proj["name"] != "kata" {
+	if proj["name"] != "poomsae" {
 		t.Fatalf("project.name: %v", proj["name"])
 	}
 	issue := got["issue"].(map[string]any)
@@ -116,7 +116,7 @@ func TestBuildStdin_HappyPath(t *testing.T) {
 		t.Fatalf("comment_body: %v", pld["comment_body"])
 	}
 	alias := got["alias"].(map[string]any)
-	if alias["alias_identity"] != "github.com/wesm/kata" {
+	if alias["alias_identity"] != "github.com/wesm/poomsae" {
 		t.Fatalf("alias_identity: %v", alias["alias_identity"])
 	}
 }
@@ -174,7 +174,7 @@ func TestBuildStdin_ProjectResolverError_KeepsIDAndName(t *testing.T) {
 	if proj["id"].(float64) != 3 {
 		t.Fatalf("project.id should still be present: %v", proj["id"])
 	}
-	if proj["name"] != "github.com/wesm/kata" {
+	if proj["name"] != "github.com/wesm/poomsae" {
 		t.Fatalf("project.name should still be present: %v", proj["name"])
 	}
 }

@@ -14,13 +14,13 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestOwnerLockForeignHelperProcess(t *testing.T) {
-	if os.Getenv("KATA_OWNER_PIDNS_HELPER") != "1" {
+	if os.Getenv("POOMSAE_OWNER_PIDNS_HELPER") != "1" {
 		return
 	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
@@ -33,7 +33,7 @@ func TestOwnerLockForeignHelperProcess(t *testing.T) {
 func TestRefuseForeignStoreOwnerRechecksRecordBeforeRefusing(t *testing.T) {
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	child := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=^TestOwnerLockForeignHelperProcess$") //nolint:gosec // test binary
-	child.Env = append(os.Environ(), "KATA_OWNER_PIDNS_HELPER=1")
+	child.Env = append(os.Environ(), "POOMSAE_OWNER_PIDNS_HELPER=1")
 	child.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags:  syscall.CLONE_NEWUSER | syscall.CLONE_NEWPID,
 		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
@@ -56,7 +56,7 @@ func TestRefuseForeignStoreOwnerRechecksRecordBeforeRefusing(t *testing.T) {
 		PID: 1, ProcessIdentityV2: identity, StartedAt: time.Now().UTC(), Network: "tcp", Address: "127.0.0.1:1",
 	})
 	require.NoError(t, err)
-	paths := []string{filepath.Join(dataDir, "kata.db.owner.lock")}
+	paths := []string{filepath.Join(dataDir, "poomsae.db.owner.lock")}
 	release, err := daemonruntime.AcquireStoreOwnerLock(t.Context(), paths)
 	require.NoError(t, err)
 	defer release()

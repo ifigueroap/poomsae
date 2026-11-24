@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 type fieldProvider struct {

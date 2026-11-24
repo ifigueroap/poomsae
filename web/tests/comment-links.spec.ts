@@ -6,21 +6,21 @@ test('default detail composes typed replies and follows a backlink to its commen
   page,
 }) => {
   const runtime = JSON.parse(
-    await readFile(join(process.cwd(), '..', '.kata-web-dev', 'active.json'), 'utf8'),
+    await readFile(join(process.cwd(), '..', '.poomsae-web-dev', 'active.json'), 'utf8'),
   ) as { publicOrigin: string }
-  await page.goto(`${runtime.publicOrigin}/kata?view=all-open`)
+  await page.goto(`${runtime.publicOrigin}/poomsae?view=all-open`)
   await expect(page.getByRole('button', { name: 'New task' })).toBeVisible()
   const credentials = await page.evaluate(
     () =>
-      JSON.parse(sessionStorage.getItem('kata.web.session.v1')!) as {
+      JSON.parse(sessionStorage.getItem('poomsae.web.session.v1')!) as {
         session: string
         csrf: string
       },
   )
   const headers = {
     Origin: runtime.publicOrigin,
-    'X-Kata-Web-Session': credentials.session,
-    'X-Kata-CSRF': credentials.csrf,
+    'X-Poomsae-Web-Session': credentials.session,
+    'X-Poomsae-CSRF': credentials.csrf,
   }
   const snapshot = await page.request.get(
     `${runtime.publicOrigin}/api/v1/ui/snapshot?view=all-open`,
@@ -74,7 +74,7 @@ test('default detail composes typed replies and follows a backlink to its commen
     'investigator',
   )
   await comment(replyIssue.uid, 'Replacement evidence remains available.', target.uid, 'supersede')
-  await page.goto(`${runtime.publicOrigin}/kata?issue=${rootIssue.uid}`)
+  await page.goto(`${runtime.publicOrigin}/poomsae?issue=${rootIssue.uid}`)
   const detail = page.getByRole('region', { name: 'Task detail', exact: true })
   const commentAt = (uid: string) => detail.locator(`[data-comment-uid="${uid}"]`)
   const root = commentAt(target.uid)

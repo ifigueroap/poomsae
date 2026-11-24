@@ -12,22 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
-	"go.kenn.io/kata/pkg/katatest"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/poomsaetest"
 )
 
-// isolateKataHome points discovery at an empty Kata home and a workspace with
-// no .kata.local.toml, so the host's daemons and remote config are invisible.
+// isolateKataHome points discovery at an empty Poomsae home and a workspace with
+// no .poomsae.local.toml, so the host's daemons and remote config are invisible.
 func isolateKataHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_DB", filepath.Join(home, "kata.db"))
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_DB", filepath.Join(home, "poomsae.db"))
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Chdir(t.TempDir())
 	return home
 }
@@ -36,7 +36,7 @@ func publishLocalRuntime(t *testing.T, home, address string) {
 	t.Helper()
 	namespace, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
-	publishRuntime(t, namespace, address, map[string]string{"db_path": filepath.Join(home, "kata.db")})
+	publishRuntime(t, namespace, address, map[string]string{"db_path": filepath.Join(home, "poomsae.db")})
 }
 
 func publishRuntime(t *testing.T, namespace *daemonruntime.Namespace, address string, metadata map[string]string) {
@@ -71,10 +71,10 @@ func initProject(t *testing.T, api *client.Client, name string) {
 
 func TestDiscoverUsesRunningLocalDaemonWithGlobalToken(t *testing.T) {
 	home := isolateKataHome(t)
-	server := katatest.New(t, katatest.WithUnixSocket(), katatest.WithToken("local-token"))
+	server := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("local-token"))
 	initProject(t, server.Client(t), "spoke-project")
 	publishLocalRuntime(t, home, server.Endpoint)
-	t.Setenv("KATA_AUTH_TOKEN", "local-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "local-token")
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{})
 	require.NoError(t, err)
@@ -111,13 +111,13 @@ func TestDiscoverReportsUnreachableLocalDaemonAsUnavailable(t *testing.T) {
 
 func TestDiscoverPrefersKataServerOverLocalDaemon(t *testing.T) {
 	home := isolateKataHome(t)
-	local := katatest.New(t, katatest.WithUnixSocket())
+	local := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, local.Client(t), "local-project")
 	publishLocalRuntime(t, home, local.Endpoint)
-	remote := katatest.New(t, katatest.WithToken("remote-token"))
+	remote := poomsaetest.New(t, poomsaetest.WithToken("remote-token"))
 	initProject(t, remote.Client(t), "hub-project")
-	t.Setenv("KATA_SERVER", remote.Endpoint)
-	t.Setenv("KATA_AUTH_TOKEN", "remote-token")
+	t.Setenv("POOMSAE_SERVER", remote.Endpoint)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "remote-token")
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{})
 	require.NoError(t, err)
@@ -132,13 +132,13 @@ func TestDiscoverPrefersKataServerOverLocalDaemon(t *testing.T) {
 
 func TestDiscoverReadsLocalConfigFromWorkspace(t *testing.T) {
 	isolateKataHome(t)
-	remote := katatest.New(t)
+	remote := poomsaetest.New(t)
 	initProject(t, remote.Client(t), "hub-project")
 	workspace := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"), []byte(
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"), []byte(
 		"version = 1\n\n[project]\nidentity = \"example.test/spoke-project\"\nname = \"spoke-project\"\n",
 	), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte("version = 1\n\n[server]\nurl = \""+remote.Endpoint+"\"\n"), 0o600))
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{})
@@ -152,7 +152,7 @@ func TestDiscoverReadsLocalConfigFromWorkspace(t *testing.T) {
 }
 
 func TestDiscoveredIsAbsentForExplicitEndpointClient(t *testing.T) {
-	server := katatest.New(t)
+	server := poomsaetest.New(t)
 
 	_, ok := server.Client(t).Discovered()
 	assert.False(t, ok)
@@ -160,10 +160,10 @@ func TestDiscoveredIsAbsentForExplicitEndpointClient(t *testing.T) {
 
 func TestDiscoverNamedRemoteIgnoresOtherSourcesAndUsesEntryToken(t *testing.T) {
 	home := isolateKataHome(t)
-	other := katatest.New(t)
+	other := poomsaetest.New(t)
 	initProject(t, other.Client(t), "other-project")
-	t.Setenv("KATA_SERVER", other.Endpoint)
-	hub := katatest.New(t, katatest.WithToken("hub-token"))
+	t.Setenv("POOMSAE_SERVER", other.Endpoint)
+	hub := poomsaetest.New(t, poomsaetest.WithToken("hub-token"))
 	initProject(t, hub.Client(t), "hub-project")
 	t.Setenv("EXAMPLE_HUB_TOKEN", "hub-token")
 	writeDaemonCatalog(t, home, `[[daemon]]
@@ -185,7 +185,7 @@ token_env = "EXAMPLE_HUB_TOKEN"
 
 func TestDiscoverNamedLocalOverridesActiveDaemon(t *testing.T) {
 	home := isolateKataHome(t)
-	local := katatest.New(t, katatest.WithUnixSocket(), katatest.WithToken("local-token"))
+	local := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("local-token"))
 	initProject(t, local.Client(t), "spoke-project")
 	publishLocalRuntime(t, home, local.Endpoint)
 	writeDaemonCatalog(t, home, `active_daemon = "hub"
@@ -214,7 +214,7 @@ token = "local-token"
 // pinnedProfile registers server as the catalog entry "work", a local profile
 // pinned to a temporary home and the server's instance UID, and returns the
 // namespace where that profile's runtime records live.
-func pinnedProfile(t *testing.T, home string, server *katatest.Server) *daemonruntime.Namespace {
+func pinnedProfile(t *testing.T, home string, server *poomsaetest.Server) *daemonruntime.Namespace {
 	t.Helper()
 	instance, err := server.Client(t).InstanceWithResponse(t.Context())
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func pinnedProfile(t *testing.T, home string, server *katatest.Server) *daemonru
 
 func TestDiscoverNamedPinnedLocalProfile(t *testing.T) {
 	home := isolateKataHome(t)
-	work := katatest.New(t, katatest.WithUnixSocket())
+	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
 	publishRuntime(t, pinnedProfile(t, home, work), work.Endpoint, nil)
 
@@ -287,7 +287,7 @@ func TestDiscoverNamedRejectsUnknownName(t *testing.T) {
 
 func TestDiscoverNamedRemoteRequiresTokenEnvValue(t *testing.T) {
 	home := isolateKataHome(t)
-	hub := katatest.New(t, katatest.WithToken("hub-token"))
+	hub := poomsaetest.New(t, poomsaetest.WithToken("hub-token"))
 	t.Setenv("EXAMPLE_HUB_TOKEN", "")
 	writeDaemonCatalog(t, home, `[[daemon]]
 name = "hub"

@@ -16,13 +16,13 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/pagination"
-	"go.kenn.io/kata/internal/similarity"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/pagination"
+	"github.com/ifigueroap/poomsae/internal/similarity"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const minIssueUIDPrefixLen = 8
@@ -207,7 +207,7 @@ func registerIssuesHandlers(humaAPI huma.API, cfg ServerConfig) {
 			return reuse, nil
 		}
 		// A successful create from before this rule must remain retryable.
-		if err := rejectPriorityLabels(in.Body.Labels, "kata create --priority N or kata.create with priority"); err != nil {
+		if err := rejectPriorityLabels(in.Body.Labels, "poomsae create --priority N or poomsae.create with priority"); err != nil {
 			return nil, err
 		}
 
@@ -369,7 +369,7 @@ func registerIssuesHandlers(humaAPI huma.API, cfg ServerConfig) {
 		if in.DeprecatedView != "" || in.DeprecatedArea != "" ||
 			in.DeprecatedOffset != "" || in.DeprecatedClientTZ != "" {
 			return nil, api.NewError(400, "removed_param",
-				"view, area, offset query params and the X-Kata-Client-TZ header were removed",
+				"view, area, offset query params and the X-Poomsae-Client-TZ header were removed",
 				"assemble named views (today/upcoming/inbox/someday/anytime/logbook) client-side from /api/v1/issues and /api/v1/projects",
 				nil)
 		}
@@ -761,7 +761,7 @@ func mapAtomicEditError(err error, issueShortID string, delta *api.LinksDelta) e
 func externalRootContentOwnedAPIError() error {
 	return api.NewError(409, "external_root_content_owned",
 		"the issue title and body are owned by an active external root binding",
-		"edit the external root or run kata bridge unbind <issue-ref> before editing title or body", nil)
+		"edit the external root or run poomsae bridge unbind <issue-ref> before editing title or body", nil)
 }
 
 // validateLinksDelta rejects deltas that are internally contradictory before
@@ -1565,12 +1565,12 @@ func tryIdempotencyMatch(ctx context.Context, cfg ServerConfig, in *api.CreateIs
 	}
 	// Compute both fingerprint forms: the new (deduped) form is what we
 	// write for fresh creates and what most retries should match. The legacy
-	// (non-deduped) form is what idempotency events produced before kata#1's
+	// (non-deduped) form is what idempotency events produced before poomsae#1's
 	// dedupe-in-Fingerprint change carry. Lookup accepts either so a retry
 	// inside the existing idempotency window after upgrade doesn't trip
 	// idempotency_mismatch on a logically-equivalent request.
 	//
-	// Known asymmetry: if a pre-kata#1 request stored a fingerprint over
+	// Known asymmetry: if a pre-poomsae#1 request stored a fingerprint over
 	// duplicate-bearing links (e.g. `[A, A]`) and the post-upgrade retry
 	// sends the same intent in deduped form (`[A]`), neither computed
 	// fingerprint matches the stored hash because the stored hash captured
@@ -1628,7 +1628,7 @@ func tryIdempotencyMatch(ctx context.Context, cfg ServerConfig, in *api.CreateIs
 		}
 		return "", nil, api.NewError(409, "idempotency_deleted",
 			"idempotency key matched a soft-deleted issue",
-			"run `kata restore "+existing.ShortID+"` or use a fresh key",
+			"run `poomsae restore "+existing.ShortID+"` or use a fresh key",
 			map[string]any{
 				"uid":          existing.UID,
 				"short_id":     existing.ShortID,

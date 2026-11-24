@@ -1,0 +1,941 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+)
+
+type projectAliasRef struct {
+	ID            int64  `json:"id"`
+	ProjectID     int64  `json:"project_id"`
+	AliasIdentity string `json:"alias_identity"`
+	AliasKind     string `json:"alias_kind"`
+}
+
+type projectRef struct {
+	ID        int64             `json:"id"`
+	UID       string            `json:"uid"`
+	Name      string            `json:"name"`
+	DeletedAt *time.Time        `json:"deleted_at,omitempty"`
+	Aliases   []projectAliasRef `json:"aliases,omitempty"`
+}
+
+// shortIDExtensionItem mirrors api.MergeShortIDExtension for decoding the
+// merge response. One entry per source-side issue whose short_id was
+// auto-extended during the merge to break a target-side collision
+// (spec §9.4).
+type shortIDExtensionItem struct {
+	UID              string `json:"uid"`
+	PreMergeShortID  string `json:"pre_merge_short_id"`
+	PostMergeShortID string `json:"post_merge_short_id"`
+}
+
+func newProjectsCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "projects", Short: "list and inspect poomsae projects"}
+	cmd.AddCommand(projectsListCmd(), projectsCreateCmd(), projectsShowCmd(), projectsRenameCmd(),
+		projectsMergeCmd(), projectsRemoveCmd(), projectsRestoreCmd(),
+		projectsDetachCmd(), projectsPurgeCmd(), projectsRewriteAuthorCmd(), projectsAccessCmd())
+	return cmd
+}
+
+func projectsCreateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create <name>",
+		Short: "create a daemon project without binding a workspace",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := strings.TrimSpace(strings.Join(args, " "))
+			if name == "" {
+				return &cliError{Message: "project name must be non-empty", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+
+			ctx := cmd.Context()
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			ctx, baseURL, err := ensureDaemonContext(ctx)
+			if err != nil {
+				return err
+			}
+			bs, err := postProjects(ctx, baseURL, map[string]string{"name": name, "actor": actor})
+			if err != nil {
+				return err
+			}
+			if currentOutputMode() == outputJSON {
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			}
+			var b struct {
+				Project projectRef `json:"project"`
+				Created bool       `json:"created"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return writeAgentProjectAction(cmd.OutOrStdout(), "create",
+					agentRowField("id", fmt.Sprint(b.Project.ID)),
+					agentRowField("project", b.Project.Name),
+					agentRowField("created", strconv.FormatBool(b.Created)),
+				)
+			}
+			if b.Created {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "created project #%d (%s)\n",
+					b.Project.ID, textsafe.Line(b.Project.Name))
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "project #%d (%s) already exists\n",
+				b.Project.ID, textsafe.Line(b.Project.Name))
+			return err
+		},
+	}
+}
+
+func projectsListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "list known projects",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			a, err := dialDaemon(cmd.Context())
+			if err != nil {
+				return err
+			}
+			mode := currentOutputMode()
+			query := &generated.ListProjectsQuery{}
+			if mode == outputAgent {
+				query.Include = new("stats")
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.ListProjectsWithResponse(a.ctx, &generated.ListProjectsRequestOptions{Query: query})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			var b struct {
+				Projects []struct {
+					ID    int64  `json:"id"`
+					Name  string `json:"name"`
+					Stats *struct {
+						Open   int `json:"open"`
+						Closed int `json:"closed"`
+					} `json:"stats"`
+				} `json:"projects"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if mode == outputAgent {
+				out := cmd.OutOrStdout()
+				if _, err := fmt.Fprintf(out, "OK projects count=%d\n", len(b.Projects)); err != nil {
+					return err
+				}
+				for _, p := range b.Projects {
+					open, closed := 0, 0
+					if p.Stats != nil {
+						open = p.Stats.Open
+						closed = p.Stats.Closed
+					}
+					if err := writeAgentKVRow(out,
+						agentRowField("project", p.Name),
+						agentRowField("id", fmt.Sprint(p.ID)),
+						agentRowField("open", fmt.Sprint(open)),
+						agentRowField("closed", fmt.Sprint(closed)),
+					); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			for _, p := range b.Projects {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%d  %s\n",
+					p.ID, textsafe.Line(p.Name)); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
+func projectsRenameCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rename <project> <name>",
+		Short: "rename a project",
+		Args:  cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := strings.TrimSpace(strings.Join(args[1:], " "))
+			if name == "" {
+				return &cliError{Message: "project name must be non-empty", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+
+			ctx := cmd.Context()
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			project, err := resolveProjectSelector(a, args[0])
+			if err != nil {
+				return err
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.RenameProjectWithResponse(a.ctx, &generated.RenameProjectRequestOptions{PathParams: &generated.RenameProjectPath{ProjectID: project.ID}, Body: &generated.RenameProjectBody{Name: name, Actor: &actor}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			var b struct {
+				Project struct {
+					ID   int64  `json:"id"`
+					Name string `json:"name"`
+				} `json:"project"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return writeAgentProjectAction(cmd.OutOrStdout(), "rename",
+					agentRowField("id", fmt.Sprint(b.Project.ID)),
+					agentRowField("project", b.Project.Name),
+				)
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "renamed project #%d to %s\n",
+				b.Project.ID, textsafe.Line(b.Project.Name))
+			return err
+		},
+	}
+}
+
+func projectsRewriteAuthorCmd() *cobra.Command {
+	var from string
+	var to string
+	cmd := &cobra.Command{
+		Use:   "rewrite-author [project]",
+		Short: "rewrite one author identity in a project",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(from) == "" {
+				return &cliError{Message: "--from is required", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			if strings.TrimSpace(to) == "" {
+				return &cliError{Message: "--to is required", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			ctx := cmd.Context()
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			project, err := resolveProjectArgFlagOrWorkspace(a, args)
+			if err != nil {
+				return err
+			}
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.RewriteAuthorIdentityWithResponse(a.ctx, &generated.RewriteAuthorIdentityRequestOptions{PathParams: &generated.RewriteAuthorIdentityPath{ProjectID: project.ID}, Body: &generated.RewriteAuthorIdentityBody{Actor: &actor, From: from, To: to}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs := response.Body
+			var result db.RewriteAuthorIdentityResult
+			if err := json.Unmarshal(bs, &result); err != nil {
+				return err
+			}
+			switch currentOutputMode() {
+			case outputJSON:
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, result); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			case outputAgent:
+				return writeAgentKVRow(cmd.OutOrStdout(),
+					agentRowField("changed", strconv.FormatBool(result.Changed)),
+					agentRowField("issue_authors", strconv.FormatInt(result.IssueAuthors, 10)),
+					agentRowField("issue_owners", strconv.FormatInt(result.IssueOwners, 10)),
+					agentRowField("comment_authors", strconv.FormatInt(result.CommentAuthors, 10)),
+					agentRowField("link_authors", strconv.FormatInt(result.LinkAuthors, 10)),
+					agentRowField("total", strconv.FormatInt(result.Total(), 10)),
+				)
+			}
+			if flags.Quiet {
+				return nil
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(),
+				"author identity rewritten\nissue authors: %d\nissue owners: %d\ncomment authors: %d\nlink authors: %d\ntotal: %d\n",
+				result.IssueAuthors, result.IssueOwners, result.CommentAuthors, result.LinkAuthors, result.Total())
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&from, "from", "", "author identity to replace")
+	cmd.Flags().StringVar(&to, "to", "", "replacement author identity")
+	return cmd
+}
+
+func projectsMergeCmd() *cobra.Command {
+	var targetName string
+	cmd := &cobra.Command{
+		Use:   "merge <source> <target>",
+		Short: "merge one project into a surviving project",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			source, err := resolveProjectSelector(a, args[0])
+			if err != nil {
+				return err
+			}
+			target, err := resolveProjectSelector(a, args[1])
+			if err != nil {
+				return err
+			}
+			if source.ID == target.ID {
+				return &cliError{
+					Message:  "source and target project must be different",
+					Kind:     kindValidation,
+					ExitCode: ExitValidation,
+				}
+			}
+			body := &generated.MergeProjectBody{SourceProjectID: source.ID, Actor: &actor}
+			if strings.TrimSpace(targetName) != "" {
+				body.TargetName = new(strings.TrimSpace(targetName))
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.MergeProjectWithResponse(a.ctx, &generated.MergeProjectRequestOptions{PathParams: &generated.MergeProjectPath{ProjectID: target.ID}, Body: body})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs := response.Body
+			var b struct {
+				Source            projectRef             `json:"source"`
+				Target            projectRef             `json:"target"`
+				IssuesMoved       int64                  `json:"issues_moved"`
+				AliasesMoved      int64                  `json:"aliases_moved"`
+				EventsMoved       int64                  `json:"events_moved"`
+				ShortIDExtensions []shortIDExtensionItem `json:"short_id_extensions,omitempty"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if err := repairMergedWorkspaceBinding(source, b.Target); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputJSON {
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				if err := writeAgentProjectAction(cmd.OutOrStdout(), "merge",
+					agentRowField("source", fmt.Sprint(b.Source.ID)),
+					agentRowField("target", fmt.Sprint(b.Target.ID)),
+					agentRowField("project", b.Target.Name),
+					agentRowField("issues_moved", fmt.Sprint(b.IssuesMoved)),
+					agentRowField("aliases_moved", fmt.Sprint(b.AliasesMoved)),
+					agentRowField("events_moved", fmt.Sprint(b.EventsMoved)),
+				); err != nil {
+					return err
+				}
+				for _, ext := range b.ShortIDExtensions {
+					if err := writeAgentKVRow(cmd.OutOrStdout(),
+						agentRowField("uid", ext.UID),
+						agentRowField("pre_merge_short_id", ext.PreMergeShortID),
+						agentRowField("post_merge_short_id", ext.PostMergeShortID),
+					); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(),
+				"merged project #%d into #%d (%s); moved %s, %s, %s\n",
+				b.Source.ID, b.Target.ID, textsafe.Line(b.Target.Name),
+				pluralCount(b.IssuesMoved, "issue"),
+				pluralCount(b.AliasesMoved, "alias"),
+				pluralCount(b.EventsMoved, "event"),
+			); err != nil {
+				return err
+			}
+			for _, ext := range b.ShortIDExtensions {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(),
+					"extended %s#%s from %s to %s\n",
+					textsafe.Line(b.Target.Name), ext.PostMergeShortID,
+					ext.PreMergeShortID, ext.PostMergeShortID); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&targetName, "rename-target", "", "rename the surviving target project after merge")
+	return cmd
+}
+
+func repairMergedWorkspaceBinding(source, target projectRef) error {
+	start, err := resolveStartPath(flags.Workspace)
+	if err != nil {
+		return err
+	}
+	disc, err := config.DiscoverPaths(start)
+	if err != nil {
+		return err
+	}
+	if disc.WorkspaceRoot == "" {
+		return nil
+	}
+	cfg, err := config.ReadProjectConfig(disc.WorkspaceRoot)
+	if err != nil {
+		if errors.Is(err, config.ErrProjectConfigMissing) {
+			return nil
+		}
+		return err
+	}
+	if !projectConfigReferencesSource(cfg.Project.Name, source) {
+		return nil
+	}
+	if err := config.WriteProjectConfig(disc.WorkspaceRoot, target.Name); err != nil {
+		return fmt.Errorf("repair .poomsae.toml after project merge: %w", err)
+	}
+	return nil
+}
+
+func projectConfigReferencesSource(name string, source projectRef) bool {
+	if name == source.Name {
+		return true
+	}
+	for _, alias := range source.Aliases {
+		if name == alias.AliasIdentity {
+			return true
+		}
+	}
+	return false
+}
+
+func projectsShowCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <project>",
+		Short: "show project details",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			a, err := dialDaemon(cmd.Context())
+			if err != nil {
+				return err
+			}
+			project := projectRef{}
+			if id, parseErr := strconv.ParseInt(strings.TrimSpace(args[0]), 10, 64); parseErr == nil {
+				project.ID = id
+			} else {
+				var err error
+				project, err = resolveProjectSelector(a, args[0])
+				var cliErr *cliError
+				if errors.As(err, &cliErr) && cliErr.Kind == kindNotFound {
+					// The daemon answers an archived project with the restore hint.
+					project, err = resolveProjectSelectorIncludingArchived(a, args[0])
+				}
+				if err != nil {
+					return err
+				}
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.ShowProjectWithResponse(a.ctx, &generated.ShowProjectRequestOptions{PathParams: &generated.ShowProjectPath{ProjectID: project.ID}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			var b struct {
+				Project struct {
+					ID   int64  `json:"id"`
+					Name string `json:"name"`
+				} `json:"project"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				out := cmd.OutOrStdout()
+				if _, err := fmt.Fprintln(out, "OK projects count=1"); err != nil {
+					return err
+				}
+				return writeAgentKVRow(out,
+					agentRowField("project", b.Project.Name),
+					agentRowField("id", fmt.Sprint(b.Project.ID)),
+				)
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "#%d %s\n",
+				b.Project.ID, textsafe.Line(b.Project.Name))
+			return err
+		},
+	}
+}
+
+func resolveProjectSelector(a daemonAPI, selector string) (projectRef, error) {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return projectRef{}, &cliError{Message: "project selector must be non-empty", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	projects, err := loadProjectRefs(a)
+	if err != nil {
+		return projectRef{}, err
+	}
+	return resolveProjectSelectorFromRefs(selector, projects)
+}
+
+func resolveProjectArgFlagOrWorkspace(
+	a daemonAPI,
+	args []string,
+) (projectRef, error) {
+	if len(args) > 0 {
+		return resolveProjectSelector(a, args[0])
+	}
+	if projectName := strings.TrimSpace(flags.Project); projectName != "" {
+		return resolveProjectSelector(a, projectName)
+	}
+	start, err := resolveStartPath(flags.Workspace)
+	if err != nil {
+		return projectRef{}, err
+	}
+	id, name, err := resolveProjectIDAndNameWithClient(a, start)
+	if err != nil {
+		return projectRef{}, err
+	}
+	return projectRef{ID: id, Name: name}, nil
+}
+
+func resolveProjectSelectorIncludingArchived(a daemonAPI, selector string) (projectRef, error) {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return projectRef{}, &cliError{Message: "project selector must be non-empty", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	projects, err := loadProjectRefsIncludingArchived(a)
+	if err != nil {
+		return projectRef{}, err
+	}
+	return resolveProjectSelectorFromRefs(selector, projects)
+}
+
+func resolveProjectSelectorFromRefs(selector string, projects []projectRef) (projectRef, error) {
+	if id, parseErr := strconv.ParseInt(selector, 10, 64); parseErr == nil {
+		for _, project := range projects {
+			if project.ID == id {
+				return project, nil
+			}
+		}
+		return projectRef{}, &cliError{
+			Message:  fmt.Sprintf("project #%d not found", id),
+			Kind:     kindNotFound,
+			ExitCode: ExitNotFound,
+		}
+	}
+	if match, ok, err := uniqueProjectMatch(selector, projects, projectMatchesSelector); ok || err != nil {
+		return match, err
+	}
+	return projectRef{}, &cliError{
+		Message:  fmt.Sprintf("project selector %q did not match any project", selector),
+		Kind:     kindNotFound,
+		ExitCode: ExitNotFound,
+	}
+}
+
+func loadProjectRefs(a daemonAPI) ([]projectRef, error) {
+	return loadProjectRefsWithArchived(a, false)
+}
+
+func loadProjectRefsIncludingArchived(a daemonAPI) ([]projectRef, error) {
+	return loadProjectRefsWithArchived(a, true)
+}
+
+func loadProjectRefsWithArchived(a daemonAPI, includeArchived bool) ([]projectRef, error) {
+	query := &generated.ListProjectsQuery{}
+	if includeArchived {
+		query.Include = new("archived")
+	}
+	apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+	if err != nil {
+		return nil, err
+	}
+	response, callErr := apiClient.ListProjectsWithResponse(a.ctx, &generated.ListProjectsRequestOptions{Query: query})
+	if response == nil {
+		return nil, externalCLITransportError(response, callErr)
+	}
+	if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+		return nil, err
+	}
+	bs := response.Body
+	var list struct {
+		Projects []projectRef `json:"projects"`
+	}
+	if err := json.Unmarshal(bs, &list); err != nil {
+		return nil, err
+	}
+	for i := range list.Projects {
+		if list.Projects[i].DeletedAt != nil {
+			continue
+		}
+		response, callErr := apiClient.ShowProjectWithResponse(a.ctx, &generated.ShowProjectRequestOptions{PathParams: &generated.ShowProjectPath{ProjectID: list.Projects[i].ID}})
+		if response == nil {
+			return nil, externalCLITransportError(response, callErr)
+		}
+		if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+			return nil, err
+		}
+		detail := response.Body
+		var show struct {
+			Aliases []projectAliasRef `json:"aliases"`
+		}
+		if err := json.Unmarshal(detail, &show); err != nil {
+			return nil, err
+		}
+		list.Projects[i].Aliases = show.Aliases
+	}
+	return list.Projects, nil
+}
+
+type projectSelectorMatcher func(projectRef, string) bool
+
+func uniqueProjectMatch(selector string, projects []projectRef, matchesSelector projectSelectorMatcher) (projectRef, bool, error) {
+	matches := make([]projectRef, 0, 1)
+	seen := make(map[int64]bool)
+	for _, project := range projects {
+		if matchesSelector(project, selector) && !seen[project.ID] {
+			seen[project.ID] = true
+			matches = append(matches, project)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return projectRef{}, false, nil
+	case 1:
+		return matches[0], true, nil
+	default:
+		return projectRef{}, false, &cliError{
+			Message:  ambiguousProjectSelectorMessage(selector, matches),
+			Kind:     kindValidation,
+			ExitCode: ExitValidation,
+		}
+	}
+}
+
+func projectMatchesSelector(project projectRef, selector string) bool {
+	return projectNameExact(project, selector) ||
+		projectAliasExact(project, selector) ||
+		projectNameSuffix(project, selector) ||
+		projectAliasSuffix(project, selector)
+}
+
+func projectAliasExact(project projectRef, selector string) bool {
+	for _, alias := range project.Aliases {
+		if alias.AliasIdentity == selector {
+			return true
+		}
+	}
+	return false
+}
+
+func projectAliasSuffix(project projectRef, selector string) bool {
+	for _, alias := range project.Aliases {
+		if suffixMatches(alias.AliasIdentity, selector) {
+			return true
+		}
+	}
+	return false
+}
+
+func projectNameExact(project projectRef, selector string) bool {
+	return project.Name == selector
+}
+
+func projectNameSuffix(project projectRef, selector string) bool {
+	return suffixMatches(project.Name, selector)
+}
+
+func suffixMatches(value, selector string) bool {
+	return value == selector ||
+		strings.HasSuffix(value, "/"+selector) ||
+		strings.HasSuffix(value, ":"+selector)
+}
+
+func ambiguousProjectSelectorMessage(selector string, matches []projectRef) string {
+	parts := make([]string, 0, len(matches))
+	for _, match := range matches {
+		parts = append(parts, fmt.Sprintf("#%d %s", match.ID, textsafe.Line(match.Name)))
+	}
+	return fmt.Sprintf("project selector %q is ambiguous: %s", selector, strings.Join(parts, ", "))
+}
+
+func pluralCount(n int64, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	if strings.HasSuffix(noun, "s") {
+		return fmt.Sprintf("%d %ses", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// projectsRemoveCmd archives a project: DELETE /api/v1/projects/{id}. The
+// row stays so events keep a valid FK target, but list/resolve hide it and
+// re-init against the same name returns project_archived. --force
+// overrides the open-issue refusal.
+func projectsRemoveCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "remove <project>",
+		Short: "archive a project (hides it from poomsae; events stay for audit)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			project, err := resolveProjectSelector(a, args[0])
+			if err != nil {
+				return err
+			}
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.RemoveProjectWithResponse(a.ctx, &generated.RemoveProjectRequestOptions{PathParams: &generated.RemoveProjectPath{ProjectID: project.ID}, Query: &generated.RemoveProjectQuery{Actor: actor, Force: &force}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			_, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return writeAgentProjectAction(cmd.OutOrStdout(), "remove",
+					agentRowField("id", fmt.Sprint(project.ID)),
+					agentRowField("project", project.Name),
+				)
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(),
+				"archived project #%d (%s); events preserved, aliases dropped\n",
+				project.ID, textsafe.Line(project.Name))
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&force, "force", false, "archive even when open issues remain")
+	return cmd
+}
+
+func projectsRestoreCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "restore <project>",
+		Short: "restore an archived project",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			project, err := resolveProjectSelectorIncludingArchived(a, args[0])
+			if err != nil {
+				return err
+			}
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.RestoreProjectWithResponse(a.ctx, &generated.RestoreProjectRequestOptions{PathParams: &generated.RestoreProjectPath{ProjectID: project.ID}, Query: &generated.RestoreProjectQuery{Actor: actor}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			var b struct {
+				Project struct {
+					ID   int64  `json:"id"`
+					Name string `json:"name"`
+				} `json:"project"`
+				Changed bool `json:"changed"`
+			}
+			if err := json.Unmarshal(bs, &b); err != nil {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return writeAgentProjectAction(cmd.OutOrStdout(), "restore",
+					agentRowField("id", fmt.Sprint(b.Project.ID)),
+					agentRowField("project", b.Project.Name),
+					agentRowField("changed", strconv.FormatBool(b.Changed)),
+				)
+			}
+			if !b.Changed {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(),
+					"project #%d (%s) is already active\n",
+					b.Project.ID, textsafe.Line(b.Project.Name))
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(),
+				"restored project #%d (%s); run 'poomsae init' in the workspace to reattach an alias\n",
+				b.Project.ID, textsafe.Line(b.Project.Name))
+			return err
+		},
+	}
+}
+
+// projectsDetachCmd drops a single alias from a project: DELETE
+// /api/v1/projects/{id}/aliases/{alias_id}. The selector is the alias_identity
+// (e.g. github.com/foo/bar or local:///abs/path). --force overrides the
+// last-alias refusal.
+func projectsDetachCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "detach <alias-identity>",
+		Short: "remove a single project alias",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			a, err := dialDaemon(ctx)
+			if err != nil {
+				return err
+			}
+			selector := strings.TrimSpace(args[0])
+			projects, err := loadProjectRefs(a)
+			if err != nil {
+				return err
+			}
+			projectID, aliasID, ok := findAliasBySelector(projects, selector)
+			if !ok {
+				return &cliError{
+					Message:  fmt.Sprintf("alias %q did not match any project_aliases row", selector),
+					Kind:     kindNotFound,
+					ExitCode: ExitNotFound,
+				}
+			}
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			apiClient, err := poomsaeclient.NewWithHTTPClient(a.baseURL, a.client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.DetachProjectAliasWithResponse(a.ctx, &generated.DetachProjectAliasRequestOptions{PathParams: &generated.DetachProjectAliasPath{ProjectID: projectID, AliasID: aliasID}, Query: &generated.DetachProjectAliasQuery{Actor: actor, Force: &force}})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			_, emitted, err := emitPassthrough(cmd, response.Body)
+			if err != nil || emitted {
+				return err
+			}
+			if currentOutputMode() == outputAgent {
+				return writeAgentProjectAction(cmd.OutOrStdout(), "detach",
+					agentRowField("project_id", fmt.Sprint(projectID)),
+					agentRowField("alias_id", fmt.Sprint(aliasID)),
+					agentRowField("alias", selector),
+				)
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(),
+				"detached alias %q from project #%d\n", selector, projectID)
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&force, "force", false, "drop the alias even when it's the only one for its project")
+	return cmd
+}
+
+func writeAgentProjectAction(w io.Writer, action string, fields ...agentField) error {
+	if _, err := fmt.Fprintf(w, "OK project action=%s", agentValue(action)); err != nil {
+		return err
+	}
+	for _, f := range fields {
+		if f.value == nil {
+			continue
+		}
+		if _, err := fmt.Fprintf(w, " %s=%s", f.name, agentValue(*f.value)); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintln(w)
+	return err
+}
+
+// findAliasBySelector matches an alias_identity exactly across every
+// project's pre-loaded aliases. Returns the project_id and alias_id when one
+// match exists.
+func findAliasBySelector(projects []projectRef, selector string) (int64, int64, bool) {
+	for _, project := range projects {
+		for _, alias := range project.Aliases {
+			if alias.AliasIdentity == selector {
+				return project.ID, alias.ID, true
+			}
+		}
+	}
+	return 0, 0, false
+}

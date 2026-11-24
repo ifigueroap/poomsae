@@ -9,9 +9,9 @@ import (
 	"strings"
 	"uuid"
 
-	"go.kenn.io/kata/internal/httpurl"
-	"go.kenn.io/kata/internal/tokenactor"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/tokenactor"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)

@@ -3,8 +3,8 @@ package vector_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 	kitvec "go.kenn.io/kit/vector"
 )
 

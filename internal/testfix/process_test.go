@@ -11,7 +11,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("KATA_TESTFIX_CHILD") == "1" {
+	if os.Getenv("POOMSAE_TESTFIX_CHILD") == "1" {
 		os.Exit(RunIsolated(m))
 	}
 	os.Exit(m.Run())
@@ -25,11 +25,11 @@ func TestRunIsolatedRemovesTemporaryArtifacts(t *testing.T) {
 	record := filepath.Join(t.TempDir(), "artifacts.json")
 	cmd := exec.CommandContext(t.Context(), executable, "-test.run=^TestRunIsolatedScratchChild$") //nolint:gosec // G204: launch this test executable from os.Executable.
 	for _, value := range os.Environ() {
-		if !strings.HasPrefix(value, "KATA_TEST_HOME=") && !strings.HasPrefix(value, "KATA_TESTFIX_CHILD=") {
+		if !strings.HasPrefix(value, "POOMSAE_TEST_HOME=") && !strings.HasPrefix(value, "POOMSAE_TESTFIX_CHILD=") {
 			cmd.Env = append(cmd.Env, value)
 		}
 	}
-	cmd.Env = append(cmd.Env, "KATA_TESTFIX_CHILD=1", "KATA_TESTFIX_RECORD="+record)
+	cmd.Env = append(cmd.Env, "POOMSAE_TESTFIX_CHILD=1", "POOMSAE_TESTFIX_RECORD="+record)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("isolated test process: %v\n%s", err, output)
 	}
@@ -49,12 +49,12 @@ func TestRunIsolatedRemovesTemporaryArtifacts(t *testing.T) {
 }
 
 func TestRunIsolatedScratchChild(t *testing.T) {
-	if os.Getenv("KATA_TESTFIX_CHILD") != "1" {
+	if os.Getenv("POOMSAE_TESTFIX_CHILD") != "1" {
 		t.Skip("subprocess fixture")
 	}
 	// Hook locks and other process-scoped artifacts use os.TempDir directly,
 	// rather than t.TempDir's automatic cleanup.
-	artifact, err := os.MkdirTemp("", "kata-hook-fixture-")
+	artifact, err := os.MkdirTemp("", "poomsae-hook-fixture-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestRunIsolatedScratchChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(os.Getenv("KATA_TESTFIX_RECORD"), data, 0600); err != nil { //nolint:gosec // G703: the parent test supplies its owned result path.
+	if err := os.WriteFile(os.Getenv("POOMSAE_TESTFIX_RECORD"), data, 0600); err != nil { //nolint:gosec // G703: the parent test supplies its owned result path.
 		t.Fatal(err)
 	}
 }

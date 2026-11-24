@@ -12,7 +12,7 @@ import (
 // SQLite must reach it through the pending-delivery index with the id range,
 // not by scanning the binding's retained history.
 func TestRelayAckUnemittedCountUsesPendingRange(t *testing.T) {
-	store, err := Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	rows, err := store.QueryContext(t.Context(), `EXPLAIN QUERY PLAN `+relayAckUnemittedCountSQL, "binding", "events", 1, 10, 20)

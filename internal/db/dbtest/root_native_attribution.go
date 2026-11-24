@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRootNativeAttribution exercises root native attribution on the supplied native store.

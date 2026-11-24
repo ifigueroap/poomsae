@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/jsonl"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // TestSmoke_FederationFoundationV3 covers spec §8.9: full pipeline from a
@@ -93,7 +93,7 @@ func TestSmoke_FederationFoundationV3(t *testing.T) {
 		strings.NewReader(`{"actor":"agent"}`))
 	require.NoError(t, err)
 	pReq.Header.Set("Content-Type", "application/json")
-	pReq.Header.Set("X-Kata-Confirm", "PURGE federation-smoke#"+target.ShortID)
+	pReq.Header.Set("X-Poomsae-Confirm", "PURGE federation-smoke#"+target.ShortID)
 	pResp, err := env.HTTP.Do(pReq) //nolint:gosec // test loopback
 	require.NoError(t, err)
 	defer func() { _ = pResp.Body.Close() }()

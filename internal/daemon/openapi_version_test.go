@@ -123,7 +123,7 @@ func checkAPIVersionRecord(dir, version string, doc []byte) error {
 	if len(collisions) == 0 && semver.Compare("v"+version, next) == 0 && len(current) == 1 {
 		hint = fmt.Sprintf("if %s is not yet on origin/main, replace your marker's contract digest with %s while retaining its summary suffix; otherwise ", version, digest)
 	}
-	return fmt.Errorf("API contract version %s has older, conflicting, or stale records (%s); %stake %s in APISchemaVersion and api/openapi.yaml, and move feature minimum checks introduced by this change (search requireDaemonAPIVersion and requireAPIVersion in cmd/kata/api_compat.go, internal/mcp, internal/tui, and internal/recurrence); regenerate the combined contract and rename this branch's marker with its new version and contract digest %s, retaining the summary suffix", version, strings.Join(collisions, ", "), hint, suggested, digest)
+	return fmt.Errorf("API contract version %s has older, conflicting, or stale records (%s); %stake %s in APISchemaVersion and api/openapi.yaml, and move feature minimum checks introduced by this change (search requireDaemonAPIVersion and requireAPIVersion in cmd/poomsae/api_compat.go, internal/mcp, internal/tui, and internal/recurrence); regenerate the combined contract and rename this branch's marker with its new version and contract digest %s, retaining the summary suffix", version, strings.Join(collisions, ", "), hint, suggested, digest)
 }
 
 func checkAPIVersionSummary(path string) error {

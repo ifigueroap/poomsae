@@ -11,8 +11,8 @@ import (
 	"sync"
 	"unicode"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/similarity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/similarity"
 	"go.kenn.io/kit/search/lexical"
 )
 

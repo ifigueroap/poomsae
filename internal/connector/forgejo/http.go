@@ -14,7 +14,7 @@ import (
 	"time"
 
 	forgejosdk "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 const maxResponseBytes = 8 * 1024 * 1024
@@ -115,7 +115,7 @@ func (h *handler) client(ctx context.Context) (*client, *connector.Error) {
 	httpClient := &http.Client{Transport: cappedTransport{next: providerTransport}, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	// An empty version skips the SDK's /version probe and version gates.
 	api, e := forgejosdk.NewClient(origin, forgejosdk.SetHTTPClient(httpClient), forgejosdk.SetToken(h.token),
-		forgejosdk.SetForgejoVersion(""), forgejosdk.SetContext(ctx), forgejosdk.SetUserAgent("kata"))
+		forgejosdk.SetForgejoVersion(""), forgejosdk.SetContext(ctx), forgejosdk.SetUserAgent("poomsae"))
 	if e != nil {
 		return nil, failure("provider_error", "Forgejo client could not be created")
 	}

@@ -3,12 +3,12 @@ package tui
 import "testing"
 
 // TestEmptyState_RendersHint: viewEmpty renders the onboarding hint
-// containing both the "no kata projects" line and the kata init hint.
+// containing both the "no poomsae projects" line and the poomsae init hint.
 func TestEmptyState_RendersHint(t *testing.T) {
 	m := setupEmptyView()
 	assertContainsAll(t, m.viewContent(),
-		"no kata projects registered yet",
-		"kata init",
+		"no poomsae projects registered yet",
+		"poomsae init",
 		"press q to quit",
 	)
 }
@@ -45,5 +45,5 @@ func TestEmptyState_OtherKeysIgnored(t *testing.T) {
 // without panicking inside lipgloss.Place. Defensive: the model emits
 // width/height from WindowSizeMsg, which can lag on first frame.
 func TestRenderEmpty_ZeroDims(t *testing.T) {
-	assertContainsAll(t, renderEmpty(0, 0), "no kata projects registered yet")
+	assertContainsAll(t, renderEmpty(0, 0), "no poomsae projects registered yet")
 }

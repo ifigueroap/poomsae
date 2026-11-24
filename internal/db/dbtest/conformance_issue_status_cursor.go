@@ -6,8 +6,8 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // Status-only settings do not change what content imports fetch or produce, so

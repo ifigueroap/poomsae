@@ -1,4 +1,4 @@
-export const preferencesStorageKey = 'kata.preferences.v1'
+export const preferencesStorageKey = 'poomsae.preferences.v1'
 
 export interface Preferences {
   theme: 'system' | 'light' | 'dark'

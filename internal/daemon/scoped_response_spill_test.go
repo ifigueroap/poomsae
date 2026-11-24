@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func TestBufferedScopedResponseBoundsMemoryForLargeBodies(t *testing.T) {

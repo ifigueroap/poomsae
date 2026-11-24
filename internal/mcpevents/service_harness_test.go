@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/mcpevents"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 type opener func(t *testing.T) db.Storage
 
 // forEachBackendOpener runs fn against a real SQLite store and, when a
-// container runtime or KATA_TEST_POSTGRES_DSN is available, a real PostgreSQL
+// container runtime or POOMSAE_TEST_POSTGRES_DSN is available, a real PostgreSQL
 // store. Each call to open yields an isolated store, so daemon-wide counts
 // and consent never leak between subtests.
 func forEachBackendOpener(t *testing.T, fn func(t *testing.T, open opener)) {
@@ -60,7 +60,7 @@ func forEachBackendOpener(t *testing.T, fn func(t *testing.T, open opener)) {
 // reaches storage and so gains nothing from a second backend.
 func openSQLite(t *testing.T) db.Storage {
 	t.Helper()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	return store

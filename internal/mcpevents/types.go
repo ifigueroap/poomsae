@@ -9,7 +9,7 @@ import (
 )
 
 // EventName is the only event type the daemon serves.
-const EventName = "kata.inbox.changed"
+const EventName = "poomsae.inbox.changed"
 
 // Resource limits for requests and payloads.
 const (
@@ -95,7 +95,7 @@ func (t TTLMS) MarshalJSON() ([]byte, error) {
 func (t TTLMS) IsZero() bool { return !t.set }
 
 // SubscribeRequest registers or refreshes a webhook subscription.
-// kata.inbox.changed does not support replay (SEP-3415 "Cursor Lifecycle"),
+// poomsae.inbox.changed does not support replay (SEP-3415 "Cursor Lifecycle"),
 // so Cursor and MaxAgeMS are accepted and ignored.
 type SubscribeRequest struct {
 	Name      string    `json:"name"`
@@ -132,7 +132,7 @@ type UnsubscribeRequest struct {
 	Delivery  Delivery  `json:"delivery"`
 }
 
-// ForwarderScope is what the calling `kata mcp serve` forwarder serves. All is
+// ForwarderScope is what the calling `poomsae mcp serve` forwarder serves. All is
 // set only for the all-projects mode.
 type ForwarderScope struct {
 	All      bool
@@ -140,7 +140,7 @@ type ForwarderScope struct {
 }
 
 // Payload names only the recipient whose inbox changed. The receiver reads
-// kata.inbox for what changed; the ping carries no issue or project identity.
+// poomsae.inbox for what changed; the ping carries no issue or project identity.
 type Payload struct {
 	Recipient string `json:"recipient"`
 }
@@ -190,7 +190,7 @@ type SubscriptionStatus struct {
 func definition() Definition {
 	return Definition{
 		Name:        EventName,
-		Description: "The recipient's inbox may have changed: a request addressed to it was added, changed or cleared, or an issue or project change altered which of its requests are visible. One ping can cover several changes and names only the recipient; read kata.inbox for content. The event type does not replay: cursor is always null.",
+		Description: "The recipient's inbox may have changed: a request addressed to it was added, changed or cleared, or an issue or project change altered which of its requests are visible. One ping can cover several changes and names only the recipient; read poomsae.inbox for content. The event type does not replay: cursor is always null.",
 		Delivery:    []string{"webhook"},
 		InputSchema: map[string]any{
 			"type": "object",

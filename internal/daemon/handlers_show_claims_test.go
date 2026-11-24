@@ -15,15 +15,15 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 type showIssueClaimBody struct {
@@ -755,9 +755,9 @@ func (h *blockingClaimStatusHub) requireCanceled(t *testing.T) {
 func newShowClaimTimeoutEnv(t *testing.T) *testenv.Env {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_DB", filepath.Join(home, "kata.db"))
-	store, err := testfix.OpenSQLite(t.Context(), filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_DB", filepath.Join(home, "poomsae.db"))
+	store, err := testfix.OpenSQLite(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	server := daemon.NewServer(daemon.ServerConfig{DB: store})

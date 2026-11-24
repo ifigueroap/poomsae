@@ -24,7 +24,7 @@ import (
 const artifactPath = "../../api/openapi.yaml"
 const clientSpecArtifactPath = "../../pkg/client/openapi.yaml"
 const clientGeneratedDir = "../../pkg/client/generated"
-const skipOpenAPIClientCheckEnv = "KATA_SKIP_OPENAPI_CLIENT_CHECK"
+const skipOpenAPIClientCheckEnv = "POOMSAE_SKIP_OPENAPI_CLIENT_CHECK"
 
 func TestLocalEmbeddingsSchemaAcceptsEarlierResponse(t *testing.T) {
 	doc := openAPIClientDocument()
@@ -710,7 +710,7 @@ func TestSchemaSharedByRequestAndResponseStaysStrict(t *testing.T) {
 }
 
 // TestClientDocumentLeavesResponseAdditionalPropertiesUnset pins the client
-// generator flavor (kata openapi --version 3.0): response schemas leave
+// generator flavor (poomsae openapi --version 3.0): response schemas leave
 // additionalProperties unset. Absence carries the same permissive semantics
 // as the published 3.1 document's explicit true, but the Go client generator
 // (oapi-codegen-dd) models optional object-typed properties as value types

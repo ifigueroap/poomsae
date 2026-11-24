@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func cronUID(value string) bool { return uid.Valid(value) && value == strings.ToUpper(value) }

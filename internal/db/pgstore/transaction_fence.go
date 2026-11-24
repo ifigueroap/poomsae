@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // BeginTx applies a request-scoped transaction fence before returning a

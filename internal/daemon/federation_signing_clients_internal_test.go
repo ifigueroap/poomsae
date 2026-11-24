@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 func TestNativeLeaseAndRebindClientsSignEveryAttempt(t *testing.T) {

@@ -1,5 +1,5 @@
- Project: all                                                   kata カタ · dev
-kata カタ [jobs] runs workflows
+ Project: all                                                poomsae カタ · dev
+poomsae カタ [jobs] runs workflows
 
 Press P to pick a project, then 2 for Jobs, 3 for Runs, or 4 for Workflows.
 
@@ -20,5 +20,5 @@ Press P to pick a project, then 2 for Jobs, 3 for Runs, or 4 for Workflows.
 
 
 
-
- j/k move▕ ↵/l open▕ / filter▕ h/esc kata▕ r refresh▕ 1-4 tabs▕ ? help▕ q quit
+ j/k move▕ ↵/l open▕ / filter▕ h/esc poomsae▕ r refresh▕ 1-4 tabs▕ ? help
+ q quit

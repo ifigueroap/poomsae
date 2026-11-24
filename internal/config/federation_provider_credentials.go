@@ -5,7 +5,7 @@ import (
 	"time"
 	"uuid"
 
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
 // FederationProviderCredential retains one provider operation alongside its

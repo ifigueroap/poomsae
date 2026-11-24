@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kit/telemetry/posthog"
 )
 
 func TestMain(m *testing.M) {
@@ -40,11 +38,8 @@ func TestSessionEndedDurationBuckets(t *testing.T) {
 	}
 }
 
-// testProjectKeyFlag links a placeholder PostHog project key, as release builds
-// link the real one.
-const testProjectKeyFlag = "-X go.kenn.io/kit/telemetry/posthog.projectKey=phc_test_project_key"
-
-// Exercise the standalone product wrapper with and without a linked project key.
+// Exercise the standalone product wrapper. It stays disabled with or without
+// a linked project key; poomsae does not emit telemetry.
 func TestStandaloneTelemetryAdmission(t *testing.T) {
 	scratch := t.TempDir()
 	build := func(name string, args ...string) string {
@@ -57,14 +52,14 @@ func TestStandaloneTelemetryAdmission(t *testing.T) {
 		require.NoError(t, err, string(output))
 		return binary
 	}
-	release := build("telemetry-release", "-ldflags", testProjectKeyFlag)
+	release := build("telemetry-release")
 	source := build("telemetry-source")
 	for _, tc := range []struct {
 		name, binary, shared, product, version, want string
 		consent                                      *bool
 	}{
 		{"fresh home", release, "", "", "v1.2.3", "disabled", nil},
-		{"consent yes", release, "", "", "v1.2.3", "enabled", new(true)},
+		{"consent yes", release, "", "", "v1.2.3", "disabled", new(true)},
 		{"product veto", release, "", "0", "v1.2.3", "disabled", new(true)},
 		{"development", release, "1", "", "dev", "disabled", nil},
 		{"no project key", source, "1", "", "v1.2.3", "disabled", nil},
@@ -73,15 +68,12 @@ func TestStandaloneTelemetryAdmission(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("HOME", home)
 			t.Setenv("USERPROFILE", home)
-			if tc.consent != nil {
-				require.NoError(t, posthog.RecordConsent(*tc.consent))
-			}
 			command := exec.CommandContext(t.Context(), tc.binary, "-version", tc.version) //nolint:gosec // test-owned standalone fixture
 			command.Env = slices.DeleteFunc(os.Environ(), func(entry string) bool {
 				key, _, _ := strings.Cut(entry, "=")
 				return strings.EqualFold(key, "TELEMETRY_ENABLED") || strings.EqualFold(key, EnabledEnv)
 			})
-			command.Env = append(command.Env, "KATA_HOME="+home, "KATA_DB="+filepath.Join(home, "kata.db"))
+			command.Env = append(command.Env, "POOMSAE_HOME="+home, "POOMSAE_DB="+filepath.Join(home, "poomsae.db"))
 			if tc.shared != "" {
 				command.Env = append(command.Env, "TELEMETRY_ENABLED="+tc.shared)
 			}
@@ -95,139 +87,14 @@ func TestStandaloneTelemetryAdmission(t *testing.T) {
 	}
 }
 
-func TestAppOpenedSurfaceAllowlist(t *testing.T) {
-	reporter, err := NewReporter(Options{DistinctID: "anonymous-instance-id"})
+func TestReporterIsDisabled(t *testing.T) {
+	reporter, err := NewReporter(Options{DistinctID: "anonymous-instance-id", Version: "v1.2.3"})
 	require.NoError(t, err)
-
-	for _, surface := range []string{"cli", "tui", "web"} {
-		props, err := reporter.SanitizeProperties("app_opened", map[string]any{"surface": surface, "path": "/example"})
-		require.NoError(t, err)
-		assert.Equal(t, surface, props["surface"])
-		assert.NotContains(t, props, "path")
-	}
-	for _, surface := range []any{"desktop", "", 1} {
-		props, err := reporter.SanitizeProperties("app_opened", map[string]any{"surface": surface})
-		require.NoError(t, err)
-		assert.NotContainsf(t, props, "surface", "surface %#v must be dropped", surface)
-	}
-	for _, bucket := range []string{"under_1m", "1_to_5m", "5_to_30m", "over_30m"} {
-		props, err := reporter.SanitizeProperties("session_ended", map[string]any{"surface": "tui", "duration_bucket": bucket, "seconds": 120})
-		require.NoError(t, err)
-		assert.Equal(t, bucket, props["duration_bucket"])
-		assert.Equal(t, "tui", props["surface"])
-		assert.NotContains(t, props, "seconds")
-	}
-	for _, value := range []any{"invalid", 120} {
-		props, err := reporter.SanitizeProperties("session_ended", map[string]any{"surface": "cli", "duration_bucket": value})
-		require.NoError(t, err)
-		assert.NotContains(t, props, "surface")
-		assert.NotContains(t, props, "duration_bucket")
-	}
-	for _, event := range []string{"agent_active", "agent_call_count"} {
-		for _, bucket := range []any{"1-10", "11-100", "over-100", "101", 11} {
-			props, err := reporter.SanitizeProperties(event, map[string]any{"call_count_bucket": bucket, "actor": "example-agent", "path": "/example", "call_count": 11})
-			require.NoError(t, err)
-			assert.NotContains(t, props, "actor")
-			assert.NotContains(t, props, "path")
-			assert.NotContains(t, props, "call_count")
-			if bucket == "1-10" || bucket == "11-100" || bucket == "over-100" {
-				assert.Equal(t, bucket, props["call_count_bucket"])
-			} else {
-				assert.NotContains(t, props, "call_count_bucket")
-			}
-		}
-	}
-}
-
-func TestProjectCountBucket(t *testing.T) {
-	for _, tc := range []struct {
-		count  int
-		bucket string
-	}{
-		{0, "0-5"}, {1, "0-5"}, {5, "0-5"},
-		{6, "6-20"}, {20, "6-20"}, {21, "21-100"},
-		{100, "21-100"}, {101, "over-100"},
-	} {
-		assert.Equal(t, tc.bucket, ProjectCountBucket(tc.count))
-	}
-}
-
-func TestDaemonProjectCountAllowlist(t *testing.T) {
-	reporter, err := NewReporter(Options{})
-	require.NoError(t, err)
-	for _, event := range []string{"daemon_started", "daemon_active"} {
-		for _, bucket := range []string{"0-5", "6-20", "21-100", "over-100"} {
-			props, err := reporter.SanitizeProperties(event, map[string]any{"project_count": bucket})
-			require.NoError(t, err)
-			assert.Equal(t, bucket, props["project_count"])
-		}
-		for _, count := range []any{37, "37"} {
-			props, err := reporter.SanitizeProperties(event, map[string]any{"project_count": count})
-			require.NoError(t, err)
-			assert.NotContainsf(t, props, "project_count", "%s must drop count %#v", event, count)
-		}
-	}
-}
-
-func TestCoreActionSurfaceAllowlist(t *testing.T) {
-	reporter, err := NewReporter(Options{})
-	require.NoError(t, err)
-	for _, event := range []string{"issue_created", "issue_closed"} {
-		props, err := reporter.SanitizeProperties(event, map[string]any{"surface": "web"})
-		require.NoError(t, err)
-		assert.Equal(t, "web", props["surface"])
-		for _, surface := range []any{"unsupported", nil} {
-			_, err := reporter.SanitizeProperties(event, map[string]any{"surface": surface})
-			require.Error(t, err)
-		}
-		_, err = reporter.SanitizeProperties(event, nil)
-		require.Error(t, err)
-	}
-}
-
-func TestSetupFinishedProperties(t *testing.T) {
-	reporter, err := NewReporter(Options{DistinctID: "anonymous-install"})
-	require.NoError(t, err)
-	require.True(t, reporter.EventAllowed("setup_finished"))
-	properties, err := reporter.SanitizeProperties("setup_finished", map[string]any{"project_count": 1})
-	require.NoError(t, err)
-	require.NotContains(t, properties, "project_count")
-}
-
-// Outcomes send only fixed values, with unknown values collapsed to other.
-func TestOutcomesProperties(t *testing.T) {
-	reporter, err := NewReporter(Options{})
-	require.NoError(t, err)
-	for _, tc := range []struct {
-		event       string
-		props, want map[string]any
-	}{
-		{"error_shown", map[string]any{"surface": "web"}, nil},
-		{"search_empty", map[string]any{"surface": "cli", "query": "private text"}, map[string]any{"surface": "cli"}},
-		{"error_shown", map[string]any{"surface": "tui", "kind": "issue_created"}, map[string]any{"surface": "tui", "kind": "issue_created"}},
-		{"error_shown", map[string]any{"surface": "web", "kind": "unlisted"}, map[string]any{"surface": "web", "kind": "other"}},
-		{"sync_failed", map[string]any{"reason": "auth"}, nil},
-		{"sync_failed", map[string]any{"sync_source": "github"}, nil},
-		{"sync_failed", map[string]any{"sync_source": "github", "reason": "auth"}, map[string]any{"sync_source": "github", "reason": "auth"}},
-		{"sync_failed", map[string]any{"sync_source": "unlisted", "reason": "private text"}, map[string]any{"sync_source": "other", "reason": "other"}},
-	} {
-		properties, err := reporter.SanitizeProperties(tc.event, tc.props)
-		if tc.want == nil {
-			require.Error(t, err)
-			continue
-		}
-		require.NoError(t, err)
-		maps.Copy(tc.want, map[string]any{
-			"$geoip_disable": true, "$process_person_profile": false,
-			"telemetry_consent": true,
-			"application":       "", "commit": "", "distribution": "", "source": "", "version": "",
-			"goarch": runtime.GOARCH, "goos": runtime.GOOS,
-		})
-		require.Equal(t, tc.want, properties)
-	}
-	for _, source := range []string{"github", "linear", "notion", "plane", "ticktick", "todoist", "twenty", "federation"} {
-		properties, err := reporter.SanitizeProperties("sync_failed", map[string]any{"sync_source": source, "reason": "server"})
-		require.NoError(t, err)
-		require.Equal(t, source, properties["sync_source"])
-	}
+	assert.False(t, reporter.Enabled(), "no PostHog project key is linked")
+	assert.True(t, reporter.EventAllowed("app_opened"))
+	assert.True(t, reporter.EventAllowed("sync_failed"))
+	assert.False(t, reporter.EventAllowed("not_an_event"))
+	assert.Equal(t, "6-20", ProjectCountBucket(12))
+	assert.Equal(t, "cli", AppOpenedSurface(map[string]any{"surface": "cli"}))
+	assert.Empty(t, AppOpenedSurface(map[string]any{"surface": "desktop"}))
 }

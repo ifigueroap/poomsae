@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -372,7 +372,7 @@ func validatedWebBaseURL(value string, allowPath bool) (*url.URL, error) {
 
 func normalizeWebUIReturnPath(value string) (string, error) {
 	if value == "" {
-		return "/kata", nil
+		return "/poomsae", nil
 	}
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.User != nil ||
@@ -383,7 +383,7 @@ func normalizeWebUIReturnPath(value string) (string, error) {
 }
 
 func webLaunchURL(base *url.URL) string {
-	return webLaunchURLAt(base, "/kata")
+	return webLaunchURLAt(base, "/poomsae")
 }
 
 func webLaunchURLAt(base *url.URL, returnPath string) string {

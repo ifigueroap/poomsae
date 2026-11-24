@@ -4,8 +4,8 @@ import (
 	"encoding/json/v2"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 const cronNextCount = 3
@@ -24,7 +24,7 @@ func cronNativeParent(j generated.CronJob) string {
 }
 
 // cronNextRuns previews when a job runs next using the daemon's own schedule
-// step. Native jobs deliver on those instants, so they read "Next". Kata does
+// step. Native jobs deliver on those instants, so they read "Next". Poomsae does
 // not run an adapter's job: its cron and once instants are the adapter's own
 // trigger times and its interval has no instant at all.
 func cronNextRuns(p cronData, j generated.CronJob, now time.Time) (label string, lines []string) {

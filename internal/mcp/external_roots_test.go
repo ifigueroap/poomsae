@@ -12,7 +12,7 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 type externalRootRequest struct {
@@ -23,18 +23,18 @@ type externalRootRequest struct {
 }
 
 var externalRootToolNames = []string{
-	"kata.bridge_bind",
-	"kata.bridge_pause",
-	"kata.bridge_reconcile",
-	"kata.bridge_resolve_comment",
-	"kata.bridge_resolve_field",
-	"kata.bridge_resume",
-	"kata.bridge_show",
-	"kata.bridge_unbind",
-	"kata.connector_field_map",
-	"kata.connector_field_unmap",
-	"kata.connector_fields",
-	"kata.connectors",
+	"poomsae.bridge_bind",
+	"poomsae.bridge_pause",
+	"poomsae.bridge_reconcile",
+	"poomsae.bridge_resolve_comment",
+	"poomsae.bridge_resolve_field",
+	"poomsae.bridge_resume",
+	"poomsae.bridge_show",
+	"poomsae.bridge_unbind",
+	"poomsae.connector_field_map",
+	"poomsae.connector_field_unmap",
+	"poomsae.connector_fields",
+	"poomsae.connectors",
 }
 
 func TestExternalRootSectionPublishesTypedTools(t *testing.T) {
@@ -45,7 +45,7 @@ func TestExternalRootSectionPublishesTypedTools(t *testing.T) {
 
 	for range 2 {
 		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-			Name: "kata.load_external_roots", Arguments: map[string]any{},
+			Name: "poomsae.load_external_roots", Arguments: map[string]any{},
 		})
 		require.NoError(t, err)
 		require.False(t, result.IsError)
@@ -59,7 +59,7 @@ func TestExternalRootSectionPublishesTypedTools(t *testing.T) {
 
 	result, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	want := append(append([]string(nil), sectionLoaderNames...), append([]string{"kata.search_tools", "kata.skills"}, externalRootToolNames...)...)
+	want := append(append([]string(nil), sectionLoaderNames...), append([]string{"poomsae.search_tools", "poomsae.skills"}, externalRootToolNames...)...)
 	require.ElementsMatch(t, want, toolNames(result.Tools))
 }
 
@@ -74,19 +74,19 @@ func TestExternalRootInputSchemasBoundEnumsAndCommentModes(t *testing.T) {
 		byName[tool.Name] = tool
 	}
 
-	mapProperties := schemaObject(t, byName["kata.connector_field_map"].InputSchema)["properties"].(map[string]any)
+	mapProperties := schemaObject(t, byName["poomsae.connector_field_map"].InputSchema)["properties"].(map[string]any)
 	require.ElementsMatch(t, []any{"scheduled_on", "deadline_on"}, mapProperties["kata_field"].(map[string]any)["enum"])
 	require.EqualValues(t, 256, mapProperties["external_field"].(map[string]any)["maxLength"])
-	resolveProperties := schemaObject(t, byName["kata.bridge_resolve_field"].InputSchema)["properties"].(map[string]any)
-	require.ElementsMatch(t, []any{"kata", "external"}, resolveProperties["use"].(map[string]any)["enum"])
-	require.Contains(t, schemaObject(t, byName["kata.bridge_resolve_comment"].InputSchema), "if")
+	resolveProperties := schemaObject(t, byName["poomsae.bridge_resolve_field"].InputSchema)["properties"].(map[string]any)
+	require.ElementsMatch(t, []any{"poomsae", "external"}, resolveProperties["use"].(map[string]any)["enum"])
+	require.Contains(t, schemaObject(t, byName["poomsae.bridge_resolve_comment"].InputSchema), "if")
 
 	for _, arguments := range []map[string]any{
 		{"ref": "spoke-project#abc4", "action": "adopt"},
 		{"ref": "spoke-project#abc4", "action": "retry", "external_comment_id": "unexpected"},
 	} {
 		called, callErr := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-			Name: "kata.bridge_resolve_comment", Arguments: arguments,
+			Name: "poomsae.bridge_resolve_comment", Arguments: arguments,
 		})
 		require.NoError(t, callErr)
 		require.True(t, called.IsError)
@@ -127,24 +127,24 @@ func TestConnectorToolsUseTypedDaemonRoutes(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, Scope: NewAllScope(), Actor: "example-agent", Version: "test-version",
 	})
 
-	listed := callWorkflowTool(t, session, "kata.connectors", map[string]any{})
+	listed := callWorkflowTool(t, session, "poomsae.connectors", map[string]any{})
 	require.Len(t, listed["connectors"], 1)
-	status := callWorkflowTool(t, session, "kata.connectors", map[string]any{"instance": " example-connector "})
+	status := callWorkflowTool(t, session, "poomsae.connectors", map[string]any{"instance": " example-connector "})
 	require.Len(t, status["connectors"], 1)
-	fields := callWorkflowTool(t, session, "kata.connector_fields", map[string]any{"instance": "example-connector"})
+	fields := callWorkflowTool(t, session, "poomsae.connector_fields", map[string]any{"instance": "example-connector"})
 	require.Equal(t, "example-connector", fields["instance"])
 	require.Len(t, fields["fields"], 1)
-	mapped := callWorkflowTool(t, session, "kata.connector_field_map", map[string]any{
+	mapped := callWorkflowTool(t, session, "poomsae.connector_field_map", map[string]any{
 		"instance": "example-connector", "kata_field": "scheduled_on", "external_field": "start-date",
 	})
 	require.Equal(t, "example-connector", mapped["instance"])
-	unmapped := callWorkflowTool(t, session, "kata.connector_field_unmap", map[string]any{
+	unmapped := callWorkflowTool(t, session, "poomsae.connector_field_unmap", map[string]any{
 		"instance": "example-connector", "kata_field": "scheduled_on",
 	})
 	require.Equal(t, "example-connector", unmapped["instance"])
@@ -184,7 +184,7 @@ func TestBridgeToolsUseScopedIssueRoutesAndServerActor(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	scope, err := NewBoundScope(ProjectIdentity{ID: 42, Name: "spoke-project"})
 	require.NoError(t, err)
@@ -196,13 +196,13 @@ func TestBridgeToolsUseScopedIssueRoutesAndServerActor(t *testing.T) {
 		name string
 		args map[string]any
 	}{
-		{name: "kata.bridge_show", args: map[string]any{"ref": "abc4"}},
-		{name: "kata.bridge_reconcile", args: map[string]any{"ref": "abc4"}},
-		{name: "kata.bridge_pause", args: map[string]any{"ref": "abc4", "reason": "operator pause"}},
-		{name: "kata.bridge_resume", args: map[string]any{"ref": "abc4"}},
-		{name: "kata.bridge_resolve_field", args: map[string]any{"ref": "abc4", "kata_field": "scheduled_on", "use": "external"}},
-		{name: "kata.bridge_resolve_comment", args: map[string]any{"ref": "abc4", "action": "adopt", "external_comment_id": "opaque ID/with spaces:%25"}},
-		{name: "kata.bridge_unbind", args: map[string]any{"ref": "abc4"}},
+		{name: "poomsae.bridge_show", args: map[string]any{"ref": "abc4"}},
+		{name: "poomsae.bridge_reconcile", args: map[string]any{"ref": "abc4"}},
+		{name: "poomsae.bridge_pause", args: map[string]any{"ref": "abc4", "reason": "operator pause"}},
+		{name: "poomsae.bridge_resume", args: map[string]any{"ref": "abc4"}},
+		{name: "poomsae.bridge_resolve_field", args: map[string]any{"ref": "abc4", "kata_field": "scheduled_on", "use": "external"}},
+		{name: "poomsae.bridge_resolve_comment", args: map[string]any{"ref": "abc4", "action": "adopt", "external_comment_id": "opaque ID/with spaces:%25"}},
+		{name: "poomsae.bridge_unbind", args: map[string]any{"ref": "abc4"}},
 	} {
 		output := callWorkflowTool(t, session, call.name, call.args)
 		require.Equal(t, "spoke-project", output["project"].(map[string]any)["name"])
@@ -239,7 +239,7 @@ func TestBridgeUnbindResolvesArchivedProjectWithinStartupScope(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	scope, err := NewBoundScope(ProjectIdentity{
 		ID: 42, UID: "01HAAAAAAAAAAAAAAAAAAAAAAA", Name: "archived-project",
@@ -249,7 +249,7 @@ func TestBridgeUnbindResolvesArchivedProjectWithinStartupScope(t *testing.T) {
 		Client: client, Scope: scope, Actor: "example-agent", Version: "test-version",
 	})
 
-	output := callWorkflowTool(t, session, "kata.bridge_unbind", map[string]any{"ref": "abc4"})
+	output := callWorkflowTool(t, session, "poomsae.bridge_unbind", map[string]any{"ref": "abc4"})
 	require.Equal(t, "archived-project", output["project"].(map[string]any)["name"])
 	require.Equal(t, []externalRootRequest{
 		{Method: http.MethodGet, Path: "/api/v1/projects", Query: "include=archived"},
@@ -263,11 +263,11 @@ func TestExternalRootMutationsKeepStartupScope(t *testing.T) {
 	boundHandlers := toolHandlers{options: Options{Client: inertTestClient(t), Scope: bound, Actor: "example-agent"}}
 
 	_, _, err = boundHandlers.connectorFieldMap(t.Context(), nil, ConnectorFieldMapInput{
-		Instance: "example-connector", KataField: "scheduled_on", ExternalField: "start-date",
+		Instance: "example-connector", PoomsaeField: "scheduled_on", ExternalField: "start-date",
 	})
 	require.ErrorContains(t, err, "requires the --all daemon-wide scope")
 	_, _, err = boundHandlers.connectorFieldUnmap(t.Context(), nil, ConnectorFieldUnmapInput{
-		Instance: "example-connector", KataField: "scheduled_on",
+		Instance: "example-connector", PoomsaeField: "scheduled_on",
 	})
 	require.ErrorContains(t, err, "requires the --all daemon-wide scope")
 
@@ -289,7 +289,7 @@ func TestConnectorMetadataRequiresAllProjectsScopeBeforeDaemonRequest(t *testing
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	bound, err := NewBoundScope(ProjectIdentity{ID: 42, Name: "spoke-project"})
 	require.NoError(t, err)
@@ -319,7 +319,7 @@ func TestBridgeBindRequiresAllProjectsScopeBeforeUsingConnectorCredentials(t *te
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	bound, err := NewBoundScope(ProjectIdentity{ID: 42, Name: "spoke-project"})
 	require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestFederationSpokeNameRequiresAllProjectsScope(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	bound, err := NewBoundScope(ProjectIdentity{ID: 42, Name: "spoke-project"})
 	require.NoError(t, err)
@@ -376,7 +376,7 @@ func TestExternalConnectorCallsUseLongRunningClient(t *testing.T) {
 		writeExternalRootJSON(t, w, externalBridgeFixture())
 	}))
 	t.Cleanup(defaultServer.Close)
-	defaultClient, err := kataclient.NewWithHTTPClient(defaultServer.URL, defaultServer.Client())
+	defaultClient, err := poomsaeclient.NewWithHTTPClient(defaultServer.URL, defaultServer.Client())
 	require.NoError(t, err)
 
 	var longRequests atomic.Int64
@@ -399,7 +399,7 @@ func TestExternalConnectorCallsUseLongRunningClient(t *testing.T) {
 		}
 	}))
 	t.Cleanup(longServer.Close)
-	longClient, err := kataclient.NewWithHTTPClient(longServer.URL, longServer.Client())
+	longClient, err := poomsaeclient.NewWithHTTPClient(longServer.URL, longServer.Client())
 	require.NoError(t, err)
 
 	scope, err := NewBoundScope(ProjectIdentity{ID: 42, Name: "spoke-project"})
@@ -416,7 +416,7 @@ func TestExternalConnectorCallsUseLongRunningClient(t *testing.T) {
 	_, _, err = wideHandlers.connectorFields(t.Context(), nil, ConnectorFieldsInput{Instance: "example-connector"})
 	require.NoError(t, err)
 	_, _, err = wideHandlers.connectorFieldMap(t.Context(), nil, ConnectorFieldMapInput{
-		Instance: "example-connector", KataField: "scheduled_on", ExternalField: "start-date",
+		Instance: "example-connector", PoomsaeField: "scheduled_on", ExternalField: "start-date",
 	})
 	require.NoError(t, err)
 	_, _, err = wideHandlers.bridgeBind(t.Context(), nil, BridgeBindInput{
@@ -428,7 +428,7 @@ func TestExternalConnectorCallsUseLongRunningClient(t *testing.T) {
 	_, _, err = handlers.bridgeResume(t.Context(), nil, BridgeInput{Ref: "abc4"})
 	require.NoError(t, err)
 	_, _, err = handlers.bridgeResolveField(t.Context(), nil, BridgeResolveFieldInput{
-		Ref: "abc4", KataField: "scheduled_on", Use: "external",
+		Ref: "abc4", PoomsaeField: "scheduled_on", Use: "external",
 	})
 	require.NoError(t, err)
 	_, _, err = handlers.bridgeResolveComment(t.Context(), nil, BridgeResolveCommentInput{
@@ -436,7 +436,7 @@ func TestExternalConnectorCallsUseLongRunningClient(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, _, err = wideHandlers.connectorFieldUnmap(t.Context(), nil, ConnectorFieldUnmapInput{
-		Instance: "example-connector", KataField: "scheduled_on",
+		Instance: "example-connector", PoomsaeField: "scheduled_on",
 	})
 	require.NoError(t, err)
 	_, _, err = handlers.bridgeShow(t.Context(), nil, BridgeInput{Ref: "abc4"})
@@ -457,7 +457,7 @@ func writeExternalRootJSON(t *testing.T, w http.ResponseWriter, value any) {
 func externalConnectorFixture() map[string]any {
 	return map[string]any{
 		"instance_id": "example-connector", "connector_id": "generic.connector", "display_name": "Generic connector",
-		"protocol": "kata.connector/v1", "capabilities": []string{"fields"}, "healthy": true,
+		"protocol": "poomsae.connector/v1", "capabilities": []string{"fields"}, "healthy": true,
 	}
 }
 

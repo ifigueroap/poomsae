@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 // TrustedCallbackPolicy is immutable after compilation and safe to share.

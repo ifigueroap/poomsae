@@ -12,18 +12,18 @@
   } from '@kenn-io/kit-ui'
   import { tick } from 'svelte'
 
-  import type { KataProjectSummary, KataTaskSearchFilters } from '../lib/kata/types'
+  import type { PoomsaeProjectSummary, PoomsaeTaskSearchFilters } from '../lib/poomsae/types'
   import { markColor } from '../lib/marks'
 
   interface Props {
     onSubmitSearch?: ((query: string) => void) | undefined
-    filters: KataTaskSearchFilters
-    projects: readonly KataProjectSummary[]
+    filters: PoomsaeTaskSearchFilters
+    projects: readonly PoomsaeProjectSummary[]
     projectView?: boolean
     showStatus?: boolean
     onChange: (
-      filters: KataTaskSearchFilters,
-      changed: keyof KataTaskSearchFilters,
+      filters: PoomsaeTaskSearchFilters,
+      changed: keyof PoomsaeTaskSearchFilters,
     ) => void | Promise<void>
   }
 
@@ -35,13 +35,13 @@
     onChange,
     onSubmitSearch,
   }: Props = $props()
-  let draftOverride = $state<KataTaskSearchFilters | null>(null)
+  let draftOverride = $state<PoomsaeTaskSearchFilters | null>(null)
   let draft = $derived(draftOverride ?? filters)
   let open = $state(false)
   let trigger = $state<HTMLButtonElement>()
   let panel = $state<HTMLDivElement>()
   let panelStyle = $state('')
-  let lastFilters: KataTaskSearchFilters | null = null
+  let lastFilters: PoomsaeTaskSearchFilters | null = null
 
   $effect(() => {
     if (filters !== lastFilters) {
@@ -125,7 +125,10 @@
     position()
   }
 
-  function emit(changed: keyof KataTaskSearchFilters, next: Partial<KataTaskSearchFilters>): void {
+  function emit(
+    changed: keyof PoomsaeTaskSearchFilters,
+    next: Partial<PoomsaeTaskSearchFilters>,
+  ): void {
     const nextFilters = {
       ...draft,
       ...next,
@@ -142,7 +145,7 @@
     return ''
   }
 
-  function clear(changed: keyof KataTaskSearchFilters): void {
+  function clear(changed: keyof PoomsaeTaskSearchFilters): void {
     if (changed === 'scope') emit('scope', { scope: { kind: 'all' } })
     else if (changed === 'relationships') emit('relationships', { relationships: [] })
     else if (changed === 'owner') emit('owner', { owner: '' })
@@ -154,8 +157,8 @@
   }
 </script>
 
-<section class="kata-search-panel" aria-label="Search and filters">
-  <div class="kata-search-toolbar">
+<section class="poomsae-search-panel" aria-label="Search and filters">
+  <div class="poomsae-search-toolbar">
     <div class="query-field">
       <SearchInput
         value={draft.query}
@@ -176,7 +179,8 @@
           title="Status"
           value={draft.status}
           options={statusOptions}
-          onchange={(value) => emit('status', { status: value as KataTaskSearchFilters['status'] })}
+          onchange={(value) =>
+            emit('status', { status: value as PoomsaeTaskSearchFilters['status'] })}
         />
       </div>
     {/if}
@@ -304,7 +308,7 @@
 </section>
 
 <style>
-  .kata-search-panel {
+  .poomsae-search-panel {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -315,7 +319,7 @@
     background: var(--bg-surface);
   }
 
-  .kata-search-toolbar {
+  .poomsae-search-toolbar {
     width: 100%;
     display: flex;
     align-items: center;
@@ -501,7 +505,7 @@
   }
 
   @container list (max-width: 760px) {
-    .kata-search-toolbar {
+    .poomsae-search-toolbar {
       flex-wrap: wrap;
     }
 

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/recurrence"
-	"go.kenn.io/kata/internal/shortid"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/recurrence"
+	"github.com/ifigueroap/poomsae/internal/shortid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
@@ -65,7 +65,7 @@ func (d *Store) createRecurrenceTx(
 		return rec, event, err
 	}
 
-	recUID, err := katauid.New()
+	recUID, err := poomsaeuid.New()
 	if err != nil {
 		return rec, event, fmt.Errorf("generate recurrence uid: %w", err)
 	}
@@ -778,7 +778,7 @@ func (d *Store) materializeNextTx(
 		return out, fmt.Errorf("compose recurrence issue metadata: %w", err)
 	}
 
-	newUID, err := katauid.New()
+	newUID, err := poomsaeuid.New()
 	if err != nil {
 		return out, fmt.Errorf("generate uid: %w", err)
 	}

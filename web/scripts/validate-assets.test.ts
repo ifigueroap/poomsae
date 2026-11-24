@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function writeFixture(overrides: Record<string, string | null> = {}): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'kata-web-assets-'))
+  const root = await mkdtemp(join(tmpdir(), 'poomsae-web-assets-'))
   temporaryRoots.push(root)
 
   const files: Record<string, string> = {

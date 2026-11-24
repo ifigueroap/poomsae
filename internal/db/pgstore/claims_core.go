@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const claimSelect = `SELECT id, claim_uid, project_id, issue_id, issue_uid,
@@ -59,7 +59,7 @@ func (s *Store) AcquireClaim(ctx context.Context, input db.AcquireClaimParams) (
 		if !errors.Is(err, db.ErrNotFound) {
 			return err
 		}
-		claimUID, err := katauid.New()
+		claimUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate claim uid: %w", err)
 		}

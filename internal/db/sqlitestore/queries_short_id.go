@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // assignShortID returns the smallest-length short_id (>= shortid.MinLength)
 // derived from ulid that does not collide with any existing issue in the
 // project, including soft-deleted rows or purge_log tombstones. Soft-deleted
-// issues retain their short_ids so `kata restore` is stable; purged issues
-// leave a purge_log tombstone so external refs (`kata#abc4` in a commit
+// issues retain their short_ids so `poomsae restore` is stable; purged issues
+// leave a purge_log tombstone so external refs (`poomsae#abc4` in a commit
 // message) can't be silently re-targeted at a later-created issue whose ULID
 // happens to suffix-match.
 func assignShortID(ctx context.Context, tx *sql.Tx, projectID int64, ulid string) (string, error) {

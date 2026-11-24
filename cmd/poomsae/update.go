@@ -1,0 +1,486 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/version"
+	"github.com/spf13/cobra"
+	kitdaemon "go.kenn.io/kit/daemon"
+	"go.kenn.io/kit/selfupdate"
+)
+
+type updateClient interface {
+	Check(context.Context, selfupdate.CheckOptions) (*selfupdate.Info, error)
+	Install(context.Context, *selfupdate.Info, selfupdate.InstallOptions) error
+}
+
+const updateBinaryName = "poomsae"
+
+type updateGuidance struct {
+	Distribution string
+	UpgradeHint  string
+	LagWarning   string
+	MayLag       bool
+}
+
+var newSelfUpdateClient = func(current string) (updateClient, error) {
+	home, err := config.PoomsaeHome()
+	if err != nil {
+		return nil, err
+	}
+	return selfupdate.Client{
+		Owner:                  "ifigueroap",
+		Repo:                   "poomsae",
+		BinaryName:             updateBinaryName,
+		CurrentVersion:         current,
+		CacheDir:               filepath.Join(home, "cache", "update"),
+		GitHubToken:            selfupdate.EnvironmentGitHubToken(),
+		AllowUnsignedChecksums: true,
+	}, nil
+}
+
+var updateInfoNeedsRefetch = func(info *selfupdate.Info) bool {
+	return info.NeedsRefetch()
+}
+
+func newUpdateCmd() *cobra.Command {
+	var checkOnly bool
+	var force bool
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "check for and install poomsae updates",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if managed := packageUpdateGuidance(version.Distribution).Distribution; managed != "" && !checkOnly {
+				return managedUpdateError(managed)
+			}
+			currentIsDevBuild := selfupdate.IsDevBuildVersion(version.Version)
+			client, err := newSelfUpdateClient(version.Version)
+			if err != nil {
+				return err
+			}
+			opts := selfupdate.CheckOptions{Force: force || currentIsDevBuild}
+			info, err := client.Check(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			if info == nil {
+				return printUpdateResult(cmd, nil)
+			}
+			if checkOnly {
+				return printUpdateResult(cmd, info)
+			}
+			if updateInfoNeedsRefetch(info) {
+				opts.Force = true
+				info, err = client.Check(cmd.Context(), opts)
+				if err != nil {
+					return err
+				}
+				if info == nil {
+					return printUpdateResult(cmd, nil)
+				}
+			}
+			if currentOutputMode() == outputHuman && !yes {
+				if err := printUpdateSummary(cmd, info); err != nil {
+					return err
+				}
+			}
+			if info.IsDevBuild && !force {
+				return printDevBuildForceHint(cmd, info)
+			}
+			if !yes {
+				if err := confirmUpdate(cmd, info); err != nil {
+					return err
+				}
+			}
+			executable := ""
+			installOptions := selfupdate.InstallOptions{}
+			if restart := newDaemonRestart(io.Discard); restart != nil {
+				binaryName := updateBinaryName
+				if runtime.GOOS == "windows" {
+					binaryName += ".exe"
+				}
+				executable = filepath.Join(filepath.Dir(restart.executable), binaryName)
+				installOptions.DestinationPath = executable
+			}
+			if err := client.Install(cmd.Context(), info, installOptions); err != nil {
+				return &cliError{
+					Message:  "install update: " + err.Error(),
+					Kind:     kindInternal,
+					ExitCode: ExitInternal,
+				}
+			}
+			// Restart output goes to stderr so JSON and agent stdout stay a
+			// single update record.
+			if err := restartDaemonAfterUpdate(cmd.Context(), cmd.ErrOrStderr(), executable, latestUpdateVersion(info)); err != nil {
+				return fmt.Errorf("installed poomsae %s, but the daemon was not restarted: %w", latestUpdateVersion(info), err)
+			}
+			return printUpdateInstallResult(cmd, info)
+		},
+	}
+	cmd.Flags().BoolVar(&checkOnly, "check", false, "check for updates without installing")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "force a fresh update check")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "install without prompting")
+	return cmd
+}
+
+// restartDaemonAfterUpdate asks a running daemon in the local namespace to
+// re-execute itself through the newly installed binary. The daemon restarts
+// with its own arguments and environment, so the updater needs neither its
+// startup options nor its credentials. A stopped daemon stays stopped.
+func restartDaemonAfterUpdate(ctx context.Context, stderr io.Writer, executable, installedVersion string) error {
+	ns, err := daemonruntime.NewNamespace()
+	if err != nil {
+		return err
+	}
+	records, release, err := lockLiveDaemons(ctx, ns, stderr)
+	if err != nil {
+		return err
+	}
+	defer release()
+	for _, record := range records {
+		if !daemonruntime.RuntimeRecordRestartable(record) {
+			return fmt.Errorf("daemon pid %d does not support automatic restart; run 'poomsae daemon stop', then 'poomsae daemon start' in its original host shell or service with its original startup options", record.PID)
+		}
+		replacement, err := requestDaemonRestart(ctx, ns, record, executable, nil)
+		if err != nil {
+			return err
+		}
+		if record.Metadata[daemonruntime.RuntimeRestartExecutableKey] != "1" && replacement.Version != installedVersion {
+			return unsupportedDaemonRestartError(replacement)
+		}
+		if _, err := fmt.Fprintf(stderr, "restarted daemon pid=%d address=%s\n",
+			replacement.PID, replacement.Endpoint().ConfigAddress()); err != nil {
+			return err
+		}
+		if err := writeDaemonWebURL(stderr, replacement.Metadata["web_origin"]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// waitForDaemonReplacement returns the first live runtime record started
+// after previous. On Unix the daemon keeps its PID across re-execution, so a
+// newer record rather than a new PID identifies the replacement.
+func waitForDaemonReplacement(
+	ctx context.Context, store kitdaemon.RuntimeStore, previous kitdaemon.RuntimeRecord, reply string,
+) (kitdaemon.RuntimeRecord, error) {
+	var replacement kitdaemon.RuntimeRecord
+	wait := daemonReplacementCheckTimeout + daemonShutdownDrainTimeout + daemonOwnerLockWait + 5*time.Second
+	err := client.WaitForDaemonStartup(ctx, nil, wait, nil, func(context.Context) (bool, error) {
+		records, err := store.List()
+		if err != nil {
+			return false, err
+		}
+		for _, record := range records {
+			if !record.StartedAt.After(previous.StartedAt) || !daemonruntime.RuntimeProcessAlive(record) {
+				continue
+			}
+			if from := record.Metadata[daemonruntime.RuntimeRestartFromKey]; from != "" && from != restartGeneration(previous) {
+				continue // the replacement of another daemon
+			}
+			replacement = record
+			return true, restartReplyError(reply, previous.PID, &record)
+		}
+		if err := restartReplyError(reply, previous.PID, nil); err != nil {
+			return false, err
+		}
+		if daemonruntime.RuntimeProcessAlive(previous) {
+			return false, nil
+		}
+		return false, replacementExitError(reply, previous.PID)
+	})
+	return replacement, err
+}
+
+// replacementExitError reports a replacement that can no longer become ready
+// after the previous daemon exited. Unix keeps the PID across exec; a Windows
+// daemon names the separate process it started before exiting.
+func replacementExitError(reply string, pid int) error {
+	if reply == "" {
+		if runtime.GOOS == "windows" {
+			return nil // older daemons do not name their replacement process
+		}
+		return fmt.Errorf("daemon pid %d exited without starting a replacement; check the daemon log", pid)
+	}
+	// A failing replacement writes its reply just before it exits.
+	if err := restartReplyError(reply, pid, nil); err != nil {
+		return err
+	}
+	started, err := os.ReadFile(reply + restartReplacementPIDSuffix) //nolint:gosec // caller-owned file beside the private reply
+	if err != nil {
+		return fmt.Errorf("daemon pid %d exited without starting a replacement; check the daemon log", pid)
+	}
+	replacementPID, err := strconv.Atoi(strings.TrimSpace(string(started)))
+	if err != nil {
+		return fmt.Errorf("read replacement pid for daemon pid %d: %w", pid, err)
+	}
+	if kitdaemon.ProcessAlive(replacementPID) {
+		return nil
+	}
+	return fmt.Errorf("daemon pid %d stopped, and its replacement pid %d exited before it was ready; check the daemon log", pid, replacementPID)
+}
+
+// restartReplyError reads the daemon's refusal of this caller's request after
+// the runtime records were listed. A replacement started for this request
+// names its reply; any other was started for another request or start.
+func restartReplyError(reply string, pid int, replacement *kitdaemon.RuntimeRecord) error {
+	answer, _ := os.ReadFile(reply) //nolint:gosec // caller-owned private reply file
+	switch {
+	case len(answer) != 0:
+		return fmt.Errorf("restart failed: %s", answer)
+	case replacement != nil && reply != "" && replacement.Metadata[daemonruntime.RuntimeRestartReplyKey] != filepath.Base(reply):
+		return fmt.Errorf("another daemon replaced pid %d first; this restart was not applied", pid)
+	}
+	return nil
+}
+
+func printUpdateSummary(cmd *cobra.Command, info *selfupdate.Info) error {
+	out := cmd.OutOrStdout()
+	if _, err := fmt.Fprintf(out, "\nCurrent version: %s\nLatest version:  %s\n",
+		currentUpdateVersion(info), latestUpdateVersion(info)); err != nil {
+		return err
+	}
+	if info.IsDevBuild {
+		if _, err := fmt.Fprintln(out, "\nYou're running a dev build. Latest official release available."); err != nil {
+			return err
+		}
+	} else if _, err := fmt.Fprintln(out, "\nUpdate available."); err != nil {
+		return err
+	}
+	if info.DownloadURL == "" && info.Size == 0 && info.Checksum == "" {
+		_, err := fmt.Fprintln(out)
+		return err
+	}
+	if _, err := fmt.Fprintln(out, "\nDownload:"); err != nil {
+		return err
+	}
+	if info.DownloadURL != "" {
+		if _, err := fmt.Fprintf(out, "  URL:    %s\n", info.DownloadURL); err != nil {
+			return err
+		}
+	}
+	if info.Size > 0 {
+		if _, err := fmt.Fprintf(out, "  Size:   %s\n", selfupdate.FormatSize(info.Size)); err != nil {
+			return err
+		}
+	}
+	if info.Checksum != "" {
+		if _, err := fmt.Fprintf(out, "  SHA256: %s\n", info.Checksum); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintln(out)
+	return err
+}
+
+func printDevBuildForceHint(cmd *cobra.Command, info *selfupdate.Info) error {
+	switch currentOutputMode() {
+	case outputHuman:
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), "Use 'poomsae update --force' to install the latest official release.")
+		return err
+	case outputAgent, outputJSON:
+		return printUpdateResult(cmd, info)
+	default:
+		return nil
+	}
+}
+
+func confirmUpdate(cmd *cobra.Command, info *selfupdate.Info) error {
+	out := cmd.ErrOrStderr()
+	if _, err := fmt.Fprintf(out, "Install poomsae update %s -> %s? [y/N] ", currentUpdateVersion(info), latestUpdateVersion(info)); err != nil {
+		return err
+	}
+	reader := bufio.NewReader(cmd.InOrStdin())
+	answer, _ := reader.ReadString('\n')
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "y", "yes":
+		return nil
+	default:
+		return &cliError{
+			Message:  "update cancelled",
+			Kind:     kindConfirm,
+			ExitCode: ExitConfirm,
+		}
+	}
+}
+
+func printUpdateInstallResult(cmd *cobra.Command, info *selfupdate.Info) error {
+	out := cmd.OutOrStdout()
+	current := currentUpdateVersion(info)
+	latest := latestUpdateVersion(info)
+	switch currentOutputMode() {
+	case outputAgent:
+		_, err := fmt.Fprintf(out, "OK update installed=true current=%s latest=%s\n",
+			agentValue(current), agentValue(latest))
+		return err
+	case outputJSON:
+		var buf bytes.Buffer
+		payload := map[string]any{
+			"current_version":  current,
+			"latest_version":   latest,
+			"update_available": true,
+			"installed":        true,
+			"asset_name":       info.AssetName,
+			"is_dev_build":     info.IsDevBuild,
+		}
+		if err := emitJSON(&buf, payload); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(out, buf.String())
+		return err
+	default:
+		_, err := fmt.Fprintf(out, "installed poomsae %s\n", latest)
+		return err
+	}
+}
+
+func printUpdateResult(cmd *cobra.Command, info *selfupdate.Info) error {
+	out := cmd.OutOrStdout()
+	guidance := packageUpdateGuidance(version.Distribution)
+	current := version.Version
+	latest := ""
+	updateAvailable := info != nil
+	assetName := ""
+	isDevBuild := false
+	if info != nil {
+		current = currentUpdateVersion(info)
+		latest = latestUpdateVersion(info)
+		assetName = info.AssetName
+		isDevBuild = info.IsDevBuild
+	}
+	switch currentOutputMode() {
+	case outputAgent:
+		if _, err := fmt.Fprintf(out, "OK update update_available=%t current=%s latest=%s distribution=%s",
+			updateAvailable, agentValue(current), agentValue(latest), agentValue(guidance.Distribution)); err != nil {
+			return err
+		}
+		if guidance.UpgradeHint != "" {
+			if _, err := fmt.Fprintf(out, " upgrade_hint=%s", agentValue(guidance.UpgradeHint)); err != nil {
+				return err
+			}
+		}
+		_, err := fmt.Fprintf(out, " package_release_may_lag=%t\n", guidance.MayLag)
+		return err
+	case outputJSON:
+		var buf bytes.Buffer
+		payload := map[string]any{
+			"current_version":         current,
+			"latest_version":          latest,
+			"update_available":        updateAvailable,
+			"asset_name":              assetName,
+			"is_dev_build":            isDevBuild,
+			"distribution":            guidance.Distribution,
+			"package_release_may_lag": guidance.MayLag,
+		}
+		if guidance.UpgradeHint != "" {
+			payload["upgrade_hint"] = guidance.UpgradeHint
+		}
+		if err := emitJSON(&buf, payload); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(out, buf.String())
+		return err
+	default:
+		if info != nil && info.IsDevBuild {
+			if _, err := fmt.Fprintf(out, "dev build: %s\nlatest official release: %s\nUse 'poomsae update --force' to install the latest official release.\n", current, latest); err != nil {
+				return err
+			}
+		} else if info == nil {
+			if _, err := fmt.Fprintf(out, "poomsae is up to date (%s)\n", current); err != nil {
+				return err
+			}
+		} else if _, err := fmt.Fprintf(out, "update available: %s -> %s\n", current, latest); err != nil {
+			return err
+		}
+		return printPackageUpdateGuidance(out, guidance)
+	}
+}
+
+// officialDistribution marks official direct-download builds, which update
+// themselves like builds with no distribution.
+const officialDistribution = "kenn"
+
+func packageUpdateGuidance(distribution string) updateGuidance {
+	switch distribution {
+	case "", officialDistribution:
+		return updateGuidance{}
+	case "homebrew":
+		return updateGuidance{
+			Distribution: distribution,
+			UpgradeHint:  "brew upgrade poomsae",
+			LagWarning:   "the formula may trail GitHub releases",
+			MayLag:       true,
+		}
+	case "deb":
+		return updateGuidance{Distribution: distribution, UpgradeHint: "install the newer Poomsae .deb package with your package manager", MayLag: true}
+	case "rpm":
+		return updateGuidance{Distribution: distribution, UpgradeHint: "install the newer Poomsae .rpm package with your package manager", MayLag: true}
+	default:
+		return updateGuidance{Distribution: distribution, UpgradeHint: "upgrade Poomsae through the owning package manager", MayLag: true}
+	}
+}
+
+func managedUpdateError(distribution string) error {
+	guidance := packageUpdateGuidance(distribution)
+	var message string
+	switch distribution {
+	case "homebrew":
+		message = "Homebrew manages this installation; run 'brew upgrade poomsae' instead"
+	case "deb":
+		message = "the Poomsae .deb package manages this installation; install the newer Poomsae .deb package with your package manager"
+	case "rpm":
+		message = "the Poomsae .rpm package manages this installation; install the newer Poomsae .rpm package with your package manager"
+	default:
+		message = fmt.Sprintf("Poomsae was installed by distribution %q; %s", distribution, guidance.UpgradeHint)
+	}
+	return &cliError{Message: message, Kind: kindUsage, ExitCode: ExitUsage}
+}
+
+func printPackageUpdateGuidance(out io.Writer, guidance updateGuidance) error {
+	if guidance.Distribution == "" {
+		return nil
+	}
+	var advisory string
+	switch guidance.Distribution {
+	case "homebrew":
+		advisory = fmt.Sprintf("Homebrew manages this installation. Try '%s' when the update is packaged; %s.", guidance.UpgradeHint, guidance.LagWarning)
+	case "deb":
+		advisory = "The Poomsae .deb package manages this installation. " + guidance.UpgradeHint + "."
+	case "rpm":
+		advisory = "The Poomsae .rpm package manages this installation. " + guidance.UpgradeHint + "."
+	default:
+		advisory = fmt.Sprintf("Distribution %q manages this installation. %s.", guidance.Distribution, guidance.UpgradeHint)
+	}
+	_, err := fmt.Fprintf(out, "\n%s\n", advisory)
+	return err
+}
+
+func currentUpdateVersion(info *selfupdate.Info) string {
+	if info != nil && info.CurrentVersion != "" {
+		return info.CurrentVersion
+	}
+	return version.Version
+}
+
+func latestUpdateVersion(info *selfupdate.Info) string {
+	if info != nil {
+		return info.LatestVersion
+	}
+	return ""
+}

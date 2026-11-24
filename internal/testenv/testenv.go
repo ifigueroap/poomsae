@@ -16,13 +16,13 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 const (
@@ -46,7 +46,7 @@ type Option func(*daemon.ServerConfig)
 
 // WithCloseThrottleEnabled tells the test daemon to enforce the sibling-burst
 // close throttle, mirroring [close.throttle] enabled=true in
-// <KATA_HOME>/config.toml.
+// <POOMSAE_HOME>/config.toml.
 func WithCloseThrottleEnabled() Option {
 	return func(cfg *daemon.ServerConfig) {
 		cfg.CloseThrottle.SiblingBurstEnabled = true
@@ -73,7 +73,7 @@ func WithFederationPullOnce(pull func(context.Context, db.FederationBinding, con
 // given token. Tests using env.HTTP directly must set the Authorization
 // header on every request except /ping and /health. Tests that drive the
 // client package (or any helper built on top of it) get the header
-// for free because the option also exports KATA_AUTH_TOKEN into the test
+// for free because the option also exports POOMSAE_AUTH_TOKEN into the test
 // process so client-side construction resolves the same token via
 // client.NewHTTPClient.
 func WithAuthToken(token string) Option {
@@ -100,13 +100,13 @@ func WithRootSigning(key ed25519.PrivateKey) Option {
 }
 
 // applyClientAuthEnv mirrors the WithAuthToken value into the
-// KATA_AUTH_TOKEN env var inside the test process so any in-process
+// POOMSAE_AUTH_TOKEN env var inside the test process so any in-process
 // client construction picks the token up automatically. Called by
 // New / NewFromDB after options are folded into cfg.
 func applyClientAuthEnv(t *testing.T, cfg daemon.ServerConfig) {
 	t.Helper()
 	if cfg.Auth.Token != "" {
-		t.Setenv("KATA_AUTH_TOKEN", cfg.Auth.Token)
+		t.Setenv("POOMSAE_AUTH_TOKEN", cfg.Auth.Token)
 	}
 }
 
@@ -118,15 +118,15 @@ func WithInsecureReadonly() Option {
 }
 
 // New launches a daemon listening on a free loopback port. The DB lives under
-// a temp KATA_HOME. Cleanup is wired via t.Cleanup.
+// a temp POOMSAE_HOME. Cleanup is wired via t.Cleanup.
 func New(t *testing.T, opts ...Option) *Env {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_DB", filepath.Join(home, "kata.db"))
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_DB", filepath.Join(home, "poomsae.db"))
 
 	ctx := t.Context()
-	d, err := testfix.OpenSQLite(ctx, filepath.Join(home, "kata.db"))
+	d, err := testfix.OpenSQLite(ctx, filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 
@@ -136,7 +136,7 @@ func New(t *testing.T, opts ...Option) *Env {
 
 // NewFromDB launches a daemon backed by an existing SQLite database file. Use
 // this when verifying the contents of a DB produced by import/restore flows.
-// KATA_HOME is not modified — the caller's environment is preserved.
+// POOMSAE_HOME is not modified — the caller's environment is preserved.
 func NewFromDB(t *testing.T, dbPath string) *Env {
 	t.Helper()
 	ctx := t.Context()
@@ -234,7 +234,7 @@ func serveDaemon(t *testing.T, d *sqlitestore.Store, opts ...Option) (string, *h
 	ready := false
 	for time.Now().Before(deadline) {
 		ping, err := apiClient.Ping(ctx)
-		if err == nil && ping != nil && ping.Ok && ping.Service == "kata" {
+		if err == nil && ping != nil && ping.Ok && ping.Service == "poomsae" {
 			ready = true
 			break
 		}

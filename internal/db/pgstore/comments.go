@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/teammate"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/teammate"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const commentSelect = `SELECT ` + commentColumns + ` FROM comments`
@@ -49,7 +49,7 @@ func (s *Store) CreateComment(ctx context.Context, params db.CreateCommentParams
 		if err != nil {
 			return err
 		}
-		commentUID, err := katauid.New()
+		commentUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate comment uid: %w", err)
 		}

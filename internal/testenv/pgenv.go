@@ -33,8 +33,8 @@ type sharedPostgresServer struct {
 	err error
 }
 
-const postgresAutoContainerEnv = "KATA_TEST_POSTGRES_AUTO_CONTAINER"
-const plainPostgresDSNEnv = "KATA_TEST_PLAIN_POSTGRES_DSN"
+const postgresAutoContainerEnv = "POOMSAE_TEST_POSTGRES_AUTO_CONTAINER"
+const plainPostgresDSNEnv = "POOMSAE_TEST_PLAIN_POSTGRES_DSN"
 
 // NewPostgresContainer returns a DSN for an isolated database on a
 // pgvector-enabled PostgreSQL 17 server, plus a cleanup function that drops
@@ -42,7 +42,7 @@ const plainPostgresDSNEnv = "KATA_TEST_PLAIN_POSTGRES_DSN"
 // so test ordering stays predictable. Used by pgstore tests and the shared
 // storage conformance suite.
 //
-// With KATA_TEST_POSTGRES_DSN set, the databases live on that server.
+// With POOMSAE_TEST_POSTGRES_DSN set, the databases live on that server.
 // Otherwise the first call in a test process starts a container that every
 // later call in the process reuses; testcontainers' reaper removes it when
 // the process exits. Starting a container takes far longer than creating a
@@ -60,7 +60,7 @@ const plainPostgresDSNEnv = "KATA_TEST_PLAIN_POSTGRES_DSN"
 //nolint:revive // t is the canonical first arg for testing helpers
 func NewPostgresContainer(t *testing.T, ctx context.Context) (string, func()) {
 	return newPostgresContainer(
-		ctx, t, "pgvector/pgvector:pg17", os.Getenv("KATA_TEST_POSTGRES_DSN"),
+		ctx, t, "pgvector/pgvector:pg17", os.Getenv("POOMSAE_TEST_POSTGRES_DSN"),
 	)
 }
 
@@ -70,7 +70,7 @@ func NewPostgresContainer(t *testing.T, ctx context.Context) (string, func()) {
 //nolint:revive // t is the canonical first arg for testing helpers
 func NewPostgresWithPgvectorContainer(t *testing.T, ctx context.Context) (string, func()) {
 	dsn, cleanup := newPostgresContainer(
-		ctx, t, "pgvector/pgvector:pg17", os.Getenv("KATA_TEST_POSTGRES_DSN"),
+		ctx, t, "pgvector/pgvector:pg17", os.Getenv("POOMSAE_TEST_POSTGRES_DSN"),
 	)
 	if err := installTestPgvector(ctx, dsn); err != nil {
 		cleanup()
@@ -106,7 +106,7 @@ func postgresServerDSN(ctx context.Context, t testing.TB, image, baseDSN string)
 		return baseDSN
 	}
 	if skipAutomaticPostgresContainer(runtime.GOOS, os.Getenv(postgresAutoContainerEnv)) {
-		t.Skip("automatic PostgreSQL testcontainers are disabled; use KATA_TEST_POSTGRES_DSN to run PostgreSQL tests")
+		t.Skip("automatic PostgreSQL testcontainers are disabled; use POOMSAE_TEST_POSTGRES_DSN to run PostgreSQL tests")
 	}
 	server := sharedPostgresContainer(ctx, image)
 	if server.err != nil {
@@ -146,7 +146,7 @@ func NewPostgresTemplate(prepare func(ctx context.Context, dsn string) error) *P
 //nolint:revive // t is the canonical first arg for testing helpers
 func (tmpl *PostgresTemplate) NewDatabase(t testing.TB, ctx context.Context) (string, func()) {
 	t.Helper()
-	baseDSN := postgresServerDSN(ctx, t, "pgvector/pgvector:pg17", os.Getenv("KATA_TEST_POSTGRES_DSN"))
+	baseDSN := postgresServerDSN(ctx, t, "pgvector/pgvector:pg17", os.Getenv("POOMSAE_TEST_POSTGRES_DSN"))
 	server := tmpl.on(ctx, baseDSN)
 	if server.err != nil {
 		t.Fatalf("prepare PostgreSQL test template: %v", server.err)
@@ -264,8 +264,8 @@ func startPostgresContainer(ctx context.Context, image string) sharedPostgresSer
 	container, err := postgres.Run(ctx,
 		image,
 		postgres.WithDatabase("kata_test"),
-		postgres.WithUsername("kata"),
-		postgres.WithPassword("kata"),
+		postgres.WithUsername("poomsae"),
+		postgres.WithPassword("poomsae"),
 		testcontainers.WithTmpfs(map[string]string{"/pgdata": "rw"}),
 		testcontainers.WithEnv(map[string]string{"PGDATA": "/pgdata/data"}),
 		testcontainers.WithCmdArgs("-c", "synchronous_commit=off", "-c", "full_page_writes=off"),

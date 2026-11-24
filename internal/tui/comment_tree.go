@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/commentref"
 )
 
 const maxCommentDepth = 4

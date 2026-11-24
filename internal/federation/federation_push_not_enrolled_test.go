@@ -3,9 +3,9 @@ package federation
 import (
 	"testing"
 
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/db"
 )
 
 // A spoke comments on its copy of an issue that the hub has meanwhile moved

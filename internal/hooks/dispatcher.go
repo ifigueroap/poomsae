@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.kenn.io/kata/internal/activity"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/activity"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Sink is the minimal interface mutation handlers depend on. cfg.Hooks
@@ -33,7 +33,7 @@ type AcquireActivity = activity.Admission
 // exercising the DB.
 type DispatcherDeps struct {
 	DBHash          string
-	KataHome        string
+	PoomsaeHome     string
 	DaemonLog       *log.Logger
 	AliasResolver   func(ctx context.Context, evt db.Event) (AliasSnapshot, bool, error)
 	IssueResolver   func(ctx context.Context, issueID int64) (IssueSnapshot, error)
@@ -91,12 +91,12 @@ func (noopSink) Enqueue(_ db.Event) {}
 func NewNoop() Sink { return noopSink{} }
 
 // New constructs a Dispatcher. It MkdirAll's the hook root + output
-// directories under deps.KataHome, seeds the prune running total via
+// directories under deps.PoomsaeHome, seeds the prune running total via
 // WalkDir, opens the runs.jsonl file for append, and starts the worker
 // pool.
 func New(loaded LoadedConfig, deps DispatcherDeps) (*Dispatcher, error) {
 	deps = applyDispatcherDefaults(deps)
-	root := filepath.Join(deps.KataHome, "hooks", deps.DBHash)
+	root := filepath.Join(deps.PoomsaeHome, "hooks", deps.DBHash)
 	outputDir := filepath.Join(root, "output")
 	if err := os.MkdirAll(outputDir, 0o700); err != nil {
 		return nil, fmt.Errorf("mkdir hook output dir: %w", err)

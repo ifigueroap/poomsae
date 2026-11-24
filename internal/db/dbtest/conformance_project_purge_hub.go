@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // An archived hub project can be purged when the caller asks to retire its hub

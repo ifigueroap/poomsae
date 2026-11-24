@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func writeKataLocal(t *testing.T, dir, body string) {
 	t.Helper()
-	path := filepath.Join(dir, ".kata.local.toml")
+	path := filepath.Join(dir, ".poomsae.local.toml")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600)) //nolint:gosec
 }
 
@@ -45,7 +45,7 @@ url = "http://x"
 `)
 	_, err := config.ReadLocalConfig(dir)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported .kata.local.toml version")
+	assert.Contains(t, err.Error(), "unsupported .poomsae.local.toml version")
 }
 
 func TestReadLocalConfig_EmptyServerURLIsZeroValue(t *testing.T) {
@@ -68,13 +68,13 @@ url = "http://x"
 `)
 	_, err := config.ReadLocalConfig(dir)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), ".kata.local.toml")
+	assert.Contains(t, err.Error(), ".poomsae.local.toml")
 }
 
 func TestMergeLocal_NilLocalReturnsBase(t *testing.T) {
 	base := &config.ProjectConfig{
 		Version: 1,
-		Project: config.ProjectBindings{Name: "kata"},
+		Project: config.ProjectBindings{Name: "poomsae"},
 	}
 	got := config.MergeLocal(base, nil)
 	assert.Equal(t, base, got)
@@ -84,7 +84,7 @@ func TestMergeLocal_NilLocalReturnsBase(t *testing.T) {
 func TestMergeLocal_LocalServerWins(t *testing.T) {
 	base := &config.ProjectConfig{
 		Version: 1,
-		Project: config.ProjectBindings{Name: "kata"},
+		Project: config.ProjectBindings{Name: "poomsae"},
 	}
 	local := &config.ProjectConfig{
 		Version: 1,
@@ -92,7 +92,7 @@ func TestMergeLocal_LocalServerWins(t *testing.T) {
 	}
 	var stderr bytes.Buffer
 	got := config.MergeLocalWithStderr(base, local, &stderr)
-	assert.Equal(t, "kata", got.Project.Name)
+	assert.Equal(t, "poomsae", got.Project.Name)
 	assert.Equal(t, "http://100.64.0.5:7777", got.Server.URL)
 	assert.Empty(t, stderr.String())
 }
@@ -113,20 +113,20 @@ func TestMergeLocal_URLOverridePreservesTransportOptIn(t *testing.T) {
 func TestMergeLocal_LocalNameOverridesBase(t *testing.T) {
 	base := &config.ProjectConfig{
 		Version: 1,
-		Project: config.ProjectBindings{Name: "kata"},
+		Project: config.ProjectBindings{Name: "poomsae"},
 	}
 	local := &config.ProjectConfig{
 		Version: 1,
-		Project: config.ProjectBindings{Name: "Kata Local"},
+		Project: config.ProjectBindings{Name: "Poomsae Local"},
 	}
 	got := config.MergeLocal(base, local)
-	assert.Equal(t, "Kata Local", got.Project.Name)
+	assert.Equal(t, "Poomsae Local", got.Project.Name)
 }
 
 func TestMergeLocal_LegacyIdentityIsIgnored(t *testing.T) {
 	base := &config.ProjectConfig{
 		Version: 1,
-		Project: config.ProjectBindings{Name: "kata"},
+		Project: config.ProjectBindings{Name: "poomsae"},
 	}
 	local := &config.ProjectConfig{
 		Version: 1,
@@ -134,6 +134,6 @@ func TestMergeLocal_LegacyIdentityIsIgnored(t *testing.T) {
 	}
 	var stderr bytes.Buffer
 	got := config.MergeLocalWithStderr(base, local, &stderr)
-	assert.Equal(t, "kata", got.Project.Name)
+	assert.Equal(t, "poomsae", got.Project.Name)
 	assert.Empty(t, stderr.String())
 }

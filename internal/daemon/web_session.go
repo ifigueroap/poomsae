@@ -17,15 +17,15 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const (
-	webSessionHeader = "X-Kata-Web-Session"
-	webCSRFHeader    = "X-Kata-CSRF"
+	webSessionHeader = "X-Poomsae-Web-Session"
+	webCSRFHeader    = "X-Poomsae-CSRF"
 	webSessionTTL    = 24 * time.Hour
 )
 
@@ -301,7 +301,7 @@ func (m *WebSessionManager) randomValue() (string, error) {
 
 func normalizeWebReturnPath(value string) (string, error) {
 	if value == "" {
-		return "/kata", nil
+		return "/poomsae", nil
 	}
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.IsAbs() || parsed.Host != "" || !strings.HasPrefix(parsed.Path, "/") || strings.HasPrefix(parsed.Path, "//") {

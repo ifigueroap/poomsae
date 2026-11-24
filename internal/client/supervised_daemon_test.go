@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/db"
 	kitdaemon "go.kenn.io/kit/daemon"
 	"go.kenn.io/kit/safefileio"
 )
@@ -151,9 +151,9 @@ func TestDaemonRecoveryAdvice(t *testing.T) {
 	})
 	t.Run("profile with quote", func(t *testing.T) {
 		err := &LocalDaemonUnreachableError{PID: 123, VerifiedProcess: true, Profile: "team's profile", ProfileAutostart: true}
-		command := `kata --daemon 'team'"'"'s profile' daemon recover`
+		command := `poomsae --daemon 'team'"'"'s profile' daemon recover`
 		if runtime.GOOS == "windows" {
-			command = `kata --daemon 'team''s profile' daemon recover`
+			command = `poomsae --daemon 'team''s profile' daemon recover`
 		}
 		require.Contains(t, err.RecoveryAdvice(), command)
 	})
@@ -192,7 +192,7 @@ func TestManagedExternallyProfileDoesNotAutostart(t *testing.T) {
 				profile, root := localProfileFixture(t)
 				require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("autostart = false\n"), 0600))
 				if oldSchema {
-					stageStorageSchema(t, filepath.Join(profile.Home, "kata.db"), db.CurrentSchemaVersion()-1)
+					stageStorageSchema(t, filepath.Join(profile.Home, "poomsae.db"), db.CurrentSchemaVersion()-1)
 				}
 				selection, err := InspectSelection(t.Context(), root, "")
 				require.NoError(t, err)
@@ -266,7 +266,7 @@ func restartGapDaemon(t *testing.T, uid, token string) (*httptest.Server, *atomi
 		case pings.Add(1) == 1:
 			w.WriteHeader(http.StatusServiceUnavailable)
 		default:
-			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, currentVersionForEnsure(), os.Getpid())
+			_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, currentVersionForEnsure(), os.Getpid())
 		}
 	}))
 	t.Cleanup(server.Close)
@@ -282,7 +282,7 @@ func TestExternallyManagedVersionErrorGuidesByDirection(t *testing.T) {
 	require.ErrorContains(t, err, "service manager")
 	err = externallyManagedVersionError(PingInfo{Version: "v0.3.0"})
 	require.ErrorIs(t, err, ErrDaemonNotReplaceable)
-	require.ErrorContains(t, err, "use a newer kata binary")
+	require.ErrorContains(t, err, "use a newer poomsae binary")
 }
 
 func TestSupervisedDaemonReportsStaleReason(t *testing.T) {
@@ -291,13 +291,13 @@ func TestSupervisedDaemonReportsStaleReason(t *testing.T) {
 		name, version, skip, want, absent string
 	}{
 		{"same version", "v0.2.0", "", "the daemon has no web UI; restart it with your service manager", "differs"},
-		{"older version", "v0.1.0", "", "differs from this kata binary", "no web UI"},
+		{"older version", "v0.1.0", "", "differs from this poomsae binary", "no web UI"},
 		{"skipped version check", "v0.1.0", "1", "the daemon has no web UI; restart it with your service manager", "differs"},
-		{"newer version", "v0.3.0", "", "use a newer kata binary", "no web UI"},
-		{"skipped newer version", "v0.3.0", "1", "use a newer kata binary", "no web UI"},
+		{"newer version", "v0.3.0", "", "use a newer poomsae binary", "no web UI"},
+		{"skipped newer version", "v0.3.0", "1", "use a newer poomsae binary", "no web UI"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", tc.skip)
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", tc.skip)
 			ctx := context.WithValue(t.Context(), requireWebAssetsKey{}, true)
 			_, err := waitForSupervisedDaemon(ctx, "config.toml", func(context.Context) bool { return false }, func(context.Context) (ensureDiscovery, error) {
 				return ensureDiscovery{Outcome: daemonScanStale, Daemon: liveDaemon{Info: PingInfo{Service: daemonServiceName, Version: tc.version}, Record: kitdaemon.RuntimeRecord{Metadata: map[string]string{"web_capabilities": "loopback,sse,placeholder-assets"}}}}, nil
@@ -314,10 +314,10 @@ func TestSupervisedDaemonReportsStaleReason(t *testing.T) {
 // that catalog credential, retry a transport failure and still check identity.
 func TestSupervisedProfileCatalogCredentialAuthenticatesLiveDaemon(t *testing.T) {
 	profile, root := localProfileFixture(t)
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("autostart = false\n[auth]\ntoken_env = 'KATA_AUTH_TOKEN'\n"), 0600))
-	configPath := filepath.Join(os.Getenv("KATA_HOME"), "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(fmt.Sprintf("[[daemon]]\nname = 'work'\nlocal = true\nhome = %q\ninstance_uid = %q\ntoken = 'client-token'\n", profile.Home, profile.InstanceUID)), 0600)) //nolint:gosec // G703: configPath is the test's own KATA_HOME catalog.
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	require.NoError(t, os.WriteFile(filepath.Join(profile.Home, "config.toml"), []byte("autostart = false\n[auth]\ntoken_env = 'POOMSAE_AUTH_TOKEN'\n"), 0600))
+	configPath := filepath.Join(os.Getenv("POOMSAE_HOME"), "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(fmt.Sprintf("[[daemon]]\nname = 'work'\nlocal = true\nhome = %q\ninstance_uid = %q\ntoken = 'client-token'\n", profile.Home, profile.InstanceUID)), 0600)) //nolint:gosec // G703: configPath is the test's own POOMSAE_HOME catalog.
 	selection, err := InspectSelection(t.Context(), root, "")
 	require.NoError(t, err)
 	ns, err := daemonruntime.NewNamespaceForHome(profile.Home, profile.StorageID)
@@ -326,7 +326,7 @@ func TestSupervisedProfileCatalogCredentialAuthenticatesLiveDaemon(t *testing.T)
 	server, pings := restartGapDaemon(t, profile.InstanceUID, "client-token")
 	other, _ := restartGapDaemon(t, "01HZZZZZZZZZZZZZZZZZZZZZ01", "client-token")
 	publish := func(daemon *httptest.Server) {
-		_, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "kata", PID: os.Getpid(), Address: strings.TrimPrefix(daemon.URL, "http://"), Network: "tcp"})
+		_, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).Write(kitdaemon.RuntimeRecord{Service: "poomsae", PID: os.Getpid(), Address: strings.TrimPrefix(daemon.URL, "http://"), Network: "tcp"})
 		require.NoError(t, err)
 	}
 	publish(server)
@@ -358,7 +358,7 @@ func TestReadOnlyStartWithRespectsDisabledAutostart(t *testing.T) {
 				defer cancel()
 				_, _, err := DiscoverSelected(ctx, DiscoverRequest{
 					WorkspaceStart: root, ReadOnly: true,
-					StartWith: filepath.Join(t.TempDir(), "kata-must-not-run"),
+					StartWith: filepath.Join(t.TempDir(), "poomsae-must-not-run"),
 				})
 				require.ErrorIs(t, err, ErrDaemonManagedExternally)
 				require.NotErrorIs(t, err, ErrDaemonStartFailed)
@@ -383,11 +383,11 @@ func TestManagedExternallyReportsMigrationInProgress(t *testing.T) {
 				wait = func(ctx context.Context) error { _, err := ensureLocalProfile(ctx, selection); return err }
 			} else {
 				storeHome = setupKataEnv(t)
-				t.Setenv("KATA_DSN", "")
+				t.Setenv("POOMSAE_DSN", "")
 				require.NoError(t, os.WriteFile(filepath.Join(storeHome, "config.toml"), []byte("autostart = false\n"), 0600))
 				wait = func(ctx context.Context) error { _, err := ensureLocalRunningTarget(ctx); return err }
 			}
-			lock := flock.New(filepath.Join(storeHome, "kata.db.import.lock"))
+			lock := flock.New(filepath.Join(storeHome, "poomsae.db.import.lock"))
 			require.NoError(t, lock.Lock())
 			t.Cleanup(func() { require.NoError(t, lock.Close()) })
 			synctest.Test(t, func(t *testing.T) {

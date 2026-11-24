@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	katauid "go.kenn.io/kata/internal/uid"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const (
@@ -25,7 +25,7 @@ func ClaimNow(now time.Time) time.Time {
 
 // ValidateClaimPrincipal validates the stable holder tuple used by claim arbitration.
 func ValidateClaimPrincipal(principal ClaimPrincipal) error {
-	if !katauid.Valid(principal.HolderInstanceUID) {
+	if !poomsaeuid.Valid(principal.HolderInstanceUID) {
 		return fmt.Errorf("%w: invalid holder instance uid", ErrClaimValidation)
 	}
 	if strings.TrimSpace(principal.Holder) == "" {
@@ -155,7 +155,7 @@ func NormalizeCachedClaim(status ClaimStatus, issue Issue, now time.Time) (Issue
 	if claim.Revision == 0 {
 		claim.Revision = 1
 	}
-	if !katauid.Valid(claim.ClaimUID) {
+	if !poomsaeuid.Valid(claim.ClaimUID) {
 		return IssueClaim{}, fmt.Errorf("%w: invalid claim uid", ErrClaimValidation)
 	}
 	if err := ValidateClaimPrincipal(PrincipalForClaim(claim)); err != nil {

@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/githubsync"
-	"go.kenn.io/kata/internal/notionsync"
 )
 
 func TestServiceNotionScheduledProgress(t *testing.T) {
@@ -220,7 +220,7 @@ func newRuntimeNotionPost(ctx context.Context, path string, body io.Reader) *htt
 }
 
 func TestServiceNotionExplicitCredentialDoesNotFallBack(t *testing.T) {
-	t.Setenv("KATA_NOTION_TOKEN", "default-example-token")
+	t.Setenv("POOMSAE_NOTION_TOKEN", "default-example-token")
 	t.Setenv("EXAMPLE_NOTION_TOKEN", "")
 	service, err := New(t.Context(), Config{DSN: filepath.Join(t.TempDir(), "service.db"), Auth: AuthConfig{TrustCallerAuthentication: true}, NotionSync: NotionSyncConfig{TokenEnv: " EXAMPLE_NOTION_TOKEN "}})
 	require.NoError(t, err)

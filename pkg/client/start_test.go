@@ -17,35 +17,35 @@ import (
 	"github.com/stretchr/testify/require"
 	kitdaemon "go.kenn.io/kit/daemon"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
-	"go.kenn.io/kata/internal/version"
-	"go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/katatest"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/version"
+	"github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/poomsaetest"
 )
 
 func TestMain(m *testing.M) {
-	if argsFile := os.Getenv("FAKE_KATA_ARGS_FILE"); argsFile != "" {
+	if argsFile := os.Getenv("FAKE_POOMSAE_ARGS_FILE"); argsFile != "" {
 		os.Exit(fakeKata(argsFile))
 	}
 	os.Exit(m.Run())
 }
 
-// fakeKata stands in for the kata executable StartWith names. It records its
-// arguments, then either fails with FAKE_KATA_OUTPUT on stderr, or "starts" a
+// fakeKata stands in for the poomsae executable StartWith names. It records its
+// arguments, then either fails with FAKE_POOMSAE_OUTPUT on stderr, or "starts" a
 // daemon by publishing the runtime record of a server the test already runs.
 func fakeKata(argsFile string) int {
 	if err := os.WriteFile(argsFile, []byte(strings.Join(os.Args[1:], "\n")), 0o600); err != nil { //nolint:gosec // G703: the parent test chose this temporary path.
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
-	if output := os.Getenv("FAKE_KATA_OUTPUT"); output != "" {
+	if output := os.Getenv("FAKE_POOMSAE_OUTPUT"); output != "" {
 		fmt.Fprintln(os.Stderr, output)
 		return 7
 	}
-	_, err := (kitdaemon.RuntimeStore{Dir: os.Getenv("FAKE_KATA_RUNTIME_DIR")}).Write(kitdaemon.RuntimeRecord{
+	_, err := (kitdaemon.RuntimeStore{Dir: os.Getenv("FAKE_POOMSAE_RUNTIME_DIR")}).Write(kitdaemon.RuntimeRecord{
 		PID:       os.Getppid(),
-		Address:   os.Getenv("FAKE_KATA_ADDRESS"),
+		Address:   os.Getenv("FAKE_POOMSAE_ADDRESS"),
 		StartedAt: time.Now().UTC(),
 	})
 	if err != nil {
@@ -55,17 +55,17 @@ func fakeKata(argsFile string) int {
 	return 0
 }
 
-// fakeKataStarts makes the test binary a kata executable whose start command
-// publishes address in namespace. Like kata, it creates the runtime directory
+// fakeKataStarts makes the test binary a poomsae executable whose start command
+// publishes address in namespace. Like poomsae, it creates the runtime directory
 // itself: a directory made beforehand lacks the private permissions Windows
 // discovery requires. It returns the executable and a function reporting the
 // arguments it was run with, or nil when it never ran.
 func fakeKataStarts(t *testing.T, namespace *daemonruntime.Namespace, address string) (string, func() []string) {
 	t.Helper()
 	argsFile := filepath.Join(t.TempDir(), "args")
-	t.Setenv("FAKE_KATA_ARGS_FILE", argsFile)
-	t.Setenv("FAKE_KATA_RUNTIME_DIR", namespace.DataDir)
-	t.Setenv("FAKE_KATA_ADDRESS", address)
+	t.Setenv("FAKE_POOMSAE_ARGS_FILE", argsFile)
+	t.Setenv("FAKE_POOMSAE_RUNTIME_DIR", namespace.DataDir)
+	t.Setenv("FAKE_POOMSAE_ADDRESS", address)
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	return executable, func() []string {
@@ -80,14 +80,14 @@ func fakeKataStarts(t *testing.T, namespace *daemonruntime.Namespace, address st
 
 func TestDiscoverStartsStoppedNamedLocalDaemon(t *testing.T) {
 	home := isolateKataHome(t)
-	local := katatest.New(t, katatest.WithUnixSocket())
+	local := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, local.Client(t), "spoke-project")
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"personal\"\nlocal = true\n")
 	namespace, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
-	kata, ranWith := fakeKataStarts(t, namespace, local.Endpoint)
+	poomsae, ranWith := fakeKataStarts(t, namespace, local.Endpoint)
 
-	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "personal", StartWith: kata})
+	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "personal", StartWith: poomsae})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"daemon", "start"}, ranWith())
@@ -98,11 +98,11 @@ func TestDiscoverStartsStoppedNamedLocalDaemon(t *testing.T) {
 
 func TestDiscoverRecoversStoppedNamedProfile(t *testing.T) {
 	home := isolateKataHome(t)
-	work := katatest.New(t, katatest.WithUnixSocket())
+	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
-	kata, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
 
-	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: kata})
+	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: poomsae})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"--daemon", "work", "daemon", "recover"}, ranWith(),
@@ -114,21 +114,21 @@ func TestDiscoverRecoversStoppedNamedProfile(t *testing.T) {
 
 func TestDiscoverRecoversStoppedWorkspaceProfile(t *testing.T) {
 	home := isolateKataHome(t)
-	work := katatest.New(t, katatest.WithUnixSocket())
+	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
-	kata, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
 	workspace := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"), []byte(
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"), []byte(
 		"version = 1\n\n[project]\nidentity = \"example.test/work-project\"\nname = \"work-project\"\n",
 	), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte("version = 1\n\n[server]\ndaemon = \"work\"\n"), 0o600))
 
-	api, err := client.Discover(t.Context(), client.DiscoverOptions{Workspace: workspace, StartWith: kata})
+	api, err := client.Discover(t.Context(), client.DiscoverOptions{Workspace: workspace, StartWith: poomsae})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"--workspace", workspace, "daemon", "recover"}, ranWith(),
-		"kata must select the profile from the same workspace")
+		"poomsae must select the profile from the same workspace")
 	projects := listProjects(t, api)
 	require.Len(t, projects, 1)
 	assert.Equal(t, "work-project", projects[0].Name)
@@ -136,11 +136,11 @@ func TestDiscoverRecoversStoppedWorkspaceProfile(t *testing.T) {
 
 func TestDiscoverReportsKataStartFailure(t *testing.T) {
 	home := isolateKataHome(t)
-	work := katatest.New(t, katatest.WithUnixSocket())
-	kata, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
-	t.Setenv("FAKE_KATA_OUTPUT", "kata: missing_profile_storage: profile storage is missing")
+	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
+	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	t.Setenv("FAKE_POOMSAE_OUTPUT", "poomsae: missing_profile_storage: profile storage is missing")
 
-	_, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: kata})
+	_, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: poomsae})
 
 	require.ErrorIs(t, err, client.ErrDaemonUnavailable)
 	assert.Contains(t, err.Error(), "missing_profile_storage: profile storage is missing")
@@ -152,9 +152,9 @@ func TestDiscoverNeverStartsRemote(t *testing.T) {
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"hub\"\nurl = \"http://127.0.0.1:1\"\n")
 	namespace, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
-	kata, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
+	poomsae, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
 
-	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "hub", StartWith: kata})
+	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "hub", StartWith: poomsae})
 	require.NoError(t, err)
 
 	assert.Nil(t, ranWith())
@@ -168,12 +168,12 @@ func TestDiscoverStartWithRespectsDisabledAutostart(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n"), 0o600))
 		namespace, err := daemonruntime.NewNamespace()
 		require.NoError(t, err)
-		kata, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
-		t.Setenv("FAKE_KATA_OUTPUT", "unexpected start")
+		poomsae, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
+		t.Setenv("FAKE_POOMSAE_OUTPUT", "unexpected start")
 		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
 
-		_, err = client.Discover(ctx, client.DiscoverOptions{StartWith: kata})
+		_, err = client.Discover(ctx, client.DiscoverOptions{StartWith: poomsae})
 
 		require.ErrorIs(t, err, client.ErrDaemonUnavailable)
 		require.ErrorContains(t, err, "managed externally")
@@ -189,7 +189,7 @@ func TestDiscoverStartWithUsesExistingSupervisedDaemon(t *testing.T) {
 	for _, profile := range []bool{false, true} {
 		t.Run(fmt.Sprintf("profile=%t", profile), func(t *testing.T) {
 			home := isolateKataHome(t)
-			t.Setenv("KATA_SKIP_DAEMON_VERSION_CHECK", "")
+			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			uid := "01HZZZZZZZZZZZZZZZZZZZZZ01"
 			var pings atomic.Int32
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +199,7 @@ func TestDiscoverStartWithUsesExistingSupervisedDaemon(t *testing.T) {
 				case pings.Add(1) == 1:
 					w.WriteHeader(http.StatusServiceUnavailable)
 				default:
-					_, _ = fmt.Fprintf(w, `{"ok":true,"service":"kata","version":%q,"pid":%d}`, version.Version+"-other", os.Getpid())
+					_, _ = fmt.Fprintf(w, `{"ok":true,"service":"poomsae","version":%q,"pid":%d}`, version.Version+"-other", os.Getpid())
 				}
 			}))
 			defer srv.Close()

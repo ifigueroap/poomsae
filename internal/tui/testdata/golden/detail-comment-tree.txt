@@ -1,4 +1,4 @@
- Project: —                                                           kata カタ
+ Project: —                                                        poomsae カタ
 
   #42aa  Review a finding                                                 [open]
   authored by worker

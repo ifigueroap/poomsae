@@ -3,11 +3,11 @@ package vector_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/vector"
 	kitvec "go.kenn.io/kit/vector"
 )
 

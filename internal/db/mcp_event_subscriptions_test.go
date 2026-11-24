@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 func validMCPEventSubscription() db.MCPEventSubscription {
@@ -17,7 +17,7 @@ func validMCPEventSubscription() db.MCPEventSubscription {
 		PrincipalSubject:    "worker",
 		PrincipalKey:        "daemon.example:worker",
 		Actor:               "worker",
-		EventName:           "kata.inbox.changed",
+		EventName:           "poomsae.inbox.changed",
 		Arguments:           []byte(`{"for":"worker"}`),
 		CallbackURL:         "https://receiver.example/hook",
 		SecretEnc:           []byte("ciphertext"),

@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 )
 
 func TestResolve_FailsOutsideKataTomlAndWithoutAlias(t *testing.T) {
@@ -30,7 +30,7 @@ func TestResolve_FailsOutsideKataTomlAndWithoutAlias(t *testing.T) {
 }
 
 func TestInit_FromGitRemoteCreatesProject(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 	resp, bs := postJSON(t, ts, "/api/v1/projects", map[string]any{
 		"actor":      "user-a",
@@ -51,13 +51,13 @@ func TestInit_FromGitRemoteCreatesProject(t *testing.T) {
 		Created       bool   `json:"created"`
 	}
 	require.NoError(t, json.Unmarshal(bs, &body))
-	assert.Equal(t, "kata", body.Project.Name)
-	assert.Equal(t, "kata", body.Project.Name)
+	assert.Equal(t, "poomsae", body.Project.Name)
+	assert.Equal(t, "poomsae", body.Project.Name)
 	assert.True(t, body.Created)
-	assert.Equal(t, "github.com/wesm/kata", body.Alias.AliasIdentity)
+	assert.Equal(t, "github.com/wesm/poomsae", body.Alias.AliasIdentity)
 
-	// .kata.toml must have been written
-	_, err := os.Stat(filepath.Join(h.dir, ".kata.toml"))
+	// .poomsae.toml must have been written
+	_, err := os.Stat(filepath.Join(h.dir, ".poomsae.toml"))
 	assert.NoError(t, err)
 }
 
@@ -197,7 +197,7 @@ func TestResolveProject_IdentityModeBootstrapCanResolveWithoutMutatingAliases(t 
 }
 
 func TestInit_FreshCloneFromExistingKataToml(t *testing.T) {
-	// Simulate "git clone, kata init" on a repo that already had .kata.toml.
+	// Simulate "git clone, poomsae init" on a repo that already had .poomsae.toml.
 	h := newServerWithGitWorkspace(t, "")
 	testfix.WriteKataToml(t, h.dir, "system")
 
@@ -219,24 +219,24 @@ func TestInit_FreshCloneFromExistingKataToml(t *testing.T) {
 }
 
 func TestResolve_AfterInitSucceeds(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
 
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{"start_path": h.dir})
 	assert.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
 }
 
 // TestResolve_ByProjectName_PathFree verifies the remote-client
 // resolution path: the daemon looks up the project by its committed
-// identity without touching the filesystem. This is what lets a kata
+// identity without touching the filesystem. This is what lets a poomsae
 // client on host B reach a project registered on host A's daemon.
 func TestResolve_ByProjectName_PathFree(t *testing.T) {
 	dir := t.TempDir()
 	testfix.RunGit(t, dir, "init", "--quiet")
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 	ts := newTestServer(t)
 
 	// Register the project (local-style init).
@@ -246,10 +246,10 @@ func TestResolve_ByProjectName_PathFree(t *testing.T) {
 	// identity we send doesn't refer to anything on the daemon's
 	// filesystem; the lookup must be path-free.
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
-		"name": "kata",
+		"name": "poomsae",
 	})
 	assert.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
 }
 
 // TestResolve_ByProjectName_NotRegistered surfaces the right error
@@ -262,7 +262,7 @@ func TestResolve_ByProjectName_NotRegistered(t *testing.T) {
 	})
 	envelope := assertAPIError(t, resp.StatusCode, bs, http.StatusNotFound, "project_not_initialized")
 	assert.Equal(t, map[string]any{"project": "never-registered"}, map[string]any(envelope.Error.Data), string(bs))
-	assert.Equal(t, `run kata projects create -- never-registered`, envelope.Error.Hint)
+	assert.Equal(t, `run poomsae projects create -- never-registered`, envelope.Error.Hint)
 }
 
 // TestResolve_NeitherFieldSet rejects a request that supplies neither
@@ -288,9 +288,9 @@ func TestResolve_ByAliasInput_PathFree(t *testing.T) {
 	// the new client would do.
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{
 		"actor": "user-a",
-		"name":  "kata",
+		"name":  "poomsae",
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
@@ -298,12 +298,12 @@ func TestResolve_ByAliasInput_PathFree(t *testing.T) {
 	// Resolve by alias only — no name, no start_path.
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
 	require.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
 }
 
 // TestResolve_ByAliasInput_NotRegistered returns 404 when neither
@@ -320,7 +320,7 @@ func TestResolve_ByAliasInput_NotRegistered(t *testing.T) {
 	})
 	envelope := assertAPIError(t, resp.StatusCode, bs, http.StatusNotFound, "project_not_initialized")
 	assert.Equal(t, map[string]any{"alias": "github.com/wesm/never-seen"}, map[string]any(envelope.Error.Data), string(bs))
-	assert.Equal(t, `run "kata init": it attaches this workspace to the active project "never-seen", or creates it if none exists`, envelope.Error.Hint)
+	assert.Equal(t, `run "poomsae init": it attaches this workspace to the active project "never-seen", or creates it if none exists`, envelope.Error.Hint)
 
 	resp, bs = postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{"alias": map[string]any{"identity": "github.com/example/", "kind": "git"}})
 	assertAPIError(t, resp.StatusCode, bs, http.StatusBadRequest, "validation")
@@ -334,7 +334,7 @@ func TestResolve_ByAliasInput_NotRegistered(t *testing.T) {
 	})
 	envelope = assertAPIError(t, resp.StatusCode, bs, http.StatusNotFound, "project_not_initialized")
 	assert.Equal(t, map[string]any{"project": "ghost-project"}, map[string]any(envelope.Error.Data), string(bs))
-	assert.Equal(t, `run "kata init" with --project set to "ghost-project": it attaches this workspace to the active project "ghost-project", or creates it if none exists`, envelope.Error.Hint)
+	assert.Equal(t, `run "poomsae init" with --project set to "ghost-project": it attaches this workspace to the active project "ghost-project", or creates it if none exists`, envelope.Error.Hint)
 }
 
 func TestResolve_NotInitializedHint(t *testing.T) {
@@ -369,12 +369,12 @@ func TestResolve_NotInitializedHint(t *testing.T) {
 						request = map[string]any{"name": name}
 					}
 				}
-				hint := fmt.Sprintf(`run "kata init": it attaches this workspace to the active project %q, or creates it if none exists`, name)
+				hint := fmt.Sprintf(`run "poomsae init": it attaches this workspace to the active project %q, or creates it if none exists`, name)
 				switch shape {
 				case "name":
-					hint = fmt.Sprintf(`run kata projects create -- %s`, name)
+					hint = fmt.Sprintf(`run poomsae projects create -- %s`, name)
 				case "alias with name":
-					hint = fmt.Sprintf(`run "kata init" with --project set to %q: it attaches this workspace to the active project %q, or creates it if none exists`, name, name)
+					hint = fmt.Sprintf(`run "poomsae init" with --project set to %q: it attaches this workspace to the active project %q, or creates it if none exists`, name, name)
 				}
 				if state != "missing" {
 					project, err := h.db.CreateProject(t.Context(), name)
@@ -382,12 +382,12 @@ func TestResolve_NotInitializedHint(t *testing.T) {
 					if state == "archived" {
 						_, _, err = h.db.RemoveProject(t.Context(), db.RemoveProjectParams{ProjectID: project.ID, Actor: "tester"})
 						require.NoError(t, err)
-						hint = fmt.Sprintf(`run "kata projects restore %d", then run "kata init" in this workspace`, project.ID)
+						hint = fmt.Sprintf(`run "poomsae projects restore %d", then run "poomsae init" in this workspace`, project.ID)
 						switch shape {
 						case "name":
-							hint = fmt.Sprintf(`run "kata projects restore %d"`, project.ID)
+							hint = fmt.Sprintf(`run "poomsae projects restore %d"`, project.ID)
 						case "alias with name":
-							hint = fmt.Sprintf(`run "kata projects restore %d", then run "kata init" with --project set to %q in this workspace`, project.ID, name)
+							hint = fmt.Sprintf(`run "poomsae projects restore %d", then run "poomsae init" with --project set to %q in this workspace`, project.ID, name)
 						}
 					}
 				}
@@ -400,7 +400,7 @@ func TestResolve_NotInitializedHint(t *testing.T) {
 }
 
 // TestResolve_ByStartPath_KataTomlNamesUnregisteredProject reports the
-// bound project name in error.data when .kata.toml names a project the
+// bound project name in error.data when .poomsae.toml names a project the
 // daemon does not know.
 func TestResolve_ByStartPath_KataTomlNamesUnregisteredProject(t *testing.T) {
 	ts := newTestServer(t)
@@ -413,7 +413,7 @@ func TestResolve_ByStartPath_KataTomlNamesUnregisteredProject(t *testing.T) {
 	})
 	envelope := assertAPIError(t, resp.StatusCode, bs, http.StatusNotFound, "project_not_initialized")
 	assert.Equal(t, map[string]any{"project": "ghost-project"}, map[string]any(envelope.Error.Data), string(bs))
-	assert.Equal(t, `run "kata init": it attaches this workspace to the active project "ghost-project", or creates it if none exists`, envelope.Error.Hint)
+	assert.Equal(t, `run "poomsae init": it attaches this workspace to the active project "ghost-project", or creates it if none exists`, envelope.Error.Hint)
 }
 
 func TestListProjects_IncludeArchived(t *testing.T) {
@@ -491,7 +491,7 @@ func TestRestoreProject_ActiveProjectIsNoop(t *testing.T) {
 }
 
 // TestResolve_AliasMissNameHit_FirstSeenAttach handles the case
-// where a client has a .kata.toml (so it sends a name) and a git
+// where a client has a .poomsae.toml (so it sends a name) and a git
 // workspace whose alias is not yet attached on this daemon (e.g. first
 // resolve from a new host). The daemon falls back to name lookup, then
 // attaches the alias on first-seen so subsequent resolves go through
@@ -500,37 +500,37 @@ func TestResolve_AliasMissNameHit_FirstSeenAttach(t *testing.T) {
 	ts := newTestServer(t)
 
 	// Register a project by name only (no alias attached).
-	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "name": "kata"})
+	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "name": "poomsae"})
 
-	// Client has both name (from .kata.toml) and alias (from git remote)
+	// Client has both name (from .poomsae.toml) and alias (from git remote)
 	// but the alias is not yet attached on the daemon.
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
-		"name": "kata",
+		"name": "poomsae",
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
 	require.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
-	assert.Contains(t, string(bs), `"alias_identity":"github.com/wesm/kata"`,
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
+	assert.Contains(t, string(bs), `"alias_identity":"github.com/wesm/poomsae"`,
 		"alias must be attached on first-seen so subsequent resolves hit the alias path")
 
 	// Second resolve, alias-only, must succeed against the attached alias.
 	resp2, bs2 := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
 	require.Equal(t, 200, resp2.StatusCode, string(bs2))
-	assert.Contains(t, string(bs2), `"name":"kata"`)
+	assert.Contains(t, string(bs2), `"name":"poomsae"`)
 }
 
 // TestResolve_AliasHitReturnsCanonicalName covers the rename-repair
-// case: a project was renamed daemon-side, but the client's .kata.toml
+// case: a project was renamed daemon-side, but the client's .poomsae.toml
 // still carries the old name. Alias-first lookup must return the
-// canonical name so the client can rewrite .kata.toml.
+// canonical name so the client can rewrite .poomsae.toml.
 func TestResolve_AliasHitReturnsCanonicalName(t *testing.T) {
 	ts := newTestServer(t)
 
@@ -539,7 +539,7 @@ func TestResolve_AliasHitReturnsCanonicalName(t *testing.T) {
 		"actor": "user-a",
 		"name":  "old-name",
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
@@ -561,7 +561,7 @@ func TestResolve_AliasHitReturnsCanonicalName(t *testing.T) {
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"name": "old-name",
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
@@ -581,9 +581,9 @@ func TestResolve_ByAliasInput_RejectsArchivedProject(t *testing.T) {
 
 	resp, bs := postJSON(t, ts, "/api/v1/projects", map[string]any{
 		"actor": "user-a",
-		"name":  "kata",
+		"name":  "poomsae",
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
@@ -606,12 +606,12 @@ func TestResolve_ByAliasInput_RejectsArchivedProject(t *testing.T) {
 
 	resp2, bs2 := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "git",
 		},
 	})
 	envelope := assertAPIError(t, resp2.StatusCode, bs2, http.StatusNotFound, "project_not_initialized")
-	assert.Equal(t, map[string]any{"alias": "github.com/wesm/kata"}, map[string]any(envelope.Error.Data), string(bs2))
+	assert.Equal(t, map[string]any{"alias": "github.com/wesm/poomsae"}, map[string]any(envelope.Error.Data), string(bs2))
 	assert.Contains(t, string(bs2), "archived")
 }
 
@@ -623,7 +623,7 @@ func TestResolve_AliasInput_RejectsInvalidKind(t *testing.T) {
 
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"alias": map[string]any{
-			"identity": "github.com/wesm/kata",
+			"identity": "github.com/wesm/poomsae",
 			"kind":     "bogus",
 		},
 	})
@@ -637,28 +637,28 @@ func TestResolve_AliasInput_RejectsInvalidKind(t *testing.T) {
 func TestResolve_NameWinsOverStartPath(t *testing.T) {
 	dir := t.TempDir()
 	testfix.RunGit(t, dir, "init", "--quiet")
-	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/kata.git")
+	testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/wesm/poomsae.git")
 	ts := newTestServer(t)
 
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": dir})
 
 	// start_path is bogus and would not stat; name must win.
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
-		"name":       "kata",
+		"name":       "poomsae",
 		"start_path": "/no/such/path/anywhere",
 	})
 	assert.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
 }
 
 func TestInit_AliasConflictWithoutReassign(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 
-	// First init binds the workspace alias to project "kata".
+	// First init binds the workspace alias to project "poomsae".
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
 
-	// .kata.toml now declares a different name.
+	// .poomsae.toml now declares a different name.
 	testfix.WriteKataToml(t, h.dir, "other")
 
 	// Re-init follows the alias, treats the config as stale, and rewrites it.
@@ -667,10 +667,10 @@ func TestInit_AliasConflictWithoutReassign(t *testing.T) {
 		"start_path": h.dir,
 	})
 	require.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"kata"`)
-	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".kata.toml"))
+	assert.Contains(t, string(bs), `"name":"poomsae"`)
+	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".poomsae.toml"))
 	require.NoError(t, err)
-	assert.Contains(t, string(cfgBytes), `name = "kata"`)
+	assert.Contains(t, string(cfgBytes), `name = "poomsae"`)
 
 	// With --reassign + --replace, succeeds and rewrites alias.
 	resp2, bs2 := postJSON(t, ts, "/api/v1/projects", map[string]any{
@@ -683,7 +683,7 @@ func TestInit_AliasConflictWithoutReassign(t *testing.T) {
 }
 
 func TestInit_PathBasedReassignHonorsExplicitName(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
@@ -699,14 +699,14 @@ func TestInit_PathBasedReassignHonorsExplicitName(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode, string(bs))
 	assert.Contains(t, string(bs), `"name":"target"`)
 
-	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".kata.toml")) //nolint:gosec // test fixture under TempDir
+	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".poomsae.toml")) //nolint:gosec // test fixture under TempDir
 	require.NoError(t, err)
 	assert.Contains(t, string(cfgBytes), `name = "target"`)
 }
 
 // TestInit_ByName_PathFree verifies the remote-client init path:
 // the daemon registers a project by client-derived identity without
-// touching the filesystem. This is what lets a kata client on host B
+// touching the filesystem. This is what lets a poomsae client on host B
 // init a project against host A's daemon when host A cannot stat host
 // B's workspace.
 func TestInit_ByName_PathFree(t *testing.T) {
@@ -873,7 +873,7 @@ func TestInit_ByName_AliasConflictWithoutReassign(t *testing.T) {
 
 // TestInit_ByName_ReassignMovesAlias asserts that reassign +
 // alias metadata moves the alias from the old project to the new one
-// — this is what `kata init --reassign` against a remote daemon
+// — this is what `poomsae init --reassign` against a remote daemon
 // should do.
 func TestInit_ByName_ReassignMovesAlias(t *testing.T) {
 	ts := newTestServer(t)
@@ -1122,7 +1122,7 @@ func TestListAndShowProject_SurfaceMetadata(t *testing.T) {
 }
 
 func TestRenameProject_UpdatesName(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
 
@@ -1130,18 +1130,18 @@ func TestRenameProject_UpdatesName(t *testing.T) {
 	pidStr := strconv.FormatInt(pid, 10)
 
 	resp, bs := patchJSON(t, ts, "/api/v1/projects/"+pidStr, map[string]any{
-		"name": "Kata Tracker", "actor": "user-a",
+		"name": "Poomsae Tracker", "actor": "user-a",
 	})
 	require.Equal(t, 200, resp.StatusCode, string(bs))
-	assert.Contains(t, string(bs), `"name":"Kata Tracker"`)
+	assert.Contains(t, string(bs), `"name":"Poomsae Tracker"`)
 	assert.Contains(t, string(bs), `"aliases":`)
 
 	showBody := getBody(t, ts, "/api/v1/projects/"+pidStr)
-	assert.Contains(t, showBody, `"name":"Kata Tracker"`)
+	assert.Contains(t, showBody, `"name":"Poomsae Tracker"`)
 }
 
 func TestRenameProject_RejectsBlankName(t *testing.T) {
-	h := newServerWithGitWorkspace(t, "https://github.com/wesm/kata.git")
+	h := newServerWithGitWorkspace(t, "https://github.com/wesm/poomsae.git")
 	ts := h.ts.(*httptest.Server)
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
 
@@ -1464,7 +1464,7 @@ func TestListProjects_WithStatsHandlesEmptyProjects(t *testing.T) {
 
 // TestListProjects_DefaultShapeUnchangedAfterStats pins that the no-query
 // default response did not regress after Task 3 — backwards compat for
-// kata projects list and any other consumer that doesn't opt in. Spec §7.1.
+// poomsae projects list and any other consumer that doesn't opt in. Spec §7.1.
 func TestListProjects_DefaultShapeUnchangedAfterStats(t *testing.T) {
 	h := openTestDB(t)
 	_, err := h.db.CreateProject(t.Context(), "x")
@@ -1582,7 +1582,7 @@ func TestInit_MergedKataTomlNameResolvesToSurvivingProject(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode, string(bs))
 	assert.Contains(t, string(bs), `"name":"beta"`)
 
-	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".kata.toml"))
+	cfgBytes, err := os.ReadFile(filepath.Join(h.dir, ".poomsae.toml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(cfgBytes), `name = "beta"`)
 }

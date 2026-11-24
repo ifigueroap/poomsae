@@ -1,5 +1,5 @@
 // Package fakeconnector provides a deterministic protocol-v1 implementation
-// for Kata's black-box connector tests.
+// for Poomsae's black-box connector tests.
 package fakeconnector
 
 import (
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"go.kenn.io/kit/atomicfile"
 )
 

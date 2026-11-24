@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // repeatedImportHub is one hub project that already holds a first import of a
@@ -94,7 +94,7 @@ func pushRepeatedImportBaselineWithFeatures(t *testing.T, hub db.Storage, projec
 	})
 }
 
-// repeatedImportCopy builds the adoption snapshots another Kata home would
+// repeatedImportCopy builds the adoption snapshots another Poomsae home would
 // push for its own copy of the same project. edit changes each issue's
 // snapshot payload; the events get that home's origin, fresh UIDs and a later
 // clock. It also enrolls the home on the hub project.

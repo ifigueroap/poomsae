@@ -20,7 +20,7 @@ func TestDetailDocumentPage80x50LayoutSignals(t *testing.T) {
 	dm.issue.UpdatedAt = snapshotFixedNow.Add(-3 * time.Hour)
 
 	got := stripANSI(dm.View(80, 50, viewChrome{
-		scope:   scope{projectID: 7, projectName: "kata"},
+		scope:   scope{projectID: 7, projectName: "poomsae"},
 		version: "dev",
 	}))
 

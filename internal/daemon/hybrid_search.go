@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/vector"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/vector"
 	kitvec "go.kenn.io/kit/vector"
 )
 
@@ -205,7 +205,7 @@ func (p hybridParams) retrievalLimit() int {
 // index is daemon-global while search is project-scoped, so the leg fetches a
 // fetchCap raw window, filters by project and liveness afterwards, and retries
 // once at knnDeepLimit when that window has more candidates but filters short;
-// hydrating against kata.db (not the sidecar) preserves the guarantee that
+// hydrating against poomsae.db (not the sidecar) preserves the guarantee that
 // soft-deleted or purged issues never leak, whatever the sidecar holds.
 //
 // The second return reports that search filters consumed the deep candidate

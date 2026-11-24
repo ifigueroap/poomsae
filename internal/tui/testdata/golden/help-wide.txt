@@ -1,4 +1,4 @@
-kata — keybindings
+poomsae — keybindings
 
 Global                                 Detail                                            Forms
 ?         help                         tab/C-j        next tab                           ctrl+o         save or apply

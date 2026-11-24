@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServicePostgresWorkerTransactionFenceRollsBackAndStopsWorkers(t *testing.T) {
@@ -21,11 +21,11 @@ func TestServicePostgresWorkerTransactionFenceRollsBackAndStopsWorkers(t *testin
 	rejected := errors.New("worker transaction rejected")
 	service, err := New(ctx, Config{
 		DSN:      dsn,
-		Postgres: PostgresConfig{Schema: "kata", SchemaMode: PostgresSchemaBootstrap},
+		Postgres: PostgresConfig{Schema: "poomsae", SchemaMode: PostgresSchemaBootstrap},
 		Access:   allowWorkerFenceAccess{},
 		WorkerTransactionFence: func(ctx context.Context, tx Transaction) error {
 			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO kata.worker_fence_markers(attempt) VALUES($1)`, 1); err != nil {
+				`INSERT INTO poomsae.worker_fence_markers(attempt) VALUES($1)`, 1); err != nil {
 				return err
 			}
 			return rejected
@@ -60,7 +60,7 @@ func TestServicePostgresWorkerTransactionFenceRollsBackAndStopsWorkers(t *testin
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, inspection.Close()) })
 	_, err = inspection.ExecContext(ctx,
-		`CREATE TABLE kata.worker_fence_markers (attempt BIGINT NOT NULL)`)
+		`CREATE TABLE poomsae.worker_fence_markers (attempt BIGINT NOT NULL)`)
 	require.NoError(t, err)
 
 	runDone := make(chan error, 1)
@@ -74,10 +74,10 @@ func TestServicePostgresWorkerTransactionFenceRollsBackAndStopsWorkers(t *testin
 
 	var markerCount, released int
 	require.NoError(t, inspection.QueryRowContext(ctx,
-		`SELECT count(*) FROM kata.worker_fence_markers`).Scan(&markerCount))
+		`SELECT count(*) FROM poomsae.worker_fence_markers`).Scan(&markerCount))
 	require.NoError(t, inspection.QueryRowContext(ctx,
 		`SELECT CASE WHEN released_at IS NOT NULL THEN 1 ELSE 0 END
-		   FROM kata.issue_claims WHERE issue_uid = $1`, issue.UID).Scan(&released))
+		   FROM poomsae.issue_claims WHERE issue_uid = $1`, issue.UID).Scan(&released))
 	assert.Zero(t, markerCount)
 	assert.Zero(t, released)
 }

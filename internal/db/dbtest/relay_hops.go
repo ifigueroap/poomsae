@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func setupRelayHop(t *testing.T, upstream, replica db.Storage, project db.Project, name string, downstream bool) (string, int64) {

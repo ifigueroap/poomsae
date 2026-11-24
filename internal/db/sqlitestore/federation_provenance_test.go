@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db/dbtest"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 func TestRootNativeAttribution(t *testing.T) {
@@ -24,21 +24,21 @@ func TestAttributionReceiptBeforeEvent(t *testing.T) {
 }
 
 func TestRootKeyRotationReplicaAuthority(t *testing.T) {
-	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 	dbtest.RunRootKeyRotationReplicaAuthority(t, s)
 }
 
 func TestRootSigningKeyUnavailable(t *testing.T) {
-	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 	dbtest.RunRootSigningKeyUnavailable(t, s)
 }
 
 func TestRootKeyRepin(t *testing.T) {
-	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	s, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 	dbtest.RunRootKeyRepin(t, s)

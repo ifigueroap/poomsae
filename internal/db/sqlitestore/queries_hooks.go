@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // CommentBodyByID returns the body of the comment with the given id.

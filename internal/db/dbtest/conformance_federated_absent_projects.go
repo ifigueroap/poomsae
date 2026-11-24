@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkFederatedParkedMoveRecovery(t *testing.T, _ db.Storage, backend Backend) error {

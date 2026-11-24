@@ -1,6 +1,6 @@
-import type { KataTaskSummary } from '../lib/kata/types'
+import type { PoomsaeTaskSummary } from '../lib/poomsae/types'
 
-export function task(overrides: Partial<KataTaskSummary> = {}): KataTaskSummary {
+export function task(overrides: Partial<PoomsaeTaskSummary> = {}): PoomsaeTaskSummary {
   const shortID = overrides.short_id ?? 'root'
   return {
     id: overrides.id ?? 1,

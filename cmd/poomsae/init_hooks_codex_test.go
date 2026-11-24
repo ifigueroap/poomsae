@@ -1,0 +1,240 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.kenn.io/kit/agenthook"
+)
+
+func readCodexHooks(t *testing.T, dir string) map[string]any {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(dir, ".codex", "hooks.json")) //nolint:gosec // test fixture under TempDir
+	require.NoError(t, err)
+	var hooks map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&hooks))
+	return hooks
+}
+
+func expectedCodexHandler() map[string]any {
+	return map[string]any{
+		"type":           "command",
+		"command":        "poomsae attention-hook start",
+		"commandWindows": expectedCodexWindowsCommand("attention-hook", "start"),
+		"timeout":        json.Number("10"),
+	}
+}
+
+func expectedCodexWindowsCommand(args ...string) string {
+	commands, err := agenthook.BuildCommand("poomsae", args...)
+	if err != nil {
+		panic(err)
+	}
+	return commands.PowerShell
+}
+
+func expectedCodexSessionEndGroups() []any {
+	return []any{map[string]any{"hooks": []any{map[string]any{"type": "command", "command": "poomsae attention-hook end", "commandWindows": expectedCodexWindowsCommand("attention-hook", "end"), "timeout": json.Number("10")}}}}
+}
+
+func expectedCodexContractHandler() map[string]any {
+	return map[string]any{
+		"type":           "command",
+		"command":        "poomsae agent-contract-hook",
+		"commandWindows": expectedCodexWindowsCommand("agent-contract-hook"),
+		"timeout":        json.Number("10"),
+	}
+}
+
+func expectedCodexContractHandlerWithLegacyMarker() map[string]any {
+	return map[string]any{
+		"type":           "command",
+		"command":        "poomsae agent-contract-hook --source poomsae-agent-contract-hook",
+		"commandWindows": "& 'poomsae' 'agent-contract-hook' '--source' 'poomsae-agent-contract-hook'",
+		"timeout":        json.Number("10"),
+	}
+}
+
+func expectedCodexSessionStartGroups() []any {
+	return []any{
+		map[string]any{
+			"matcher": codexSessionStartMatcher,
+			"hooks":   []any{expectedCodexHandler()},
+		},
+		map[string]any{
+			"matcher": codexContractSessionStartMatcher,
+			"hooks":   []any{expectedCodexContractHandler()},
+		},
+	}
+}
+
+func TestApplyCodexHooks_AdoptsPreviousCommand(t *testing.T) {
+	dir := t.TempDir()
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.MkdirAll(codexDir, 0o750))
+	legacy := `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"poomsae attention-hook start","timeout":10},{"type":"command","command":"poomsae attention-hook start","commandWindows":"poomsae attention-hook start","timeout":10}]}]}}`
+	require.NoError(t, os.WriteFile(filepath.Join(codexDir, "hooks.json"), []byte(legacy), 0o644)) //nolint:gosec // test fixture under TempDir
+
+	changed, warnings, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.Empty(t, warnings)
+	assert.Equal(t, map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": expectedCodexSessionStartGroups(),
+			"SessionEnd":   expectedCodexSessionEndGroups(),
+		},
+	}, readCodexHooks(t, dir))
+}
+
+func TestApplyCodexHooks_UpgradesManagedCommands(t *testing.T) {
+	dir := t.TempDir()
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.MkdirAll(codexDir, 0o750))
+	current := `{"hooks":{"SessionStart":[{"matcher":"startup|resume|clear","hooks":[{"type":"command","command":"poomsae attention-hook start --source poomsae-agent-hook-start","commandWindows":"poomsae attention-hook start --source poomsae-agent-hook-start","timeout":10}]},{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"poomsae agent-contract-hook --source poomsae-agent-contract-hook","commandWindows":"poomsae agent-contract-hook --source poomsae-agent-contract-hook","timeout":10}]}]}}`
+	require.NoError(t, os.WriteFile(filepath.Join(codexDir, "hooks.json"), []byte(current), 0o644)) //nolint:gosec // test fixture under TempDir
+
+	changed, warnings, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.Empty(t, warnings)
+	expectedAttention := expectedCodexHandler()
+	expectedAttention["command"] = "poomsae attention-hook start --source poomsae-agent-hook-start"
+	expectedAttention["commandWindows"] = "& 'poomsae' 'attention-hook' 'start' '--source' 'poomsae-agent-hook-start'"
+	expectedContract := expectedCodexContractHandlerWithLegacyMarker()
+	expected := []any{
+		map[string]any{"matcher": codexSessionStartMatcher, "hooks": []any{expectedAttention}},
+		map[string]any{"matcher": codexContractSessionStartMatcher, "hooks": []any{expectedContract}},
+	}
+	assert.Equal(t, expected, readCodexHooks(t, dir)["hooks"].(map[string]any)["SessionStart"])
+	_, _, err = applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	assert.Equal(t, expected, readCodexHooks(t, dir)["hooks"].(map[string]any)["SessionStart"])
+}
+
+func TestApplyCodexHooks_NormalizesDefaultWithNonScopedMatcher(t *testing.T) {
+	tests := []struct {
+		name    string
+		matcher any
+	}{
+		{name: "empty string", matcher: ""},
+		{name: "non-string", matcher: json.Number("7")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			codexDir := filepath.Join(dir, ".codex")
+			require.NoError(t, os.MkdirAll(codexDir, 0o750))
+			legacyHandler := map[string]any{
+				"type":    "command",
+				"command": "poomsae attention-hook start",
+				"timeout": json.Number("10"),
+			}
+			config := map[string]any{"hooks": map[string]any{
+				"SessionStart": []any{map[string]any{
+					"matcher": tt.matcher,
+					"hooks":   []any{legacyHandler},
+				}},
+			}}
+			encoded, err := json.Marshal(config)
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(filepath.Join(codexDir, "hooks.json"), encoded, 0o644)) //nolint:gosec // test fixture under TempDir
+
+			_, _, err = applyCodexHooks(t.Context(), dir)
+			require.NoError(t, err)
+			hooks := readCodexHooks(t, dir)["hooks"].(map[string]any)
+			groups := hooks["SessionStart"].([]any)
+			assert.Equal(t, expectedCodexSessionStartGroups(), groups)
+		})
+	}
+}
+
+func TestApplyCodexHooks_PreservesCommandsContainingOldMarker(t *testing.T) {
+	dir := t.TempDir()
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.MkdirAll(codexDir, 0o750))
+	userCommand := "notify-wrapper poomsae attention-hook start"
+	settings := `{"hooks":{"SessionStart":[{"matcher":"startup|resume|clear","hooks":[{"type":"command","command":"` + userCommand + `"},{"type":"command","command":"poomsae attention-hook start --source custom.txt","timeout":11}]}]}}`
+	require.NoError(t, os.WriteFile(filepath.Join(codexDir, "hooks.json"), []byte(settings), 0o644)) //nolint:gosec // test fixture under TempDir
+
+	_, _, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	hooks := readCodexHooks(t, dir)["hooks"].(map[string]any)
+	groups := hooks["SessionStart"].([]any)
+	assert.Equal(t, []any{
+		map[string]any{"type": "command", "command": userCommand},
+		map[string]any{"type": "command", "command": "poomsae attention-hook start --source custom.txt", "timeout": json.Number("11")},
+	}, groups[0].(map[string]any)["hooks"])
+}
+
+func TestApplyCodexHooks_RefusesSymlinks(t *testing.T) {
+	t.Run("config directory", func(t *testing.T) {
+		dir := t.TempDir()
+		outside := t.TempDir()
+		require.NoError(t, os.Symlink(outside, filepath.Join(dir, ".codex")))
+
+		_, _, err := applyCodexHooks(t.Context(), dir)
+		require.Error(t, err)
+
+		entries, err := os.ReadDir(outside)
+		require.NoError(t, err)
+		assert.Empty(t, entries)
+	})
+
+	t.Run("hooks file", func(t *testing.T) {
+		dir := t.TempDir()
+		codexDir := filepath.Join(dir, ".codex")
+		require.NoError(t, os.MkdirAll(codexDir, 0o750))
+		victim := filepath.Join(dir, "victim.json")
+		require.NoError(t, os.WriteFile(victim, []byte("{}"), 0o644)) //nolint:gosec // test fixture under TempDir
+		require.NoError(t, os.Symlink(victim, filepath.Join(codexDir, "hooks.json")))
+
+		_, _, err := applyCodexHooks(t.Context(), dir)
+		require.Error(t, err)
+
+		got, err := os.ReadFile(victim) //nolint:gosec // test fixture under TempDir
+		require.NoError(t, err)
+		assert.Equal(t, "{}", string(got))
+	})
+}
+
+func TestApplyCodexHooks_WarnsOnConfigTomlHooks(t *testing.T) {
+	dir := t.TempDir()
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.MkdirAll(codexDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(codexDir, "config.toml"), []byte("[hooks]\nSessionStart = []\n"), 0o644)) //nolint:gosec // test fixture under TempDir
+
+	changed, warnings, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "already defines a [hooks] table")
+}
+
+func TestApplyCodexHooksTerminalLifecyclePreservesStartIdentity(t *testing.T) {
+	dir := t.TempDir()
+	_, _, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	hooks := readCodexHooks(t, dir)["hooks"].(map[string]any)
+	groups, ok := hooks["SessionEnd"].([]any)
+	require.True(t, ok, "native SessionEnd must be installed")
+	require.Len(t, groups, 1)
+	handler := groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)
+	require.Equal(t, "poomsae attention-hook end", handler["command"])
+	require.Equal(t, expectedCodexSessionStartGroups(), hooks["SessionStart"])
+	before, err := os.ReadFile(filepath.Join(dir, ".codex", "hooks.json")) //nolint:gosec // G304: fixture file is created by the test under its temporary home or SDK setup.
+	require.NoError(t, err)
+	changed, _, err := applyCodexHooks(t.Context(), dir)
+	require.NoError(t, err)
+	require.False(t, changed)
+	after, err := os.ReadFile(filepath.Join(dir, ".codex", "hooks.json")) //nolint:gosec // G304: fixture file is created by the test under its temporary home or SDK setup.
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+}

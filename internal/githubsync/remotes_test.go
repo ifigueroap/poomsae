@@ -72,7 +72,7 @@ func TestParseGitHubRemote(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.allowedHosts != "" {
-				t.Setenv("KATA_GITHUB_SYNC_ALLOWED_HOSTS", tt.allowedHosts)
+				t.Setenv("POOMSAE_GITHUB_SYNC_ALLOWED_HOSTS", tt.allowedHosts)
 			}
 			got, err := ParseGitHubRemote(tt.remote)
 			require.NoError(t, err)

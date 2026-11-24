@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RootResetProvenance preserves creation references separately from snapshot

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ReadCommentGraph captures visible comments and endpoint evidence together.

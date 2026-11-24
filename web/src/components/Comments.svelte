@@ -2,8 +2,13 @@
   import DetailSection from './DetailSection.svelte'
   import { tick } from 'svelte'
   /* eslint-disable svelte/prefer-svelte-reactivity -- reference counts are a transient search-result lookup. */
-  import { commentEvidenceLength, trimCommentEvidence } from '../lib/kata/commentEvidence'
-  import { CommentRelations, CreationAttribution, authorName, creationFor } from '@kenn-io/kata-ui'
+  import { commentEvidenceLength, trimCommentEvidence } from '../lib/poomsae/commentEvidence'
+  import {
+    CommentRelations,
+    CreationAttribution,
+    authorName,
+    creationFor,
+  } from '@ifigueroap/poomsae-ui'
   import {
     Avatar,
     Button,
@@ -18,9 +23,9 @@
   } from '@kenn-io/kit-ui/utils/time'
 
   import type { UIIssueReference } from '../lib/api/generated'
-  import type { KataTaskDetail, KataCommentReplyIntent } from '../lib/kata/types'
+  import type { PoomsaeTaskDetail, PoomsaeCommentReplyIntent } from '../lib/poomsae/types'
 
-  import type { KataCommentLink, KataReplyKind } from '@kenn-io/kata-ui'
+  import type { PoomsaeCommentLink, PoomsaeReplyKind } from '@ifigueroap/poomsae-ui'
 
   type Reference = UIIssueReference
 
@@ -30,7 +35,7 @@
     // True while the task shows the list's copy and its comments load.
     pending?: boolean | undefined
     navigationActive?: boolean | undefined
-    initialReply?: KataCommentReplyIntent | undefined
+    initialReply?: PoomsaeCommentReplyIntent | undefined
     showList?: boolean | undefined
     commentError?: string | undefined
     onCancelReply?: (() => void) | undefined
@@ -41,7 +46,7 @@
           source?: { issueUID: string; commentUID: string },
         ) => void)
       | undefined
-    issue: KataTaskDetail
+    issue: PoomsaeTaskDetail
     searchReferences: (query: string) => Promise<Reference[]>
     actionsDisabled?: boolean | undefined
     draftResetGeneration?: number | undefined
@@ -49,7 +54,7 @@
     onAddComment: (
       uid: string,
       body: string,
-      reply?: KataCommentReplyIntent,
+      reply?: PoomsaeCommentReplyIntent,
     ) => boolean | Promise<boolean>
   }
 
@@ -111,8 +116,8 @@
   let commentDraft = $state('')
   let addingComment = $state(false)
   let composerElement = $state<HTMLFormElement>()
-  let replyDraft = $state<KataCommentReplyIntent | undefined>()
-  let lastInitialReply: KataCommentReplyIntent | undefined
+  let replyDraft = $state<PoomsaeCommentReplyIntent | undefined>()
+  let lastInitialReply: PoomsaeCommentReplyIntent | undefined
   $effect(() => {
     if (initialReply !== lastInitialReply) {
       lastInitialReply = initialReply
@@ -145,7 +150,7 @@
         commentError?.includes('a reply of this kind already exists')),
     ),
   )
-  function beginReply(uid: string, kind: KataReplyKind): void {
+  function beginReply(uid: string, kind: PoomsaeReplyKind): void {
     if (
       actionsDisabled ||
       issue.issue.status !== 'open' ||
@@ -158,10 +163,10 @@
     replyDraft = undefined
     onCancelReply?.()
   }
-  function updateReplyKind(kind: KataReplyKind): void {
+  function updateReplyKind(kind: PoomsaeReplyKind): void {
     if (replyDraft) replyDraft = { ...replyDraft, kind, force: false }
   }
-  function openComment(link: KataCommentLink, sourceUID?: string): void {
+  function openComment(link: PoomsaeCommentLink, sourceUID?: string): void {
     if (link.issue_uid && link.uid)
       onOpenComment?.(
         link.issue_uid,
@@ -169,7 +174,7 @@
         sourceUID ? { issueUID: issue.issue.uid, commentUID: sourceUID } : undefined,
       )
   }
-  function linkLabel(link: KataCommentLink): string {
+  function linkLabel(link: PoomsaeCommentLink): string {
     return `${({ reply: 'Replies to', confirm: 'Confirms', refute: 'Refutes', supersede: 'Supersedes' } as Record<string, string>)[link.kind] ?? link.kind} ${link.handle ?? `(${link.status ?? 'unresolved'})`}${link.status && link.handle ? ` (${link.status})` : ''}`
   }
   let commentDraftGeneration = $state(0)
@@ -293,7 +298,7 @@
             { value: 'refute', label: 'Refute, with evidence' },
             { value: 'supersede', label: 'Supersede this comment' },
           ]}
-          onchange={(kind) => updateReplyKind(kind as KataReplyKind)}
+          onchange={(kind) => updateReplyKind(kind as PoomsaeReplyKind)}
         />
         <Button size="sm" label="Cancel reply" disabled={actionsDisabled} onclick={cancelReply} />
       </div>

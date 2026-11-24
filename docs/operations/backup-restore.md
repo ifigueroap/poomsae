@@ -1,27 +1,27 @@
 ---
 title: Backup and restore
-description: Back up, restore, and move Kata data safely with JSONL export and import workflows.
+description: Back up, restore, and move Poomsae data safely with JSONL export and import workflows.
 last_edited: 2026-11-20
 ---
 
 # Backup and restore
 
-`kata export` writes your host-local database to JSONL. Because it is an
+`poomsae export` writes your host-local database to JSONL. Because it is an
 offline storage operation rather than a remote-daemon API, passing
-`KATA_SERVER`, a remote workspace target, or `--daemon` makes it fail before
+`POOMSAE_SERVER`, a remote workspace target, or `--daemon` makes it fail before
 opening any local database. Run exports on the daemon host with that daemon's
-storage configuration. Use `kata import` to rebuild a database from that file
+storage configuration. Use `poomsae import` to rebuild a database from that file
 or add one scoped project snapshot to an existing database. These commands
 cover backups, selective project restores, machine moves, and schema cutovers.
 
 ## Use JSONL exports
 
-Do not copy `~/.kata/kata.db` while the daemon is running. Kata uses SQLite WAL
-mode, so recent writes can live in `kata.db-wal`; a plain file copy can look
+Do not copy `~/.poomsae/poomsae.db` while the daemon is running. Poomsae uses SQLite WAL
+mode, so recent writes can live in `poomsae.db-wal`; a plain file copy can look
 successful while missing recent data.
 
-The `kata.db.bak.*` files that schema cutover creates are temporary rollback
-files, not scheduled backups. When `kata.db` is a symlink, cutover upgrades the
+The `poomsae.db.bak.*` files that schema cutover creates are temporary rollback
+files, not scheduled backups. When `poomsae.db` is a symlink, cutover upgrades the
 file it points to and leaves the link in place, so the backup and import
 temporary files sit beside that file.
 
@@ -34,23 +34,23 @@ leaves the source database unchanged. Keep that database for diagnosis. The
 an earlier upgrade; recovering those events requires a backup that contains
 them.
 
-Before exporting, cutover writes any pending changes from `kata.db-wal` into
-`kata.db`, so the `kata.db.bak.*` file is complete. If another process holds
+Before exporting, cutover writes any pending changes from `poomsae.db-wal` into
+`poomsae.db`, so the `poomsae.db.bak.*` file is complete. If another process holds
 the database open and blocks that step, startup stops and leaves the database
-in place. Stop every Kata process that uses the database, then start Kata
+in place. Stop every Poomsae process that uses the database, then start Poomsae
 again.
 
-Releases through 0.19.0 could leave the old `kata.db-wal` beside the upgraded
+Releases through 0.19.0 could leave the old `poomsae.db-wal` beside the upgraded
 database when the previous daemon had not shut down cleanly. Later starts then
 fail with `schema cutover required` or `database disk image is malformed`. To
 recover:
 
-1. Stop every Kata process.
-2. Move `kata.db`, `kata.db-wal`, and `kata.db-shm` out of the data directory.
-3. Copy the oldest `kata.db.bak.*` file to `kata.db`.
-4. Start Kata 0.20.0 or later. Cutover runs again.
+1. Stop every Poomsae process.
+2. Move `poomsae.db`, `poomsae.db-wal`, and `poomsae.db-shm` out of the data directory.
+3. Copy the oldest `poomsae.db.bak.*` file to `poomsae.db`.
+4. Start Poomsae 0.20.0 or later. Cutover runs again.
 
-The backup can be missing the last changes made before the upgrade. Kata 0.20.0
+The backup can be missing the last changes made before the upgrade. Poomsae 0.20.0
 prevents this corruption during future upgrades, though it does not repair a
 database that is already damaged.
 
@@ -60,14 +60,14 @@ SQLite in-place upgrades from schemas 41 through 52 to 53 add the missing
 indexes and the empty MCP Events subscriptions table inside the existing
 database in one transaction. The step to 51 also drops the payload-derived
 issue history index. Leave free space for the new indexes, their WAL pages, and
-temporary sort files. These upgrades keep no `kata.db.bak.*` backup. If a
+temporary sort files. These upgrades keep no `poomsae.db.bak.*` backup. If a
 transaction is interrupted or fails, the old schema version stays intact and
 the next start retries. If you need to return to an older binary, take a backup
 before upgrading.
 
 Other SQLite upgrades export the old database and import a replacement before
 publishing a ready daemon, which can take minutes on large databases. Detached
-`kata daemon start` and `kata daemon restart` keep waiting while an SQLite
+`poomsae daemon start` and `poomsae daemon restart` keep waiting while an SQLite
 migration is pending and report progress on stderr. Canceling detached startup
 stops waiting, while the detached daemon keeps running. After a running-daemon
 restart starts, one Ctrl-C keeps the CLI waiting and holding the start lock
@@ -81,7 +81,7 @@ timeout.
 Before upgrading, stop older daemons and offline import or export processes and
 wait for them to exit. Older binaries do not participate in the cutover lock. A
 startup migration has no ready runtime record yet, so check OS processes as
-well as `kata daemon status` when recovering an interrupted upgrade.
+well as `poomsae daemon status` when recovering an interrupted upgrade.
 
 A running daemon holds `<database>.owner.lock` until it exits, so a second
 daemon refuses to open the same SQLite database, even through a symlink or
@@ -125,21 +125,21 @@ To take an offline backup, stop the daemon, export the database, and start the
 daemon again:
 
 ```sh
-kata daemon stop
-kata export --output backups/kata-$(date -u +%Y%m%d).jsonl
-kata daemon start
+poomsae daemon stop
+poomsae export --output backups/poomsae-$(date -u +%Y%m%d).jsonl
+poomsae daemon start
 ```
 
-If you omit `--output`, Kata writes a timestamped file in the current
+If you omit `--output`, Poomsae writes a timestamped file in the current
 directory.
 
 To take an online backup on the same host, run:
 
 ```sh
-kata export --allow-running-daemon --output backups/kata-$(date -u +%Y%m%d).jsonl
+poomsae export --allow-running-daemon --output backups/poomsae-$(date -u +%Y%m%d).jsonl
 ```
 
-Starting with Kata 0.19.0, schema 34, full backups preserve hub-local teams,
+Starting with Poomsae 0.19.0, schema 34, full backups preserve hub-local teams,
 memberships, and project visibility policies, while project-scoped exports omit
 those local access rules. Both backup forms keep signed attribution receipts,
 entity creation references, and public root keys, including retired
@@ -170,11 +170,11 @@ heartbeat.
 
 Back up the hub's root signing key separately. It lives in the owner-only file
 `federation-root.key` inside the daemon's namespace data directory,
-`<KATA_HOME>/runtime/<storage-id>/`, and JSONL backups never include it.
+`<POOMSAE_HOME>/runtime/<storage-id>/`, and JSONL backups never include it.
 Restore the file with `chmod 600` before you start the restored daemon. A
 daemon restored without it still starts, but signed writes to hub projects
 pinned to it fail until you restore the file or repin each project with
-`kata federation root-key repin --project <project>`. Unless you supply the
+`poomsae federation root-key repin --project <project>`. Unless you supply the
 previous key file, repinning leaves downstream relays that pinned the old key
 unable to sync the project, and the command refuses while those relays are
 enrolled unless you pass `--strand-relays`. For the exact behavior and recovery
@@ -185,8 +185,8 @@ signing secrets.
 ## Scheduled backups
 
 To run scheduled backups, start an explicit foreground daemon service with
-`KATA_BACKUP_DIR=/data/backups`. It takes an immediate full JSONL snapshot and
-another every `24h`. Set `KATA_BACKUP_INTERVAL` and `KATA_BACKUP_RETAIN` to
+`POOMSAE_BACKUP_DIR=/data/backups`. It takes an immediate full JSONL snapshot and
+another every `24h`. Set `POOMSAE_BACKUP_INTERVAL` and `POOMSAE_BACKUP_RETAIN` to
 positive Go durations such as `6h` and `720h`. Retention defaults to `720h`, or
 30 days. You can configure the same settings in `config.toml`:
 
@@ -201,14 +201,14 @@ Environment settings override the matching config keys. Without `dir`, the
 section must be empty and scheduling is disabled. A partially configured
 schedule or an invalid duration stops startup.
 
-Kata exports all projects, including soft-deleted rows, through the same
-consistent snapshot exporter as `kata export`. Exports run serially, and each
+Poomsae exports all projects, including soft-deleted rows, through the same
+consistent snapshot exporter as `poomsae export`. Exports run serially, and each
 file is published atomically with mode `0600` in an owner-only subdirectory
 named for the database's storage identity. Retention uses the UTC timestamp in
-Kata's backup filenames and removes only old regular backup files in that
+Poomsae's backup filenames and removes only old regular backup files in that
 subdirectory, leaving unrelated files, symlinks, and other databases'
-subdirectories untouched. If an export fails, Kata keeps earlier backups, logs
-the error, and retries at the next interval. During shutdown, Kata cancels and
+subdirectories untouched. If an export fails, Poomsae keeps earlier backups, logs
+the error, and retries at the next interval. During shutdown, Poomsae cancels and
 joins the worker before closing storage.
 
 JSONL backups hold database state, including database-managed tokens, but they
@@ -222,14 +222,14 @@ against volume loss.
 To restore into a fresh SQLite database file, run:
 
 ```sh
-kata import --input backups/kata-20260531.jsonl --target ~/.kata/restored.db
+poomsae import --input backups/poomsae-20260531.jsonl --target ~/.poomsae/restored.db
 ```
 
 The target must not exist unless you pass `--force`. To switch to the restored
-database, stop the daemon, point `KATA_DSN` or `KATA_DB` at the restored file
-or move it into `KATA_HOME` as `kata.db`, and then restart.
+database, stop the daemon, point `POOMSAE_DSN` or `POOMSAE_DB` at the restored file
+or move it into `POOMSAE_HOME` as `poomsae.db`, and then restart.
 
-Without `--merge`, `kata import` replaces the target contents with the input
+Without `--merge`, `poomsae import` replaces the target contents with the input
 snapshot instead of adding records to an existing database.
 
 For SQLite, `--force` replaces an existing current-schema database in one
@@ -248,7 +248,7 @@ requested replacement.
 Full backups also carry MCP Events subscriptions and the `mcp_events_key_check`
 metadata row that proves which Events key sealed them. Like the root signing
 key, `mcp-events.key` is never included in a backup; restore it into
-`<KATA_HOME>/runtime/<storage-id>/` before you start the restored daemon. The
+`<POOMSAE_HOME>/runtime/<storage-id>/` before you start the restored daemon. The
 Events service accepts subscriptions and delivers only with a key that matches
 the check. Project exports, `--merge`, and `--as-standalone` copies omit both
 the subscriptions and the key check, so callbacks never follow partial data and
@@ -259,13 +259,13 @@ because a restore can roll an inbox back without any new event.
 To restore into Postgres, pass a DSN as the target:
 
 ```sh
-kata import --input backups/kata-20260531.jsonl \
-  --target 'postgres://kata_schema_owner@db.example/kata?sslmode=verify-full&sslrootcert=system'
+poomsae import --input backups/poomsae-20260531.jsonl \
+  --target 'postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 ```
 
-If the `kata` schema is missing, Kata installs it before replaying the
+If the `poomsae` schema is missing, Poomsae installs it before replaying the
 snapshot. An initialized target is refused unless you pass `--force`; forced
-replay replaces all Kata-owned state atomically while leaving unrelated schemas
+replay replaces all Poomsae-owned state atomically while leaving unrelated schemas
 in the database intact. In a split-role deployment, pass the schema-owner
 credential in `--target`: a fresh restore may create schema objects, and a
 forced restore needs table replacement privileges that the serving role
@@ -277,7 +277,7 @@ restarting the service.
 Stop every daemon using that database and schema before restoring. Each serving
 daemon holds a database advisory lease for its lifetime, and replay requires
 the exclusive counterpart, so a daemon on another host cannot hold onto a
-pre-restore identity while replacement is in progress. Kata redacts Postgres
+pre-restore identity while replacement is in progress. Poomsae redacts Postgres
 credentials from command output and errors.
 
 For a shared production database, also take a database-native snapshot before
@@ -289,33 +289,33 @@ split-role upgrade and restore ordering, see
 ## Make an independent copy of a federated hub
 
 To copy a hub's data for a rehearsal or a move to a different hub, use
-`--as-standalone`, which requires Kata 0.19.0 or later. Ordinary restore
+`--as-standalone`, which requires Poomsae 0.19.0 or later. Ordinary restore
 recreates the source's federation bindings, enrollments, and database-managed
 API tokens, and `--new-instance` changes the instance identity while keeping
 that authority. Neither option detaches a federated hub.
 
 Start with a full JSONL export that includes deleted rows, and keep that
 protected original export. It contains the source's credential hashes and token
-events. Run the copy on a machine that has the export and a Kata build with
+events. Run the copy on a machine that has the export and a Poomsae build with
 `--as-standalone`, using a fresh local home with no daemon running in it. For
 example, in Bash, replace the export path below with its absolute path:
 
 ```sh
 bash -euo pipefail <<'EOF'
 umask 077
-kata_binary=$(command -v kata)
+kata_binary=$(command -v poomsae)
 source_export=/absolute/path/to/hub-export.jsonl
 copy_home=$(mktemp -d)
 printf 'Copy home: %s\n' "$copy_home"
 cd "$copy_home"
-env -i PATH="$PATH" HOME="$HOME" KATA_HOME="$copy_home" \
-  KATA_DB="$copy_home/kata.db" \
+env -i PATH="$PATH" HOME="$HOME" POOMSAE_HOME="$copy_home" \
+  POOMSAE_DB="$copy_home/poomsae.db" \
   "$kata_binary" import --as-standalone \
-  --input "$source_export" --target "$copy_home/kata.db"
+  --input "$source_export" --target "$copy_home/poomsae.db"
 EOF
 ```
 
-The destination must be a new database. Kata refuses `--force` and `--merge`
+The destination must be a new database. Poomsae refuses `--force` and `--merge`
 with `--as-standalone`, so use another fresh target if you want to repeat the
 copy. You can also target a fresh Postgres schema through `--target` with its
 schema-owner DSN under the same [Postgres restore rules](#restore).
@@ -353,12 +353,12 @@ JSONL is plain text and diffs cleanly. To keep versioned local backups in a Git
 repository, run:
 
 ```sh
-mkdir -p ~/kata-backups
-cd ~/kata-backups
+mkdir -p ~/poomsae-backups
+cd ~/poomsae-backups
 git init -q
-kata daemon stop
-kata export --output snapshot.jsonl
-kata daemon start
+poomsae daemon stop
+poomsae export --output snapshot.jsonl
+poomsae daemon start
 git add snapshot.jsonl
 git commit -q -m "snapshot $(date -u +%FT%TZ)"
 ```
@@ -372,20 +372,20 @@ To export a single project, scope the command with `--project` or
 `--project-id`:
 
 ```sh
-kata daemon stop
-kata --project example-project export --output backups/example-project.jsonl
-kata daemon start
+poomsae daemon stop
+poomsae --project example-project export --output backups/example-project.jsonl
+poomsae daemon start
 ```
 
 To restore that snapshot into a fresh database, run:
 
 ```sh
-kata import --input backups/example-project.jsonl \
+poomsae import --input backups/example-project.jsonl \
   --target /tmp/example-project-only.db
 ```
 
 Single-project exports work well for archiving one project, handing history to
-a collaborator setting up a fresh Kata install, or moving a project to another
+a collaborator setting up a fresh Poomsae install, or moving a project to another
 host.
 
 When you export a legacy SQLite database, project filtering keeps audit events
@@ -411,10 +411,10 @@ To add a scoped snapshot to an existing SQLite or Postgres database without
 replacing its other projects, use `--merge`:
 
 ```sh
-kata daemon stop
-kata import --merge --input backups/example-project.jsonl \
-  --target ~/.kata/kata.db
-kata daemon start
+poomsae daemon stop
+poomsae import --merge --input backups/example-project.jsonl \
+  --target ~/.poomsae/poomsae.db
+poomsae daemon start
 ```
 
 The target must already exist, and every daemon using it must be stopped. For
@@ -424,10 +424,10 @@ cannot combine `--force` or `--new-instance` with `--merge`.
 The snapshot must contain exactly one non-system project. Merge runs in one
 transaction, allocates new numeric database IDs, and keeps the project's UIDs,
 issue short IDs, and event identity while leaving existing projects untouched.
-If another project already uses the imported name, Kata assigns the next
+If another project already uses the imported name, Poomsae assigns the next
 available suffix, such as `example-project-2`.
 
-If an imported project or object UID already exists, Kata refuses the import
+If an imported project or object UID already exists, Poomsae refuses the import
 without modifying the target. As a result, re-importing the same snapshot is
 not an incremental refresh. When restoring several projects, run one merge per
 scoped snapshot.
@@ -439,12 +439,12 @@ When a peer issue is already in the target, matched by issue UID, a merge
 creates that link:
 
 ```sh
-kata import --merge --input backups/second-project.jsonl \
-  --target ~/.kata/kata.db
+poomsae import --merge --input backups/second-project.jsonl \
+  --target ~/.poomsae/poomsae.db
 ```
 
 - The link keeps its original type, author, and created time.
-- If a link's peer is not in the target yet, Kata skips it and prints
+- If a link's peer is not in the target yet, Poomsae skips it and prints
   `note: skipped N link record(s)…`. The peer project's own snapshot carries
   the same link, so merging that project creates it, regardless of merge order.
 - The merge adds the link to an issue in a project that is already in the
@@ -453,19 +453,19 @@ kata import --merge --input backups/second-project.jsonl \
 A merge leaves out three kinds of links, prints a note with the count, and
 still merges the rest of the project:
 
-- A link that would join a project Kata relays between hubs. Because a relay
+- A link that would join a project Poomsae relays between hubs. Because a relay
   cannot deliver a link between projects, the ordinary link commands refuse it
   too.
 - A parent link for an issue that already has a parent in the target, which can
   happen when the snapshots were taken before and after the issue moved to
   another parent. The target keeps its current parent, and you can change it
-  afterward with `kata edit --parent`.
+  afterward with `poomsae edit --parent`.
 - A parent link that would close a cycle with parent links already in the
   target, which can happen when the snapshots were taken at different times.
-  Set the parent on the target afterward with `kata edit --parent`.
+  Set the parent on the target afterward with `poomsae edit --parent`.
 
 To move linked projects to another hub one at a time, merge each project and
-then adopt it with `kata federation join --adopt-existing`. Adoption sends each
+then adopt it with `poomsae federation join --adopt-existing`. Adoption sends each
 issue's links in its snapshot, and the hub creates a link once both projects
 have arrived.
 
@@ -480,7 +480,7 @@ again with credentials for the target environment.
 
 ## Beads import
 
-`kata import --source-format beads` migrates issues from Beads. Rather than
+`poomsae import --source-format beads` migrates issues from Beads. Rather than
 reading a file or building a separate database, it drives the `bd` CLI and
-merges issues into the current Kata project. For prerequisites and the field
+merges issues into the current Poomsae project. For prerequisites and the field
 mapping, see [Migrating from Beads](../guide/migrating-from-beads.md).

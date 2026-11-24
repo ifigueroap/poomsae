@@ -13,9 +13,9 @@ import (
 // Check the identity as received on the wire, independently of its builder.
 func assertServerIcon(t *testing.T, info map[string]any) {
 	t.Helper()
-	require.Equal(t, "kata", info["name"])
+	require.Equal(t, "poomsae", info["name"])
 	require.Equal(t, "test-version", info["version"])
-	require.Equal(t, "https://katatracker.com", info["websiteUrl"])
+	require.Equal(t, "https://github.com/ifigueroap/poomsae", info["websiteUrl"])
 	icons, ok := info["icons"].([]any)
 	require.True(t, ok, "server info must advertise an icon")
 	require.Len(t, icons, 1)

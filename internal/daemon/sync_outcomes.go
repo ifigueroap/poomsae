@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // NewSyncOutcomeObserver counts each binding or spoke's first failure until it recovers.

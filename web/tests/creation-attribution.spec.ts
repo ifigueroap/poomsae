@@ -3,19 +3,19 @@ import { expect, test } from './fixtures'
 
 test('creation attribution distinguishes legacy, pending and verified records at narrow widths', async ({
   page,
-  kata,
+  poomsae,
 }, testInfo) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Example attributed issue' })
-  const comment = await kata.request(
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Example attributed issue' })
+  const comment = await poomsae.request(
     page,
     credentials,
     'POST',
-    `/api/v1/projects/${kata.projectID}/issues/${issue.uid}/comments`,
+    `/api/v1/projects/${poomsae.projectID}/issues/${issue.uid}/comments`,
     { actor: 'source-agent', teammate: 'example-worker', body: 'Example attributed comment' },
   )
   expect(comment.ok()).toBe(true)
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   const detail = page.getByRole('region', { name: 'Task detail' })
   // This first state comes from the native daemon, without response overrides.
   await expect(detail.getByText('Creation: legacy')).toHaveCount(2)
@@ -49,7 +49,7 @@ test('creation attribution distinguishes legacy, pending and verified records at
   })
   for (const state of ['pending', 'verified'] as const) {
     verification = state
-    await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+    await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
     await expect(detail.getByText(`Creation: ${state}`)).toHaveCount(2)
     await expect(detail.getByText('Source: source-agent / example-worker')).toHaveCount(2)
     if (state === 'verified') {

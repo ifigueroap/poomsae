@@ -538,7 +538,7 @@ func cloneImportRecord(rec ImportRecord) ImportRecord {
 
 type externalFieldMappingIdentity struct {
 	connectorInstance string
-	kataField         string
+	poomsaeField      string
 	externalFieldID   string
 	schemaRevision    string
 	createdAt         time.Time
@@ -547,7 +547,7 @@ type externalFieldMappingIdentity struct {
 func externalFieldMappingExportIdentity(mapping *ExternalFieldMappingExport) externalFieldMappingIdentity {
 	return externalFieldMappingIdentity{
 		connectorInstance: mapping.ConnectorInstance,
-		kataField:         mapping.KataField,
+		poomsaeField:      mapping.PoomsaeField,
 		externalFieldID:   mapping.ExternalFieldID,
 		schemaRevision:    mapping.SchemaRevision,
 		createdAt:         mapping.CreatedAt,
@@ -557,7 +557,7 @@ func externalFieldMappingExportIdentity(mapping *ExternalFieldMappingExport) ext
 func externalFieldStateMappingIdentity(state *ExternalFieldStateExport) externalFieldMappingIdentity {
 	return externalFieldMappingIdentity{
 		connectorInstance: state.MappingConnectorInstance,
-		kataField:         state.MappingKataField,
+		poomsaeField:      state.MappingKataField,
 		externalFieldID:   state.MappingExternalFieldID,
 		schemaRevision:    state.MappingSchemaRevision,
 		createdAt:         state.MappingCreatedAt,

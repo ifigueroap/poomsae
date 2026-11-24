@@ -1,5 +1,5 @@
-// Package notification owns the metadata contract shared by kata notify,
-// kata inbox, and daemon-generated due-date attention requests.
+// Package notification owns the metadata contract shared by poomsae notify,
+// poomsae inbox, and daemon-generated due-date attention requests.
 package notification
 
 import (
@@ -11,12 +11,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/teammate"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/teammate"
 )
 
 const (
-	// KeyPrefix identifies metadata entries consumed by kata inbox.
+	// KeyPrefix identifies metadata entries consumed by poomsae inbox.
 	KeyPrefix = "notify."
 	// RecipientMaxBytes limits the UTF-8 byte length of an inbox recipient.
 	RecipientMaxBytes = 128

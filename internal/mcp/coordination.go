@@ -8,9 +8,9 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/internal/notification"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // AssignInput names the issue and its new owner.
@@ -85,10 +85,10 @@ type StatusOutput struct {
 func registerCoordinationTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
 	mutating := toolHints(false, true, false)
-	addTool(server, "kata.assign", "Assign issue", "Make another actor the owner of an issue.", mutating, handlers.assign)
-	addTool(server, "kata.inbox", "Read inbox", "List open issues that ask an exact recipient for attention. Follow next_cursor until absent, including empty pages. Reading does not clear them. Native Events can signal changes.", read, handlers.inbox)
-	addTool(server, "kata.status", "Issue status", "Show who owns or holds an issue and which actor this server writes as.", read, handlers.status)
-	addTool(server, "kata.unassign", "Unassign issue", "Clear an issue's owner, optionally only while an expected owner still holds it.", mutating, handlers.unassign)
+	addTool(server, "poomsae.assign", "Assign issue", "Make another actor the owner of an issue.", mutating, handlers.assign)
+	addTool(server, "poomsae.inbox", "Read inbox", "List open issues that ask an exact recipient for attention. Follow next_cursor until absent, including empty pages. Reading does not clear them. Native Events can signal changes.", read, handlers.inbox)
+	addTool(server, "poomsae.status", "Issue status", "Show who owns or holds an issue and which actor this server writes as.", read, handlers.status)
+	addTool(server, "poomsae.unassign", "Unassign issue", "Clear an issue's owner, optionally only while an expected owner still holds it.", mutating, handlers.unassign)
 }
 
 func (h toolHandlers) assign(ctx context.Context, _ *sdkmcp.CallToolRequest, input AssignInput) (*sdkmcp.CallToolResult, MutationOutput, error) {
@@ -147,7 +147,7 @@ func (h toolHandlers) inbox(ctx context.Context, request *sdkmcp.CallToolRequest
 		// Compact rows carry no body, so an imported issue with a huge one
 		// cannot make even a one-row page too large to read.
 		_, listed, err = h.list(ctx, request, ListInput{Project: input.Project, Status: "open", Metadata: []string{key}, Limit: limit, Cursor: input.Cursor, compact: true})
-		if !errors.Is(err, kataclient.ErrResponseTooLarge) || limit == 1 {
+		if !errors.Is(err, poomsaeclient.ErrResponseTooLarge) || limit == 1 {
 			break
 		}
 		limit = max(1, limit/2)

@@ -1,4 +1,4 @@
-// Package version exposes the kata build's version string, derived from
+// Package version exposes the poomsae build's version string, derived from
 // runtime/debug.BuildInfo so a stripped binary still reports a stable
 // identifier.
 //
@@ -39,7 +39,7 @@ var Commit = unknown
 var BuildDate = unknown
 
 // Distribution identifies a package manager that owns this binary. An empty
-// value denotes an ordinary Kata archive or source build.
+// value denotes an ordinary Poomsae archive or source build.
 var Distribution string
 
 func init() {

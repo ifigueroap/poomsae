@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // LookupIdempotency finds the newest recent issue.created event carrying key.

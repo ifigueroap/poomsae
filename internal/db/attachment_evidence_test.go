@@ -6,7 +6,7 @@ import (
 	"testing"
 	"uuid"
 
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 )
 
 // Acceptance follows the documented reference shape, including opaque future

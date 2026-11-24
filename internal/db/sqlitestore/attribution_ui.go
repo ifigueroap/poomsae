@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Reserve in the receipt transaction so projection readers cannot observe a

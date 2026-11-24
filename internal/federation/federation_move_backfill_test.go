@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestFederationMoveBackfillReturnsTheMovedIssueHistory(t *testing.T) {
@@ -237,7 +237,7 @@ func TestFederationIssueHistoryRequiresCurrentProject(t *testing.T) {
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("%s/api/v1/projects/%d/federation/events?issue_uid=%s", hub.URL, projects[0].ID, issue.UID), nil)
 	require.NoError(t, err)
 	request.Header.Set("Authorization", "Bearer "+spoke.credentials[projects[0].UID].Token)
-	request.Header.Set("X-Kata-Event-Features", db.SupportedEventFeatures)
+	request.Header.Set("X-Poomsae-Event-Features", db.SupportedEventFeatures)
 	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, response.Body.Close()) }()
@@ -267,7 +267,7 @@ func TestFederationIssueHistoryRetainsEnvelopeAndPagination(t *testing.T) {
 		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("%s/api/v1/projects/%d/federation/events?issue_uid=%s&after_id=%d&limit=1", hub.URL, projects[1].ID, issue.UID, cursor), nil)
 		require.NoError(t, err)
 		request.Header.Set("Authorization", "Bearer "+spoke.credentials[projects[1].UID].Token)
-		request.Header.Set("X-Kata-Event-Features", db.SupportedEventFeatures)
+		request.Header.Set("X-Poomsae-Event-Features", db.SupportedEventFeatures)
 		response, err := http.DefaultClient.Do(request)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
 )
 
 func nativeFederationDefinitions(t *testing.T, store db.Storage, project db.Project) (db.CronJob, db.CronWorkflow) {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Leave the local lease check and mutation time inside the CLI request budget.
@@ -302,13 +302,13 @@ func claimGateAPIError(err error) error {
 		return federationCredentialDenied()
 	case errors.Is(err, db.ErrClaimDenied):
 		return api.NewError(http.StatusConflict, "claim_denied",
-			"lease denied for federated issue mutation", "run kata federation lease acquire <ref>", nil)
+			"lease denied for federated issue mutation", "run poomsae federation lease acquire <ref>", nil)
 	case errors.Is(err, db.ErrClaimExpired):
 		return api.NewError(http.StatusConflict, "claim_expired",
-			"lease expired for federated issue mutation", "run kata federation lease acquire <ref>", nil)
+			"lease expired for federated issue mutation", "run poomsae federation lease acquire <ref>", nil)
 	case errors.Is(err, db.ErrClaimRequired), errors.Is(err, db.ErrPendingClaimNotAuthoritative):
 		return api.NewError(http.StatusConflict, "claim_required",
-			"lease is not authoritative for this federated issue mutation", "run kata show <ref>", nil)
+			"lease is not authoritative for this federated issue mutation", "run poomsae show <ref>", nil)
 	case errors.Is(err, db.ErrClaimValidation):
 		return api.NewError(http.StatusBadRequest, "validation", err.Error(), "", nil)
 	case errors.Is(err, db.ErrNotFound):

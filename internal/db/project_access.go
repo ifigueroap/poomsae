@@ -6,7 +6,7 @@ import (
 	"iter"
 	"slices"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // ErrTeamNameExists reports a conflicting hub-local team name.

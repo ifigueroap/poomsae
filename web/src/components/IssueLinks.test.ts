@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createKataLinkFilters } from '../lib/kata/linkFilters'
-import type { KataTaskDetail, KataTaskLink, KataTaskSummary } from '../lib/kata/types'
+import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
+import type { PoomsaeTaskDetail, PoomsaeTaskLink, PoomsaeTaskSummary } from '../lib/poomsae/types'
 import IssueLinks from './IssueLinks.svelte'
 
 describe('IssueLinks', () => {
@@ -137,7 +137,7 @@ function renderLinks(overrides: Record<string, unknown> = {}) {
   })
 }
 
-function issue(): KataTaskDetail {
+function issue(): PoomsaeTaskDetail {
   const selected = task('issue-selected', 'selected-1', 'Selected issue')
   return {
     issue: { ...selected, body: 'Body' },
@@ -153,7 +153,7 @@ function issue(): KataTaskDetail {
   }
 }
 
-function peers(): KataTaskSummary[] {
+function peers(): PoomsaeTaskSummary[] {
   return [
     task('issue-parent', 'parent-1', 'Parent issue'),
     task('issue-child', 'child-1', 'Child issue'),
@@ -163,7 +163,7 @@ function peers(): KataTaskSummary[] {
   ]
 }
 
-function task(uid: string, shortID: string, title: string): KataTaskSummary {
+function task(uid: string, shortID: string, title: string): PoomsaeTaskSummary {
   return {
     id: peersIDs[uid] ?? 1,
     uid,
@@ -184,10 +184,10 @@ function task(uid: string, shortID: string, title: string): KataTaskSummary {
 
 function link(
   id: number,
-  type: KataTaskLink['type'],
+  type: PoomsaeTaskLink['type'],
   fromUID: string,
   toUID: string,
-): KataTaskLink {
+): PoomsaeTaskLink {
   const records = new Map(
     peers()
       .concat(task('issue-selected', 'selected-1', 'Selected issue'))

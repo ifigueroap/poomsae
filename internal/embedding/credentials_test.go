@@ -10,7 +10,7 @@ import (
 
 	"go.kenn.io/kit/embedclient"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 func TestMissingCredentialDoesNotCallProvider(t *testing.T) {

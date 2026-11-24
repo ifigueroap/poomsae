@@ -3,14 +3,14 @@ package daemon_test
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/stretchr/testify/assert"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
 func TestAutostartIdleShutdownRequiresOwnerLocalExposure(t *testing.T) {
-	localDaemon := kitdaemon.Endpoint{Network: kitdaemon.NetworkUnix, Address: "/tmp/kata.sock"}
+	localDaemon := kitdaemon.Endpoint{Network: kitdaemon.NetworkUnix, Address: "/tmp/poomsae.sock"}
 	localWeb := daemon.WebEndpoint{
 		Endpoint: kitdaemon.Endpoint{Network: kitdaemon.NetworkTCP, Address: "127.0.0.1:27123"},
 		Origin:   "http://127.0.0.1:27123",
@@ -51,7 +51,7 @@ func TestAutostartIdleShutdownRequiresOwnerLocalExposure(t *testing.T) {
 			daemon: localDaemon,
 			web:    localWeb,
 			config: config.DaemonConfig{MCP: config.MCPConfig{ // #nosec G101 -- synthetic test configuration names an environment variable, not a credential value.
-				Enabled: true, Actor: "example-agent", TokenEnv: "KATA_MCP_TEST_TOKEN",
+				Enabled: true, Actor: "example-agent", TokenEnv: "POOMSAE_MCP_TEST_TOKEN",
 			}},
 		},
 		{

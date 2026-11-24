@@ -27,7 +27,7 @@ type federationRunnerLeaseState struct {
 // PostgreSQL database/schema pair. The advisory lock is session-scoped and is
 // held across each runner's complete poll/apply/cursor cycle.
 func (s *Store) AcquireFederationRunnerLease(ctx context.Context) (func() error, error) {
-	lockName := "kata:federation:runner:" + s.schema
+	lockName := "poomsae:federation:runner:" + s.schema
 	for {
 		conn, err := s.Conn(ctx)
 		if err != nil {
@@ -126,7 +126,7 @@ func (s *Store) ValidateFederationRunnerLease(ctx context.Context) error {
 	if conn == nil {
 		return errors.New("postgres federation runner lease is not held")
 	}
-	lockName := "kata:federation:runner:" + s.schema
+	lockName := "poomsae:federation:runner:" + s.schema
 	var held bool
 	err := conn.QueryRowContext(ctx, `
 		SELECT EXISTS (

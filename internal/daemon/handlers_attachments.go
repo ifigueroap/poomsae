@@ -16,13 +16,13 @@ import (
 	"uuid"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const attachmentPath = "/api/v1/projects/{project_id}/issues/{ref}/attachments"
@@ -86,7 +86,7 @@ func docbankKeyUnavailable(err error) error {
 	if e, ok := errors.AsType[*config.CredentialSourceError](err); ok {
 		message += ": " + e.Reason
 	}
-	return api.NewError(http.StatusServiceUnavailable, "docbank_key_unavailable", message, "Run kata doctor on the daemon host to see which [docbank] key source failed.", nil)
+	return api.NewError(http.StatusServiceUnavailable, "docbank_key_unavailable", message, "Run poomsae doctor on the daemon host to see which [docbank] key source failed.", nil)
 }
 
 // The ten extension entries work even on hosts without a MIME database.

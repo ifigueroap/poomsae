@@ -8,11 +8,11 @@ test('token login presents its controls as a vertical form', async ({ page }) =>
   await page.route('**/api/v1/ui/daemons', async (route) => {
     await route.fulfill({
       status: 401,
-      headers: { 'X-Kata-Web-Authentication': 'login' },
+      headers: { 'X-Poomsae-Web-Authentication': 'login' },
     })
   })
 
-  await page.goto('/kata')
+  await page.goto('/poomsae')
 
   const label = page.getByText('Token', { exact: true })
   const input = page.getByLabel('Token')

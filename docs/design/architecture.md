@@ -1,14 +1,14 @@
 # Architecture and design principles
 
-This note records why kata is shaped the way it is: the goals it optimizes for,
+This note records why poomsae is shaped the way it is: the goals it optimizes for,
 the invariants it refuses to break, and the boundaries it deliberately keeps.
 It is written for maintainers and operators. For day-to-day usage start with the
 [guide](../guide/concepts.md); for the durable data and event model see the
 [data model and durability notes](data-model.md).
 
-## What kata optimizes for
+## What poomsae optimizes for
 
-kata is a single-binary, local-first issue tracker with a long-lived daemon, a
+poomsae is a single-binary, local-first issue tracker with a long-lived daemon, a
 SQLite database, a CLI, and a TUI. Agents are the primary writers; humans
 observe and steer. Three goals drive almost every decision.
 
@@ -25,7 +25,7 @@ irreversible hard tier, each gated behind explicit confirmation.
 **A small, sharp surface.** Issue lifecycle, three relationship types
 (`parent`, `blocks`, `related`, with `blocked_by` as the inverse of `blocks`),
 labels, owners, comments, and an optional priority. The surface stays small on
-purpose. kata has no `in_progress` status (use `owner` or a label), no severity
+purpose. poomsae has no `in_progress` status (use `owner` or a label), no severity
 field, no threaded comment replies, no reactions, and no
 markdown rendering. Priority is the one field that was added after v1: it is a
 constrained integer `0`–`4` rather than an open taxonomy, so it earns its place
@@ -35,18 +35,18 @@ without reopening the door to arbitrary custom fields.
 
 ## Lineage: borrowed from roborev, narrowed on purpose
 
-kata borrows its shape from roborev: pure-Go SQLite (`modernc.org/sqlite`, no
+poomsae borrows its shape from roborev: pure-Go SQLite (`modernc.org/sqlite`, no
 CGO), a Huma-based HTTP API over a Unix socket, per-PID runtime files, a durable
 resumable SSE event stream, and directory-style installable agent skills. The
-divergence is the point. Where roborev runs review and fix workloads, kata runs
+divergence is the point. Where roborev runs review and fix workloads, poomsae runs
 only issue CRUD, an event broadcaster, and a small bounded hook runner. There is
 no agentic worker pool and no daemon-driven code execution beyond the user's own
 configured hooks. Adopting a proven runtime shape kept the build simple; refusing
-roborev's execution surface kept kata a tracker rather than a workflow engine.
+roborev's execution surface kept poomsae a tracker rather than a workflow engine.
 
 ## The HTTP service is the single access path
 
-All reads and writes go through kata's HTTP API. The standalone daemon owns that
+All reads and writes go through poomsae's HTTP API. The standalone daemon owns that
 service for CLI and TUI clients; a Go application can instead construct and
 [mount the service](../development/embedding.md) in its own process. No client
 opens SQLite or PostgreSQL directly. One access path means every client sees
@@ -55,7 +55,7 @@ shared, and embedded deployments where the database is not on the caller's
 machine (see [trust boundaries](#trust-boundaries) below).
 
 A read-only direct-SQLite fast path was considered and deferred. It would create
-an immediate split between local behavior and any networked deployment, so kata
+an immediate split between local behavior and any networked deployment, so poomsae
 does not pay that complexity until a measured hot path justifies it.
 
 ### Transport and discovery
@@ -70,33 +70,33 @@ runtime files, or logs. Clients discover a running daemon by computing the
 a daemon only if none is live.
 
 The embedded service is listener-free. Its host application owns the network
-listener, TLS, signal handling, and process shutdown, and must choose a kata
+listener, TLS, signal handling, and process shutdown, and must choose a poomsae
 bearer token, an explicit trusted caller-authentication boundary, or the
 host-owned access-controller contract. The access contract supplies identity in
 process, authorizes the matched operation and its complete validated project
 scope, and revalidates long-lived responses without defining the host's role
-model. Kata-managed project-scoped federation credentials continue to
+model. Poomsae-managed project-scoped federation credentials continue to
 authenticate their own transport and lease routes. The service owns its
 configured storage handle and its federation, GitHub sync, and timed-claim
 background workers.
 Hosts with an external catalog can idempotently ensure and archive projects by
 stable UID through in-process application methods; they never need to write
-Kata tables or loop back through the mounted HTTP handler.
+Poomsae tables or loop back through the mounted HTTP handler.
 
 ## Project binding over current directory
 
-The single most load-bearing decision in kata is that a project is bound to a
+The single most load-bearing decision in poomsae is that a project is bound to a
 workspace explicitly, never inferred from wherever a command happens to run.
 
 A **project** is the namespace for issues, numbering, links, labels, and events.
-A workspace declares its project through a committed `.kata.toml` file. Resolution
+A workspace declares its project through a committed `.poomsae.toml` file. Resolution
 walks up from the start path to find that file and the enclosing git root. In a
 git workspace the config walk stops at that root, so a binding outside the
 repository cannot capture it; non-git workspaces walk to the filesystem root.
 Resolution then resolves the project. Outside a bound workspace, and without
-an explicit `--project`, every command except `kata init` fails with
+an explicit `--project`, every command except `poomsae init` fails with
 `project_not_initialized`.
-kata never silently namespaces issues to a random directory, and `kata init` is
+poomsae never silently namespaces issues to a random directory, and `poomsae init` is
 the only command that creates a project row. Auto-creation on first read or write
 is deliberately excluded; it is exactly how agents end up writing into the wrong
 project.
@@ -153,20 +153,20 @@ established differ. Operational detail lives in the
 ## Actor attribution
 
 Every mutation records an actor string. Local precedence is
-`--as` > `$KATA_AUTHOR` > `$USER` > `git config user.name` > `anonymous`. `$USER`
+`--as` > `$POOMSAE_AUTHOR` > `$USER` > `git config user.name` > `anonymous`. `$USER`
 ranks above `git config user.name` on purpose: login names such as `wesm` read
 more cleanly as event actors and owner tokens than display names with spaces such
 as `Wes McKinney`. In shared identity mode the daemon derives the actor from the
 bearer token and ignores any body-supplied actor.
 
 Actors are free-form snapshots stored on each event, not foreign keys into a user
-table. kata has no global user registry; nodes in a federated deployment are
+table. poomsae has no global user registry; nodes in a federated deployment are
 disambiguated by their instance UID. Storing snapshots keeps historical audit
 readable after a person is renamed or a token is revoked.
 
 ## Closure is an explicit act, never inferred from git
 
-kata does not scan commit messages, branches, or pull requests to decide that an
+poomsae does not scan commit messages, branches, or pull requests to decide that an
 issue is done. Inferring closure from git history recreates what the design notes
 call the "beads gravity well": commit-message conventions, orphan checks, branch
 heuristics, and workflow linting that drift out of sync with reality.
@@ -174,7 +174,7 @@ heuristics, and workflow linting that drift out of sync with reality.
 Instead, closing is an explicit API mutation. CI or merge automation that knows
 which issues a change resolves calls the close endpoint directly and can attach
 source metadata (provider, repository, pull request, commit) in the event
-payload. This supports merge-driven closure without turning kata into a git
+payload. This supports merge-driven closure without turning poomsae into a git
 workflow engine. Because closing asserts completion, it carries more than a
 status flip (a reason, a substantive message, and typed evidence) so a reviewer
 can later verify the claim. The user-facing rules are in
@@ -189,22 +189,22 @@ and cron events. They are deliberately constrained:
   pool. A hook can never block or roll back a state change.
 - They are invoked with `exec.Command(cmd, args...)`: **no shell**, and no
   environment-variable expansion of arguments. Event data reaches a hook as JSON
-  on stdin and a small set of `KATA_*` scalar environment variables.
+  on stdin and a small set of `POOMSAE_*` scalar environment variables.
 - This avoids the obvious shell-injection surface, but a hook is **not a
-  sandbox**. It runs with the daemon's OS user and inherits no kata internals
+  sandbox**. It runs with the daemon's OS user and inherits no poomsae internals
   beyond the documented variables. Operators who need OS-level isolation should
   write hooks that re-exec under their own sandbox (a container, `firejail`,
   `bwrap`, and so on).
 
 In a shared deployment, hooks are server configuration: they run on the server
-with the server's OS user. A developer's committed `.kata.toml` must never be
+with the server's OS user. A developer's committed `.poomsae.toml` must never be
 able to cause server-side code execution, which is why workspace-local hook
-configuration is excluded and `.kata.toml` carries only the project binding.
+configuration is excluded and `.poomsae.toml` carries only the project binding.
 Hooks are configured globally on the daemon host, not per workspace.
 
-## `kata doctor` checks the system, not the workflow
+## `poomsae doctor` checks the system, not the workflow
 
-`kata doctor` is read-only and reports on system health only: daemon
+`poomsae doctor` is read-only and reports on system health only: daemon
 reachability, database integrity, schema drift, stale runtime files, config parse
 errors, and skill-install drift. It never lints the workflow (no "stale open
 issues," no "dangling owners," no commit-reference orphans) and it never mutates
@@ -217,10 +217,10 @@ does flag something.
 
 Some exclusions are permanent design choices rather than unbuilt features:
 workspace-local behavior overrides, per-issue SSE subscriptions, bulk mutation
-endpoints, a `(kata-#N)` commit-message convention, and the workflow lints
+endpoints, a `(poomsae-#N)` commit-message convention, and the workflow lints
 noted above. Outbound webhooks are out of scope except for MCP Events. There
 the daemon, not the MCP process, stores subscriptions and sends signed
-callbacks to a verified HTTPS endpoint. It sends them for `kata.inbox.changed`
+callbacks to a verified HTTPS endpoint. It sends them for `poomsae.inbox.changed`
 only, with no general webhook surface. See
 [MCP Events](../operations/mcp-events.md).
 

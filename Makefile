@@ -1,4 +1,4 @@
-.PHONY: build install homebrew test test-short test-stress test-federation-docker lint vet clean fmt nilaway openapi api-generate api-check api-breaking tui tui-demo docs-install docs-build docs-serve docs-preview docs-check docs-deploy docs-screenshots docs-assets-branch kata-ui-check kata-ui-test kata-ui-pack-check web-install web-generate web-check web-audit web-test web-test-unit web-test-browser web-e2e web-build web-embed web-assets-check web-release-check web-dev
+.PHONY: build install homebrew test test-short test-stress test-federation-docker lint vet clean fmt nilaway openapi api-generate api-check api-breaking tui tui-demo docs-install docs-build docs-serve docs-preview docs-check docs-deploy docs-screenshots docs-assets-branch poomsae-ui-check poomsae-ui-test poomsae-ui-pack-check web-install web-generate web-check web-audit web-test web-test-unit web-test-browser web-e2e web-build web-embed web-assets-check web-release-check web-dev
 
 GOFLAGS_TEST := -shuffle=on
 FEDERATION_STRESS_TIMEOUT ?= 2m
@@ -6,13 +6,10 @@ GOBIN ?= $(HOME)/.local/bin
 VERSION := $(shell v=$$(git describe --tags --always --dirty 2>/dev/null || printf dev); printf '%s' "$$v" | LC_ALL=C tr -c 'A-Za-z0-9._+~:-' '-')
 COMMIT := $(shell v=$$(git rev-parse --short=7 HEAD 2>/dev/null || printf unknown); printf '%s' "$$v" | LC_ALL=C tr -c 'A-Za-z0-9._+~:-' '-')
 BUILD_DATE := $(shell v=$$(git show -s --format=%cI HEAD 2>/dev/null || printf unknown); printf '%s' "$$v" | LC_ALL=C tr -c 'A-Za-z0-9._+~:-' '-')
-# Public PostHog ingest key. Builds without it send no telemetry.
-POSTHOG_PROJECT_KEY ?= phc_AzHd9YvuHR7M5poKzC6eW654d3SgKyBdoQPuwkWhimUf
-# Package manager that owns the binary. Values other than empty or kenn
-# disable self-update.
+# Package manager that owns the binary. Values other than empty disable self-update.
 DISTRIBUTION ?=
 BINDIR ?= .
-LDFLAGS = -X go.kenn.io/kata/internal/version.Version=$(VERSION) -X go.kenn.io/kata/internal/version.Commit=$(COMMIT) -X go.kenn.io/kata/internal/version.BuildDate=$(BUILD_DATE) -X go.kenn.io/kata/internal/version.Distribution=$(DISTRIBUTION) -X go.kenn.io/kit/telemetry/posthog.distribution=$(DISTRIBUTION) -X go.kenn.io/kit/telemetry/posthog.projectKey=$(POSTHOG_PROJECT_KEY)
+LDFLAGS = -X github.com/ifigueroap/poomsae/internal/version.Version=$(VERSION) -X github.com/ifigueroap/poomsae/internal/version.Commit=$(COMMIT) -X github.com/ifigueroap/poomsae/internal/version.BuildDate=$(BUILD_DATE) -X github.com/ifigueroap/poomsae/internal/version.Distribution=$(DISTRIBUTION)
 export GOBIN
 
 # Compile without absolute source paths so every checkout and worktree shares
@@ -30,30 +27,30 @@ export GOFLAGS
 
 build: web-embed
 	@set -e; trap 'cd web && bun run scripts/embed-assets.ts --restore-stub' EXIT; \
-		go build -ldflags="$(LDFLAGS)" -o kata ./cmd/kata
+		go build -ldflags="$(LDFLAGS)" -o poomsae ./cmd/poomsae
 
 install: web-embed
 	@set -e; trap 'cd web && bun run scripts/embed-assets.ts --restore-stub' EXIT; \
-		go install -ldflags="$(LDFLAGS)" ./cmd/kata
+		go install -ldflags="$(LDFLAGS)" ./cmd/poomsae
 
 # Homebrew build profile: the normal build with cgo and DISTRIBUTION=homebrew.
 homebrew: DISTRIBUTION := homebrew
 homebrew: web-embed
 	@set -e; trap 'cd web && bun run scripts/embed-assets.ts --restore-stub' EXIT; \
-		CGO_ENABLED=1 go build -ldflags="$(LDFLAGS)" -o "$(BINDIR)/kata" ./cmd/kata
+		CGO_ENABLED=1 go build -ldflags="$(LDFLAGS)" -o "$(BINDIR)/poomsae" ./cmd/poomsae
 
 test:
-	env -u KATA_AUTH_TOKEN -u KATA_TRUST_PRIVATE_NETWORK go test $(GOFLAGS_TEST) ./...
+	env -u POOMSAE_AUTH_TOKEN -u POOMSAE_TRUST_PRIVATE_NETWORK go test $(GOFLAGS_TEST) ./...
 
 # Regenerate the committed OpenAPI schema and generated Go client.
 # Drift tests fail if the OpenAPI artifacts or generated client differ from this output.
 api-generate:
-	set -e; tmp="$$(mktemp)"; trap 'rm -f "$$tmp"' EXIT; go run ./cmd/kata openapi > "$$tmp"; if [ -f api/openapi.yaml ] && cmp -s "$$tmp" api/openapi.yaml; then rm "$$tmp"; else mv "$$tmp" api/openapi.yaml; fi; trap - EXIT
-	set -e; tmp="$$(mktemp)"; trap 'rm -f "$$tmp"' EXIT; go run ./cmd/kata openapi --version 3.0 --format yaml > "$$tmp"; if [ -f pkg/client/openapi.yaml ] && cmp -s "$$tmp" pkg/client/openapi.yaml; then rm "$$tmp"; else mv "$$tmp" pkg/client/openapi.yaml; fi; trap - EXIT
+	set -e; tmp="$$(mktemp)"; trap 'rm -f "$$tmp"' EXIT; go run ./cmd/poomsae openapi > "$$tmp"; if [ -f api/openapi.yaml ] && cmp -s "$$tmp" api/openapi.yaml; then rm "$$tmp"; else mv "$$tmp" api/openapi.yaml; fi; trap - EXIT
+	set -e; tmp="$$(mktemp)"; trap 'rm -f "$$tmp"' EXIT; go run ./cmd/poomsae openapi --version 3.0 --format yaml > "$$tmp"; if [ -f pkg/client/openapi.yaml ] && cmp -s "$$tmp" pkg/client/openapi.yaml; then rm "$$tmp"; else mv "$$tmp" pkg/client/openapi.yaml; fi; trap - EXIT
 	cd pkg/client/generated && find . -maxdepth 1 -type f -name '*.go' ! -name 'generate.go' -delete && go run github.com/doordash-oss/oapi-codegen-dd/v3/cmd/oapi-codegen@v3.76.5 -config config.yaml ../openapi.yaml
 
 api-check:
-	env -u KATA_SKIP_OPENAPI_CLIENT_CHECK go test ./internal/daemon -run 'TestOpenAPI(ArtifactUpToDate|ClientSpecArtifactUpToDate|ClientArtifactUpToDate)$$'
+	env -u POOMSAE_SKIP_OPENAPI_CLIENT_CHECK go test ./internal/daemon -run 'TestOpenAPI(ArtifactUpToDate|ClientSpecArtifactUpToDate|ClientArtifactUpToDate)$$'
 
 # Fail when the committed OpenAPI contract introduces breaking changes for
 # existing clients relative to BASE_REF (default origin/main).
@@ -68,22 +65,22 @@ web-install:
 web-generate:
 	cd web && bun run generate
 
-kata-ui-check:
-	bun run --cwd packages/kata-ui check
+poomsae-ui-check:
+	bun run --cwd packages/poomsae-ui check
 
-kata-ui-test:
-	bun run --cwd packages/kata-ui test
+poomsae-ui-test:
+	bun run --cwd packages/poomsae-ui test
 
-kata-ui-pack-check:
-	cd packages/kata-ui && bun x vp test pack.test.ts --outputFile.json=test-results/vitest/kata-ui-pack.json
+poomsae-ui-pack-check:
+	cd packages/poomsae-ui && bun x vp test pack.test.ts --outputFile.json=test-results/vitest/poomsae-ui-pack.json
 
-web-check: kata-ui-check
+web-check: poomsae-ui-check
 	cd web && bun run check
 
 web-audit:
 	cd web && bun run audit
 
-web-test: kata-ui-test kata-ui-pack-check
+web-test: poomsae-ui-test poomsae-ui-pack-check
 	cd web && bun run test
 
 web-test-unit:
@@ -111,12 +108,12 @@ web-embed: web-build web-assets-check
 	cd web && bun run scripts/embed-assets.ts dist
 
 web-release-check: web-embed
-	env -u KATA_AUTH_TOKEN -u KATA_TRUST_PRIVATE_NETWORK KATA_RUN_WEB_RELEASE_CHECK=1 go test ./e2e -run '^TestReleaseBinaryContainsValidatedWebUI$$' -count=1
+	env -u POOMSAE_AUTH_TOKEN -u POOMSAE_TRUST_PRIVATE_NETWORK POOMSAE_RUN_WEB_RELEASE_CHECK=1 go test ./e2e -run '^TestReleaseBinaryContainsValidatedWebUI$$' -count=1
 
 openapi: api-generate
 
 test-short:
-	env -u KATA_AUTH_TOKEN -u KATA_TRUST_PRIVATE_NETWORK go test -short $(GOFLAGS_TEST) ./...
+	env -u POOMSAE_AUTH_TOKEN -u POOMSAE_TRUST_PRIVATE_NETWORK go test -short $(GOFLAGS_TEST) ./...
 
 # gotestsum places packages after Go flags, so use Rapid's environment setting.
 test-stress:
@@ -191,23 +188,23 @@ fmt:
 tui:
 	@tmp=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp"' EXIT; \
-	GOFLAGS="$(GOFLAGS) -buildvcs=false" go build -o "$$tmp/kata" ./cmd/kata; \
-	KATA_COLOR_MODE="$${KATA_COLOR_MODE:-dark}" "$$tmp/kata" tui
+	GOFLAGS="$(GOFLAGS) -buildvcs=false" go build -o "$$tmp/poomsae" ./cmd/poomsae; \
+	POOMSAE_COLOR_MODE="$${POOMSAE_COLOR_MODE:-dark}" "$$tmp/poomsae" tui
 
 tui-demo:
 	@tmp=$$(mktemp -d); \
-	trap 'KATA_HOME="$$tmp/home" "$$tmp/kata" daemon stop >/dev/null 2>&1 || true; rm -rf "$$tmp"' EXIT; \
+	trap 'POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" daemon stop >/dev/null 2>&1 || true; rm -rf "$$tmp"' EXIT; \
 	mkdir -p "$$tmp/ws"; \
-	GOFLAGS="$(GOFLAGS) -buildvcs=false" go build -o "$$tmp/kata" ./cmd/kata; \
-	KATA_HOME="$$tmp/home" "$$tmp/kata" --workspace "$$tmp/ws" init --project github.com/wesm/kata --name kata >/dev/null; \
-	KATA_HOME="$$tmp/home" "$$tmp/kata" --workspace "$$tmp/ws" --as alice create "fix login bug on Safari" --owner claude-4.7 --label tui --label ux >/dev/null; \
-	KATA_HOME="$$tmp/home" "$$tmp/kata" --workspace "$$tmp/ws" --as wesm create "rebuild search index" --owner wesm --label infra >/dev/null; \
-	KATA_HOME="$$tmp/home" "$$tmp/kata" --workspace "$$tmp/ws" --as bob close 2 >/dev/null; \
-	KATA_HOME="$$tmp/home" "$$tmp/kata" --workspace "$$tmp/ws" --as alice create "purge stale tokens" --label cleanup >/dev/null; \
-	KATA_HOME="$$tmp/home" KATA_COLOR_MODE=dark "$$tmp/kata" --workspace "$$tmp/ws" tui
+	GOFLAGS="$(GOFLAGS) -buildvcs=false" go build -o "$$tmp/poomsae" ./cmd/poomsae; \
+	POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" --workspace "$$tmp/ws" init --project github.com/wesm/poomsae --name poomsae >/dev/null; \
+	POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" --workspace "$$tmp/ws" --as alice create "fix login bug on Safari" --owner claude-4.7 --label tui --label ux >/dev/null; \
+	POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" --workspace "$$tmp/ws" --as wesm create "rebuild search index" --owner wesm --label infra >/dev/null; \
+	POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" --workspace "$$tmp/ws" --as bob close 2 >/dev/null; \
+	POOMSAE_HOME="$$tmp/home" "$$tmp/poomsae" --workspace "$$tmp/ws" --as alice create "purge stale tokens" --label cleanup >/dev/null; \
+	POOMSAE_HOME="$$tmp/home" POOMSAE_COLOR_MODE=dark "$$tmp/poomsae" --workspace "$$tmp/ws" tui
 
 clean:
-	rm -f kata kata.exe coverage.out
+	rm -f poomsae poomsae.exe coverage.out
 	rm -rf dist site docs/site web/dist
 	cd web && bun run scripts/embed-assets.ts --restore-stub
 

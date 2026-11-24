@@ -12,10 +12,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/api"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	clientpkg "go.kenn.io/kata/internal/client"
 	"go.kenn.io/kit/tui/helplayout"
 )
 
@@ -113,7 +113,7 @@ func TestFederationView_RenderIncludesActiveSpokeStatus(t *testing.T) {
 	m.federation.instance.Auth = AuthInfo{Kind: "db_token", Actor: "operator"}
 	rendered := stripANSI(renderFederation(m))
 
-	assert.Contains(t, rendered, "kata / federation")
+	assert.Contains(t, rendered, "poomsae / federation")
 	assert.Contains(t, rendered, "Federation for active daemon:")
 	assert.Contains(t, rendered, "spoke-daemon")
 	assert.Contains(t, rendered, "http://spoke.internal:7777")
@@ -296,7 +296,7 @@ func TestFederationBrowse_ReadOnlyDoesNotCreateEnrollment(t *testing.T) {
 // create-replica row and silently pre-armed adoption); it only positions the
 // cursor, so the adopt flow costs exactly one Enter more.
 func TestFederationEnroll_NWithCurrentProjectStartsLocalSelectionCursored(t *testing.T) {
-	t.Setenv("KATA_AUTHOR", "")
+	t.Setenv("POOMSAE_AUTHOR", "")
 	t.Setenv("USER", "operator")
 	m := setupFederationView()
 	m.list.actor = resolveTUIActor()
@@ -587,7 +587,7 @@ func TestFederationEnroll_ExistingLocalFederationBindingBlocksBeforeMutation(t *
 }
 
 func TestFederationEnroll_MissingTokenEnvBlocksBeforeMutation(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv(missingHubAuthEnvName(), "")
 	m := setupFederationView()
 	m.scope = homedScope(7, "spoke-project")
@@ -610,7 +610,7 @@ func TestFederationEnroll_MissingTokenEnvBlocksBeforeMutation(t *testing.T) {
 }
 
 func TestFederationEnroll_GlobalAuthTokenDoesNotOverrideMissingTargetTokenEnv(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "local-daemon-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "local-daemon-token")
 	t.Setenv(missingHubAuthEnvName(), "")
 	m := setupFederationView()
 	m.scope = homedScope(7, "spoke-project")
@@ -790,7 +790,7 @@ func TestFederationEnroll_MetadataFailureRecoveryRevealUsesOnlyAvailableFields(t
 	rendered := stripANSI(renderFederation(out))
 	assert.Contains(t, rendered, "single-use/secret-bearing")
 	assert.Contains(t, rendered, "spoke target")
-	assert.Contains(t, rendered, "KATA_SERVER=")
+	assert.Contains(t, rendered, "POOMSAE_SERVER=")
 	assert.Contains(t, rendered, "--hub-url")
 	assert.Contains(t, rendered, "--hub-project-id 42")
 	assert.Contains(t, rendered, "--project spoke-project")
@@ -878,7 +878,7 @@ func TestFederationEnroll_JoinFailureRecoveryRevealIsExplicitAndSecretBearing(t 
 	assert.Contains(t, rendered, "single-use/secret-bearing")
 	assert.Contains(t, rendered, "valid and not revoked")
 	assert.Contains(t, rendered, "spoke target")
-	assert.Contains(t, rendered, "KATA_SERVER=")
+	assert.Contains(t, rendered, "POOMSAE_SERVER=")
 	assert.Contains(t, rendered, "--hub-url")
 	assert.Contains(t, rendered, "--hub-project-id 42")
 	assert.Contains(t, rendered, "--hub-project-uid 01HZNQ7VFPK1XGD8R5MABCD4EX")
@@ -903,8 +903,8 @@ func TestFederationEnroll_RecoveryCommandPreservesSpokeAllowInsecure(t *testing.
 	require.Nil(t, revealCmd)
 
 	rendered := stripANSI(renderFederation(out))
-	assert.Contains(t, rendered, "KATA_SERVER=")
-	assert.Contains(t, rendered, "KATA_ALLOW_INSECURE=1")
+	assert.Contains(t, rendered, "POOMSAE_SERVER=")
+	assert.Contains(t, rendered, "POOMSAE_ALLOW_INSECURE=1")
 }
 
 func TestFederationEnroll_RecoveryCommandPreservesSpokeAuthOnlyAfterReveal(t *testing.T) {
@@ -922,7 +922,7 @@ func TestFederationEnroll_RecoveryCommandPreservesSpokeAuthOnlyAfterReveal(t *te
 	require.Nil(t, revealCmd)
 
 	rendered = stripANSI(renderFederation(out))
-	assert.Contains(t, rendered, "KATA_AUTH_TOKEN="+spokeToken)
+	assert.Contains(t, rendered, "POOMSAE_AUTH_TOKEN="+spokeToken)
 }
 
 func TestFederationAuthDisplayShowsTrustedProxyMissingActor(t *testing.T) {
@@ -1445,7 +1445,7 @@ func setupFederationSourceModel() Model {
 }
 
 func testAuthEnvName() string {
-	return strings.Join([]string{"KATA", "SPOKE", "AUTH"}, "_")
+	return strings.Join([]string{"POOMSAE", "SPOKE", "AUTH"}, "_")
 }
 
 func missingHubAuthEnvName() string {

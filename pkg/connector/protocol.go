@@ -12,7 +12,7 @@ import (
 )
 
 // ProtocolVersion is the exact connector wire-protocol version.
-const ProtocolVersion = "kata.connector.v1"
+const ProtocolVersion = "poomsae.connector.v1"
 
 // Capability names an optional connector operation.
 type Capability string
@@ -24,7 +24,7 @@ const (
 	CapabilityFields Capability = "fields"
 
 	// CapabilityConditionalFields advertises compare-and-set field writes.
-	// Kata sends write_fields expected values only to connectors that
+	// Poomsae sends write_fields expected values only to connectors that
 	// advertise this capability; plain v1 connectors never observe the
 	// parameter.
 	CapabilityConditionalFields Capability = "conditional_fields"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 // A historical route may resolve into another project and allocate a different

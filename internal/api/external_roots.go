@@ -3,8 +3,8 @@ package api //nolint:revive // package name is the stable wire-types layout.
 import (
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 // ConnectorOut is the secret-free status of one configured connector instance.
@@ -41,19 +41,19 @@ type ConnectorFieldsResponse struct {
 	}
 }
 
-// MapConnectorFieldRequest maps one Kata planning field to an external field.
+// MapConnectorFieldRequest maps one Poomsae planning field to an external field.
 type MapConnectorFieldRequest struct {
-	Instance  string `path:"instance"`
-	KataField string `path:"kata_field"`
-	Body      struct {
+	Instance     string `path:"instance"`
+	PoomsaeField string `path:"kata_field"`
+	Body         struct {
 		ExternalField string `json:"external_field"`
 	}
 }
 
 // UnmapConnectorFieldRequest removes one connector field mapping.
 type UnmapConnectorFieldRequest struct {
-	Instance  string `path:"instance"`
-	KataField string `path:"kata_field"`
+	Instance     string `path:"instance"`
+	PoomsaeField string `path:"kata_field"`
 }
 
 // ConnectorFieldMappingResponse returns one connector field mapping.
@@ -61,7 +61,7 @@ type ConnectorFieldMappingResponse struct{ Body ExternalFieldMappingOut }
 
 // ExternalFieldMappingOut describes an active connector field mapping.
 type ExternalFieldMappingOut struct {
-	KataField         string   `json:"kata_field"`
+	PoomsaeField      string   `json:"kata_field"`
 	ExternalFieldID   string   `json:"external_field_id"`
 	ExternalFieldName string   `json:"external_field_name"`
 	AcceptedKinds     []string `json:"accepted_kinds"`
@@ -78,7 +78,7 @@ type ExternalRootIssueRequest struct {
 	Actor     string `query:"actor,omitempty"`
 }
 
-// BindExternalRootRequest creates a bridge for one Kata issue.
+// BindExternalRootRequest creates a bridge for one Poomsae issue.
 type BindExternalRootRequest struct {
 	ProjectID int64  `path:"project_id"`
 	Ref       string `path:"ref"`
@@ -113,9 +113,9 @@ type ResolveExternalFieldRequest struct {
 	ProjectID int64  `path:"project_id"`
 	Ref       string `path:"ref"`
 	Body      struct {
-		KataField string `json:"kata_field"`
-		Use       string `json:"use"`
-		Actor     string `json:"actor,omitempty"`
+		PoomsaeField string `json:"kata_field"`
+		Use          string `json:"use"`
+		Actor        string `json:"actor,omitempty"`
 	}
 }
 
@@ -162,8 +162,8 @@ type ExternalRootBridgeOut struct {
 
 // ExternalFieldConflictOut describes unresolved canonical field candidates.
 type ExternalFieldConflictOut struct {
-	KataField         string                     `json:"kata_field"`
-	KataCandidate     *ExternalFieldCandidateOut `json:"kata_candidate,omitempty"`
+	PoomsaeField      string                     `json:"kata_field"`
+	PoomsaeCandidate  *ExternalFieldCandidateOut `json:"kata_candidate,omitempty"`
 	ExternalCandidate *ExternalFieldCandidateOut `json:"external_candidate,omitempty"`
 	ConflictAt        *time.Time                 `json:"conflict_at,omitempty"`
 }
@@ -190,7 +190,7 @@ type ExternalRootRunOut struct {
 // ExternalFieldMappingFromDB converts a stored mapping to its wire form.
 func ExternalFieldMappingFromDB(mapping db.ExternalFieldMapping) ExternalFieldMappingOut {
 	return ExternalFieldMappingOut{
-		KataField: mapping.KataField, ExternalFieldID: mapping.ExternalFieldID,
+		PoomsaeField: mapping.PoomsaeField, ExternalFieldID: mapping.ExternalFieldID,
 		ExternalFieldName: mapping.ExternalFieldName, AcceptedKinds: append([]string(nil), mapping.AcceptedKinds...),
 		Nullable: mapping.Nullable, Writable: mapping.Writable, SchemaRevision: mapping.SchemaRevision, Active: mapping.Active,
 	}

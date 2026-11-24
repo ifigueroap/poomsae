@@ -11,9 +11,9 @@ import (
 	oapiruntime "github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.kenn.io/kata/internal/tokenfile"
-	"go.kenn.io/kata/internal/tokenissuance"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/tokenfile"
+	"github.com/ifigueroap/poomsae/internal/tokenissuance"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // TokensInput requests redacted token records.
@@ -77,9 +77,9 @@ func registerTokenTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
 	mutating := toolHints(false, true, false)
 	additive := toolHints(false, false, false)
-	addTool(server, "kata.token_create", "Create token", "Create a daemon token. Scoped tokens are written to a protected token_file and never returned as plaintext.", nonIdempotent(additive), handlers.tokenCreate)
-	addTool(server, "kata.token_revoke", "Revoke token", "Revoke one daemon token by ID.", mutating, handlers.tokenRevoke)
-	addTool(server, "kata.tokens", "List tokens", "List redacted daemon token records without secrets or hashes.", read, handlers.tokens)
+	addTool(server, "poomsae.token_create", "Create token", "Create a daemon token. Scoped tokens are written to a protected token_file and never returned as plaintext.", nonIdempotent(additive), handlers.tokenCreate)
+	addTool(server, "poomsae.token_revoke", "Revoke token", "Revoke one daemon token by ID.", mutating, handlers.tokenRevoke)
+	addTool(server, "poomsae.tokens", "List tokens", "List redacted daemon token records without secrets or hashes.", read, handlers.tokens)
 }
 
 func (h toolHandlers) tokens(ctx context.Context, _ *sdkmcp.CallToolRequest, _ TokensInput) (*sdkmcp.CallToolResult, TokensOutput, error) {

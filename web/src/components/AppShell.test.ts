@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-vi.mock('../lib/kata/projection', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../lib/kata/projection')>()
+vi.mock('../lib/poomsae/projection', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../lib/poomsae/projection')>()
   return { ...original, normalizeKataUISnapshot: vi.fn(original.normalizeKataUISnapshot) }
 })
 
 import { setGeneratedFetch } from '../lib/api/client'
-import { normalizeKataUISnapshot } from '../lib/kata/projection'
+import { normalizeKataUISnapshot } from '../lib/poomsae/projection'
 import type { MutationContext, MutationResult } from '../lib/mutations/controller'
 import type { SettingsSection, ShareableFilters } from '../lib/router'
 import type { UISnapshot } from '../lib/state/snapshot'
@@ -59,7 +59,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'inbox',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -88,7 +88,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'inbox',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -113,7 +113,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -137,7 +137,7 @@ describe('AppShell', () => {
     const current = snapshot()
     const props = {
       route: {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         projectUID: current.catalog[0]!.project.uid,
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [] },
@@ -171,7 +171,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -188,7 +188,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('status', { name: 'Active connection' }).textContent).toContain(
       'Credential: Read-only',
     )
-    expect(screen.queryByText('This Kata session is read-only.')).toBeNull()
+    expect(screen.queryByText('This Poomsae session is read-only.')).toBeNull()
 
     const reason = 'This credential is read-only.'
     const newTask = screen.getByRole('button', { name: 'New task', description: reason })
@@ -210,7 +210,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -247,7 +247,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -279,7 +279,7 @@ describe('AppShell', () => {
       const current = snapshot()
       const props = {
         route: {
-          kind: 'kata' as const,
+          kind: 'poomsae' as const,
           projectUID: current.catalog[0]!.project.uid,
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -328,7 +328,7 @@ describe('AppShell', () => {
   test('keeps a healthy connection hidden during refresh while preserving attention states', async () => {
     const props = {
       route: {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         view: 'all-open' as const,
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [] },
@@ -381,7 +381,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -405,7 +405,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -427,7 +427,7 @@ describe('AppShell', () => {
     Object.assign(current.capabilities, { account: 'member-one', token_audit_read: false })
     const props = {
       route: {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         view: 'all-open' as const,
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [] },
@@ -486,7 +486,7 @@ describe('AppShell', () => {
     })
     const props = {
       route: {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         view: 'all-open' as const,
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [] },
@@ -512,7 +512,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -527,14 +527,14 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('button', { name: /Example issue/ })).not.toBeNull()
     expect(
-      within(screen.getByRole('region', { name: 'Kata navigation' })).getByRole('button', {
+      within(screen.getByRole('region', { name: 'Poomsae navigation' })).getByRole('button', {
         name: /example-project/,
       }),
     ).not.toBeNull()
 
     await fireEvent.click(screen.getByRole('button', { name: 'Today' }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'today',
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -543,7 +543,7 @@ describe('AppShell', () => {
     await fireEvent.input(screen.getByLabelText('Search tasks'), { target: { value: 'example' } })
     await waitFor(() =>
       expect(onNavigate).toHaveBeenCalledWith({
-        kind: 'kata',
+        kind: 'poomsae',
         view: 'all-open',
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [], text: 'example' },
@@ -552,7 +552,7 @@ describe('AppShell', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Open reachable graph' }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'all-open',
       issueUID: '01J00000000000000000000001',
       graph: true,
@@ -561,7 +561,7 @@ describe('AppShell', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: /Example issue/ }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'all-open',
       issueUID: '01J00000000000000000000001',
       graph: false,
@@ -574,7 +574,7 @@ describe('AppShell', () => {
     ['Open reachable graph', true],
   ])('keeps a pending search when opening %s', async (button, graph) => {
     const route = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       view: 'all-open' as const,
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -604,7 +604,7 @@ describe('AppShell', () => {
     const current = snapshot()
     current.capabilities.token_audit_read = true
     const route = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       view: 'all-open' as const,
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -654,7 +654,7 @@ describe('AppShell', () => {
         ...pending,
       } as ShareableFilters
       const route = {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         ...(view ? { view } : {}),
         ...(projectUID ? { projectUID } : {}),
         graph: false,
@@ -693,7 +693,7 @@ describe('AppShell', () => {
 
   test('keeps the requested query when an older snapshot arrives', async () => {
     const route = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       view: 'all-open' as const,
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -721,7 +721,7 @@ describe('AppShell', () => {
   test('stays in the landing Inbox while selecting, graphing, and narrowing', async () => {
     const onNavigate = vi.fn()
     const landing = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
     }
@@ -1216,7 +1216,7 @@ describe('AppShell', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Credentials' }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'credentials',
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1234,7 +1234,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'credentials',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1277,7 +1277,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1293,7 +1293,7 @@ describe('AppShell', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'settings',
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1328,7 +1328,7 @@ describe('AppShell', () => {
           },
           {
             id: 'team',
-            url: 'https://kata.example.com',
+            url: 'https://poomsae.example.com',
             default: false,
             auth: 'token',
             health: 'connected',
@@ -1343,7 +1343,7 @@ describe('AppShell', () => {
     })
 
     expect(screen.getByRole('heading', { name: 'Settings' })).not.toBeNull()
-    expect(await screen.findByText(/kata\.example\.com/)).not.toBeNull()
+    expect(await screen.findByText(/poomsae\.example\.com/)).not.toBeNull()
     expect(screen.getByRole('heading', { name: 'Search by meaning' })).not.toBeNull()
     expect(
       screen.getByRole('button', { name: 'Search by meaning' }).getAttribute('aria-current'),
@@ -1392,7 +1392,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'settings',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1423,7 +1423,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1445,7 +1445,7 @@ describe('AppShell', () => {
 
     expect(onNavigate).toHaveBeenCalledTimes(1)
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       view: 'today',
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1489,7 +1489,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           projectUID: '01J00000000000000000000002',
           view: 'inbox',
           graph: false,
@@ -1511,7 +1511,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           projectUID: '01J00000000000000000000002',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1540,7 +1540,7 @@ describe('AppShell', () => {
     }))
     const props = {
       route: {
-        kind: 'kata' as const,
+        kind: 'poomsae' as const,
         view: 'all-open' as const,
         graph: false,
         filters: { status: [], owner: [], label: ['a', 'b'], relationship: [] },
@@ -1583,7 +1583,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           projectUID: selected.catalog[0]!.project.uid,
           issueUID: '01J00000000000000000000001',
           graph: true,
@@ -1645,7 +1645,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: true,
           filters: { status: [], owner: ['user-a'], label: [], relationship: [] },
@@ -1661,14 +1661,14 @@ describe('AppShell', () => {
     expect(screen.getByRole('region', { name: 'Reachable task graph' })).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: /Child issue/ }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       issueUID: child.uid,
       graph: true,
       filters: { status: [], owner: ['user-a'], label: [], relationship: [] },
     })
     await fireEvent.click(screen.getByRole('button', { name: 'Back to task list' }))
     expect(onNavigate).toHaveBeenCalledWith({
-      kind: 'kata',
+      kind: 'poomsae',
       issueUID: '01J00000000000000000000001',
       graph: false,
       filters: { status: [], owner: ['user-a'], label: [], relationship: [] },
@@ -1707,7 +1707,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: true,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1727,7 +1727,7 @@ describe('AppShell', () => {
         onCreateProject: vi.fn(async () => ({ changed: true })),
       },
     })
-    const handle = screen.getByRole('separator', { name: 'Resize Kata panes' })
+    const handle = screen.getByRole('separator', { name: 'Resize Poomsae panes' })
     await fireEvent.keyDown(handle, { key: 'ArrowLeft' })
     expect(onPreferencesChange).not.toHaveBeenCalled()
     const preferences = {
@@ -1746,7 +1746,7 @@ describe('AppShell', () => {
     expect(handle.getAttribute('aria-valuenow')).toBe('784')
     await view.rerender({
       route: {
-        kind: 'kata',
+        kind: 'poomsae',
         issueUID: '01J00000000000000000000001',
         graph: false,
         filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1777,7 +1777,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1837,7 +1837,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1858,7 +1858,7 @@ describe('AppShell', () => {
       },
     })
 
-    expect(screen.getByRole('separator', { name: 'Resize Kata panes' })).not.toBeNull()
+    expect(screen.getByRole('separator', { name: 'Resize Poomsae panes' })).not.toBeNull()
     await fireEvent.click(screen.getByRole('button', { name: 'Display' }))
     await fireEvent.click(screen.getByRole('radio', { name: 'Below list' }))
     expect(onPreferencesChange).toHaveBeenCalledWith(
@@ -1866,7 +1866,7 @@ describe('AppShell', () => {
     )
     await view.rerender({
       route: {
-        kind: 'kata',
+        kind: 'poomsae',
         view: 'settings',
         section: 'appearance',
         graph: false,
@@ -1889,7 +1889,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1925,7 +1925,7 @@ describe('AppShell', () => {
       render(AppShell, {
         props: {
           route: {
-            kind: 'kata',
+            kind: 'poomsae',
             view,
             graph: false,
             filters: { status: [], owner: [], label: [], relationship: [] },
@@ -1963,7 +1963,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'settings',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2003,7 +2003,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2056,7 +2056,7 @@ describe('AppShell', () => {
       const view = render(AppShell, {
         props: {
           route: {
-            kind: 'kata',
+            kind: 'poomsae',
             view: 'all-open',
             graph: false,
             filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2091,7 +2091,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2117,7 +2117,7 @@ describe('AppShell', () => {
       },
     })
 
-    expect(screen.getByRole('status', { name: 'Kata daemon status' }).textContent).toContain(
+    expect(screen.getByRole('status', { name: 'Poomsae daemon status' }).textContent).toContain(
       'Reconnecting…',
     )
     expect(screen.getByRole('status', { name: 'Active connection' }).textContent).toContain(
@@ -2129,7 +2129,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           view: 'all-open',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2176,7 +2176,7 @@ describe('AppShell', () => {
     const view = render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: false,
           filters,
@@ -2188,7 +2188,7 @@ describe('AppShell', () => {
         onCreateProject: vi.fn(async () => ({ changed: true })),
       },
     })
-    await waitFor(() => expect(document.title).toBe('Issue · Kata'))
+    await waitFor(() => expect(document.title).toBe('Issue · Poomsae'))
     current.selected = {
       state: 'available',
       issue: current.collection![0]!,
@@ -2199,41 +2199,41 @@ describe('AppShell', () => {
       history: [],
     }
     await view.rerender({ snapshot: current })
-    await waitFor(() => expect(document.title).toBe('Example issue (example-project#a1) · Kata'))
+    await waitFor(() => expect(document.title).toBe('Example issue (example-project#a1) · Poomsae'))
     await view.rerender({
-      route: { kind: 'kata', projectUID: '01J00000000000000000000002', graph: false, filters },
+      route: { kind: 'poomsae', projectUID: '01J00000000000000000000002', graph: false, filters },
     })
-    await waitFor(() => expect(document.title).toBe('example-project · Kata'))
+    await waitFor(() => expect(document.title).toBe('example-project · Poomsae'))
     await view.rerender({
       route: {
-        kind: 'kata',
+        kind: 'poomsae',
         view: 'today',
         projectUID: '01J00000000000000000000002',
         graph: false,
         filters,
       },
     })
-    await waitFor(() => expect(document.title).toBe('Today · example-project · Kata'))
+    await waitFor(() => expect(document.title).toBe('Today · example-project · Poomsae'))
     await view.rerender({
       route: {
-        kind: 'kata',
+        kind: 'poomsae',
         view: 'inbox',
         projectUID: '01J00000000000000000000002',
         graph: false,
         filters,
       },
     })
-    await waitFor(() => expect(document.title).toBe('Inbox · example-project · Kata'))
-    await view.rerender({ route: { kind: 'kata', view: 'inbox', graph: false, filters } })
-    await waitFor(() => expect(document.title).toBe('Inbox · Kata'))
-    await view.rerender({ route: { kind: 'kata', view: 'all-open', graph: false, filters } })
-    await waitFor(() => expect(document.title).toBe('All open · Kata'))
-    await view.rerender({ route: { kind: 'kata', view: 'settings', graph: false, filters } })
-    await waitFor(() => expect(document.title).toBe('Settings · Kata'))
-    await view.rerender({ route: { kind: 'kata', view: 'credentials', graph: false, filters } })
-    await waitFor(() => expect(document.title).toBe('Credentials · Kata'))
+    await waitFor(() => expect(document.title).toBe('Inbox · example-project · Poomsae'))
+    await view.rerender({ route: { kind: 'poomsae', view: 'inbox', graph: false, filters } })
+    await waitFor(() => expect(document.title).toBe('Inbox · Poomsae'))
+    await view.rerender({ route: { kind: 'poomsae', view: 'all-open', graph: false, filters } })
+    await waitFor(() => expect(document.title).toBe('All open · Poomsae'))
+    await view.rerender({ route: { kind: 'poomsae', view: 'settings', graph: false, filters } })
+    await waitFor(() => expect(document.title).toBe('Settings · Poomsae'))
+    await view.rerender({ route: { kind: 'poomsae', view: 'credentials', graph: false, filters } })
+    await waitFor(() => expect(document.title).toBe('Credentials · Poomsae'))
     const issueRoute = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       issueUID: '01J00000000000000000000003',
       graph: false,
       filters,
@@ -2248,12 +2248,12 @@ describe('AppShell', () => {
     }
     await view.rerender({ route: issueRoute, snapshot: current })
     await waitFor(() =>
-      expect(document.title).toBe('Issue unavailable 01J00000000000000000000003 · Kata'),
+      expect(document.title).toBe('Issue unavailable 01J00000000000000000000003 · Poomsae'),
     )
     current.selected = { ...current.selected, state: 'archived' }
     await view.rerender({ snapshot: current })
     await waitFor(() =>
-      expect(document.title).toBe('Archived issue 01J00000000000000000000003 · Kata'),
+      expect(document.title).toBe('Archived issue 01J00000000000000000000003 · Poomsae'),
     )
   })
 
@@ -2268,7 +2268,7 @@ describe('AppShell', () => {
       history: [],
     }
     const route = {
-      kind: 'kata' as const,
+      kind: 'poomsae' as const,
       issueUID: '01J00000000000000000000001',
       graph: false,
       filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2350,7 +2350,7 @@ describe('AppShell', () => {
     render(AppShell, {
       props: {
         route: {
-          kind: 'kata',
+          kind: 'poomsae',
           issueUID: '01J00000000000000000000001',
           graph: false,
           filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2495,7 +2495,7 @@ function accessProps(
 
 function settingsRoute(section?: SettingsSection) {
   return {
-    kind: 'kata' as const,
+    kind: 'poomsae' as const,
     view: 'settings' as const,
     ...(section ? { section } : {}),
     graph: false,
@@ -2505,7 +2505,7 @@ function settingsRoute(section?: SettingsSection) {
 
 function credentialsRoute() {
   return {
-    kind: 'kata' as const,
+    kind: 'poomsae' as const,
     view: 'credentials' as const,
     graph: false,
     filters: { status: [], owner: [], label: [], relationship: [] },
@@ -2572,7 +2572,7 @@ describe('AppShell task selection', () => {
   })
 
   const listRoute = {
-    kind: 'kata' as const,
+    kind: 'poomsae' as const,
     view: 'all-open' as const,
     graph: false,
     filters: { status: [], owner: [], label: [], relationship: [] },

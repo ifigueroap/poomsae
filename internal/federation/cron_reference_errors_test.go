@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest/faultsql"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest/faultsql"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type referenceReadFaultStore struct {
@@ -63,7 +63,7 @@ func TestCronReferenceReadFailureIsNotPoisonedPush(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+enrollment.Token)
-	req.Header.Set("X-Kata-Event-Features", db.CronEventFeature)
+	req.Header.Set("X-Poomsae-Event-Features", db.CronEventFeature)
 	response, err := env.HTTP.Do(req)
 	require.NoError(t, err)
 	raw, err := io.ReadAll(response.Body)

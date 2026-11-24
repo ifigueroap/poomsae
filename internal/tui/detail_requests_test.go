@@ -11,7 +11,7 @@ import (
 )
 
 type blockedDetailAPI struct {
-	KataAPI
+	PoomsaeAPI
 	entered         chan context.Context
 	returned        chan context.Context
 	mutationEntered chan context.Context

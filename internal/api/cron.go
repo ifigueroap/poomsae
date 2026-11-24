@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json/jsontext"
 
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // CronJobDefinition is the portable job document exposed by the API.

@@ -14,7 +14,7 @@
   import { formatRelativeTime as ago } from '@kenn-io/kit-ui/utils/time'
 
   import type { TokenOut } from '../lib/api/generated'
-  import { formatDay } from '../lib/kata/dates'
+  import { formatDay } from '../lib/poomsae/dates'
 
   type StateFilter = 'all' | TokenOut['state']
   type ScopeFilter = 'all' | 'scoped' | 'unscoped'

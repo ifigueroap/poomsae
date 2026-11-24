@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 // TelemetryGate shares disabled receipts within a process and serializes receipt
@@ -80,7 +80,7 @@ func (g *TelemetryGate) settled(target, claim, mark, day string) bool {
 }
 
 // lockTelemetryGate serializes receipt checks for target across processes. When
-// the Kata home cannot hold the gate file, no caller can persist a receipt either,
+// the Poomsae home cannot hold the gate file, no caller can persist a receipt either,
 // so the report proceeds unserialized instead of being dropped.
 func lockTelemetryGate(ctx context.Context, target string) (func(), error) {
 	path := TelemetryDayMarkerPathForKey(target, "gate-")

@@ -13,24 +13,24 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	katadocs "go.kenn.io/kata/docs"
+	poomsaedocs "github.com/ifigueroap/poomsae/docs"
 )
 
 const (
-	docsBaseURL       = "https://katatracker.com/docs/"
+	docsBaseURL       = "https://github.com/ifigueroap/poomsae/docs/"
 	docExcerptRunes   = 240
 	maximumQueryBytes = 512
 )
 
 // SearchDocsInput selects documentation sections by keyword.
 type SearchDocsInput struct {
-	Query string `json:"query" jsonschema:"Words to find in Kata's documentation; every word must match"`
+	Query string `json:"query" jsonschema:"Words to find in Poomsae's documentation; every word must match"`
 	Limit int    `json:"limit,omitempty" jsonschema:"Maximum sections to return; default 20"`
 }
 
 // DocMatch is one ranked documentation section.
 type DocMatch struct {
-	ID       string `json:"id" jsonschema:"Pass to kata.read_doc to read the full section"`
+	ID       string `json:"id" jsonschema:"Pass to poomsae.read_doc to read the full section"`
 	Document string `json:"document"`
 	Heading  string `json:"heading"`
 	URL      string `json:"url"`
@@ -45,7 +45,7 @@ type SearchDocsOutput struct {
 
 // ReadDocInput selects one documentation section.
 type ReadDocInput struct {
-	ID string `json:"id" jsonschema:"Section id returned by kata.search_docs"`
+	ID string `json:"id" jsonschema:"Section id returned by poomsae.search_docs"`
 }
 
 // ReadDocOutput is one full documentation section in Markdown.
@@ -63,13 +63,13 @@ type docSection struct {
 }
 
 var docSections = sync.OnceValues(func() ([]docSection, error) {
-	return loadDocSections(katadocs.FS)
+	return loadDocSections(poomsaedocs.FS)
 })
 
 func registerDocsTools(server *sdkmcp.Server, handlers toolHandlers) {
 	read := toolHints(true, false, false)
-	addTool(server, "kata.search_docs", "Search docs", "Search Kata's user documentation by keyword and return matching sections with short excerpts.", read, handlers.searchDocs)
-	addTool(server, "kata.read_doc", "Read doc section", "Read one documentation section in Markdown by the id kata.search_docs returned.", read, handlers.readDoc)
+	addTool(server, "poomsae.search_docs", "Search docs", "Search Poomsae's user documentation by keyword and return matching sections with short excerpts.", read, handlers.searchDocs)
+	addTool(server, "poomsae.read_doc", "Read doc section", "Read one documentation section in Markdown by the id poomsae.search_docs returned.", read, handlers.readDoc)
 }
 
 func (toolHandlers) searchDocs(_ context.Context, _ *sdkmcp.CallToolRequest, input SearchDocsInput) (*sdkmcp.CallToolResult, SearchDocsOutput, error) {
@@ -138,7 +138,7 @@ func (toolHandlers) readDoc(_ context.Context, _ *sdkmcp.CallToolRequest, input 
 			}, nil
 		}
 	}
-	return nil, ReadDocOutput{}, errors.New("unknown documentation section; use an id returned by kata.search_docs")
+	return nil, ReadDocOutput{}, errors.New("unknown documentation section; use an id returned by poomsae.search_docs")
 }
 
 func docTerms(query string) []string {

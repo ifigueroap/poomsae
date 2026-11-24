@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestIssueScopedTokenTransactionFenceRejectsExpiryBeforeFirstWrite(t *testing.T) { //nolint:paralleltest // token expires 75ms after creation in real time

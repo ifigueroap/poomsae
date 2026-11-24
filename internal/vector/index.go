@@ -1,7 +1,7 @@
-// Package vector manages kata's derived semantic-search state: a sidecar
+// Package vector manages poomsae's derived semantic-search state: a sidecar
 // SQLite database holding a mirror of embeddable issue content plus kit's
 // sqlitevec vector store (generation bookkeeping and per-generation vec0 KNN
-// tables). Everything in the sidecar is rebuildable from kata.db: on any
+// tables). Everything in the sidecar is rebuildable from poomsae.db: on any
 // structural mismatch the file is deleted and rebuilt, never migrated.
 package vector
 
@@ -13,16 +13,16 @@ import (
 	"os"
 	"sync"
 
-	"go.kenn.io/kata/internal/sqliteconfig"
+	"github.com/ifigueroap/poomsae/internal/sqliteconfig"
 	kitvec "go.kenn.io/kit/vector"
 	"go.kenn.io/kit/vector/pgvector"
 	"go.kenn.io/kit/vector/sqlitevec"
 )
 
-// mirrorSchemaVersion guards the kata-owned tables in the sidecar. Bump it
+// mirrorSchemaVersion guards the poomsae-owned tables in the sidecar. Bump it
 // when issue_mirror or vector_meta change shape, or to discard stored vectors
 // that a since-fixed bug may have poisoned; mismatch deletes the file and the
-// daemon re-embeds from kata.db.
+// daemon re-embeds from poomsae.db.
 //
 // 2: discard vectors written before the embedding client rejected null
 // components and zero-norm vectors; stamped-invalid vectors are otherwise
@@ -86,7 +86,7 @@ func Open(ctx context.Context, path string) (*Index, error) {
 }
 
 // OpenPostgres binds the semantic index to canonical pgvector tables on an
-// already prepared Kata PostgreSQL pool. The caller retains ownership of db.
+// already prepared Poomsae PostgreSQL pool. The caller retains ownership of db.
 func OpenPostgres(ctx context.Context, db *sql.DB) (*Index, error) {
 	pg := &postgresIndex{db: db}
 	if err := pg.validate(ctx); err != nil {

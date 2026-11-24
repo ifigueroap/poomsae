@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/pkg/connector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/connector"
 )
 
 func TestPublishCommentRetryAfterCrashCreatesOneComment(t *testing.T) {
@@ -92,7 +92,7 @@ func TestStateUpdateDoesNotStealLiveLockAndRecoversAfterKill(t *testing.T) {
 	}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	command := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=^TestKilledStateUpdateProbe$") // #nosec G204,G702 -- the current test executable is fixed by the Go test runner.
-	command.Env = append(os.Environ(), "KATA_FAKE_STATE_PROBE="+statePath, "KATA_FAKE_READY_PROBE="+readyPath)
+	command.Env = append(os.Environ(), "POOMSAE_FAKE_STATE_PROBE="+statePath, "POOMSAE_FAKE_READY_PROBE="+readyPath)
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -158,8 +158,8 @@ func TestStateUpdateDoesNotStealLiveLockAndRecoversAfterKill(t *testing.T) {
 }
 
 func TestKilledStateUpdateProbe(t *testing.T) {
-	statePath := os.Getenv("KATA_FAKE_STATE_PROBE")
-	readyPath := os.Getenv("KATA_FAKE_READY_PROBE")
+	statePath := os.Getenv("POOMSAE_FAKE_STATE_PROBE")
+	readyPath := os.Getenv("POOMSAE_FAKE_READY_PROBE")
 	if statePath == "" || readyPath == "" {
 		t.Skip("subprocess probe")
 	}

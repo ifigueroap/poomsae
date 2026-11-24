@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 )
 
 // ErrIssueMoveDescendantArchived refuses a subtree whose descendant lives in an

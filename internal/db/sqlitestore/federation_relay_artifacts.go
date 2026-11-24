@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
 )
 
 // Manifests and complete misses use the existing inbox and artifact cursor.

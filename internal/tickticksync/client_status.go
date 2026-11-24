@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 // StatusSession delivers only completion, with admission after shared pacing.

@@ -1,4 +1,4 @@
-// Package tui implements the kata terminal UI built on Bubble Tea.
+// Package tui implements the poomsae terminal UI built on Bubble Tea.
 package tui
 
 import (
@@ -13,7 +13,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/shortid"
+	"github.com/ifigueroap/poomsae/internal/shortid"
 	"golang.org/x/term"
 )
 
@@ -134,7 +134,7 @@ func buildRunModel(opts Options, c *Client, bi bootInit, conns ...daemonConnecti
 	m := initialModel(opts)
 	m.authCapabilitiesRequired = true
 	m.authCapabilitiesReady = false
-	// Guard against a typed-nil *Client becoming a non-nil KataAPI:
+	// Guard against a typed-nil *Client becoming a non-nil PoomsaeAPI:
 	// only assign when c carries a value, so m.api stays a true nil
 	// interface otherwise and m.api != nil checks remain correct.
 	if c != nil {
@@ -244,7 +244,7 @@ func resolveInitialIssue(
 		return bootInit{}, err
 	}
 	if detail == nil || detail.Issue == nil {
-		return bootInit{}, fmt.Errorf("kata tui %q returned an empty issue response", ref)
+		return bootInit{}, fmt.Errorf("poomsae tui %q returned an empty issue response", ref)
 	}
 	bi.initialIssue = detail.Issue
 	return bi, nil
@@ -263,7 +263,7 @@ func resolveInitialIssueTarget(
 	}
 	if bi.scope.projectID == 0 || bi.scope.empty || bi.scope.allProjects {
 		return 0, "", fmt.Errorf(
-			"no project bound to this workspace; use a qualified ref (e.g. kata#abc4)",
+			"no project bound to this workspace; use a qualified ref (e.g. poomsae#abc4)",
 		)
 	}
 	if ref.ULID != "" {
@@ -430,7 +430,7 @@ func bootResolveScopeWith(
 }
 
 // errNotATTY indicates the TUI was launched outside a terminal.
-var errNotATTY = errors.New("kata tui requires a terminal (stdin/stdout must be a tty)")
+var errNotATTY = errors.New("poomsae tui requires a terminal (stdin/stdout must be a tty)")
 
 // isTerminal reports whether f is connected to a real terminal. We use
 // golang.org/x/term so /dev/null and other character devices do not

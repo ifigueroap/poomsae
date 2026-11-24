@@ -17,7 +17,7 @@ type TickTickSyncConfig struct {
 func NormalizeTickTickSyncConfig(c TickTickSyncConfig) (TickTickSyncConfig, error) {
 	c.TokenEnv = strings.TrimSpace(c.TokenEnv)
 	if c.TokenEnv == "" {
-		c.TokenEnv = "KATA_TICKTICK_TOKEN"
+		c.TokenEnv = "POOMSAE_TICKTICK_TOKEN"
 	}
 	if !tickTickTokenEnvPattern.MatchString(c.TokenEnv) {
 		return TickTickSyncConfig{}, fmt.Errorf("ticktick_sync.token_env must name an environment variable")

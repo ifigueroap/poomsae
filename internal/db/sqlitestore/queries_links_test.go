@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestCreateLink_RoundTrips(t *testing.T) {
@@ -480,8 +480,8 @@ func TestRelationshipsByIssues_ExcludesArchivedProjectChildren(t *testing.T) {
 // TestRelationshipsByIssues_IncludesBlockerInArchivedProject pins that
 // blocked_by hydration carries the FULL relationship set: a blocker whose
 // project is archived is still returned, because this is relationship data on
-// the wire, not display policy. `kata show` exposes the same link via
-// LinksByIssue, so `kata list --json` must not silently drop it. "Actively
+// the wire, not display policy. `poomsae show` exposes the same link via
+// LinksByIssue, so `poomsae list --json` must not silently drop it. "Actively
 // blocked" display state is a separate concern (ActivelyBlocked).
 func TestRelationshipsByIssues_IncludesBlockerInArchivedProject(t *testing.T) {
 	t.Parallel()

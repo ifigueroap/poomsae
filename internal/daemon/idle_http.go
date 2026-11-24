@@ -3,12 +3,12 @@ package daemon
 import (
 	"net/http"
 
-	"go.kenn.io/kata/internal/api"
+	"github.com/ifigueroap/poomsae/internal/api"
 )
 
 // IdleKeepaliveHeader marks a liveness request as foreground activity. It is
 // a lifecycle hint, not an authorization mechanism.
-const IdleKeepaliveHeader = "X-Kata-Idle-Keepalive"
+const IdleKeepaliveHeader = "X-Poomsae-Idle-Keepalive"
 
 // IdleForegroundAdmission is the narrow lifecycle seam used by HTTP serving.
 type IdleForegroundAdmission interface {

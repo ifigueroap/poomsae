@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 // Contract: the stock binary serves an env-only deployment with health,
@@ -32,9 +32,9 @@ func TestVanillaDeploymentEnvironmentOnly(t *testing.T) {
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
 	env, err := config.LocalProfileEnvironment(config.LocalProfileConfig{Home: home}, false)
 	require.NoError(t, err)
-	env = append(env, "KATA_DB="+filepath.Join(home, "kata.db"),
-		fmt.Sprintf("KATA_LISTEN=0.0.0.0:%d", port), "KATA_TRUST_PRIVATE_NETWORK=1", "KATA_WEB_PUBLIC_ORIGIN="+base,
-		"KATA_BACKUP_DIR="+filepath.Join(home, "backups"), "KATA_BACKUP_INTERVAL=100ms", "KATA_BACKUP_RETAIN=1h")
+	env = append(env, "POOMSAE_DB="+filepath.Join(home, "poomsae.db"),
+		fmt.Sprintf("POOMSAE_LISTEN=0.0.0.0:%d", port), "POOMSAE_TRUST_PRIVATE_NETWORK=1", "POOMSAE_WEB_PUBLIC_ORIGIN="+base,
+		"POOMSAE_BACKUP_DIR="+filepath.Join(home, "backups"), "POOMSAE_BACKUP_INTERVAL=100ms", "POOMSAE_BACKUP_RETAIN=1h")
 	start := func() *exec.Cmd {
 		// t.Cleanup owns this process; t.Context() would kill it before that runs.
 		cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground") //nolint:gosec // test-owned binary

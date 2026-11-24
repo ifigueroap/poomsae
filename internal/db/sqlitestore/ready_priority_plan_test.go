@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestReadyPriorityUsesOrderedIndexes(t *testing.T) {
 	ctx := t.Context()
-	store, err := Open(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	store, err := Open(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "spoke-project")
@@ -88,7 +88,7 @@ func BenchmarkReadyPriorityLimitOne(b *testing.B) {
 	for _, count := range []int{1000, 10000, 100000} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			ctx := b.Context()
-			store, err := Open(ctx, filepath.Join(b.TempDir(), "kata.db"))
+			store, err := Open(ctx, filepath.Join(b.TempDir(), "poomsae.db"))
 			require.NoError(b, err)
 			b.Cleanup(func() { require.NoError(b, store.Close()) })
 			project, err := store.CreateProject(ctx, "spoke-project")

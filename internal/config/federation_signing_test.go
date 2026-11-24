@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/federationsigning"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
 )
 
 func TestFederationSigningConfigAndCredentialRoundTrip(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("TEST_SIGNING_KEY", strings.Repeat("k", 64))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [federation.signing]
@@ -52,7 +52,7 @@ listen = "0.0.0.0:7788"`,
 	} {
 		t.Run(fmt.Sprint(len(body)), func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(body), 0600))
 			_, err := config.ReadDaemonConfig()
 			require.Error(t, err)
@@ -62,7 +62,7 @@ listen = "0.0.0.0:7788"`,
 
 func TestFederationIngressRequiresSigningConfiguration(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[federation.ingress]
 enabled = true
 `), 0600))
@@ -117,7 +117,7 @@ enrollment_id = 2`,
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			body := "[federation.signing]\nexternal_url = \"https://hub.example\"\n" + tc.keys + "\n"
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(body), 0600))
 
@@ -235,7 +235,7 @@ not_after = %d`, id, id, enrollmentID, notAfter)
 }
 
 // Contract: the default replay-state file belongs to the home whose
-// configuration is read, as an absolute path even for a relative KATA_HOME.
+// configuration is read, as an absolute path even for a relative POOMSAE_HOME.
 func TestFederationSigningDefaultReplayStateUsesConfigHome(t *testing.T) {
 	signingConfig := []byte(`[federation.signing]
 external_url = "https://hub.example"
@@ -245,19 +245,19 @@ key_env = "TEST_SIGNING_KEY"
 enrollment_id = 1
 `)
 	t.Run("selected home", func(t *testing.T) {
-		t.Setenv("KATA_HOME", t.TempDir())
+		t.Setenv("POOMSAE_HOME", t.TempDir())
 		home := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), signingConfig, 0600))
 		cfg, err := config.ReadDaemonConfigForHome(home)
 		require.NoError(t, err)
 		require.Equal(t, filepath.Join(home, "federation-signing-replay.state"), cfg.Federation.Signing.ReplayStateFile)
 	})
-	t.Run("relative KATA_HOME", func(t *testing.T) {
+	t.Run("relative POOMSAE_HOME", func(t *testing.T) {
 		workdir := t.TempDir()
 		t.Chdir(workdir)
 		require.NoError(t, os.Mkdir("relative-home", 0700))
 		require.NoError(t, os.WriteFile(filepath.Join("relative-home", "config.toml"), signingConfig, 0600))
-		t.Setenv("KATA_HOME", "relative-home")
+		t.Setenv("POOMSAE_HOME", "relative-home")
 		cfg, err := config.ReadDaemonConfig()
 		require.NoError(t, err)
 		require.Equal(t, filepath.Join(workdir, "relative-home", "federation-signing-replay.state"),

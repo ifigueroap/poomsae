@@ -13,11 +13,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/vector"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/vector"
 )
 
 func TestHybridSearchHubFiltersAndCeiling(t *testing.T) {
@@ -428,7 +428,7 @@ func TestHybridSearchScopedSemanticFailsClosedAndAutoUsesLexical(t *testing.T) {
 // added on top of kit's generation index: the index is daemon-global (one
 // sidecar, all projects' content mirrored into it), so a raw KNN hit can
 // belong to any project or point at content that has since been soft-deleted.
-// hydrating against live kata.db rows must strip both before they ever reach
+// hydrating against live poomsae.db rows must strip both before they ever reach
 // a caller scoped to one project.
 func TestVectorLegExcludesOtherProjectsAndDeleted(t *testing.T) {
 	ctx := t.Context()

@@ -1,4 +1,4 @@
-// Package federationsigning implements Kata's bounded RFC 9421 request profile.
+// Package federationsigning implements Poomsae's bounded RFC 9421 request profile.
 package federationsigning
 
 import (
@@ -20,9 +20,9 @@ import (
 
 	"github.com/dunglas/httpsfv"
 	"github.com/gofrs/flock"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 	"github.com/yaronf/httpsign"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
 	"go.kenn.io/kit/atomicfile"
 )
 

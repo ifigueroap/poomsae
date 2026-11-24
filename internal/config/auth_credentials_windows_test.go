@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 	"go.kenn.io/kit/safefileio"
 	"golang.org/x/sys/windows"
 )
@@ -25,15 +25,15 @@ func TestReadAuthConfigRejectsCredentialReadableByOtherWindowsUsers(t *testing.T
 	require.NoError(t, file.Close())
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte(fmt.Sprintf("[auth]\ntoken_file = %q\n", tokenFile)), 0o600))
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	previousTokenFile, hadTokenFile := os.LookupEnv("KATA_AUTH_TOKEN_FILE")
-	require.NoError(t, os.Unsetenv("KATA_AUTH_TOKEN_FILE"))
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	previousTokenFile, hadTokenFile := os.LookupEnv("POOMSAE_AUTH_TOKEN_FILE")
+	require.NoError(t, os.Unsetenv("POOMSAE_AUTH_TOKEN_FILE"))
 	t.Cleanup(func() {
 		if hadTokenFile {
-			_ = os.Setenv("KATA_AUTH_TOKEN_FILE", previousTokenFile)
+			_ = os.Setenv("POOMSAE_AUTH_TOKEN_FILE", previousTokenFile)
 		} else {
-			_ = os.Unsetenv("KATA_AUTH_TOKEN_FILE")
+			_ = os.Unsetenv("POOMSAE_AUTH_TOKEN_FILE")
 		}
 	})
 

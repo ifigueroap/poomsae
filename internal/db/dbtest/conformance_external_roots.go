@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) error {
@@ -234,7 +234,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	mappingClock := time.Date(2026, 8, 20, 10, 0, 0, 123456789, time.UTC)
 	restoreMappingClock := backend.InstallExternalRootClock(store, func() time.Time { return mappingClock })
 	mappingOne, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "notes", KataField: "scheduled_on",
+		ConnectorInstance: "notes", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "start-1", ExternalFieldName: "Start",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-1",
@@ -242,7 +242,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	require.NoError(t, err)
 	assert.True(t, mappingOne.Active)
 	mappingTwo, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "notes", KataField: "scheduled_on",
+		ConnectorInstance: "notes", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "start-2", ExternalFieldName: "Start",
 		AcceptedKinds: []string{"date", "local_datetime"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-2",
@@ -258,13 +258,13 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	later := earlier.Add(900 * time.Millisecond)
 	require.NoError(t, orderingStore.ImportReplay(ctx, []db.ImportRecord{
 		&db.ExternalFieldMappingExport{
-			ConnectorInstance: "timestamp-order", KataField: "scheduled_on",
+			ConnectorInstance: "timestamp-order", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-earlier", ExternalFieldName: "Start earlier",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-earlier", CreatedAt: earlier, UpdatedAt: earlier,
 		},
 		&db.ExternalFieldMappingExport{
-			ConnectorInstance: "timestamp-order", KataField: "scheduled_on",
+			ConnectorInstance: "timestamp-order", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "start-later", ExternalFieldName: "Start later",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-later", CreatedAt: later, UpdatedAt: later,
@@ -272,7 +272,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	}, db.ImportOptions{}))
 	restoreOrderingClock := backend.InstallExternalRootClock(orderingStore, func() time.Time { return later })
 	orderedMapping, err := orderingStore.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "timestamp-order", KataField: "scheduled_on",
+		ConnectorInstance: "timestamp-order", PoomsaeField: "scheduled_on",
 		ExternalFieldID: "start-current", ExternalFieldName: "Start current",
 		AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-current",
@@ -298,7 +298,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 		mappingRace.Go(func() {
 			<-startMappingRace
 			mapping, raceErr := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-				ConnectorInstance: "calendar", KataField: "scheduled_on",
+				ConnectorInstance: "calendar", PoomsaeField: "scheduled_on",
 				ExternalFieldID: "shared-date", ExternalFieldName: "Shared date",
 				AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 				SchemaRevision: "schema-1",
@@ -317,14 +317,14 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	require.Len(t, racedMappings, 2)
 	assert.Equal(t, racedMappings[0].ID, racedMappings[1].ID)
 	_, err = store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "notes", KataField: "deadline_on",
+		ConnectorInstance: "notes", PoomsaeField: "deadline_on",
 		ExternalFieldID: "due-invalid", ExternalFieldName: "Due",
 		AcceptedKinds: []string{"date", "date"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-2",
 	})
 	assert.ErrorIs(t, err, db.ErrExternalFieldMappingValidation)
 	_, err = store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "notes", KataField: "deadline_on",
+		ConnectorInstance: "notes", PoomsaeField: "deadline_on",
 		ExternalFieldID: "due-invalid", ExternalFieldName: "Due",
 		AcceptedKinds: []string{"date"}, Nullable: false, Writable: true,
 		SchemaRevision: "schema-2",
@@ -332,7 +332,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	assert.ErrorIs(t, err, db.ErrExternalFieldMappingValidation)
 
 	deadlineMapping, err := store.UpsertExternalFieldMapping(ctx, db.ExternalFieldMappingParams{
-		ConnectorInstance: "notes", KataField: "deadline_on",
+		ConnectorInstance: "notes", PoomsaeField: "deadline_on",
 		ExternalFieldID: "due-1", ExternalFieldName: "Due",
 		AcceptedKinds: []string{"instant"}, Nullable: true, Writable: true,
 		SchemaRevision: "schema-2",

@@ -19,12 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/rootbridge"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/config"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/rootbridge"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 func testExternalRootCommand(t *testing.T) string {
@@ -370,7 +370,7 @@ func TestExternalRootHandlersFullLifecycleAndDelivery(t *testing.T) {
 	_, err = database.db.ReleaseExternalRootClaim(t.Context(), binding.ID, claimed.ClaimToken)
 	require.NoError(t, err)
 	status, body = requestExternalRootJSON(t, ts.URL, http.MethodPost, bridgePath+"/actions/resolve-field", map[string]any{
-		"kata_field": "scheduled_on", "use": "kata", "actor": "operator",
+		"kata_field": "scheduled_on", "use": "poomsae", "actor": "operator",
 	})
 	require.Equal(t, http.StatusOK, status, string(body))
 	assert.Equal(t, "2026-08-21", client.fieldValues["start-date"].Value)
@@ -599,7 +599,7 @@ func TestExternalRootHandlersClassifyConnectorAndInternalFailures(t *testing.T) 
 			states := append([]db.ExternalFieldState(nil), tc.states...)
 			if len(states) > 0 {
 				mapping, mapErr := database.db.UpsertExternalFieldMapping(t.Context(), db.ExternalFieldMappingParams{
-					ConnectorInstance: "example-connector", KataField: "scheduled_on",
+					ConnectorInstance: "example-connector", PoomsaeField: "scheduled_on",
 					ExternalFieldID: "schedule", ExternalFieldName: "Schedule",
 					AcceptedKinds: []string{"date"}, Nullable: true, Writable: true, SchemaRevision: "schema-1",
 				})
@@ -818,7 +818,7 @@ func TestArchivedProjectPendingCommentCleanupCoversPurge(t *testing.T) {
 		strings.NewReader(`{"actor":"tester"}`))
 	req.Header.Set("Content-Type", "application/json")
 	require.NoError(t, err)
-	req.Header.Set("X-Kata-Confirm", "PURGE archived-cleanup")
+	req.Header.Set("X-Poomsae-Confirm", "PURGE archived-cleanup")
 	resp, err := ts.Client().Do(req) //nolint:gosec // G704: test request to httptest server URL
 	require.NoError(t, err)
 	purgeBody, err := io.ReadAll(resp.Body)

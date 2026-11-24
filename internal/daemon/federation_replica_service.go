@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/federationprovider"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 )
 
 var (
@@ -1041,7 +1041,7 @@ func ReserveFederationReplicaCredential(
 	p ReserveFederationReplicaCredentialParams,
 ) error {
 	p.ProjectName = strings.TrimSpace(p.ProjectName)
-	if !katauid.Valid(p.HubProjectUID) || p.ProjectName == "" ||
+	if !poomsaeuid.Valid(p.HubProjectUID) || p.ProjectName == "" ||
 		p.Credential.Token == "" || p.Credential.HubProjectID <= 0 {
 		return federationReplicaError(
 			ErrFederationReplicaInvalidInput,
@@ -1426,7 +1426,7 @@ func revalidateManagedReservation(
 		return federationReplicaError(
 			ErrFederationReplicaReservationChanged,
 			"managed federation reservation changed while contacting the hub",
-			"retry reconciliation or run kata federation leave for the project",
+			"retry reconciliation or run poomsae federation leave for the project",
 		)
 	}
 	return nil
@@ -1526,7 +1526,7 @@ func normalizeFederationReplicaParams(
 		p.Credential.Signing = &canonicalSource
 	}
 
-	if !katauid.Valid(p.HubProjectUID) {
+	if !poomsaeuid.Valid(p.HubProjectUID) {
 		return EnsureFederationReplicaParams{}, federationReplicaError(
 			ErrFederationReplicaInvalidInput, "hub_project_uid must be a valid UID", "",
 		)
@@ -1587,7 +1587,7 @@ func normalizeFederationReplicaParams(
 	}
 	if p.CredentialRekey != nil {
 		if (!p.AdoptExisting && !p.AttachEmpty) ||
-			!katauid.Valid(p.CredentialRekey.ProjectUID) ||
+			!poomsaeuid.Valid(p.CredentialRekey.ProjectUID) ||
 			p.CredentialRekey.ProjectUID == p.HubProjectUID {
 			return EnsureFederationReplicaParams{}, federationReplicaError(
 				ErrFederationReplicaInvalidInput,
@@ -2115,7 +2115,7 @@ func ensureReplicaBinding(
 		return ensuredReplicaBinding{}, federationReplicaError(
 			errFederationReplicaProjectCollision,
 			fmt.Sprintf(
-				"an archived local project %q already has the hub project UID; restore it with `kata projects restore` first",
+				"an archived local project %q already has the hub project UID; restore it with `poomsae projects restore` first",
 				project.Name,
 			),
 			"",

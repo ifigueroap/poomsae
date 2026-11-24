@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // PendingFederationPushEvents returns local-origin events that have not yet

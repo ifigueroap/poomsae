@@ -11,14 +11,15 @@ import (
 	"time"
 )
 
-const scopeQuery = `query KataLinearScope($team: String!) { viewer { organization { id } } team(id: $team) { id name archivedAt organization { id } } }`
-const projectQuery = `query KataLinearProject($project: String!, $team: ID!) { project(id: $project) { id name archivedAt trashed teams(first: 100, filter: { id: { eq: $team } }) { nodes { id } pageInfo { hasNextPage endCursor } } } }`
-const statesQuery = `query KataLinearStates($after: String, $filter: WorkflowStateFilter!) { workflowStates(first: 100, after: $after, filter: $filter) { nodes { id type position archivedAt team { id } } pageInfo { hasNextPage endCursor } } }`
+const scopeQuery = `query PoomsaeLinearScope($team: String!) { viewer { organization { id } } team(id: $team) { id name archivedAt organization { id } } }`
+const projectQuery = `query PoomsaeLinearProject($project: String!, $team: ID!) { project(id: $project) { id name archivedAt trashed teams(first: 100, filter: { id: { eq: $team } }) { nodes { id } pageInfo { hasNextPage endCursor } } } }`
+const statesQuery = `query PoomsaeLinearStates($after: String, $filter: WorkflowStateFilter!) { workflowStates(first: 100, after: $after, filter: $filter) { nodes { id type position archivedAt team { id } } pageInfo { hasNextPage endCursor } } }`
 const issueFields = `id identifier title description url priority createdAt updatedAt archivedAt trashed completedAt canceledAt team { id } project { id } state { id } creator { id } assignee { id }`
+
 // Linear's top-level issues filter on a team ID can return issues from other
 // teams, so the read goes through the team's own issues connection.
-const issuesQuery = `query KataLinearIssues($team: String!, $after: String, $filter: IssueFilter!) { team(id: $team) { issues(first: 100, after: $after, filter: $filter) { nodes { ` + issueFields + ` } pageInfo { hasNextPage endCursor } } } }`
-const commentsQuery = `query KataLinearComments($after: String, $filter: CommentFilter!) { comments(first: 100, after: $after, filter: $filter) { nodes { id body createdAt user { id } issue { id } } pageInfo { hasNextPage endCursor } } }`
+const issuesQuery = `query PoomsaeLinearIssues($team: String!, $after: String, $filter: IssueFilter!) { team(id: $team) { issues(first: 100, after: $after, filter: $filter) { nodes { ` + issueFields + ` } pageInfo { hasNextPage endCursor } } } }`
+const commentsQuery = `query PoomsaeLinearComments($after: String, $filter: CommentFilter!) { comments(first: 100, after: $after, filter: $filter) { nodes { id body createdAt user { id } issue { id } } pageInfo { hasNextPage endCursor } } }`
 
 type identity struct {
 	ID string `json:"id"`
@@ -79,6 +80,7 @@ func (s *clientSession) Scope(ctx context.Context, c Config) (Scope, error) {
 	}
 	return scope, nil
 }
+
 // readCollection pages through the connection at path in the response, adding
 // the cursor to vars on each request.
 func readCollection(ctx context.Context, s *clientSession, query string, vars map[string]any, path ...string) ([]jsontext.Value, error) {
@@ -242,6 +244,7 @@ func decodeIssue(raw jsontext.Value, c Config, content bool) (Issue, error) {
 	}
 	return i, nil
 }
+
 // Comments reads every comment on the given issues. It filters by issue ID
 // because Linear's comment filter on an issue's team can return other teams'
 // comments.

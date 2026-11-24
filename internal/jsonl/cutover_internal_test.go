@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 	"go.kenn.io/kit/atomicfile"
 )
 
@@ -33,9 +33,9 @@ func TestRewriteV7EventPayloadsUsesDeterministicJSON(t *testing.T) {
 }
 
 func TestImportCutoverTargetRejectsMissingExportEvent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = source.Close() })
@@ -73,9 +73,9 @@ func TestImportCutoverTargetRejectsMissingExportEvent(t *testing.T) {
 }
 
 func TestAutoCutoverRefusesSourceChangedAfterExport(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	project, err := source.CreateProject(ctx, "example-project")
@@ -120,9 +120,9 @@ func TestAutoCutoverRefusesSourceChangedAfterExport(t *testing.T) {
 }
 
 func TestAutoCutoverPreservesArtifactsWhenRestoreFails(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	_, err = source.ExecContext(ctx, `UPDATE meta SET value='28' WHERE key='schema_version'`)
@@ -159,7 +159,7 @@ func TestAutoCutoverPreservesArtifactsWhenRestoreFails(t *testing.T) {
 func TestAutoCutoverAddsIndexOnlyVersionsInPlace(t *testing.T) {
 	for _, version := range []int{41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 52} {
 		t.Run(strconv.Itoa(version), func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			path := indexOnlySource(t, version)
 			fresh, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "fresh.db"))
 			require.NoError(t, err)
@@ -204,7 +204,7 @@ func TestAutoCutoverAddsIndexOnlyVersionsInPlace(t *testing.T) {
 }
 
 func TestAutoCutoverInPlaceFailureLeavesSourceRetryable(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	path := indexOnlySource(t, 41)
 	raw, err := sql.Open("sqlite", path)
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestAutoCutoverInPlaceFailureLeavesSourceRetryable(t *testing.T) {
 
 func indexOnlySource(t *testing.T, version int) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	source, err := sqlitestore.Open(t.Context(), path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = source.DB.Close() })

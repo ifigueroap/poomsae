@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // RelationshipsByIssues returns every link-derived fact for each requested

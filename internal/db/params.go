@@ -5,9 +5,9 @@ import (
 	"encoding/json/jsontext"
 	"time"
 
-	"go.kenn.io/kata/internal/pagination"
-	"go.kenn.io/kata/internal/tokenactor"
-	"go.kenn.io/kata/internal/transcript"
+	"github.com/ifigueroap/poomsae/internal/pagination"
+	"github.com/ifigueroap/poomsae/internal/tokenactor"
+	"github.com/ifigueroap/poomsae/internal/transcript"
 )
 
 // IncludeDeleted controls whether a lookup is allowed to return soft-deleted
@@ -940,7 +940,7 @@ type CreatedFederationEnrollment struct {
 // Hidden-project + bootstrap constants used by the token-event seam.
 const (
 	// SystemProjectName is the hidden project used for daemon-global events.
-	SystemProjectName = ".kata-system"
+	SystemProjectName = ".poomsae-system"
 	// SystemProjectUID is the stable UID for the hidden system project.
 	SystemProjectUID = "00000000000000000000000000"
 	// BootstrapActor is the audit actor for bootstrap/admin token operations.

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestWebSyncHubs(t *testing.T) {
@@ -30,7 +30,7 @@ func TestWebSyncHubs(t *testing.T) {
 // inline > file > environment, with no fallback from a failed selected source.
 func TestCatalogClientTokenSources(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("EXAMPLE_CATALOG_TOKEN", " env-token \n")

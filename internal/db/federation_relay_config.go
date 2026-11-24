@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"go.kenn.io/kata/internal/embedding"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // RelayBindingConfig is negotiated state on the existing upstream binding.

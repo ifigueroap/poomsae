@@ -1,21 +1,21 @@
 ---
 title: Agent orchestration
-description: Coordinate agent work through Kata issues, attention metadata, branches, and fan-out/join workflows.
+description: Coordinate agent work through Poomsae issues, attention metadata, branches, and fan-out/join workflows.
 last_edited: 2026-11-23
 ---
 
 # Agent orchestration
 
-Kata is a tracker, not an orchestrator. It does not create worktrees, launch
+Poomsae is a tracker, not an orchestrator. It does not create worktrees, launch
 coding agents, or supervise processes. Instead, it gives you a durable board and
 a small metadata convention that external tools use to coordinate agents around
 a shared issue.
 
-That boundary is intentional. Kata stores issue state, metadata, relationships,
+That boundary is intentional. Poomsae stores issue state, metadata, relationships,
 and events, while launchers own worktrees, terminals, process supervision, and
 branch lifecycle. If a dashboard needs mechanical lifecycle state such as
 running, orphaned, or done, read it from the launcher or harness rather than
-Kata metadata. If you want a delegated issue tree, model it with ordinary issue
+Poomsae metadata. If you want a delegated issue tree, model it with ordinary issue
 relationships such as `--parent`, since there is no separate delegated-link
 type.
 
@@ -28,18 +28,18 @@ Coordination uses the `work.*` metadata convention documented in the
   human is wanted.
 - `work.attention_msg`: a one-line current-state message.
 
-All names in this guide are neutral placeholders: `spoke-project` is the Kata
+All names in this guide are neutral placeholders: `spoke-project` is the Poomsae
 project, `agent-a` is an actor, and `hub.example` and `daemon.example` are
 daemon hosts.
 
 Contract injection and attention tracking handle separate jobs.
-`kata agent-contract-hook` emits the canonical Codex context directly, and you
+`poomsae agent-contract-hook` emits the canonical Codex context directly, and you
 can pass `--source ./agent-prompt.txt` to replace it with a local UTF-8 prompt
 file. Relative paths must stay inside the current directory, so `..` paths and
 symlink targets that escape it fail, while absolute paths use the specified
 file. A missing file falls back to the default, and an empty file supplies an
 empty prompt. The native multi-harness contract form accepts the same option. By
-contrast, `kata attention-hook start|end` only tracks lifecycle metadata and has
+contrast, `poomsae attention-hook start|end` only tracks lifecycle metadata and has
 no prompt-source option. Daemon event hooks in `hooks.toml` are independent of
 both.
 
@@ -48,23 +48,23 @@ both.
 **Launcher.** The tool that starts a coding-agent session. It owns
 `work.branch`, creates the tracking issue, stamps `work.branch` with the branch
 it checked out for the session, and installs the harness hooks that keep
-attention truthful. Commands: `kata create --meta work.branch=...`,
-`kata meta set <ref> work.branch ...`.
+attention truthful. Commands: `poomsae create --meta work.branch=...`,
+`poomsae meta set <ref> work.branch ...`.
 
 **Working agent.** The coding agent running in the worktree. It signals its own
 live state on the issue by writing the attention pair for mid-session events,
 raising `stuck` when it cannot proceed, `needs-human` when it wants review, and
-clearing back to `ok`. Commands: `kata meta set <ref> work.attention ...`.
+clearing back to `ok`. Commands: `poomsae meta set <ref> work.attention ...`.
 
 **Coordinator.** A delegating agent or a human dashboard that follows one or
 more tracking issues and reacts when they need attention or close. It reads
-`work.*` and never writes it. Commands: `kata wait`,
-`kata list --meta work.attention=...`, `kata events --tail`.
+`work.*` and never writes it. Commands: `poomsae wait`,
+`poomsae list --meta work.attention=...`, `poomsae events --tail`.
 
 **Merge automation.** The pipeline that verifies finished work and closes the
 tracking issue with evidence. It reads `work.branch` to know what to merge and
-closes the issue without resetting `work.*`. Commands: `kata show <ref>`,
-`kata close <ref> --done --commit <sha>`.
+closes the issue without resetting `work.*`. Commands: `poomsae show <ref>`,
+`poomsae close <ref> --done --commit <sha>`.
 
 ## Launch: create the tracking issue
 
@@ -73,7 +73,7 @@ branch at creation. Include an idempotency key so a retried launch does not
 create a duplicate issue:
 
 ```sh
-kata create "implement widget export" \
+poomsae create "implement widget export" \
   --meta work.branch=agent/widget-export \
   --idempotency-key launch-agent-a-widget-export
 ```
@@ -81,18 +81,18 @@ kata create "implement widget export" \
 `--meta` takes string values only, which is all `work.branch` needs. Capture the
 returned issue ref (for example `abc4`) and launch `agent-a` on the
 `agent/widget-export` branch. If the launcher creates the issue before checking
-out the branch, run `kata meta set abc4 work.branch agent/widget-export`
+out the branch, run `poomsae meta set abc4 work.branch agent/widget-export`
 afterward; it is equivalent and safe to retry.
 
 ## Keep attention truthful with hooks
 
 To load the contract in every session, run
-[`kata agent-hook install --all`](../workflows/agents.md#contract-in-every-session).
+[`poomsae agent-hook install --all`](../workflows/agents.md#contract-in-every-session).
 The [agent-hook reference](../reference/cli.md#agent-hook) covers user contract
 hooks and attention bundles in user or project scope. The installer adds the
 available attention hooks by default (use `--contract-only` or
 `--attention=false` for contracts only), and the launcher must provide the
-tracked issue in `KATA_REF`.
+tracked issue in `POOMSAE_REF`.
 
 Do not rely on the agent remembering to update attention on its own. Agents
 forget to clear or raise it, and an issue stuck at a stale `ok` is worse than no
@@ -107,7 +107,7 @@ Use the session-start hook to mark the issue in progress and healthy:
 
 ```sh
 # runs when the agent session starts
-kata meta set "$KATA_REF" work.attention ok
+poomsae meta set "$POOMSAE_REF" work.attention ok
 ```
 
 Use the stop/idle hook to raise `needs-human` if the session ends and the agent
@@ -115,22 +115,22 @@ never cleared to a terminal state, so the issue does not silently go quiet:
 
 ```sh
 # runs when the agent session stops or goes idle
-current=$(kata meta get "$KATA_REF" work.attention --json | jq -r '.value')
+current=$(poomsae meta get "$POOMSAE_REF" work.attention --json | jq -r '.value')
 if [ "$current" = "ok" ]; then
-  kata meta set "$KATA_REF" work.attention needs-human
-  kata meta set "$KATA_REF" work.attention_msg "session ended without hand-off"
+  poomsae meta set "$POOMSAE_REF" work.attention needs-human
+  poomsae meta set "$POOMSAE_REF" work.attention_msg "session ended without hand-off"
 fi
 ```
 
-Here `$KATA_REF` is the tracking issue ref that the launcher passes into the
+Here `$POOMSAE_REF` is the tracking issue ref that the launcher passes into the
 hook environment.
 
 On top of that default wiring, the agent writes mid-session signals that hooks
 cannot see, because it knows it is stuck long before the session stops:
 
 ```sh
-kata meta set abc4 work.attention stuck
-kata meta set abc4 work.attention_msg "auth library has no async API; need a decision"
+poomsae meta set abc4 work.attention stuck
+poomsae meta set abc4 work.attention_msg "auth library has no async API; need a decision"
 ```
 
 Hooks and self-assertion complement each other. Hooks provide the floor that
@@ -138,45 +138,45 @@ guarantees a truthful terminal signal, while self-assertion adds the
 finer-grained live signal. Both write the same two keys, and because attention
 is last-write-wins by design, coordinators see whichever ran most recently.
 
-For Claude Code workspaces, `kata init --with-hooks` additively installs two
+For Claude Code workspaces, `poomsae init --with-hooks` additively installs two
 command hooks in `.claude/settings.json`. `SessionStart` runs
-`kata attention-hook start` for new, resumed, and cleared sessions (not context
-compaction), and `SessionEnd` runs `kata attention-hook end` only for terminal
+`poomsae attention-hook start` for new, resumed, and cleared sessions (not context
+compaction), and `SessionEnd` runs `poomsae attention-hook end` only for terminal
 exits rather than clear or resume transitions. Both use the launcher-provided
-`KATA_REF` and intentionally do nothing when it is absent. Because the hook
-logic lives in the installed `kata` binary, the approved command does not
+`POOMSAE_REF` and intentionally do nothing when it is absent. Because the hook
+logic lives in the installed `poomsae` binary, the approved command does not
 delegate to a repository script whose contents can change independently.
-Re-running the command is a no-op, and Kata refuses symlinked `.claude` or
+Re-running the command is a no-op, and Poomsae refuses symlinked `.claude` or
 `settings.json` paths. Kit's shared agent-hook manager owns the additive config
 mutation and preserves unrelated hook entries.
 
-For Codex CLI workspaces, `kata init --with-codex-hooks` installs attention
+For Codex CLI workspaces, `poomsae init --with-codex-hooks` installs attention
 hooks and, when needed, contract `SessionStart` hooks in `.codex/hooks.json`.
 The contract hook injects the canonical marker-free agent briefing through
-`kata agent-contract-hook` on startup, resume, clear, and context compaction.
-The attention hook runs `kata attention-hook start` on startup, resume, and
-clear, but not compaction, using the same launcher-provided `KATA_REF` and
+`poomsae agent-contract-hook` on startup, resume, clear, and context compaction.
+The attention hook runs `poomsae attention-hook start` on startup, resume, and
+clear, but not compaction, using the same launcher-provided `POOMSAE_REF` and
 command as the Claude Code wiring. Codex prompts you to trust project-layer
 hooks the first time it loads them, so expect one interactive confirmation on
-first run. Re-running the command is a no-op, and Kata refuses symlinked
+first run. Re-running the command is a no-op, and Poomsae refuses symlinked
 `.codex` or `hooks.json` paths. If `.codex/config.toml` already defines a
 `[hooks]` table, the command prints a non-fatal warning that Codex loads both
 files' hooks together.
 
-When a user contract hook already supplies the briefing, `kata init` skips the
+When a user contract hook already supplies the briefing, `poomsae init` skips the
 workspace contract and removes an untracked duplicate. Tracked workspace hook
 files keep both hooks for teammates without a user hook. The normal attention
-entry keeps its trust key, and `kata init` warns when removing a duplicate
+entry keeps its trust key, and `poomsae init` warns when removing a duplicate
 shifts surviving hooks and requires re-trust through `/hooks`. If you remove the
-user hook, re-run `kata init --with-codex-hooks` to restore workspace contract injection. See the
+user hook, re-run `poomsae init --with-codex-hooks` to restore workspace contract injection. See the
 [init reference](../reference/cli.md#workspace-initialization) for ownership,
 config selection, and the tracked-file exception.
 
-The Codex init flag now installs `kata attention-hook end` on genuine native
+The Codex init flag now installs `poomsae attention-hook end` on genuine native
 SessionEnd, while existing start commands retain their trust identities. For
 session-aware ownership fencing, run
-`kata agent-hook install codex --scope project --attention` or
-`kata init --with-agent-hooks codex`.
+`poomsae agent-hook install codex --scope project --attention` or
+`poomsae init --with-agent-hooks codex`.
 
 Older runtimes and targets without native terminal events need launcher cleanup.
 Use one tracked session per issue with the compatible bare-hook wrapper, run
@@ -185,27 +185,27 @@ Native hook failures stay silent, and abrupt launcher death cannot execute a
 trap. Amp, OpenCode, and ZCode can supply their native start half, while
 Antigravity needs launcher start as well. For example:
 ```sh
-export KATA_REF=abc4
-kata attention-hook start
-trap 'status=$?; kata attention-hook end; exit "$status"' EXIT
+export POOMSAE_REF=abc4
+poomsae attention-hook start
+trap 'status=$?; poomsae attention-hook end; exit "$status"' EXIT
 codex ...
 ```
 
 ## Coordinate: wait and dashboards
 
-A delegating coordinator joins on sub-tasks with `kata wait`. For example, you
+A delegating coordinator joins on sub-tasks with `poomsae wait`. For example, you
 can launch two sub-tasks and then block until either needs attention:
 
 ```sh
 # fan out (--json output carries the new ref at .issue.short_id)
-a=$(kata create "port the parser"  --meta work.branch=agent/parser \
+a=$(poomsae create "port the parser"  --meta work.branch=agent/parser \
       --idempotency-key sub-parser  --json | jq -r '.issue.short_id')
-b=$(kata create "port the emitter" --meta work.branch=agent/emitter \
+b=$(poomsae create "port the emitter" --meta work.branch=agent/emitter \
       --idempotency-key sub-emitter --json | jq -r '.issue.short_id')
 # ... launch agents on those branches ...
 
 # join: return as soon as either sub-task needs a human or closes
-kata wait "$a" "$b" --until attention --any
+poomsae wait "$a" "$b" --until attention --any
 ```
 
 `--until attention` matches either `needs-human` or `stuck`, and in attention
@@ -214,21 +214,21 @@ a close from an attention change, the coordinator can branch on it. By default,
 `--until closed` with `--all` blocks until every named issue is closed. Pass
 `--timeout <dur>` to exit with a dedicated nonzero code so a wrapper can tell a
 timeout from a satisfied wait. That timeout is the wall-clock budget for the
-whole command, including project and ref resolution and polling. `kata wait`
+whole command, including project and ref resolution and polling. `poomsae wait`
 performs read-only state polling (default `--poll-interval 2s`).
 
-For a human dashboard, poll the same convention with `kata list` or follow the
+For a human dashboard, poll the same convention with `poomsae list` or follow the
 event stream:
 
 ```sh
-kata list --meta work.attention=needs-human
-kata list --meta work.attention=stuck
-kata events --tail
+poomsae list --meta work.attention=needs-human
+poomsae list --meta work.attention=stuck
+poomsae events --tail
 ```
 
-`kata list --meta` is scoped to the selected project by default; add `--all` to
+`poomsae list --meta` is scoped to the selected project by default; add `--all` to
 filter across every active project, for example
-`kata list --meta work.attention=stuck --all`. A dashboard that spans projects
+`poomsae list --meta work.attention=stuck --all`. A dashboard that spans projects
 can use `--all`, poll each project separately, or follow the event stream and
 maintain its own cross-project view.
 
@@ -241,11 +241,11 @@ Merge automation reads `work.branch` to know what to integrate, verifies the
 work, and closes the tracking issue with typed evidence:
 
 ```sh
-meta=$(kata meta get abc4 work.branch --json) || exit
+meta=$(poomsae meta get abc4 work.branch --json) || exit
 branch=$(printf '%s\n' "$meta" | jq -r '.value | select(. != null)')   # "agent/widget-export"
 [ -n "$branch" ] || { echo "abc4 has no work.branch" >&2; exit 1; }
 # ... merge and verify the branch ...
-kata close abc4 --done \
+poomsae close abc4 --done \
   --message "Merged widget export; export round-trips and unit tests pass." \
   --pr <url>
 ```
@@ -265,16 +265,16 @@ the issue surfaces on the dashboard instead of sitting at a stale `ok`. This is
 the main reason hooks are the recommended default rather than agent
 self-assertion alone.
 
-**Stale `work.branch` after force-push or rebase.** Kata never validates
+**Stale `work.branch` after force-push or rebase.** Poomsae never validates
 `work.branch` against a repository, so a rewritten or deleted branch leaves the
 value pointing at history that no longer exists. This key is informational only,
-and Kata cannot detect drift. Have merge automation treat `work.branch` as a
+and Poomsae cannot detect drift. Have merge automation treat `work.branch` as a
 hint and verify that the branch still resolves before acting on it.
 
 **Two agents on one tracking issue.** The ownership convention is one
 working-agent side per issue. If two agents write `work.attention` on the same
 issue, their last-write-wins updates trample each other and the signal becomes
-meaningless. Kata does not prevent this, but you can detect it from the event
+meaningless. Poomsae does not prevent this, but you can detect it from the event
 stream: `issue.metadata_updated` events name the actor, so two distinct actors
 writing `work.attention` on one issue is the tell. Fix the launcher wiring so
 each session gets its own tracking issue.
@@ -289,37 +289,37 @@ agent honors the convention for that session. Paste the draft below essentially
 intact:
 
 ```markdown
-## Kata `work.*` conventions (agent orchestration)
+## Poomsae `work.*` conventions (agent orchestration)
 
-This repo's kata board uses the `work.*` metadata contract; see kata's
-<https://katatracker.com/docs/operations/agent-orchestration/> for the full
+This repo's poomsae board uses the `work.*` metadata contract; see poomsae's
+<https://github.com/ifigueroap/poomsae/docs/operations/agent-orchestration/> for the full
 recipe.
 
-**When you work a kata-tracked issue:**
+**When you work a poomsae-tracked issue:**
 
-- Claim with `kata claim <ref> --ttl 2h`. Renew before expiry by claiming
+- Claim with `poomsae claim <ref> --ttl 2h`. Renew before expiry by claiming
   again with `--ttl`, without `--if-unowned`.
-- When you claim or start a kata issue, immediately mark it actively tracked:
-  `kata meta set <ref> work.attention ok`. This makes in-flight work visible
+- When you claim or start a poomsae issue, immediately mark it actively tracked:
+  `poomsae meta set <ref> work.attention ok`. This makes in-flight work visible
   to coordinators and dashboards from the moment it is grabbed.
 - If the work happens on a dedicated branch, stamp it once:
-  `kata meta set <ref> work.branch <branch>` (or bind at creation:
-  `kata create ... --meta work.branch=<branch> --idempotency-key <key>`).
-- When you open a PR, record it with `kata meta set <ref> work.pr_url <url>`.
+  `poomsae meta set <ref> work.branch <branch>` (or bind at creation:
+  `poomsae create ... --meta work.branch=<branch> --idempotency-key <key>`).
+- When you open a PR, record it with `poomsae meta set <ref> work.pr_url <url>`.
   When closing completed work with a PR, attach it with `--pr <url>`.
 - Keep your live state truthful on the issue:
-  `kata meta set <ref> work.attention stuck|needs-human|ok`, with a one-line
-  `kata meta set <ref> work.attention_msg "<why>"`. Raise `stuck` when you
+  `poomsae meta set <ref> work.attention stuck|needs-human|ok`, with a one-line
+  `poomsae meta set <ref> work.attention_msg "<why>"`. Raise `stuck` when you
   cannot proceed, `needs-human` when you want input or review (you may keep
   working), and clear back to `ok` when unblocked.
 - Never end a session with the signal stale: before stopping, either close
   the issue or set the attention pair to reflect the hand-off.
 
-**When you delegate work as separate kata issues (fan-out/join):**
+**When you delegate work as separate poomsae issues (fan-out/join):**
 
 - Create each sub-issue with `--meta work.branch=...` and an idempotency key;
   capture refs from `--json` (`.issue.short_id`).
-- Join with `kata wait <refs> --until attention --any` (matches `needs-human`
+- Join with `poomsae wait <refs> --until attention --any` (matches `needs-human`
   or `stuck`; a close also completes the wait, and the reported reason
   distinguishes which). Use `--timeout` so a wrapper can tell timeout from
   satisfaction. As coordinator you read `work.*`; you never write it on

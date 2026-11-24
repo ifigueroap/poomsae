@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte'
 import type { ComponentProps } from 'svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { KataProjectSummary, KataTaskDetail } from '../lib/kata/types'
+import type { PoomsaeProjectSummary, PoomsaeTaskDetail } from '../lib/poomsae/types'
 
 import MoveIssueDialog from './MoveIssueDialog.svelte'
 
 function makeIssue(
   status: 'open' | 'closed' = 'open',
-  overrides: Partial<KataTaskDetail['issue']> = {},
-): KataTaskDetail {
+  overrides: Partial<PoomsaeTaskDetail['issue']> = {},
+): PoomsaeTaskDetail {
   return {
     issue: {
       id: 1,
@@ -38,8 +38,8 @@ function makeProject(
   uid: string,
   name: string,
   openCount: number,
-  metadata: KataProjectSummary['metadata'] = {},
-): KataProjectSummary {
+  metadata: PoomsaeProjectSummary['metadata'] = {},
+): PoomsaeProjectSummary {
   return {
     id: uid === 'project-alpha' ? 2 : uid.length,
     uid,

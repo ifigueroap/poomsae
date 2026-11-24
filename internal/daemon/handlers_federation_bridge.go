@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func registerRelayHandlers(humaAPI huma.API, cfg ServerConfig) {
@@ -287,7 +287,7 @@ func relayProjectTooLargeAPIError(err error) error {
 	}
 	return api.NewError(http.StatusConflict, "relay_project_too_large",
 		fmt.Sprintf("the project's relay checkpoint is %d bytes; the capacity is %d bytes", tooLarge.Bytes, tooLarge.Capacity),
-		"purge issues the project no longer needs (kata purge); moving issues keeps their history here, and the signed receipts of purged events remain", nil)
+		"purge issues the project no longer needs (poomsae purge); moving issues keeps their history here, and the signed receipts of purged events remain", nil)
 }
 
 // requireRelayDownstreamAuthority lets only the account that connected this
@@ -324,12 +324,12 @@ func relayHandshake(ctx context.Context, store db.Storage, projectID int64, peer
 	pin, err := store.RootAuthority(ctx, project.UID)
 	if signer, _, configured := db.RootAttributionFromContext(ctx); configured && binding.Role == db.FederationRoleHub {
 		if signer.AuthorityUID != store.InstanceUID() || len(signer.PrivateKey) != ed25519.PrivateKeySize {
-			return nil, api.NewError(http.StatusConflict, "root_signing_key_conflict", "root signing key is unavailable", "restore federation-root.key from backup and restart the daemon, or run kata federation root-key repin --project "+project.Name, nil)
+			return nil, api.NewError(http.StatusConflict, "root_signing_key_conflict", "root signing key is unavailable", "restore federation-root.key from backup and restart the daemon, or run poomsae federation root-key repin --project "+project.Name, nil)
 		}
 		public := signer.PrivateKey.Public().(ed25519.PublicKey)
 		expected := db.RootKeyPin{ProjectUID: project.UID, AuthorityUID: store.InstanceUID(), KeyID: db.RootPublicKeyID(public), PublicKey: public}
 		if err == nil && (pin.AuthorityUID != expected.AuthorityUID || pin.KeyID != expected.KeyID) {
-			return nil, api.NewError(http.StatusConflict, "root_signing_key_conflict", "root pin differs from the loaded signing key", "restore the pinned federation-root.key and restart the daemon, or run kata federation root-key repin --project "+project.Name, nil)
+			return nil, api.NewError(http.StatusConflict, "root_signing_key_conflict", "root pin differs from the loaded signing key", "restore the pinned federation-root.key and restart the daemon, or run poomsae federation root-key repin --project "+project.Name, nil)
 		}
 		if errors.Is(err, db.ErrNotFound) && binding.Enabled {
 			// The normal daemon already loaded its owner-only signing key. A

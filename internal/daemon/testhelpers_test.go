@@ -17,14 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.kenn.io/kit/stacktest"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/hooks"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/hooks"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 )
 
 // httptestServerHandle bundles a httptest.Server with the on-disk workspace
@@ -131,7 +131,7 @@ func issueShortIDFromCreate(t *testing.T, bs []byte) string {
 // for git/init behavior should use newServerWithGitWorkspace directly.
 func bootstrapProject(t *testing.T, opts ...serverOption) (*httptestServerHandle, int64) {
 	t.Helper()
-	h, projectID := newServerWithLocalWorkspace(t, "kata", opts...)
+	h, projectID := newServerWithLocalWorkspace(t, "poomsae", opts...)
 	// Register the handle so issueURL can look up issue.short_id at request
 	// time without each test passing the handle in. Tests in this package
 	// don't run in parallel, so a single pointer is enough; t.Cleanup
@@ -195,9 +195,9 @@ type testDBHandle struct {
 // cleanup to close it. The returned handle is suitable for daemon.ServerConfig.
 func openTestDB(t *testing.T) testDBHandle {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
-	d, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "kata.db"))
+	d, err := testfix.OpenSQLite(ctx, filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
 	return testDBHandle{db: d, now: time.Now().UTC()}

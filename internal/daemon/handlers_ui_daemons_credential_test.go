@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
 )
 
 func TestWebDaemonProxyMissingCatalogFileStopsBeforeRequest(t *testing.T) {
@@ -31,7 +31,7 @@ func TestWebDaemonProxyMissingCatalogFileStopsBeforeRequest(t *testing.T) {
 	}}})
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/api/v1/ui/proxy/api/v1/ui/snapshot?view=all-open", nil)
 	require.NoError(t, err)
-	req.Header.Set("X-Kata-Web-Daemon", "example-remote")
+	req.Header.Set("X-Poomsae-Web-Daemon", "example-remote")
 	response, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer func() { _ = response.Body.Close() }()

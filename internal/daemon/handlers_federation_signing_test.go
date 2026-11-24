@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const configureSigningPath = "/api/v1/federation/replicas/01HZNQ7VFPK1XGD8R5MABCD4EX/actions/configure-signing"
@@ -206,14 +206,14 @@ func TestConfigureFederationSigningRejectsBrowserAuthority(t *testing.T) {
 	require.NoError(t, err)
 	for _, kind := range []daemon.PrincipalKind{daemon.PrincipalWebLocal, daemon.PrincipalStaticToken} {
 		t.Run(string(kind), func(t *testing.T) {
-			issued, err := manager.IssueSession(daemon.Principal{Kind: kind}, "/kata")
+			issued, err := manager.IssueSession(daemon.Principal{Kind: kind}, "/poomsae")
 			require.NoError(t, err)
 			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, manager.Origin()+configureSigningPath,
 				strings.NewReader(`{"key_id":"key-a","key_env":"TEST_DAEMON_SIGNING_KEY"}`))
 			request.Header.Set("Origin", manager.Origin())
 			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("X-Kata-Web-Session", issued.Session)
-			request.Header.Set("X-Kata-CSRF", issued.CSRF)
+			request.Header.Set("X-Poomsae-Web-Session", issued.Session)
+			request.Header.Set("X-Poomsae-CSRF", issued.CSRF)
 			request.AddCookie(manager.Cookie(issued.Cookie))
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)

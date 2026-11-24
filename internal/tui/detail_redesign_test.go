@@ -15,14 +15,14 @@ func TestDetailRedesign_StackedHasProjectBarOnFirstLine(t *testing.T) {
 	defer snapshotInit(t)()
 	dm := snapDetailFixture()
 	got := stripANSI(dm.View(160, 32, viewChrome{
-		scope:   scope{projectID: 7, projectName: "kata"},
+		scope:   scope{projectID: 7, projectName: "poomsae"},
 		version: "dev",
 	}))
 	first := firstNonEmptyLine(got)
-	if !strings.Contains(first, "Project: kata") {
+	if !strings.Contains(first, "Project: poomsae") {
 		t.Fatalf("expected first line to be project bar, got %q\n%s", first, got)
 	}
-	if !strings.Contains(first, "kata カタ") {
+	if !strings.Contains(first, "poomsae カタ") {
 		t.Fatalf("expected brand on first line, got %q\n%s", first, got)
 	}
 }
@@ -37,7 +37,7 @@ func TestDetailRedesign_ContentHasLeftGutter(t *testing.T) {
 	dm := snapDetailFixture()
 	dm.issue.Owner = new("alice")
 	got := stripANSI(dm.View(160, 32, viewChrome{
-		scope:   scope{projectID: 7, projectName: "kata"},
+		scope:   scope{projectID: 7, projectName: "poomsae"},
 		version: "dev",
 	}))
 	for _, want := range []string{
@@ -79,7 +79,7 @@ func TestDetailRedesign_NoReplacementGlyphs(t *testing.T) {
 				return d
 			},
 			applyChr: func(c viewChrome) viewChrome {
-				c.scope = scope{projectID: 7, projectName: "kata"}
+				c.scope = scope{projectID: 7, projectName: "poomsae"}
 				c.version = "dev"
 				return c
 			},
@@ -117,7 +117,7 @@ func TestDetailRedesign_OmitsEmptyLabelsAndChildren(t *testing.T) {
 	defer snapshotInit(t)()
 	dm := simpleDetailModel()
 	got := stripANSI(dm.View(160, 24, viewChrome{
-		scope: scope{projectID: 7, projectName: "kata"},
+		scope: scope{projectID: 7, projectName: "poomsae"},
 	}))
 	assertStringsLack(t, got, "labels: none", "children: none")
 }

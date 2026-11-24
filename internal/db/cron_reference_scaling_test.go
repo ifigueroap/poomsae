@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/cron"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
 	"modernc.org/sqlite"
 )
 

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
 	"modernc.org/sqlite"
 )
 
@@ -63,7 +63,7 @@ func TestFederationIngestKnownIssuesWithLargeSnapshot(t *testing.T) {
 		if i > 0 {
 			payload.WriteByte(',')
 		}
-		peer, err := katauid.New()
+		peer, err := poomsaeuid.New()
 		require.NoError(t, err)
 		fmt.Fprintf(&payload, `{"type":"related","to_issue_uid":%q}`, peer)
 	}

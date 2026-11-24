@@ -66,7 +66,7 @@ type listModel struct {
 	// of the highlighted row. Set when the user presses `!`; consumed
 	// when the next key is 0..4 (set) or `-` (clear); reset by any other
 	// key. The status line carries the hint while armed so the user can
-	// see what kata is waiting for. Mirrors vim's modifier-then-motion
+	// see what poomsae is waiting for. Mirrors vim's modifier-then-motion
 	// pattern but for a small finite priority space.
 	pendingPriority bool
 }
@@ -184,7 +184,7 @@ func (lm listModel) applyMutationKey(msg tea.KeyPressMsg, km keymap) (listModel,
 }
 
 // armPendingPriority flips the listModel into priority-pending mode and
-// drops a status hint so the user can see what kata is waiting for.
+// drops a status hint so the user can see what poomsae is waiting for.
 // Empty list / no target row is a quiet no-op so `!` on the empty-state
 // banner does nothing.
 func (lm listModel) armPendingPriority() listModel {
@@ -1077,7 +1077,7 @@ func filteredIssues(issues []Issue, f ListFilter) []Issue {
 // matchesFilter reports whether iss satisfies the client-side filters.
 // Owner is *string on the wire, so a nil pointer never matches a set
 // owner. Search is case-insensitive contains over Title, ShortID, and
-// QualifiedID so users can paste an id (`abc4` or `kata#abc4`) into the
+// QualifiedID so users can paste an id (`abc4` or `poomsae#abc4`) into the
 // `/` search and find the issue without having to remember the title.
 // Body search is out of scope: the list rows don't carry the body.
 //

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // AdoptProjectIntoFederation adopts an existing local project into a hub
@@ -24,7 +24,7 @@ func (s *Store) AdoptProjectIntoFederation(
 	if actor == "" {
 		actor = "federation"
 	}
-	if !katauid.Valid(params.HubProjectUID) {
+	if !poomsaeuid.Valid(params.HubProjectUID) {
 		return db.AdoptProjectIntoFederationResult{},
 			fmt.Errorf("invalid hub project uid %q", params.HubProjectUID)
 	}

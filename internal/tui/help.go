@@ -87,7 +87,7 @@ func renderHelp(km keymap, width int, filter ListFilter) string {
 		rendered[i] = renderHelpGroup(g)
 	}
 	body := lipgloss.JoinHorizontal(lipgloss.Top, padColumns(rendered)...)
-	parts := []string{titleStyle.Render("kata — keybindings"), ""}
+	parts := []string{titleStyle.Render("poomsae — keybindings"), ""}
 	if chips := renderChips(filter); chips != "" {
 		parts = append(parts, chips, "")
 	}

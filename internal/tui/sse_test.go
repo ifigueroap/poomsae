@@ -14,7 +14,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 // TestSSEParser_DecodeEventReceived: a well-formed frame's payload is
@@ -27,7 +27,7 @@ func TestSSEParser_DecodeEventReceived(t *testing.T) {
 		"issue_short_id":"42aa",
 		"issue_uid":"01JZ0000000000000000000001"
 	}`)
-	got := decodeEventReceived(kataclient.Event{Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Data: body})
 	if got.eventType != "issue.created" {
 		t.Fatalf("eventType = %q, want issue.created", got.eventType)
 	}
@@ -50,7 +50,7 @@ func TestSSEParser_DecodeEventReceived(t *testing.T) {
 // pointer).
 func TestSSEParser_DecodeEventReceived_MissingIssueShortID(t *testing.T) {
 	body := []byte(`{"type":"sync.reset_required","project_id":7}`)
-	got := decodeEventReceived(kataclient.Event{Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Data: body})
 	if got.issueShortID != "" {
 		t.Fatalf("issueShortID = %q, want empty (missing)", got.issueShortID)
 	}
@@ -70,7 +70,7 @@ func TestSSEParser_LinkPayloadType(t *testing.T) {
 			"to_uid":"01JZ0000000000000000000004"
 		}
 	}`)
-	got := decodeEventReceived(kataclient.Event{Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Data: body})
 	if got.eventType != "issue.linked" {
 		t.Fatalf("eventType = %q, want issue.linked", got.eventType)
 	}
@@ -96,7 +96,7 @@ func TestSSEParser_CommentEditedPayloadUID(t *testing.T) {
 		"issue_uid":"source-issue",
 		"payload":{"comment_uid":"edited-comment"}
 	}`)
-	got := decodeEventReceived(kataclient.Event{Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Data: body})
 	if got.commentUID != "edited-comment" {
 		t.Fatalf("commentUID = %q, want edited-comment", got.commentUID)
 	}
@@ -123,7 +123,7 @@ func TestSSEParser_LinkPayloadDecodesDaemonWireShape(t *testing.T) {
 			"to_uid":"01JZ0000000000000000000002"
 		}
 	}`)
-	got := decodeEventReceived(kataclient.Event{Data: body})
+	got := decodeEventReceived(poomsaeclient.Event{Data: body})
 	if got.link == nil {
 		t.Fatal("link payload was not decoded")
 	}
@@ -242,7 +242,7 @@ func TestSSE_ReconnectSendsLastEventID(t *testing.T) {
 		ch := make(chan tea.Msg, 8)
 		done := make(chan struct{})
 		go func() {
-			startSSE(ctx, hc, "http://kata.invalid", nil, ch)
+			startSSE(ctx, hc, "http://poomsae.invalid", nil, ch)
 			close(done)
 		}()
 
@@ -299,7 +299,7 @@ func TestSSE_GracePeriod_FastReconnect_NoReconnectingBadge(t *testing.T) {
 		ch := make(chan tea.Msg, 16)
 		done := make(chan struct{})
 		go func() {
-			startSSE(ctx, hc, "http://kata.invalid", nil, ch)
+			startSSE(ctx, hc, "http://poomsae.invalid", nil, ch)
 			close(done)
 		}()
 
@@ -442,7 +442,7 @@ func TestSSE_GracePeriod_LongOutage_SurfacesBadge(t *testing.T) {
 		ch := make(chan tea.Msg, 16)
 		done := make(chan struct{})
 		go func() {
-			startSSE(ctx, hc, "http://kata.invalid", nil, ch)
+			startSSE(ctx, hc, "http://poomsae.invalid", nil, ch)
 			close(done)
 		}()
 
@@ -496,7 +496,7 @@ func TestSSE_StreamRequest_SingleProjectAddsQuery(t *testing.T) {
 	defer server.Close()
 	var cursor int64
 	_, err := readSSEStream(t.Context(), server.Client(), server.URL, &pid, 9, make(chan tea.Msg, 1), &cursor, nil)
-	if !errors.Is(err, kataclient.ErrEventStreamEnded) {
+	if !errors.Is(err, poomsaeclient.ErrEventStreamEnded) {
 		t.Fatalf("stream: %v", err)
 	}
 	if !strings.Contains(req.URL.RawQuery, "project_id=7") {
@@ -523,7 +523,7 @@ func TestSSE_OversizedFrameRefetchesAndResumesAfterIt(t *testing.T) {
 	ch := make(chan tea.Msg, 8)
 	var lastID int64
 	_, err := readSSEStream(ctx, srv.Client(), srv.URL, nil, 0, ch, &lastID, nil)
-	if !errors.Is(err, kataclient.ErrEventStreamEnded) {
+	if !errors.Is(err, poomsaeclient.ErrEventStreamEnded) {
 		t.Fatalf("stream: %v, want the stream to end normally", err)
 	}
 	if lastID != 3 {

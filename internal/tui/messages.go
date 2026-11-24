@@ -3,7 +3,7 @@ package tui
 import (
 	"time"
 
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
 )
 
 // initialFetchMsg is delivered after the first ListIssues call returns.
@@ -197,7 +197,7 @@ type editorReturnedMsg struct {
 // reference used for detail-pane matching.
 //
 // linksChanged is populated only for issue.links_changed events (the
-// aggregated form emitted by `kata edit`). It carries parent_set and
+// aggregated form emitted by `poomsae edit`). It carries parent_set and
 // parent_removed from the payload so the detail-pane refetch logic
 // can refresh the OTHER endpoint of a parent transition — without it,
 // the old or new parent's pane would stay stale until a manual
@@ -247,7 +247,7 @@ type linkPayload struct {
 // rendering when the consumer also wants the display ref.
 //
 // RefUIDs and Refs run parallel (same length / order). The daemon's
-// post-kata#1 events always carry the *_uids fields so UID-keyed
+// post-poomsae#1 events always carry the *_uids fields so UID-keyed
 // matching is the canonical path.
 type linksChangedParents struct {
 	Set        string   // parent_set short_id; "" when absent

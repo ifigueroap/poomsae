@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const purgeLogSelect = `SELECT id, uid, origin_instance_uid, project_id, purged_issue_id, issue_uid,
@@ -143,7 +143,7 @@ WHERE id = $1 AND last_materialized_uid = $4`,
 		if err := db.RecordProjectStreamResets(ctx, tx, affectedProjects, value); err != nil {
 			return err
 		}
-		purgeUID, err := katauid.New()
+		purgeUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate purge uid: %w", err)
 		}

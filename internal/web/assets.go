@@ -1,4 +1,4 @@
-// Package web serves the embedded Kata browser application.
+// Package web serves the embedded Poomsae browser application.
 package web
 
 import (
@@ -13,7 +13,7 @@ import (
 )
 
 const viteManifestPath = ".vite/manifest.json"
-const productionDistributionMarker = `<meta name="kata-web-distribution" content="production"`
+const productionDistributionMarker = `<meta name="poomsae-web-distribution" content="production"`
 
 type assetCatalog struct {
 	immutable map[string]struct{}

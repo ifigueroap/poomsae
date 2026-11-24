@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 type preparedFederationIngestEvent struct {
@@ -860,7 +860,7 @@ func validateFederationLinkType(linkType string) error {
 }
 
 func validateFederationLinkPeer(primaryIssueUID, peerUID string) error {
-	if !katauid.Valid(peerUID) {
+	if !poomsaeuid.Valid(peerUID) {
 		return fmt.Errorf("%w: invalid link peer uid %q", db.ErrFederationIngestValidation, peerUID)
 	}
 	if peerUID == primaryIssueUID {

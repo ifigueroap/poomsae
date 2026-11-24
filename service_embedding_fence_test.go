@@ -1,4 +1,4 @@
-package kata
+package poomsae
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestServiceEmbeddingHonorsRevokedWorkerFence(t *testing.T) {
@@ -26,7 +26,7 @@ func TestServiceEmbeddingHonorsRevokedWorkerFence(t *testing.T) {
 	denied := errors.New("worker authority revoked")
 	service, err := New(ctx, Config{
 		DSN:      dsn,
-		Postgres: PostgresConfig{Schema: "kata", SchemaMode: PostgresSchemaBootstrap},
+		Postgres: PostgresConfig{Schema: "poomsae", SchemaMode: PostgresSchemaBootstrap},
 		Access:   allowWorkerFenceAccess{},
 		WorkerTransactionFence: func(context.Context, Transaction) error {
 			if revoked.Load() {

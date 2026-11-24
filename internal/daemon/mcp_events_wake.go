@@ -1,6 +1,6 @@
 package daemon
 
-import "go.kenn.io/kata/internal/mcpevents"
+import "github.com/ifigueroap/poomsae/internal/mcpevents"
 
 // mcpEventsSubscriber adapts the daemon's EventBroadcaster to the wake source
 // the MCP Events delivery worker expects.

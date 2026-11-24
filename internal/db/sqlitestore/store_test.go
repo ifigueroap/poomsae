@@ -7,15 +7,15 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/uid"
 )
 
-func TestOpen_AppliesPragmas(t *testing.T) { //nolint:paralleltest // sets KATA_TEST_FAST_SQLITE
-	t.Setenv("KATA_TEST_FAST_SQLITE", "")
+func TestOpen_AppliesPragmas(t *testing.T) { //nolint:paralleltest // sets POOMSAE_TEST_FAST_SQLITE
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "")
 
 	d := openTestDB(t)
 
@@ -34,7 +34,7 @@ func TestOpen_AppliesPragmas(t *testing.T) { //nolint:paralleltest // sets KATA_
 func TestOpen_OnFreshDBBootstrapsSchema(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
@@ -55,7 +55,7 @@ func TestOpen_OnFreshDBBootstrapsSchema(t *testing.T) {
 func TestOpen_IsIdempotentAfterBootstrap(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 
 	d1, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestOpen_IsIdempotentAfterBootstrap(t *testing.T) {
 
 func TestFederationCursorFenceMigrationUpgradesVersion53(t *testing.T) {
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	_, err = d.ExecContext(ctx, `UPDATE meta SET value='53' WHERE key='schema_version'`)
@@ -92,7 +92,7 @@ func TestFederationCursorFenceMigrationUpgradesVersion53(t *testing.T) {
 func TestOpen_RejectsVersionZeroExistingTables(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
@@ -200,11 +200,11 @@ func TestOpen_TimestampColumnsScanIntoTime(t *testing.T) {
 	assert.True(t, ok, "expected time.Time, got %T", ts)
 }
 
-func TestCheckpointTruncatesWAL(t *testing.T) { //nolint:paralleltest // sets KATA_TEST_FAST_SQLITE
-	t.Setenv("KATA_TEST_FAST_SQLITE", "")
+func TestCheckpointTruncatesWAL(t *testing.T) { //nolint:paralleltest // sets POOMSAE_TEST_FAST_SQLITE
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "")
 
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
@@ -238,11 +238,11 @@ func TestCheckpointTruncatesWAL(t *testing.T) { //nolint:paralleltest // sets KA
 	assert.Zero(t, after.Size(), "TRUNCATE checkpoint should leave no WAL bytes")
 }
 
-func TestOpenUsesFastSQLitePragmasWhenTestHarnessRequestsIt(t *testing.T) { //nolint:paralleltest // sets KATA_TEST_FAST_SQLITE
-	t.Setenv("KATA_TEST_FAST_SQLITE", "1")
+func TestOpenUsesFastSQLitePragmasWhenTestHarnessRequestsIt(t *testing.T) { //nolint:paralleltest // sets POOMSAE_TEST_FAST_SQLITE
+	t.Setenv("POOMSAE_TEST_FAST_SQLITE", "1")
 
 	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
@@ -262,7 +262,7 @@ func TestOpenUsesFastSQLitePragmasWhenTestHarnessRequestsIt(t *testing.T) { //no
 
 func TestOpenURICharactersUseExactPath(t *testing.T) {
 	ctx := t.Context()
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	names := []string{"example#database.db", "example%2Fdatabase.db"}
 	if runtime.GOOS != "windows" {
 		names = append(names, "example?mode=ro.db")

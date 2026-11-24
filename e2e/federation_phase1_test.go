@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestSmoke_FederationPhase1PullReplication(t *testing.T) {
@@ -23,7 +23,7 @@ func TestSmoke_FederationPhase1PullReplication(t *testing.T) {
 	hub := testenv.New(t)
 	spokeDirs := newE2EDirs(t)
 	bin := buildKataBinary(t)
-	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "KATA_FEDERATION_PULL_INTERVAL_MS=25"))
+	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=25"))
 	spokeURL, spokeHTTP := connectDaemon(t, spokeDirs, spokeStderr)
 	spokeDB, err := sqlitestore.Open(ctx, spokeDirs.dbPath)
 	require.NoError(t, err)

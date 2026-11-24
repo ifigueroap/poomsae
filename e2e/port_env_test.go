@@ -43,13 +43,13 @@ func TestPortEnvBind_ServesAndShutsDownCleanly(t *testing.T) {
 	//nolint:gosec // G204: bin is buildKataBinary's output
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground")
 	cmd.Env = append(os.Environ(),
-		"KATA_HOME="+home,
-		"KATA_DB="+filepath.Join(home, "kata.db"),
-		"KATA_AUTH_TOKEN="+token,
-		"KATA_TRUST_PRIVATE_NETWORK=1",
+		"POOMSAE_HOME="+home,
+		"POOMSAE_DB="+filepath.Join(home, "poomsae.db"),
+		"POOMSAE_AUTH_TOKEN="+token,
+		"POOMSAE_TRUST_PRIVATE_NETWORK=1",
 		// Defensively clear the marker so a polluted parent env can't
 		// turn this into a Unix-socket run.
-		"KATA_AUTOSTART=",
+		"POOMSAE_AUTOSTART=",
 		fmt.Sprintf("PORT=%d", port),
 	)
 	cmd.Stdout = io.Discard
@@ -116,10 +116,10 @@ func TestPortEnvBind_ServesAndShutsDownCleanly(t *testing.T) {
 }
 
 // TestPortEnvBind_AutostartMarkerSuppresses verifies the marker
-// honored by daemonclient.autoStart: when KATA_AUTOSTART=1 is set, a
+// honored by daemonclient.autoStart: when POOMSAE_AUTOSTART=1 is set, a
 // stray PORT in the environment must not flip the daemon onto wildcard
 // TCP. The daemon falls back to the platform-default local transport,
-// the runtime file appears under KATA_HOME, and PORT remains unbound.
+// the runtime file appears under POOMSAE_HOME, and PORT remains unbound.
 func TestPortEnvBind_AutostartMarkerSuppresses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -130,9 +130,9 @@ func TestPortEnvBind_AutostartMarkerSuppresses(t *testing.T) {
 	home := t.TempDir()
 
 	env := append(os.Environ(),
-		"KATA_HOME="+home,
-		"KATA_DB="+filepath.Join(home, "kata.db"),
-		"KATA_AUTOSTART=1",
+		"POOMSAE_HOME="+home,
+		"POOMSAE_DB="+filepath.Join(home, "poomsae.db"),
+		"POOMSAE_AUTOSTART=1",
 		fmt.Sprintf("PORT=%d", port),
 	)
 	stderr := startDaemon(t, bin, env)

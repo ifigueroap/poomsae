@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	connectorclient "go.kenn.io/kata/internal/connector"
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
-	"go.kenn.io/kata/pkg/connector"
+	connectorclient "github.com/ifigueroap/poomsae/internal/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 const (
@@ -89,7 +89,7 @@ type reconcileSnapshot struct {
 	client                   connectorclient.Client
 	root                     connector.Root
 	comments                 []connector.Comment
-	kataComments             []db.Comment
+	poomsaeComments          []db.Comment
 	mappings                 []db.ImportMapping
 	publishedCommentMappings []db.ImportMapping
 	commentIdentityFrontier  bool
@@ -161,7 +161,7 @@ func (r *Reconciler) runOnce(
 	if r == nil || r.store == nil {
 		return RunResult{}, errors.New("external root reconciler storage is unavailable")
 	}
-	token, err := katauid.New()
+	token, err := poomsaeuid.New()
 	if err != nil {
 		return RunResult{}, fmt.Errorf("generate external root claim token: %w", err)
 	}
@@ -183,7 +183,7 @@ func (r *Reconciler) runManual(
 	if r == nil || r.store == nil {
 		return RunResult{}, errors.New("external root reconciler storage is unavailable")
 	}
-	token, err := katauid.New()
+	token, err := poomsaeuid.New()
 	if err != nil {
 		return RunResult{}, fmt.Errorf("generate external root claim token: %w", err)
 	}
@@ -520,19 +520,19 @@ func (r *Reconciler) reconcileField(
 		hasBaseline = false
 		baseline = nullFieldValue()
 	}
-	codec, ok := r.fieldCodecs[mapping.KataField]
+	codec, ok := r.fieldCodecs[mapping.PoomsaeField]
 	if !ok {
 		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, nullFieldValue(), nullFieldValue(), claimToken, result)
 	}
 	if _, err := validateLiveFieldDescriptor(codec, mapping, liveFields); err != nil {
-		kata := baseline
+		poomsae := baseline
 		if current, readErr := readCanonicalKataField(codec, snapshot.issue, mapping); readErr == nil {
-			kata = current
+			poomsae = current
 		}
-		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, baseline, claimToken, result)
+		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, baseline, claimToken, result)
 	}
 
-	kata, err := readCanonicalKataField(codec, snapshot.issue, mapping)
+	poomsae, err := readCanonicalKataField(codec, snapshot.issue, mapping)
 	if err != nil {
 		external := baseline
 		if current, readErr := readMappedExternalField(ctx, snapshot, mapping); readErr == nil {
@@ -547,32 +547,32 @@ func (r *Reconciler) reconcileField(
 		if !isInvalidExternalFieldRead(err) {
 			return result, err
 		}
-		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, baseline, claimToken, result)
+		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, baseline, claimToken, result)
 	}
 	if baselineErr != nil {
-		return r.storeFieldConflict(ctx, snapshot, mapping, state, false, kata, external, claimToken, result)
+		return r.storeFieldConflict(ctx, snapshot, mapping, state, false, poomsae, external, claimToken, result)
 	}
 	if hasState && state.Conflicted {
-		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, external, claimToken, result)
+		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
 	}
 
 	var decision MergeDecision
 	if hasState && hasBaseline {
-		decision = DecideFieldMerge(baseline, kata, external)
+		decision = DecideFieldMerge(baseline, poomsae, external)
 	} else {
-		decision = DecideInitialFieldMerge(kata, external)
+		decision = DecideInitialFieldMerge(poomsae, external)
 	}
 	switch decision.Action {
 	case MergeConflict:
-		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, external, claimToken, result)
+		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
 	case MergeWriteKata:
-		patch, patchErr := codec.KataPatch(snapshot.issue, decision.Baseline)
+		patch, patchErr := codec.PoomsaePatch(snapshot.issue, decision.Baseline)
 		if patchErr != nil {
-			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, external, claimToken, result)
+			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
 		}
 		projected, event, _, projectionErr := r.store.ApplyExternalFieldProjection(ctx, db.ExternalFieldProjectionParams{
 			BindingID: snapshot.binding.ID, MappingID: mapping.ID, ClaimToken: claimToken,
-			KataField: mapping.KataField, Patch: patch, ExpectedIssueRevision: snapshot.issue.Revision,
+			PoomsaeField: mapping.PoomsaeField, Patch: patch, ExpectedIssueRevision: snapshot.issue.Revision,
 			IntegrationActor: integrationActor(snapshot.binding),
 		})
 		if projectionErr != nil {
@@ -585,7 +585,7 @@ func (r *Reconciler) reconcileField(
 		readback, readErr := readCanonicalKataField(codec, snapshot.issue, mapping)
 		if readErr != nil || !fieldValuesEqual(readback, decision.Baseline) {
 			if readErr != nil {
-				readback = kata
+				readback = poomsae
 			}
 			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, readback, external, claimToken, result)
 		}
@@ -606,10 +606,10 @@ func (r *Reconciler) reconcileField(
 			if !isInvalidExternalFieldRead(readErr) {
 				return result, readErr
 			}
-			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, external, claimToken, result)
+			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
 		}
 		if !fieldValuesEqual(readback, decision.Baseline) {
-			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, kata, readback, claimToken, result)
+			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, readback, claimToken, result)
 		}
 	case MergeAccept:
 	default:
@@ -639,14 +639,14 @@ func (r *Reconciler) storeFieldConflict(
 	mapping db.ExternalFieldMapping,
 	state db.ExternalFieldState,
 	hasBaseline bool,
-	kata connector.FieldValue,
+	poomsae connector.FieldValue,
 	external connector.FieldValue,
 	claimToken string,
 	result RunResult,
 ) (RunResult, error) {
-	kata = canonicalConflictCandidate(kata)
+	poomsae = canonicalConflictCandidate(poomsae)
 	external = canonicalConflictCandidate(external)
-	kataJSON, err := marshalCanonicalFieldValue(kata)
+	poomsaeJSON, err := marshalCanonicalFieldValue(poomsae)
 	if err != nil {
 		return result, err
 	}
@@ -660,7 +660,7 @@ func (r *Reconciler) storeFieldConflict(
 	}
 	_, event, err := r.store.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: snapshot.binding.ID, MappingID: mapping.ID, ClaimToken: claimToken,
-		Baseline: baselineJSON, ConflictKata: kataJSON, ConflictExternal: externalJSON,
+		Baseline: baselineJSON, ConflictKata: poomsaeJSON, ConflictExternal: externalJSON,
 		Conflicted: true, At: r.timestamp(), Actor: integrationActor(snapshot.binding),
 	})
 	if err != nil {
@@ -791,7 +791,7 @@ func (r *Reconciler) readCurrent(
 		return snapshot, err
 	}
 	snapshot.comments = append([]connector.Comment(nil), listed.Comments...)
-	snapshot.kataComments, err = r.store.CommentsByIssue(ctx, binding.IssueID)
+	snapshot.poomsaeComments, err = r.store.CommentsByIssue(ctx, binding.IssueID)
 	if err != nil {
 		return snapshot, err
 	}
@@ -998,14 +998,14 @@ func actorName(actor *connector.Actor) string {
 
 func completionRequestBody(actor *connector.Actor) string {
 	if name := strings.TrimSpace(actorName(actor)); name != "" {
-		return fmt.Sprintf("External completion was requested by %s. Please verify completion before closing this Kata issue.", name)
+		return fmt.Sprintf("External completion was requested by %s. Please verify completion before closing this Poomsae issue.", name)
 	}
-	return "The external root is complete. Please verify completion before closing this Kata issue."
+	return "The external root is complete. Please verify completion before closing this Poomsae issue."
 }
 
 func reopenRequestBody(actor *connector.Actor) string {
 	if name := strings.TrimSpace(actorName(actor)); name != "" {
-		return fmt.Sprintf("External reopening was requested by %s. Please review reopening before changing this Kata issue.", name)
+		return fmt.Sprintf("External reopening was requested by %s. Please review reopening before changing this Poomsae issue.", name)
 	}
-	return "The external root was reopened. Please review reopening before changing this Kata issue."
+	return "The external root was reopened. Please review reopening before changing this Poomsae issue."
 }

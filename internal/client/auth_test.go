@@ -10,22 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
 func TestResolveAuthTokenEnvWins(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
+	t.Setenv("POOMSAE_HOME", tmp)
 	require.NoError(t, writeAuthConfig(tmp, "from-toml"))
-	t.Setenv("KATA_AUTH_TOKEN", "from-env")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "from-env")
 
 	assert.Equal(t, "from-env", resolveAuthToken())
 }
 
 func TestResolveAuthTokenFallsBackToTOML(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeAuthConfig(tmp, "from-toml"))
 
 	assert.Equal(t, "from-toml", resolveAuthToken())
@@ -33,17 +33,17 @@ func TestResolveAuthTokenFallsBackToTOML(t *testing.T) {
 
 func TestResolveAuthTokenIgnoresUnresolvedCatalogTokenEnv(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_WORK_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_WORK_TOKEN", "")
 	require.NoError(t, writeRawConfig(tmp, `
 [auth]
 token = "from-toml"
 
 [[daemon]]
 name = "work"
-url = "https://kata.example.test"
-token_env = "KATA_WORK_TOKEN"
+url = "https://poomsae.example.test"
+token_env = "POOMSAE_WORK_TOKEN"
 `))
 
 	assert.Equal(t, "from-toml", resolveAuthToken())
@@ -51,16 +51,16 @@ token_env = "KATA_WORK_TOKEN"
 
 func TestResolveAuthTokenEmpty(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 
 	assert.Empty(t, resolveAuthToken())
 }
 
 func TestResolveAuthTokenMalformedTOMLDegradesToEmpty(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(tmp, "not = valid = toml"))
 
 	assert.Empty(t, resolveAuthToken(),
@@ -153,8 +153,8 @@ func TestNewHTTPClientAttachesAuthHeader(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "client-tok")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "client-tok")
 
 	c, err := NewHTTPClient(t.Context(), srv.URL, Opts{})
 	require.NoError(t, err)
@@ -174,7 +174,7 @@ func TestNewHTTPClientIgnoresAuthTokenInLocalConfig(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		got = r.Header.Get("Authorization")
@@ -183,12 +183,12 @@ func TestNewHTTPClientIgnoresAuthTokenInLocalConfig(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	workspace := t.TempDir()
 	t.Chdir(workspace)
 	writeWorkspaceMarker(t, workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -223,11 +223,11 @@ func TestNewHTTPClientIgnoresAuthTokenInProjectConfig(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	workspace := t.TempDir()
 	t.Chdir(workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"),
 		[]byte(`version = 1
 [project]
 name = "example-workspace"
@@ -258,9 +258,9 @@ func TestNewHTTPClientKataServerIgnoresInvalidActiveDaemon(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", srv.URL)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", srv.URL)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "broken"
 
@@ -290,7 +290,7 @@ func TestNewHTTPClientLocalConfigIgnoresInvalidActiveDaemon(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		got = r.Header.Get("Authorization")
@@ -299,9 +299,9 @@ func TestNewHTTPClientLocalConfigIgnoresInvalidActiveDaemon(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "broken"
 
@@ -315,7 +315,7 @@ url = "::not-a-url::"
 	workspace := t.TempDir()
 	t.Chdir(workspace)
 	writeWorkspaceMarker(t, workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -343,7 +343,7 @@ func TestNewHTTPClientWorkspaceLocalConfigIgnoresInvalidActiveDaemon(t *testing.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		got = r.Header.Get("Authorization")
@@ -352,9 +352,9 @@ func TestNewHTTPClientWorkspaceLocalConfigIgnoresInvalidActiveDaemon(t *testing.
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "broken"
 
@@ -369,7 +369,7 @@ url = "::not-a-url::"
 	t.Chdir(cwd)
 	workspace := t.TempDir()
 	writeWorkspaceMarker(t, workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+srv.URL+`"
@@ -405,9 +405,9 @@ func TestNewHTTPClientKataServerDoesNotSuppressExplicitActiveDaemonAuth(t *testi
 	t.Cleanup(ambient.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", ambient.URL)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", ambient.URL)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
@@ -443,9 +443,9 @@ func TestNewHTTPClientLocalConfigDoesNotSuppressExplicitActiveDaemonAuth(t *test
 	t.Cleanup(ambient.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
@@ -457,7 +457,7 @@ token = "active-token"
 	workspace := t.TempDir()
 	t.Chdir(workspace)
 	writeWorkspaceMarker(t, workspace)
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+ambient.URL+`"
@@ -485,9 +485,9 @@ func TestNewHTTPClientWorkspaceStartIgnoresUnrelatedCWDLocalConfig(t *testing.T)
 	t.Cleanup(active.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
@@ -499,7 +499,7 @@ token = "active-token"
 	cwd := t.TempDir()
 	t.Chdir(cwd)
 	writeWorkspaceMarker(t, cwd)
-	require.NoError(t, os.WriteFile(filepath.Join(cwd, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(cwd, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "`+active.URL+`"
@@ -545,7 +545,7 @@ func TestNewHTTPClientUsesActiveDaemonTargetToken(t *testing.T) {
 	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		got = r.Header.Get("Authorization")
@@ -554,8 +554,8 @@ func TestNewHTTPClientUsesActiveDaemonTargetToken(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
@@ -592,8 +592,8 @@ func TestNewHTTPClientForTargetAttachesExplicitTokenOverGlobal(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "global-token")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
 
 	c, err := NewHTTPClientForTarget(t.Context(), srv.URL,
 		TargetAuth{Token: "target-token"}, Opts{})
@@ -722,9 +722,9 @@ func TestNewHTTPClientWithBearerRefusesPlaintextNonLoopback(t *testing.T) {
 
 func TestNewHTTPClientWithBearerHonorsConfiguredRemoteAllowInsecure(t *testing.T) {
 	const baseURL = "http://daemon.example:7373"
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_SERVER", baseURL)
-	t.Setenv("KATA_ALLOW_INSECURE", "1")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_SERVER", baseURL)
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "1")
 
 	c, err := NewHTTPClientWithBearer(t.Context(), baseURL, "secret", Opts{})
 
@@ -741,8 +741,8 @@ func TestNewHTTPClientStreamingAttachesAuthHeader(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "stream-tok")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "stream-tok")
 
 	c, err := NewHTTPClient(t.Context(), srv.URL, Opts{
 		ResponseHeaderTimeout: SSEHandshakeTimeout,
@@ -769,9 +769,9 @@ func TestNewHTTPClientStreamingAttachesAuthHeader(t *testing.T) {
 // daemons and operator misconfiguration.
 func TestNewHTTPClient_RefusesBearerOnPlaintextNonLoopback(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 
 	_, err := NewHTTPClient(t.Context(), "http://example.invalid:7373", Opts{})
 	require.Error(t, err)
@@ -780,9 +780,9 @@ func TestNewHTTPClient_RefusesBearerOnPlaintextNonLoopback(t *testing.T) {
 
 func TestNewHTTPClient_AllowsBearerOnPlaintextNonLoopbackWhenTrustPrivateNetworkSet(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 
 	_, err := NewHTTPClient(t.Context(), "http://100.64.0.5:7373", Opts{})
 	require.NoError(t, err)
@@ -790,9 +790,9 @@ func TestNewHTTPClient_AllowsBearerOnPlaintextNonLoopbackWhenTrustPrivateNetwork
 
 func TestNewHTTPClient_TrustPrivateNetworkRejectsPublicPlaintextTarget(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 
 	_, err := NewHTTPClient(t.Context(), "http://8.8.8.8:7373", Opts{})
 	require.Error(t, err)
@@ -801,9 +801,9 @@ func TestNewHTTPClient_TrustPrivateNetworkRejectsPublicPlaintextTarget(t *testin
 
 func TestNewHTTPClient_TrustPrivateNetworkRejectsPlaintextHostname(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 
 	_, err := NewHTTPClient(t.Context(), "http://example.internal:7373", Opts{})
 	require.Error(t, err)
@@ -813,11 +813,11 @@ func TestNewHTTPClient_TrustPrivateNetworkRejectsPlaintextHostname(t *testing.T)
 func TestNewHTTPClient_EnvRemoteAllowInsecureAllowsBearerOnPlaintextHostname(t *testing.T) {
 	stubProbe(t, true)
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_SERVER", "http://tailscale-host:7777")
-	t.Setenv("KATA_ALLOW_INSECURE", "1")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_SERVER", "http://tailscale-host:7777")
+	t.Setenv("POOMSAE_ALLOW_INSECURE", "1")
 
 	resolved, ok, err := ResolveRemoteDaemon(t.Context(), "")
 	require.NoError(t, err)
@@ -829,15 +829,15 @@ func TestNewHTTPClient_EnvRemoteAllowInsecureAllowsBearerOnPlaintextHostname(t *
 func TestNewHTTPClient_FileRemoteAllowInsecureAllowsBearerOnPlaintextHostname(t *testing.T) {
 	stubProbe(t, true)
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_SERVER", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_SERVER", "")
 
 	dir := t.TempDir()
 	t.Chdir(dir)
 	writeWorkspaceMarker(t, dir)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".kata.local.toml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.local.toml"),
 		[]byte(`version = 1
 [server]
 url = "http://tailscale-host:7777"
@@ -856,8 +856,8 @@ allow_insecure = true
 // over plaintext HTTP.
 func TestNewHTTPClient_AllowsBearerOnLoopback(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
 
 	for _, base := range []string{
 		"http://127.0.0.1:7373",
@@ -875,8 +875,8 @@ func TestNewHTTPClient_AllowsBearerOnLoopback(t *testing.T) {
 // an https:// baseURL is safe to attach a token to regardless of host.
 func TestNewHTTPClient_AllowsBearerOverHTTPS(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "secret")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "secret")
 
 	_, err := NewHTTPClient(t.Context(), "https://example.invalid", Opts{})
 	require.NoError(t, err)
@@ -903,11 +903,11 @@ func TestBearerPolicyOriginForUnixBase(t *testing.T) {
 }
 
 // TestNewHTTPClient_NoTokenChecksTarget is the D2 counterpart for the global
-// auth path: an unset KATA_AUTH_TOKEN no longer waives the target check.
+// auth path: an unset POOMSAE_AUTH_TOKEN no longer waives the target check.
 func TestNewHTTPClient_NoTokenChecksTarget(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 
 	_, err := NewHTTPClient(t.Context(), "http://example.invalid:7373", Opts{})
 	require.Error(t, err)
@@ -919,14 +919,14 @@ func TestNewHTTPClient_NoTokenChecksTarget(t *testing.T) {
 // is refused; with it the client builds.
 func TestNewHTTPClient_NoTokenPrivateTargetNeedsTrustOptIn(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 
 	_, err := NewHTTPClient(t.Context(), "http://100.64.0.5:7777", Opts{})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "KATA_TRUST_PRIVATE_NETWORK")
+	assert.Contains(t, err.Error(), "POOMSAE_TRUST_PRIVATE_NETWORK")
 
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 	c, err := NewHTTPClient(t.Context(), "http://100.64.0.5:7777", Opts{})
 	require.NoError(t, err)
 	assert.NotNil(t, c)
@@ -936,8 +936,8 @@ func TestNewHTTPClient_NoTokenPrivateTargetNeedsTrustOptIn(t *testing.T) {
 // path — by far the most common no-token configuration — is unaffected by D2.
 func TestNewHTTPClient_NoTokenLoopbackAlwaysSafe(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("KATA_HOME", tmp)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", tmp)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 
 	c, err := NewHTTPClient(t.Context(), "http://127.0.0.1:7373", Opts{})
 	require.NoError(t, err)

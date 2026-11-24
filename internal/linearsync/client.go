@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 )
 
 const endpoint = "https://api.linear.app/graphql"

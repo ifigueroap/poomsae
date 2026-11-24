@@ -18,7 +18,7 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-compose_project=${KATA_FEDERATION_DOCKER_PROJECT:-kata-federation-smoke}
+compose_project=${POOMSAE_FEDERATION_DOCKER_PROJECT:-poomsae-federation-smoke}
 compose=(docker compose -f docker/federation/docker-compose.yml -p "$compose_project")
 
 cleanup() {

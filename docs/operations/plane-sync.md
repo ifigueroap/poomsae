@@ -1,14 +1,14 @@
 ---
 title: Plane sync
-description: Mirror a Plane project into native Kata issues with daemon-owned API credentials and optional two-way status sync.
+description: Mirror a Plane project into native Poomsae issues with daemon-owned API credentials and optional two-way status sync.
 last_edited: 2026-11-20
 ---
 
 # Plane sync
 
-Plane sync mirrors one Plane project into one Kata project. By default, the
+Plane sync mirrors one Plane project into one Poomsae project. By default, the
 daemon reads Plane and imports native issues every five minutes, while local
-issue edits stay in Kata. To send explicit Kata close and reopen actions back to
+issue edits stay in Poomsae. To send explicit Poomsae close and reopen actions back to
 Plane, enable `--status-sync=two-way`; other fields remain incoming-only.
 
 ## Configure the daemon
@@ -16,15 +16,15 @@ Plane, enable `--status-sync=two-way`; other fields remain incoming-only.
 Create a Plane API key that can read the selected project, its states, and its
 work items. Scoped keys need `projects:read`, `projects.states:read`, and
 `projects.work_items:read`. Two-way status also needs
-`projects.work_items:write`. Expose the key as `KATA_PLANE_TOKEN` in the
-daemon's service environment. Your client workstation needs only its normal Kata
+`projects.work_items:write`. Expose the key as `POOMSAE_PLANE_TOKEN` in the
+daemon's service environment. Your client workstation needs only its normal Poomsae
 daemon credentials. See Plane's
 [API authentication guide](https://developers.plane.so/api-reference/introduction).
 
 Plane Cloud defaults to `https://api.plane.so` for API requests and
 `https://app.plane.so` for attribution links. For self-hosted installations, set
 root origins and an optional custom environment variable in
-`<KATA_HOME>/config.toml`:
+`<POOMSAE_HOME>/config.toml`:
 
 ```toml
 [plane_sync]
@@ -33,9 +33,9 @@ web_origin = "https://plane.example"
 token_env = "EXAMPLE_PLANE_TOKEN"
 ```
 
-If you omit `web_origin`, Kata uses the API origin, except that the Cloud
+If you omit `web_origin`, Poomsae uses the API origin, except that the Cloud
 default uses `https://app.plane.so`. Origins must use HTTPS; only literal
-loopback IPs may use HTTP. Kata rejects path-prefixed deployments, embedded
+loopback IPs may use HTTP. Poomsae rejects path-prefixed deployments, embedded
 credentials, query strings, and fragments. It sends API keys only to the
 configured API origin in `X-API-Key` headers and rejects redirects. Links and
 images in descriptions are converted locally without fetching their targets, and
@@ -49,24 +49,24 @@ Embedded services configure the same values through `Config.PlaneSync`.
 
 ## Enable and operate
 
-From a bound Kata workspace, enable sync and inspect its status:
+From a bound Poomsae workspace, enable sync and inspect its status:
 
 ```sh
-kata sync plane enable \
+poomsae sync plane enable \
   --plane-workspace example-workspace \
   --plane-project 11111111-1111-4111-8111-111111111111
-kata sync plane once
-kata sync plane status
-kata --agent sync plane status
-kata --json sync plane status
-kata sync plane disable
+poomsae sync plane once
+poomsae sync plane status
+poomsae --agent sync plane status
+poomsae --json sync plane status
+poomsae sync plane disable
 ```
 
-Initial enablement requires the Plane workspace slug and project UUID. Kata
+Initial enablement requires the Plane workspace slug and project UUID. Poomsae
 normalizes UUIDs with or without hyphens to lowercase hyphenated IDs, and
-workspace slugs are case-sensitive URL-safe names. Kata's global `--workspace`
+workspace slugs are case-sensitive URL-safe names. Poomsae's global `--workspace`
 selects the local workspace directory, while global `--project` selects the
-native Kata project. Before saving the binding, the daemon validates upstream
+native Poomsae project. Before saving the binding, the daemon validates upstream
 project access and state groups. Plane sync requires the current `work-items/`
 API and does not use legacy `issues/` endpoints.
 
@@ -84,7 +84,7 @@ API and does not use legacy `issues/` endpoints.
 On re-enable, you can omit every option to reuse your saved settings. Pass an
 empty `--since ''` to clear the cutoff, or `--title-prefix=true` to restore
 title prefixes. Dates mean midnight UTC, timestamp offsets normalize to UTC, and
-Kata rejects fractional seconds. Config changes reset the stored cursor, while
+Poomsae rejects fractional seconds. Config changes reset the stored cursor, while
 interval-only changes and status-only changes (`--status-sync`,
 `--closed-state`, `--open-state`) preserve it. The cursor records successful run
 starts for diagnostics. Every run traverses the whole collection and applies the
@@ -96,14 +96,14 @@ Each native project has at most one external issue-sync binding. GitHub, Notion,
 and Plane bindings cannot replace one another, even after you disable them. A
 Plane binding's API origin, workspace, and project identity stay fixed. Changing
 the daemon's API origin causes existing bindings to fail before credentials are
-resolved; use a separate Kata project for another source. Re-enabling can
+resolved; use a separate Poomsae project for another source. Re-enabling can
 refresh the binding's web origin for links. Federation spokes receive imports
 through their hub. Enable Plane sync on the hub. Existing external-root
 ownership protections apply to managed issues.
 
 ## Mapping and local edits
 
-| Plane value | Kata issue |
+| Plane value | Poomsae issue |
 | --- | --- |
 | Name and sequence | `[Plane EX-12] Original title`; blank names become `(untitled)`. |
 | Description HTML | Markdown with a Plane attribution link; tables, lists, links, and images are retained when convertible. Unsupported or malformed link targets are removed while link text is kept. |
@@ -116,7 +116,7 @@ ownership protections apply to managed issues.
 | Creator UUID | Author `plane:<uuid>`, or `plane-unknown` when absent. |
 | Source timestamps | Created/updated timestamps normalized to persisted milliseconds; status observations use `completed_at` for completion when supplied, otherwise updated time. Cancellation uses updated time. |
 
-Kata does not map external UUID identities to local users automatically. State
+Poomsae does not map external UUID identities to local users automatically. State
 names, colors, and ordering do not affect completion, and unknown state groups
 or references fail preparation. Upstream dates, labels, comments, relationships,
 cycles, and modules are outside this import. Priority follows Plane on strictly
@@ -131,21 +131,21 @@ observations do not depend on the content cutoff or the native issue update
 time, and they preserve local title, body, owner, and priority edits.
 
 Changing title-prefix presentation refreshes source-owned titles at the same
-source version while keeping your local title edits intact. Kata manages the
+source version while keeping your local title edits intact. Poomsae manages the
 `plane` label separately and can refresh it after local scalar edits without
 touching local labels. Archived, deleted, or unavailable work items stay in
-Kata; absence never closes or deletes an imported issue. Disabling keeps the
+Poomsae; absence never closes or deletes an imported issue. Disabling keeps the
 binding and mappings, and JSONL restore leaves polling disabled until a local
 operator re-enables it.
 
 ## Two-way status
 
 ```sh
-kata sync plane enable --status-sync=two-way
-kata close abc4 --done --message "Completed the imported task" --commit <sha>
-kata reopen abc4
-kata sync plane once
-kata sync plane status
+poomsae sync plane enable --status-sync=two-way
+poomsae close abc4 --done --message "Completed the imported task" --commit <sha>
+poomsae reopen abc4
+poomsae sync plane once
+poomsae sync plane status
 ```
 
 Closing an issue picks the first state in the `completed` group ordered by
@@ -154,7 +154,7 @@ order breaking ties. To pin a specific target in either group, pass
 `--closed-state UUID` or `--open-state UUID`. Enabling two-way status requires
 both groups; a one-way project can omit them, even when it holds a saved
 override that has disappeared or moved. When Plane already matches the open or
-closed state, Kata leaves the current Plane substate intact, including `started`
+closed state, Poomsae leaves the current Plane substate intact, including `started`
 and `cancelled`. Renaming or reordering workflows needs no mapping rebuild,
 while missing or moved overrides block writes until you correct them.
 
@@ -170,7 +170,7 @@ items stay local.
 
 Status output shows the saved mode, pending count, and latest sanitized run
 error, and `once` reports incoming status updates separately from content
-imports. Failures retain pending intent for a later scan, and Kata never blindly
+imports. Failures retain pending intent for a later scan, and Poomsae never blindly
 retries PATCH responses. Running `disable` pauses delivery while keeping
 mappings and intent; switching back to `--status-sync=one-way` cancels pending
 writes. Re-enabling preserves saved targets and mode. A mode-only return to
@@ -207,7 +207,7 @@ guards rather than supported-size promises. Incomplete fields or content,
 missing or repeated cursors, duplicate identities, and exceeded bounds fail
 preparation instead of importing a partial collection. Work-item validation
 errors include the source UUID. Link targets allow `http`, `https`, and
-`mailto`, plus relative URLs resolved against the work item; Kata strips other
+`mailto`, plus relative URLs resolved against the work item; Poomsae strips other
 schemes, malformed URLs, and URLs with user information without stopping the
 import. A final `next_page_results=false` ends traversal even if Plane returns a
 nonempty final cursor. States can arrive as paginated results or as a complete

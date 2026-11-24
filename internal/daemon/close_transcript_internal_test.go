@@ -6,8 +6,8 @@ import (
 	"encoding/json/v2"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/api"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
 )
 
 func TestCloseTranscript_AbsentPreservesLegacyRetryFingerprint(t *testing.T) {

@@ -12,13 +12,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
-	"go.kenn.io/kata/internal/testenv"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 
@@ -244,7 +244,7 @@ func TestRecurrenceKeyWaitsForDetail(t *testing.T) {
 func TestRecurrenceUndoBodyEditIgnoresScheduleList(t *testing.T) {
 	h := newRecurrenceHarness(t, viewDetail)
 	h.startBehindTheTUI("FREQ=DAILY", "2026-11-09", "Europe/Paris")
-	base := h.client.KataAPI.(*Client)
+	base := h.client.PoomsaeAPI.(*Client)
 	base.setHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if strings.HasSuffix(r.URL.Path, "/recurrences") {
 			<-r.Context().Done()
@@ -366,7 +366,7 @@ func TestRecurrenceFormRefusesAndKeepsTheInput(t *testing.T) {
 		}, "FREQ=DAILY", "Europe/Paris", []string{"Could not start repeat:"}},
 		{"Local is never sent as a zone", nil, "FREQ=DAILY", "Local", []string{`"Local" is not an IANA zone`}},
 		{"an issue that became a cron parent after the form opened is refused", cronParent, "FREQ=DAILY", "Europe/Paris",
-			[]string{recurrenceclient.CronParentRefusal, "kata cron job create --parent"}},
+			[]string{recurrenceclient.CronParentRefusal, "poomsae cron job create --parent"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newRecurrenceHarness(t, viewDetail)
@@ -411,7 +411,7 @@ func TestRecurrenceSaveUpdatesUndo(t *testing.T) {
 			}
 			writes := 0
 			if !noop && outcome != "success" {
-				base := h.client.KataAPI.(*Client)
+				base := h.client.PoomsaeAPI.(*Client)
 				base.setHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 					if r.Method != http.MethodGet {
 						writes++
@@ -538,19 +538,19 @@ func TestRecurrenceIncomingMutationRefreshesDetail(t *testing.T) {
 	require.Nil(t, h.m.detail.issue.RecurrenceID)
 	require.Nil(t, h.m.detail.recurrence)
 	require.NoError(t, h.m.detail.recurrenceErr)
-	refresh(decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"recurrence.materialized","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"issue_uid":"` + h.issue.UID + `","payload":{"recurrence_uid":"` + current.UID + `","issue_uid":"` + h.issue.UID + `"}}`)}))
+	refresh(decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"recurrence.materialized","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"issue_uid":"` + h.issue.UID + `","payload":{"recurrence_uid":"` + current.UID + `","issue_uid":"` + h.issue.UID + `"}}`)}))
 	require.NotNil(t, h.m.detail.recurrence)
 	assert.Equal(t, "FREQ=WEEKLY", h.m.detail.recurrence.RRule)
 	require.NoError(t, h.m.detail.recurrenceErr)
 	for _, eventType := range []string{"recurrence.updated", "recurrence.materialized", "recurrence.deleted"} {
-		event := decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"` + eventType + `","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)})
+		event := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"` + eventType + `","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)})
 		require.Nil(t, h.m.maybeRefetchOpenDetail(event), "another recurrence leaves the displayed repeat available")
 	}
 	_, err := recurrenceclient.Change(t.Context(), h.api, h.issue.ProjectID, current,
 		recurrenceclient.Terms{Rule: "FREQ=MONTHLY", Start: "2026-11-09", Zone: "Europe/Paris", Actor: "bob"})
 	require.NoError(t, err)
 	current = h.rows()[0]
-	refresh(decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"recurrence.updated","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"` + current.UID + `"}}`)}))
+	refresh(decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"recurrence.updated","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"` + current.UID + `"}}`)}))
 	require.NotNil(t, h.m.detail.recurrence)
 	assert.Equal(t, "FREQ=MONTHLY", h.m.detail.recurrence.RRule)
 	require.NoError(t, h.m.detail.recurrenceErr)
@@ -558,15 +558,15 @@ func TestRecurrenceIncomingMutationRefreshesDetail(t *testing.T) {
 	// A failed recurrence read leaves its identity unknown, so retry on events.
 	h.m.detail.recurrence = nil
 	h.m.detail.recurrenceErr = errors.New("repeat read failed")
-	refresh(decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"recurrence.updated","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)}))
+	refresh(decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"recurrence.updated","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)}))
 	require.NotNil(t, h.m.detail.recurrence)
 	assert.Equal(t, "FREQ=MONTHLY", h.m.detail.recurrence.RRule)
 	require.NoError(t, h.m.detail.recurrenceErr)
 	require.NoError(t, recurrenceclient.Stop(t.Context(), h.api, h.issue.ProjectID, current, "bob"))
-	refresh(decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"recurrence.deleted","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"` + current.UID + `"}}`)}))
+	refresh(decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"recurrence.deleted","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"` + current.UID + `"}}`)}))
 	assert.Nil(t, h.m.detail.recurrence)
 	require.NoError(t, h.m.detail.recurrenceErr)
-	event := decodeEventReceived(kataclient.Event{Data: []byte(`{"type":"recurrence.materialized","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)})
+	event := decodeEventReceived(poomsaeclient.Event{Data: []byte(`{"type":"recurrence.materialized","project_id":` + strconv.FormatInt(h.issue.ProjectID, 10) + `,"payload":{"recurrence_uid":"another-recurrence"}}`)})
 	require.Nil(t, h.m.maybeRefetchOpenDetail(event), "another recurrence leaves a stopped issue's detail alone")
 }
 

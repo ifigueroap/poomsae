@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/similarity"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/similarity"
 )
 
 // sqliteTimeFormat matches the schema's strftime('%Y-%m-%dT%H:%M:%fZ', ...)
@@ -55,7 +55,7 @@ func Fingerprint(title, body string, owner *string, labels []string, links []db.
 	return fingerprintCore(title, body, owner, labels, dedupeLinks(links), priority)
 }
 
-// FingerprintLegacy reproduces the pre-kata#1 hashing layout that did NOT
+// FingerprintLegacy reproduces the pre-poomsae#1 hashing layout that did NOT
 // dedupe links before sort + serialize. Lookup paths compute both forms so
 // idempotency events written before the dedupe-in-Fingerprint change still
 // match a retry under the new code. New writes always use Fingerprint

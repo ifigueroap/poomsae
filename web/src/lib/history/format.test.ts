@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import type { KataTaskEvent } from '../kata/types'
-import { describeKataEvent, type KataEventTone } from './format'
+import type { PoomsaeTaskEvent } from '../poomsae/types'
+import { describeKataEvent, type PoomsaeEventTone } from './format'
 
-function makeEvent(type: string, payload?: Record<string, unknown>): KataTaskEvent {
+function makeEvent(type: string, payload?: Record<string, unknown>): PoomsaeTaskEvent {
   return {
     event_id: 1,
     event_uid: 'evt_1',
@@ -19,7 +19,7 @@ function makeEvent(type: string, payload?: Record<string, unknown>): KataTaskEve
 }
 
 describe('describeKataEvent', () => {
-  test.each<[string, string, KataEventTone]>([
+  test.each<[string, string, PoomsaeEventTone]>([
     ['issue.created', 'created the task', 'neutral'],
     ['issue.reopened', 'reopened', 'warning'],
     ['issue.commented', 'commented', 'neutral'],

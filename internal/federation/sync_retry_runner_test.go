@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
 )
 
 // mapCredentialStore keeps federation credentials in memory.
@@ -70,7 +70,7 @@ type spokeFleet struct {
 func newSpokeFleet(tb testing.TB, count int) *spokeFleet {
 	tb.Helper()
 	ctx := tb.Context()
-	tb.Setenv("KATA_HOME", tb.TempDir())
+	tb.Setenv("POOMSAE_HOME", tb.TempDir())
 	store, err := testfix.OpenSQLite(ctx, filepath.Join(tb.TempDir(), "spoke.db"))
 	require.NoError(tb, err)
 	tb.Cleanup(func() { _ = store.Close() })

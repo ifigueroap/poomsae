@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 // readyResp is the decoded shape of a /ready response body, narrowed to the
@@ -49,7 +49,7 @@ func TestReady_FiltersBlocked(t *testing.T) {
 
 func TestReady_RespectsLimit(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	for i := range 3 {
 		createIssueViaHTTP(t, env, pid, fmt.Sprintf("issue %d", i))
 	}
@@ -80,17 +80,17 @@ func TestReady_PrioritySort(t *testing.T) {
 
 func TestReady_UnownedAndOwnerMutuallyExclusive(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 
 	status, _ := env.Get(t, projectPath(pid)+"/ready?unowned=true&owner=alice")
 	assert.Equal(t, 400, status)
 }
 
 // TestReady_HydratesLabels pins that ready rows carry attached labels the
-// way list rows do, so `kata ready` human output can render label chips.
+// way list rows do, so `poomsae ready` human output can render label chips.
 func TestReady_HydratesLabels(t *testing.T) {
 	env := testenv.New(t)
-	pid := initLocalWorkspace(t, env, "kata")
+	pid := initLocalWorkspace(t, env, "poomsae")
 	labeled := createIssueViaHTTP(t, env, pid, "labeled")
 	createIssueViaHTTP(t, env, pid, "bare")
 	postLabel(t, env, pid, labeled, "epic")
@@ -173,7 +173,7 @@ func TestReadyGlobal_ExcludesArchivedProjects(t *testing.T) {
 // (needed for qualified refs).
 func TestReadyGlobal_HydratesLabelsAndKeepsProjectName(t *testing.T) {
 	env := testenv.New(t)
-	pid1 := initLocalWorkspace(t, env, "kata")
+	pid1 := initLocalWorkspace(t, env, "poomsae")
 	pid2 := initLocalWorkspace(t, env, "other")
 	iss1 := createIssueViaHTTP(t, env, pid1, "p1 labeled")
 	iss2 := createIssueViaHTTP(t, env, pid2, "p2 labeled")
@@ -203,7 +203,7 @@ func TestReadyGlobal_HydratesLabelsAndKeepsProjectName(t *testing.T) {
 
 func TestReadyGlobal_LimitCapsTotalRows(t *testing.T) {
 	env := testenv.New(t)
-	pid1 := initLocalWorkspace(t, env, "kata")
+	pid1 := initLocalWorkspace(t, env, "poomsae")
 	pid2 := initLocalWorkspace(t, env, "other")
 	for i := range 3 {
 		createIssueViaHTTP(t, env, pid1, fmt.Sprintf("p1 issue %d", i))

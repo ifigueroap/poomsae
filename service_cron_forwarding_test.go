@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -12,22 +12,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testenv"
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 )
 
 type fixedCredentialStore struct {
-	credential kata.FederationCredential
+	credential poomsae.FederationCredential
 }
 
-func (s *fixedCredentialStore) FederationCredential(context.Context, string) (kata.FederationCredential, bool, error) {
+func (s *fixedCredentialStore) FederationCredential(context.Context, string) (poomsae.FederationCredential, bool, error) {
 	return s.credential, true, nil
 }
 
-func (s *fixedCredentialStore) StoreFederationCredential(context.Context, string, kata.FederationCredential) error {
+func (s *fixedCredentialStore) StoreFederationCredential(context.Context, string, poomsae.FederationCredential) error {
 	return nil
 }
 
@@ -46,11 +46,11 @@ func TestServiceCronForwardUsesPushPending(t *testing.T) {
 	require.NoError(t, err)
 
 	dsn := filepath.Join(t.TempDir(), "service.db")
-	credentials := &fixedCredentialStore{credential: kata.FederationCredential{
+	credentials := &fixedCredentialStore{credential: poomsae.FederationCredential{
 		HubURL: hub.URL, HubProjectID: hubProject.ID, Token: "spoke-push-token",
 		Capabilities: "push", Actor: "tester",
 	}}
-	service, err := kata.New(t.Context(), kata.Config{DSN: dsn, FederationCredentials: credentials, Auth: kata.AuthConfig{Token: "service-token"}})
+	service, err := poomsae.New(t.Context(), poomsae.Config{DSN: dsn, FederationCredentials: credentials, Auth: poomsae.AuthConfig{Token: "service-token"}})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, service.Close()) })
 
@@ -58,7 +58,7 @@ func TestServiceCronForwardUsesPushPending(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, spoke.Close()) })
 
-	result, err := service.EnsureProject(t.Context(), kata.ProjectSpec{UID: hubProject.UID, Name: "spoke-project"})
+	result, err := service.EnsureProject(t.Context(), poomsae.ProjectSpec{UID: hubProject.UID, Name: "spoke-project"})
 	require.NoError(t, err)
 	spokeProjectID := result.Project.ID
 	spokeParent, _, err := spoke.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: spokeProjectID, Title: "Local parent", Author: "tester"})

@@ -7,9 +7,9 @@ import (
 )
 
 // TestLinksChangedDesc covers the TUI describer for the aggregated
-// issue.links_changed event from the PATCH (`kata edit`) path. Without
+// issue.links_changed event from the PATCH (`poomsae edit`) path. Without
 // a typed describer the events tab fell back to the raw "links_changed"
-// fragment and dropped the actual add/remove detail (kata#1 follow-up).
+// fragment and dropped the actual add/remove detail (poomsae#1 follow-up).
 func TestLinksChangedDesc(t *testing.T) {
 	cases := []struct {
 		name    string

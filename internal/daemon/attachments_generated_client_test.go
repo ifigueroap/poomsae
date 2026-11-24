@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/pkg/client/generated"
 )
 
 func TestAttachmentUploadRequiresName(t *testing.T) {

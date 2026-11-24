@@ -14,28 +14,28 @@ func TestSearchAndReadBundledDocs(t *testing.T) {
 		Actor: "example-agent", Version: "test-version",
 	})
 
-	found := callAdministrationTool(t, session, "kata.search_docs", map[string]any{"query": "progressive tool catalog", "limit": 3})
+	found := callAdministrationTool(t, session, "poomsae.search_docs", map[string]any{"query": "progressive tool catalog", "limit": 3})
 	matches := found["matches"].([]any)
 	require.NotEmpty(t, matches)
 	first := matches[0].(map[string]any)
 	require.Equal(t, "reference/mcp.md#progressive-tool-catalog", first["id"])
 	require.Equal(t, "Progressive tool catalog", first["heading"])
-	require.Equal(t, "https://katatracker.com/docs/reference/mcp/#progressive-tool-catalog", first["url"])
+	require.Equal(t, "https://github.com/ifigueroap/poomsae/docs/reference/mcp/#progressive-tool-catalog", first["url"])
 	require.NotContains(t, first["excerpt"], "\n")
 
-	read := callAdministrationTool(t, session, "kata.read_doc", map[string]any{"id": first["id"]})
+	read := callAdministrationTool(t, session, "poomsae.read_doc", map[string]any{"id": first["id"]})
 	content := read["content"].(string)
 	require.True(t, strings.HasPrefix(content, "## Progressive tool catalog"), content)
-	require.Contains(t, content, "kata.load_docs")
+	require.Contains(t, content, "poomsae.load_docs")
 	require.NotContains(t, content, "## Scheduling and someday", "a section ends at the next heading")
 
-	page := callAdministrationTool(t, session, "kata.read_doc", map[string]any{"id": "reference/mcp.md"})
+	page := callAdministrationTool(t, session, "poomsae.read_doc", map[string]any{"id": "reference/mcp.md"})
 	require.Equal(t, "Model Context Protocol server", page["heading"])
-	require.Equal(t, "https://katatracker.com/docs/reference/mcp/", page["url"])
+	require.Equal(t, "https://github.com/ifigueroap/poomsae/docs/reference/mcp/", page["url"])
 
-	callToolError(t, session, "kata.read_doc", map[string]any{"id": "design/architecture.md"})
-	callToolError(t, session, "kata.search_docs", map[string]any{"query": "?!"})
-	none := callAdministrationTool(t, session, "kata.search_docs", map[string]any{"query": "zzzz-no-such-word"})
+	callToolError(t, session, "poomsae.read_doc", map[string]any{"id": "design/architecture.md"})
+	callToolError(t, session, "poomsae.search_docs", map[string]any{"query": "?!"})
+	none := callAdministrationTool(t, session, "poomsae.search_docs", map[string]any{"query": "zzzz-no-such-word"})
 	require.Empty(t, none["matches"])
 }
 
@@ -65,7 +65,7 @@ func TestDocSectionsSkipFencedHeadingsAndNumberRepeats(t *testing.T) {
 	}
 	require.Equal(t, []string{"guide/example.md", "guide/example.md#setup", "guide/example.md#setup_1"}, ids)
 	require.Contains(t, sections[1].content, "# not a heading")
-	require.Equal(t, "https://katatracker.com/docs/guide/example/#setup_1", sections[2].url)
+	require.Equal(t, "https://github.com/ifigueroap/poomsae/docs/guide/example/#setup_1", sections[2].url)
 
 	untitled, err := loadDocSections(fstest.MapFS{"workflows/plain.md": {Data: []byte("# Plain page\n\n## Usage\n\nBody.\n")}})
 	require.NoError(t, err)

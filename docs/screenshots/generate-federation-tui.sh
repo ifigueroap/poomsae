@@ -8,7 +8,7 @@ FREEZE_CFG="$SCRIPT_DIR/freeze.json"
 OUTPUT_DIR="$REPO_ROOT/docs/assets/screenshots"
 WIDTH=120
 HEIGHT=30
-SESSION="kata-docs-$$"
+SESSION="poomsae-docs-$$"
 DEMO_HUB_AUTH_VALUE="demo-hub-auth-value"
 
 usage() {
@@ -101,8 +101,8 @@ normalize_svg_assets() {
     # Perl, not Bash, expands $ENV below.
     # shellcheck disable=SC2016
     find "$OUTPUT_DIR" -name '*.svg' -print0 |
-        KATA_DOCS_HUB_PORT="$HUB_PORT" xargs -0 perl -0pi -e '
-            my $hub_authority = quotemeta("127.0.0.1:$ENV{KATA_DOCS_HUB_PORT}");
+        POOMSAE_DOCS_HUB_PORT="$HUB_PORT" xargs -0 perl -0pi -e '
+            my $hub_authority = quotemeta("127.0.0.1:$ENV{POOMSAE_DOCS_HUB_PORT}");
             s/$hub_authority/demo-hub.localhost:7777/g;
             s/01[0-9A-HJKMNP-TV-Z]{24}/01D3M0D3M0D3M0D3M0D3M0D3/g;
         '
@@ -111,9 +111,9 @@ normalize_svg_assets() {
 create_demo_issue() {
     local title="$1"
     shift
-    KATA_HOME="$SPOKE_HOME" \
-    KATA_AUTHOR=demo-operator \
-        "$KATA_BIN" --workspace "$SPOKE_WS" create "$title" --agent "$@" |
+    POOMSAE_HOME="$SPOKE_HOME" \
+    POOMSAE_AUTHOR=demo-operator \
+        "$POOMSAE_BIN" --workspace "$SPOKE_WS" create "$title" --agent "$@" |
         awk '/^OK create / {print $3}'
 }
 
@@ -122,8 +122,8 @@ cleanup() {
     if tmux_cmd has-session -t "$SESSION" 2>/dev/null; then
         tmux_cmd kill-session -t "$SESSION" 2>/dev/null
     fi
-    if [[ -n "${SPOKE_HOME:-}" && -n "${KATA_BIN:-}" ]]; then
-        KATA_HOME="$SPOKE_HOME" "$KATA_BIN" daemon stop >/dev/null 2>&1
+    if [[ -n "${SPOKE_HOME:-}" && -n "${POOMSAE_BIN:-}" ]]; then
+        POOMSAE_HOME="$SPOKE_HOME" "$POOMSAE_BIN" daemon stop >/dev/null 2>&1
     fi
     if [[ -n "${HUB_PID:-}" ]]; then
         kill "$HUB_PID" >/dev/null 2>&1
@@ -138,7 +138,7 @@ require_cmd tmux
 require_cmd freeze
 
 TMP_ROOT="$(mktemp -d)"
-KATA_BIN="${KATA_BIN:-$TMP_ROOT/kata}"
+POOMSAE_BIN="${POOMSAE_BIN:-$TMP_ROOT/poomsae}"
 SPOKE_HOME="$TMP_ROOT/spoke-home"
 HUB_HOME="$TMP_ROOT/hub-home"
 SPOKE_WS="$TMP_ROOT/spoke-workspace"
@@ -147,8 +147,8 @@ HUB_LOG="$TMP_ROOT/hub.log"
 
 mkdir -p "$SPOKE_HOME" "$HUB_HOME" "$SPOKE_WS" "$HUB_WS" "$OUTPUT_DIR"
 
-if [[ ! -x "$KATA_BIN" ]]; then
-    GOFLAGS=-buildvcs=false go -C "$REPO_ROOT" build -o "$KATA_BIN" ./cmd/kata
+if [[ ! -x "$POOMSAE_BIN" ]]; then
+    GOFLAGS=-buildvcs=false go -C "$REPO_ROOT" build -o "$POOMSAE_BIN" ./cmd/poomsae
 fi
 
 cat >"$HUB_HOME/config.toml" <<EOF
@@ -157,22 +157,22 @@ token = "$DEMO_HUB_AUTH_VALUE"
 trust_private_network = true
 EOF
 
-KATA_HOME="$HUB_HOME" "$KATA_BIN" daemon start --foreground --listen 127.0.0.1:0 >"$HUB_LOG" 2>&1 &
+POOMSAE_HOME="$HUB_HOME" "$POOMSAE_BIN" daemon start --foreground --listen 127.0.0.1:0 >"$HUB_LOG" 2>&1 &
 HUB_PID=$!
-wait_for_log "$HUB_LOG" "kata daemon: listening on"
-HUB_BOUND="$(sed -n 's/.*kata daemon: listening on //p' "$HUB_LOG" | tail -n 1)"
+wait_for_log "$HUB_LOG" "poomsae daemon: listening on"
+HUB_BOUND="$(sed -n 's/.*poomsae daemon: listening on //p' "$HUB_LOG" | tail -n 1)"
 HUB_PORT="${HUB_BOUND##*:}"
 HUB_URL="http://${HUB_BOUND}"
 
-KATA_HOME="$HUB_HOME" \
-KATA_SERVER="$HUB_URL" \
-KATA_AUTH_TOKEN="$DEMO_HUB_AUTH_VALUE" \
-KATA_ALLOW_INSECURE=1 \
-    "$KATA_BIN" --workspace "$HUB_WS" init --project demo-hub-project >/dev/null
+POOMSAE_HOME="$HUB_HOME" \
+POOMSAE_SERVER="$HUB_URL" \
+POOMSAE_AUTH_TOKEN="$DEMO_HUB_AUTH_VALUE" \
+POOMSAE_ALLOW_INSECURE=1 \
+    "$POOMSAE_BIN" --workspace "$HUB_WS" init --project demo-hub-project >/dev/null
 
-KATA_HOME="$SPOKE_HOME" \
-KATA_AUTHOR=demo-operator \
-    "$KATA_BIN" --workspace "$SPOKE_WS" init --project demo-spoke-project >/dev/null
+POOMSAE_HOME="$SPOKE_HOME" \
+POOMSAE_AUTHOR=demo-operator \
+    "$POOMSAE_BIN" --workspace "$SPOKE_WS" init --project demo-spoke-project >/dev/null
 
 cat >"$SPOKE_HOME/config.toml" <<EOF
 active_daemon = "demo-spoke"
@@ -184,7 +184,7 @@ local = true
 [[daemon]]
 name = "demo-hub"
 url = "$HUB_URL"
-token_env = "KATA_DEMO_HUB_AUTH"
+token_env = "POOMSAE_DEMO_HUB_AUTH"
 allow_insecure = true
 EOF
 
@@ -226,9 +226,9 @@ create_demo_issue \
     --owner demo-reviewer \
     --label operations >/dev/null
 
-KATA_HOME="$SPOKE_HOME" \
-KATA_AUTHOR=demo-operator \
-    "$KATA_BIN" --workspace "$SPOKE_WS" edit "$parent_ref" \
+POOMSAE_HOME="$SPOKE_HOME" \
+POOMSAE_AUTHOR=demo-operator \
+    "$POOMSAE_BIN" --workspace "$SPOKE_WS" edit "$parent_ref" \
     --priority 0 \
     --agent >/dev/null
 
@@ -236,7 +236,7 @@ tmux_cmd new-session -d -s "$SESSION" -x "$WIDTH" -y "$HEIGHT"
 tmux_cmd set-option -g default-terminal "tmux-256color"
 tmux_cmd set-option -ga terminal-overrides ",*:Tc"
 
-RUN_TUI="env -u NO_COLOR KATA_HOME=$(shell_quote "$SPOKE_HOME") KATA_AUTHOR=demo-operator KATA_DEMO_HUB_AUTH=$(shell_quote "$DEMO_HUB_AUTH_VALUE") KATA_COLOR_MODE=dark $(shell_quote "$KATA_BIN") --workspace $(shell_quote "$SPOKE_WS") --project demo-spoke-project tui $(shell_quote "$parent_ref")"
+RUN_TUI="env -u NO_COLOR POOMSAE_HOME=$(shell_quote "$SPOKE_HOME") POOMSAE_AUTHOR=demo-operator POOMSAE_DEMO_HUB_AUTH=$(shell_quote "$DEMO_HUB_AUTH_VALUE") POOMSAE_COLOR_MODE=dark $(shell_quote "$POOMSAE_BIN") --workspace $(shell_quote "$SPOKE_WS") --project demo-spoke-project tui $(shell_quote "$parent_ref")"
 send "$RUN_TUI" Enter
 wait_until "ship federation TUI enrollment"
 send "Escape"
@@ -247,7 +247,7 @@ sleep 0.3
 capture "tui/hero"
 
 send "F"
-wait_until "kata / federation"
+wait_until "poomsae / federation"
 wait_until "selected project: demo-spoke-project"
 sleep 0.3
 capture "federation-tui/list"

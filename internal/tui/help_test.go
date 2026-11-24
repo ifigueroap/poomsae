@@ -87,7 +87,7 @@ func TestRenderHelp_WideWidth(t *testing.T) {
 	}
 	out := renderHelp(newKeymap(), 130, ListFilter{})
 	assertContainsAll(t, out,
-		"Global", "Graph", "Detail", "Children", "Forms", "Filters", "kata — keybindings",
+		"Global", "Graph", "Detail", "Children", "Forms", "Filters", "poomsae — keybindings",
 	)
 }
 

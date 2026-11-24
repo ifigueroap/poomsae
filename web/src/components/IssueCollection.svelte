@@ -5,17 +5,17 @@
   import ChevronUpIcon from '@lucide/svelte/icons/chevron-up'
   import ListChevronsDownUpIcon from '@lucide/svelte/icons/list-chevrons-down-up'
   import ListChevronsUpDownIcon from '@lucide/svelte/icons/list-chevrons-up-down'
-  import { relativeTime, shortDate, localDateString } from '../lib/kata/dates'
-  import { kataTaskStatusMatchesFilter } from '../lib/kata/filters'
-  import type { KataTaskSearchFilters, KataTaskSummary } from '../lib/kata/types'
-  import type { KataCurrentView } from '../lib/kata/authority'
+  import { relativeTime, shortDate, localDateString } from '../lib/poomsae/dates'
+  import { poomsaeTaskStatusMatchesFilter } from '../lib/poomsae/filters'
+  import type { PoomsaeTaskSearchFilters, PoomsaeTaskSummary } from '../lib/poomsae/types'
+  import type { PoomsaeCurrentView } from '../lib/poomsae/authority'
   import {
-    DEFAULT_KATA_TASK_SORT,
+    DEFAULT_POOMSAE_TASK_SORT,
     sortKataTasks,
     toggleKataTaskSort,
-    type KataTaskSort,
-    type KataTaskSortKey,
-  } from '../lib/kata/sort'
+    type PoomsaeTaskSort,
+    type PoomsaeTaskSortKey,
+  } from '../lib/poomsae/sort'
   import {
     Avatar,
     Chip,
@@ -28,23 +28,23 @@
   } from '@kenn-io/kit-ui'
   import ColumnPicker from './ColumnPicker.svelte'
   import {
-    KATA_OPTIONAL_TASK_COLUMNS,
+    POOMSAE_OPTIONAL_TASK_COLUMNS,
     clampColumnWidth,
     loadKataTaskColumnVisibility,
     loadKataTaskColumnWidths,
     persistKataTaskColumnVisibility,
     persistKataTaskColumnWidths,
     summarizeBlockedBy,
-    type KataOptionalTaskColumn,
-    type KataTaskColumnVisibility,
-    type KataTaskColumnWidths,
-  } from '../lib/kata/columns'
-  import { closedReasonLabel, deadlineDate, scheduledDate } from '../lib/kata/view'
+    type PoomsaeOptionalTaskColumn,
+    type PoomsaeTaskColumnVisibility,
+    type PoomsaeTaskColumnWidths,
+  } from '../lib/poomsae/columns'
+  import { closedReasonLabel, deadlineDate, scheduledDate } from '../lib/poomsae/view'
   import { markColor } from '../lib/marks'
 
-  export interface KataIssueRevealRequest {
+  export interface PoomsaeIssueRevealRequest {
     uid: string
-    chain: readonly KataTaskSummary[]
+    chain: readonly PoomsaeTaskSummary[]
     generation: number
     restoreFocus?: boolean
   }
@@ -52,10 +52,10 @@
   interface Props {
     toolbar?: Snippet | undefined
     headerAccessory?: Snippet | undefined
-    currentView: KataCurrentView
+    currentView: PoomsaeCurrentView
     now: number
     resultsKey?: string
-    issueCatalog: readonly KataTaskSummary[]
+    issueCatalog: readonly PoomsaeTaskSummary[]
     scopeLabel?: string
     scopedProjectName?: string | null
     projectView?: boolean
@@ -64,14 +64,14 @@
     onSplitDirectionChange?: (direction: 'horizontal' | 'vertical') => void
     selectedIssueUID?: string | null
     loading?: boolean
-    statusFilter?: KataTaskSearchFilters['status']
+    statusFilter?: PoomsaeTaskSearchFilters['status']
     readyIssueUIDs?: ReadonlySet<string>
     resetGeneration?: number
     navigationGeneration?: number
-    revealRequest?: KataIssueRevealRequest | null
-    onSelect: (issue: KataTaskSummary) => void
-    onStatusAction?: ((issue: KataTaskSummary) => void) | undefined
-    onOpenGraph?: ((issue: KataTaskSummary) => void) | undefined
+    revealRequest?: PoomsaeIssueRevealRequest | null
+    onSelect: (issue: PoomsaeTaskSummary) => void
+    onStatusAction?: ((issue: PoomsaeTaskSummary) => void) | undefined
+    onOpenGraph?: ((issue: PoomsaeTaskSummary) => void) | undefined
     /** Replaces the list, its controls, and the toolbar under the title. */
     empty?: Snippet | undefined
   }
@@ -104,7 +104,7 @@
     empty = undefined,
   }: Props = $props()
 
-  const SORT_STORAGE_KEY = 'kata:issue-sort/v1'
+  const SORT_STORAGE_KEY = 'poomsae:issue-sort/v1'
   const restoredColumnVisibility = loadKataTaskColumnVisibility()
   const restoredColumnWidths = loadKataTaskColumnWidths()
   const restoredSort = loadSort()
@@ -114,16 +114,16 @@
       untrack(() => currentView.name === 'today' || currentView.name === 'scheduled'))
       ? restoredSort
       : sortForColumnVisibility(restoredSort, restoredColumnVisibility)
-  let sort: KataTaskSort = $state(initialSort)
+  let sort: PoomsaeTaskSort = $state(initialSort)
   let columnVisibility = $state(restoredColumnVisibility)
-  let columnWidths = $state<KataTaskColumnWidths>(restoredColumnWidths)
+  let columnWidths = $state<PoomsaeTaskColumnWidths>(restoredColumnWidths)
   if (initialSort !== restoredSort) persistSort(initialSort)
 
   type TaskGridLayout = 'wide' | 'medium' | 'compact' | 'narrow'
 
   const TASK_COLUMN_TRACKS: Record<
     TaskGridLayout,
-    Record<KataOptionalTaskColumn, string | null>
+    Record<PoomsaeOptionalTaskColumn, string | null>
   > = {
     wide: {
       id: 'minmax(56px, 72px)',
@@ -174,7 +174,7 @@
     narrow: 'minmax(140px, 1fr)',
   }
 
-  const DEFAULT_COLUMN_WIDTHS: Record<KataOptionalTaskColumn | 'date' | 'closed', number> = {
+  const DEFAULT_COLUMN_WIDTHS: Record<PoomsaeOptionalTaskColumn | 'date' | 'closed', number> = {
     date: 128,
     closed: 150,
     id: 64,
@@ -191,7 +191,7 @@
   const logbookView = $derived(currentView.name === 'logbook')
   const todayDate = $derived(localDateString(new Date(now)))
   const displayColumns = $derived(
-    KATA_OPTIONAL_TASK_COLUMNS.filter((column) => {
+    POOMSAE_OPTIONAL_TASK_COLUMNS.filter((column) => {
       if (column.id === 'project' && projectView) return false
       if (dateView && (column.id === 'due' || column.id === 'updated')) return false
       if (logbookView && ['due', 'updated', 'priority'].includes(column.id)) return false
@@ -202,7 +202,7 @@
     displayColumns.filter((column) => columnVisibility[column.id]),
   )
   type RenderedColumn =
-    | { kind: 'task'; id: KataOptionalTaskColumn }
+    | { kind: 'task'; id: PoomsaeOptionalTaskColumn }
     | { kind: 'date' }
     | { kind: 'closed' }
   const renderedColumns = $derived.by<RenderedColumn[]>(() => {
@@ -227,11 +227,14 @@
           (column.kind === 'task' && column.id === keyColumn) ||
           (column.kind === 'date' && keyColumn === 'due'),
       )
-      ? ({ key: 'title', direction: 'asc' } satisfies KataTaskSort)
+      ? ({ key: 'title', direction: 'asc' } satisfies PoomsaeTaskSort)
       : sort
   })
 
-  function trackForColumn(layout: TaskGridLayout, column: KataOptionalTaskColumn): string | null {
+  function trackForColumn(
+    layout: TaskGridLayout,
+    column: PoomsaeOptionalTaskColumn,
+  ): string | null {
     if (column === 'project' && detailBeside) return '16px'
     const base =
       TASK_COLUMN_TRACKS[layout][column] ??
@@ -278,7 +281,7 @@
     return () => observer.disconnect()
   })
   let lastResetGeneration = $state<number | null>(null)
-  let temporaryRevealChain = $state<readonly KataTaskSummary[]>([])
+  let temporaryRevealChain = $state<readonly PoomsaeTaskSummary[]>([])
   let revealOwnedExpansionUIDs = $state<ReadonlySet<string>>(new Set())
   let lastRevealGeneration: number | null = null
   let anchorMeasurementGeneration = 0
@@ -287,7 +290,7 @@
     new Map(issueCatalog.map((issue) => [issueHierarchyKey(issue), issue])),
   )
 
-  function parentUIDOf(issue: KataTaskSummary): string | undefined {
+  function parentUIDOf(issue: PoomsaeTaskSummary): string | undefined {
     return (
       issue.parent?.uid ??
       (issue.parent_short_id
@@ -306,7 +309,7 @@
     isProjectScoped ? topLevelIssues(statusVisibleGroups.flatMap((group) => group.issues)) : [],
   )
 
-  // For the Today view, the kata daemon hands us a "This evening"
+  // For the Today view, the poomsae daemon hands us a "This evening"
   // sub-bucket alongside "Today". That bucket is a daemon-side
   // concept that confuses users coming from Things-style apps, so we
   // merge it into the Today group on the way to the renderer. The
@@ -346,7 +349,7 @@
   )
 
   let childrenByParentUID = $derived.by(() => {
-    const children = new Map<string, KataTaskSummary[]>()
+    const children = new Map<string, PoomsaeTaskSummary[]>()
     for (const issue of issueCatalog) {
       const parentUID = parentUIDOf(issue)
       if (!parentUID) continue
@@ -476,13 +479,13 @@
     showRows(pinnedRows)
   })
 
-  function loadSort(): KataTaskSort {
-    if (typeof window === 'undefined') return DEFAULT_KATA_TASK_SORT
+  function loadSort(): PoomsaeTaskSort {
+    if (typeof window === 'undefined') return DEFAULT_POOMSAE_TASK_SORT
     try {
       const raw = window.localStorage.getItem(SORT_STORAGE_KEY)
-      if (!raw) return DEFAULT_KATA_TASK_SORT
-      const parsed = JSON.parse(raw) as Partial<KataTaskSort>
-      const validKeys: KataTaskSortKey[] = ['priority', 'title', 'updated', 'owner', 'id', 'due']
+      if (!raw) return DEFAULT_POOMSAE_TASK_SORT
+      const parsed = JSON.parse(raw) as Partial<PoomsaeTaskSort>
+      const validKeys: PoomsaeTaskSortKey[] = ['priority', 'title', 'updated', 'owner', 'id', 'due']
       if (
         parsed.key &&
         validKeys.includes(parsed.key) &&
@@ -493,10 +496,10 @@
     } catch {
       // Corrupt — fall back to defaults silently.
     }
-    return DEFAULT_KATA_TASK_SORT
+    return DEFAULT_POOMSAE_TASK_SORT
   }
 
-  function persistSort(next: KataTaskSort) {
+  function persistSort(next: PoomsaeTaskSort) {
     if (typeof window === 'undefined') return
     try {
       window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next))
@@ -505,28 +508,28 @@
     }
   }
 
-  function handleSortClick(key: KataTaskSortKey) {
+  function handleSortClick(key: PoomsaeTaskSortKey) {
     sort = toggleKataTaskSort(sort, key)
     persistSort(sort)
   }
 
-  function optionalColumnForSort(key: KataTaskSortKey): KataOptionalTaskColumn | null {
+  function optionalColumnForSort(key: PoomsaeTaskSortKey): PoomsaeOptionalTaskColumn | null {
     if (key === 'updated' || key === 'priority' || key === 'owner' || key === 'id' || key === 'due')
       return key
     return null
   }
 
   function sortForColumnVisibility(
-    current: KataTaskSort,
-    visibility: KataTaskColumnVisibility,
-  ): KataTaskSort {
+    current: PoomsaeTaskSort,
+    visibility: PoomsaeTaskColumnVisibility,
+  ): PoomsaeTaskSort {
     const activeSortColumn = optionalColumnForSort(current.key)
     return activeSortColumn && !visibility[activeSortColumn]
       ? { key: 'title', direction: 'asc' }
       : current
   }
 
-  function setColumnVisibility(next: KataTaskColumnVisibility): void {
+  function setColumnVisibility(next: PoomsaeTaskColumnVisibility): void {
     const activeSortColumn = optionalColumnForSort(sort.key)
     const nextSort =
       activeSortColumn && columnVisibility[activeSortColumn]
@@ -540,11 +543,11 @@
     persistKataTaskColumnVisibility(next)
   }
 
-  let resizeStartWidths: Partial<Record<KataOptionalTaskColumn | 'date' | 'closed', number>> = {}
-  let measuredColumnWidths = $state<KataTaskColumnWidths>({})
+  let resizeStartWidths: Partial<Record<PoomsaeOptionalTaskColumn | 'date' | 'closed', number>> = {}
+  let measuredColumnWidths = $state<PoomsaeTaskColumnWidths>({})
 
   function rememberColumnWidth(
-    column: KataOptionalTaskColumn | 'date' | 'closed',
+    column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
     event: FocusEvent,
   ): void {
     const heading = (event.currentTarget as HTMLElement | null)?.parentElement
@@ -555,7 +558,7 @@
   }
 
   function resizeStartWidth(
-    column: KataOptionalTaskColumn | 'date' | 'closed',
+    column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
     event: KeyboardEvent | PointerEvent,
   ): number {
     const heading = (event.currentTarget as HTMLElement | null)?.parentElement?.parentElement
@@ -566,14 +569,14 @@
   }
 
   function beginColumnResize(
-    column: KataOptionalTaskColumn | 'date' | 'closed',
+    column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
     event: KeyboardEvent | PointerEvent,
   ): void {
     resizeStartWidths = { ...resizeStartWidths, [column]: resizeStartWidth(column, event) }
   }
 
   function updateColumnWidth(
-    column: KataOptionalTaskColumn | 'date' | 'closed',
+    column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
     event: SplitResizeEvent,
   ): void {
     const start = resizeStartWidths[column] ?? DEFAULT_COLUMN_WIDTHS[column]
@@ -583,20 +586,20 @@
   }
 
   function persistColumnWidth(
-    column: KataOptionalTaskColumn | 'date' | 'closed',
+    column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
     event: SplitResizeEvent,
   ): void {
     updateColumnWidth(column, event)
     persistKataTaskColumnWidths(columnWidths)
   }
 
-  function copyTaskID(issue: KataTaskSummary): void {
+  function copyTaskID(issue: PoomsaeTaskSummary): void {
     void copyToClipboard(issue.short_id).then((copied) => {
       if (copied) showFlash(`Copied ${issue.short_id}`, { tone: 'success' })
     })
   }
 
-  function dateCell(issue: KataTaskSummary): { label: string; overdue: boolean } {
+  function dateCell(issue: PoomsaeTaskSummary): { label: string; overdue: boolean } {
     const deadline = deadlineDate(issue)
     if (deadline) {
       return {
@@ -610,7 +613,7 @@
     return { label: `Scheduled ${date}`, overdue: false }
   }
 
-  function sortIssues(issues: readonly KataTaskSummary[]): KataTaskSummary[] {
+  function sortIssues(issues: readonly PoomsaeTaskSummary[]): PoomsaeTaskSummary[] {
     return sortKataTasks(
       issues,
       effectiveSort,
@@ -619,7 +622,7 @@
     )
   }
 
-  function viewTitle(view: KataCurrentView): string {
+  function viewTitle(view: PoomsaeCurrentView): string {
     if (scopeLabel) return scopeLabel
     return view.name.charAt(0).toUpperCase() + view.name.slice(1)
   }
@@ -628,7 +631,7 @@
     return statusVisibleGroups.reduce((sum, group) => sum + group.issues.length, 0)
   }
 
-  function isSelected(issue: KataTaskSummary): boolean {
+  function isSelected(issue: PoomsaeTaskSummary): boolean {
     return selectedIssueUID === issue.uid
   }
 
@@ -640,12 +643,12 @@
     )
   }
 
-  function revealSuccessor(issue: KataTaskSummary): KataTaskSummary | undefined {
+  function revealSuccessor(issue: PoomsaeTaskSummary): PoomsaeTaskSummary | undefined {
     const index = visibleTemporaryRevealChain.findIndex((candidate) => candidate.uid === issue.uid)
     return index >= 0 ? visibleTemporaryRevealChain[index + 1] : undefined
   }
 
-  function hasChildren(issue: KataTaskSummary): boolean {
+  function hasChildren(issue: PoomsaeTaskSummary): boolean {
     return revealSuccessor(issue) !== undefined || visibleChildren(issue).length > 0
   }
 
@@ -654,22 +657,24 @@
     return `P${priority}`
   }
 
-  function issueHierarchyKey(issue: KataTaskSummary): string {
+  function issueHierarchyKey(issue: PoomsaeTaskSummary): string {
     return `${issue.project_uid}:${issue.short_id}`
   }
 
-  function parentHierarchyKey(issue: KataTaskSummary): string | null {
+  function parentHierarchyKey(issue: PoomsaeTaskSummary): string | null {
     const parent = issue.parent?.uid ? catalogByUID.get(issue.parent.uid) : undefined
     if (parent) return issueHierarchyKey(parent)
     if (issue.parent_short_id) return `${issue.project_uid}:${issue.parent_short_id}`
     return null
   }
 
-  function issueMatchesStatusFilter(issue: KataTaskSummary): boolean {
-    return kataTaskStatusMatchesFilter(issue, statusFilter, readyIssueUIDs)
+  function issueMatchesStatusFilter(issue: PoomsaeTaskSummary): boolean {
+    return poomsaeTaskStatusMatchesFilter(issue, statusFilter, readyIssueUIDs)
   }
 
-  function revealChainForStatus(chain: readonly KataTaskSummary[]): readonly KataTaskSummary[] {
+  function revealChainForStatus(
+    chain: readonly PoomsaeTaskSummary[],
+  ): readonly PoomsaeTaskSummary[] {
     if (statusFilter !== 'ready') return chain
     const target = chain[chain.length - 1]
     if (!target || !issueMatchesStatusFilter(target)) return []
@@ -677,23 +682,23 @@
   }
 
   function filterGroupsByStatus(
-    groups: KataCurrentView['groups'],
-    status: KataTaskSearchFilters['status'],
-  ): KataCurrentView['groups'] {
+    groups: PoomsaeCurrentView['groups'],
+    status: PoomsaeTaskSearchFilters['status'],
+  ): PoomsaeCurrentView['groups'] {
     return groups
       .map((group) => ({
         ...group,
         issues: group.issues.filter((issue) =>
-          kataTaskStatusMatchesFilter(issue, status, readyIssueUIDs),
+          poomsaeTaskStatusMatchesFilter(issue, status, readyIssueUIDs),
         ),
       }))
       .filter((group) => group.issues.length > 0)
   }
 
   function topLevelIssues(
-    issues: readonly KataTaskSummary[],
+    issues: readonly PoomsaeTaskSummary[],
     visibleKeys: ReadonlySet<string> = new Set(issues.map(issueHierarchyKey)),
-  ): KataTaskSummary[] {
+  ): PoomsaeTaskSummary[] {
     // A child collapses into its parent only when that parent is actually
     // present in the visible set. Search and filter results often surface a
     // matching child without its parent; those rows must still render as
@@ -704,11 +709,13 @@
     })
   }
 
-  function collectKnownExpandableIssues(issues: readonly KataTaskSummary[]): KataTaskSummary[] {
-    const expandable: KataTaskSummary[] = []
+  function collectKnownExpandableIssues(
+    issues: readonly PoomsaeTaskSummary[],
+  ): PoomsaeTaskSummary[] {
+    const expandable: PoomsaeTaskSummary[] = []
     const seen = new Set<string>()
 
-    const visit = (issue: KataTaskSummary) => {
+    const visit = (issue: PoomsaeTaskSummary) => {
       if (seen.has(issue.uid)) return
       seen.add(issue.uid)
       if (hasChildren(issue)) expandable.push(issue)
@@ -721,7 +728,7 @@
   }
 
   function expandIssueTree(
-    issue: KataTaskSummary,
+    issue: PoomsaeTaskSummary,
     nextExpanded: Record<string, boolean>,
     seen: Set<string>,
   ): void {
@@ -750,7 +757,7 @@
     cancelPendingKeyboardSelect()
   }
 
-  function toggleExpand(issue: KataTaskSummary, event: MouseEvent | KeyboardEvent): void {
+  function toggleExpand(issue: PoomsaeTaskSummary, event: MouseEvent | KeyboardEvent): void {
     event.stopPropagation()
     const uid = issue.uid
     const currentlyExpanded = expanded[uid] === true
@@ -760,11 +767,11 @@
     expanded = { ...expanded, [uid]: !currentlyExpanded }
   }
 
-  function sortIndicator(key: KataTaskSortKey): 'asc' | 'desc' | null {
+  function sortIndicator(key: PoomsaeTaskSortKey): 'asc' | 'desc' | null {
     return effectiveSort.key === key ? effectiveSort.direction : null
   }
 
-  function sortLabel(key: KataTaskSortKey, label: string): string {
+  function sortLabel(key: PoomsaeTaskSortKey, label: string): string {
     const ind = sortIndicator(key)
     if (ind === 'asc') return `Sort by ${label}, currently ascending`
     if (ind === 'desc') return `Sort by ${label}, currently descending`
@@ -807,13 +814,13 @@
     if (temporaryRevealChain.length > 0) temporaryRevealChain = []
   }
 
-  function selectNow(issue: KataTaskSummary) {
+  function selectNow(issue: PoomsaeTaskSummary) {
     clearTemporaryReveal()
     cancelPendingKeyboardSelect()
     onSelect(issue)
   }
 
-  function openGraph(issue: KataTaskSummary, event: MouseEvent | KeyboardEvent) {
+  function openGraph(issue: PoomsaeTaskSummary, event: MouseEvent | KeyboardEvent) {
     event.preventDefault()
     event.stopPropagation()
     onOpenGraph?.(issue)
@@ -969,7 +976,7 @@
     focusRow(rows[nextIdx] ?? null)
   }
 
-  function findIssueByUID(uid: string): KataTaskSummary | undefined {
+  function findIssueByUID(uid: string): PoomsaeTaskSummary | undefined {
     const temporary = temporaryRevealChain.find((issue) => issue.uid === uid)
     if (temporary) return temporary
     for (const group of statusVisibleGroups) {
@@ -980,7 +987,7 @@
     return catalogIssue && issueMatchesStatusFilter(catalogIssue) ? catalogIssue : undefined
   }
 
-  function unsortedVisibleChildren(issue: KataTaskSummary): KataTaskSummary[] {
+  function unsortedVisibleChildren(issue: PoomsaeTaskSummary): PoomsaeTaskSummary[] {
     const children = childrenByParentUID.get(issue.uid) ?? []
     const successor = revealSuccessor(issue)
     const visible = children.filter(
@@ -992,7 +999,7 @@
     return visible
   }
 
-  function visibleChildren(issue: KataTaskSummary): KataTaskSummary[] {
+  function visibleChildren(issue: PoomsaeTaskSummary): PoomsaeTaskSummary[] {
     return sortIssues(unsortedVisibleChildren(issue))
   }
 
@@ -1190,7 +1197,10 @@
          ↔ to expand or collapse subtasks. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="table-body" bind:this={tableBody} onkeydown={handleListKeydown}>
-        {#snippet resizeHandle(column: KataOptionalTaskColumn | 'date' | 'closed', label: string)}
+        {#snippet resizeHandle(
+          column: PoomsaeOptionalTaskColumn | 'date' | 'closed',
+          label: string,
+        )}
           <div class="column-resize" onfocusin={(event) => rememberColumnWidth(column, event)}>
             <SplitResizeHandle
               orientation="horizontal"
@@ -1265,21 +1275,21 @@
               </div>
             {:else}
               {@const label =
-                KATA_OPTIONAL_TASK_COLUMNS.find((item) => item.id === column.id)?.label ??
+                POOMSAE_OPTIONAL_TASK_COLUMNS.find((item) => item.id === column.id)?.label ??
                 column.id}
               <div class={`column-heading column-heading-${column.id}`}>
                 {#if ['id', 'due', 'updated', 'priority', 'owner'].includes(column.id)}
                   <button
                     class={`col col-${column.id}`}
                     type="button"
-                    aria-label={sortLabel(column.id as KataTaskSortKey, label)}
-                    aria-pressed={sortIndicator(column.id as KataTaskSortKey) !== null}
-                    onclick={() => handleSortClick(column.id as KataTaskSortKey)}
+                    aria-label={sortLabel(column.id as PoomsaeTaskSortKey, label)}
+                    aria-pressed={sortIndicator(column.id as PoomsaeTaskSortKey) !== null}
+                    onclick={() => handleSortClick(column.id as PoomsaeTaskSortKey)}
                   >
                     <span>{label}</span>
-                    {#if sortIndicator(column.id as KataTaskSortKey) === 'asc'}
+                    {#if sortIndicator(column.id as PoomsaeTaskSortKey) === 'asc'}
                       <ChevronUpIcon size={11} strokeWidth={2} />
-                    {:else if sortIndicator(column.id as KataTaskSortKey) === 'desc'}
+                    {:else if sortIndicator(column.id as PoomsaeTaskSortKey) === 'desc'}
                       <ChevronDownIcon size={11} strokeWidth={2} />
                     {/if}
                   </button>
@@ -1329,13 +1339,13 @@
   {/if}
 </section>
 
-{#snippet row(issue: KataTaskSummary, depth = 0)}
+{#snippet row(issue: PoomsaeTaskSummary, depth = 0)}
   {@const priority = priorityLabel(issue.priority)}
   {@const deadline = deadlineDate(issue)}
   {@const date = dateCell(issue)}
   {@const expandable = hasChildren(issue)}
   {@const isExpanded = expanded[issue.uid] === true}
-  {@const titleId = `kata-issue-title-${issue.uid}`}
+  {@const titleId = `poomsae-issue-title-${issue.uid}`}
   <div class="row-frame" style:--task-depth={String(depth)}>
     <button
       class="row issue-row"

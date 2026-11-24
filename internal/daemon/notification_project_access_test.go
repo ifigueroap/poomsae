@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 type notificationReadHostAccess struct{ commentProjectHostAccess }
@@ -26,7 +26,7 @@ func (a notificationReadHostAccess) Authorize(ctx context.Context, request daemo
 }
 
 func TestNotificationReferencesFollowProjectAccess(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	for _, authority := range []string{"project", "host"} {
 		t.Run(authority, func(t *testing.T) {
 			projectAccessBackends(t, func(t *testing.T, store db.Storage) {

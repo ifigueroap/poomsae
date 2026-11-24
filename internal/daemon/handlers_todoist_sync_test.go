@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/todoistsync"
 )
 
 type lifecycleTodoist struct{ calls atomic.Int32 }

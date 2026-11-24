@@ -1,6 +1,6 @@
 # Native federation request signing
 
-Kata adds optional native request signatures to its existing enrollment bearer
+Poomsae adds optional native request signatures to its existing enrollment bearer
 transport. The restricted ingress always requires signatures; the hub decides
 whether they are mandatory on ordinary listeners. Native project,
 actor, capability and transaction checks remain authoritative. This design
@@ -16,7 +16,7 @@ hops. Their keys and rotation procedures are separate.
 [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html) defines the signature
 base and structured fields; [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530.html) defines
 Content-Digest. HMAC-SHA256 uses a separately provisioned secret with a public
-key ID. Kata uses httpsign v0.6.2 and httpsfv for standard canonicalization,
+key ID. Poomsae uses httpsign v0.6.2 and httpsfv for standard canonicalization,
 then restricts their flexible APIs to a fixed profile. An independent stdlib
 HMAC reference test checks emitted bytes, including the empty-body digest.
 
@@ -85,7 +85,7 @@ answer is a signing configuration
 problem and never records the relay grant as revoked. A `signing_warming` answer
 is temporary; operators can retry after `Retry-After`, and the hub never records
 the relay grant as revoked. A bridge whose hub is
-gone detaches with `kata federation bridge disconnect --local-only`, and the
+gone detaches with `poomsae federation bridge disconnect --local-only`, and the
 hub operator revokes the grant. Native connection, header, body, duration and
 concurrent admission limits bound work before execution.
 

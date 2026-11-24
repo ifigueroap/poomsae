@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 func rootRecoveryHub(t *testing.T, store db.Storage, name string) db.Project {
@@ -50,7 +50,7 @@ func RunRootSigningKeyUnavailable(t *testing.T, store db.Storage) {
 			keyErr, ok := errors.AsType[*db.RootSigningKeyError](err)
 			require.True(t, ok, "want RootSigningKeyError, got %v", err)
 			require.Equal(t, "hub-project", keyErr.Project)
-			require.ErrorContains(t, err, "kata federation root-key repin --project hub-project")
+			require.ErrorContains(t, err, "poomsae federation root-key repin --project hub-project")
 			after, err := store.MaxEventID(ctx)
 			require.NoError(t, err)
 			require.Equal(t, before, after, "a refused receipt must not leave its source event committed")

@@ -8,10 +8,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/mcpevents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/mcpevents"
 )
 
 func TestKeyFileProviderMissing(t *testing.T) {
@@ -103,7 +103,7 @@ func TestKeyCheckIsHexHMACOfConstant(t *testing.T) {
 	other := make([]byte, 32)
 	other[0] = 1
 	assert.NotEqual(t, got, mcpevents.KeyCheck(other))
-	// HMAC-SHA256(zero key, "kata-mcp-events-key-check"), pinned.
+	// HMAC-SHA256(zero key, "kata-mcp-events-key-check"), pinned so copied databases match.
 	assert.Equal(t, "5d8dbf37f9d7e2d73d0e6949b83d091ecc795905f2895dc104e8d0b623bf973e", got)
 }
 

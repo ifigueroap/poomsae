@@ -6,7 +6,7 @@ import (
 )
 
 // IssueSyncBinding mirrors issue_sync_bindings, the durable association
-// between one kata project and one external issue provider source.
+// between one poomsae project and one external issue provider source.
 type IssueSyncBinding struct {
 	ID              int64
 	ProjectID       int64

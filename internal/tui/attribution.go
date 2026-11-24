@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // The daemon supplies verified creation projections. Source labels remain

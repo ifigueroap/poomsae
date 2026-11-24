@@ -3,8 +3,8 @@ package dbtest
 import (
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunRelayLocalDetach exercises detaching a relay replica whose upstream hub

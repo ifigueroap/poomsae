@@ -5,7 +5,7 @@ import (
 	"encoding/json/v2"
 	"strings"
 
-	kataclient "go.kenn.io/kata/pkg/client"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 // sseEventPayload mirrors the fields of api.EventEnvelope the TUI
@@ -33,7 +33,7 @@ type sseEventPayload struct {
 // new issue's own UID (the payload only carries to_issue_uid; the
 // from is implicit). issue.linked / issue.unlinked retain their
 // original single-link shape (link object directly on payload).
-func decodeEventReceived(event kataclient.Event) eventReceivedMsg {
+func decodeEventReceived(event poomsaeclient.Event) eventReceivedMsg {
 	var p sseEventPayload
 	_ = json.Unmarshal(event.Data, &p)
 	out := eventReceivedMsg{
@@ -218,7 +218,7 @@ func parentEndpointsFromLinksChangedPayload(payload []byte) *linksChangedParents
 // appendPeers extends refs/uids in lockstep. When uids is shorter than
 // shorts, the missing slots are padded with "" so RefUIDs stays
 // parallel to Refs. The daemon always emits matched-length slices in
-// the post-kata#1 wire shape; the padding is defensive.
+// the post-poomsae#1 wire shape; the padding is defensive.
 func appendPeers(refs *[]string, refUIDs *[]string, shorts, uids []string) {
 	for i, s := range shorts {
 		*refs = append(*refs, s)

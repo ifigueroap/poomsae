@@ -1,7 +1,7 @@
 # Docs screenshots
 
-The documentation screenshots are generated from disposable synthetic Kata
-daemons and issue data. No developer workspace or installed Kata state is read.
+The documentation screenshots are generated from disposable synthetic Poomsae
+daemons and issue data. No developer workspace or installed Poomsae state is read.
 
 For a manual terminal capture, preserve the pane's trailing spaces and normalize
 its ANSI stream before passing it to Freeze 0.2.2:
@@ -27,7 +27,7 @@ the federation TUI capture and the focused Playwright Web UI capture. To write
 somewhere else, run:
 
 ```bash
-docs/screenshots/generate.sh --out /tmp/kata-docs-screenshots
+docs/screenshots/generate.sh --out /tmp/poomsae-docs-screenshots
 ```
 
 With `DOCS_SCREENSHOTS_OUTPUT` set, `make docs-screenshots` runs the same
@@ -53,14 +53,14 @@ For an already generated and reviewed directory, use:
 
 ```bash
 docs/screenshots/update-assets-branch.sh \
-  --source /tmp/kata-docs-screenshots
+  --source /tmp/poomsae-docs-screenshots
 ```
 
 The `docs-assets` branch is intentionally an orphan branch with one commit.
 Generated images stay out of `main`; docs pages reference them through
 `/assets/screenshots/...`. Local preview reads the ignored generated files.
 The deployment helper pins the generated asset commit in
-`KATA_DOCS_ASSETS_COMMIT`, then `docs/screenshots/hydrate-assets.sh` validates
+`POOMSAE_DOCS_ASSETS_COMMIT`, then `docs/screenshots/hydrate-assets.sh` validates
 and archives that exact object before replacing the ignored screenshot
 directory. Standalone deployment resolves the remote branch to an immutable
 commit once and archives that object. The local Vercel build consumes those

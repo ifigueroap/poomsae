@@ -13,8 +13,8 @@ import (
 
 func TestReadCloseTranscriptConfig_InvalidAgentNamesKey(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[close.transcript.session_id_env]\nPi = \"PI_SESSION_ID\"\n"), 0600))
 	_, err := ReadCloseTranscriptConfig()
 	require.Error(t, err)
@@ -23,8 +23,8 @@ func TestReadCloseTranscriptConfig_InvalidAgentNamesKey(t *testing.T) {
 
 func TestReadCloseTranscriptConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
 	cfg, err := ReadCloseTranscriptConfig()
 	require.NoError(t, err)
 	assert.Equal(t, CloseTranscriptOff, cfg.Mode)
@@ -48,8 +48,8 @@ pi = "PI_SESSION_ID"
 
 func TestReadCloseTranscriptConfig_ParseErrorNamesFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
 	path := filepath.Join(home, "config.toml")
 	require.NoError(t, os.WriteFile(path, []byte("[close.transcript\n"), 0600))
 	_, err := ReadCloseTranscriptConfig()
@@ -62,8 +62,8 @@ func TestReadCloseTranscriptConfig_ParseErrorNamesFile(t *testing.T) {
 func TestReadCloseTranscriptConfig_EnabledEnvironment(t *testing.T) {
 	t.Run("true keeps the file's link and session settings", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", " true ")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", " true ")
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[close.transcript]
 enabled = false
 agentsview_url = "https://agentsview.example"
@@ -76,8 +76,8 @@ pi = "PI_SESSION_ID"
 	})
 	t.Run("false ignores the file's invalid session settings", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "false")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "false")
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[close.transcript]\nenabled = true\n[close.transcript.session_id_env]\nPi = \"PI_SESSION_ID\"\n"), 0600))
 		cfg, err := ReadCloseTranscriptConfig()
 		require.NoError(t, err)
@@ -85,8 +85,8 @@ pi = "PI_SESSION_ID"
 	})
 	t.Run("auto keeps the file's link and session settings", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", " Auto ")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", " Auto ")
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[close.transcript]\nenabled = false\nagentsview_url = \"https://agentsview.example\"\n"), 0600))
 		cfg, err := ReadCloseTranscriptConfig()
 		require.NoError(t, err)
@@ -94,18 +94,18 @@ pi = "PI_SESSION_ID"
 	})
 	t.Run("an invalid value is an error naming the variable", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "sometimes")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "sometimes")
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[close.transcript]\nenabled = true\n"), 0600))
 		_, err := ReadCloseTranscriptConfig()
-		require.ErrorContains(t, err, "KATA_CLOSE_TRANSCRIPT_ENABLED")
+		require.ErrorContains(t, err, "POOMSAE_CLOSE_TRANSCRIPT_ENABLED")
 	})
 }
 
 func TestReadCloseTranscriptConfig_ProjectAuto(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[close.transcript]
 enabled = "auto"
 [close.transcript.project.a]
@@ -127,7 +127,7 @@ agentsview_url = "https://c.example"
 
 func TestReadCloseTranscriptConfig_ProjectTargets(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[close.transcript]
 enabled = true
 agentsview_url = "https://global.example"
@@ -146,7 +146,7 @@ agentsview_url = "https://team.example"
 		{"false", CloseTranscriptOff, CloseTranscriptOff},
 	} {
 		t.Run("override="+tc.override, func(t *testing.T) {
-			t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", tc.override)
+			t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", tc.override)
 			cfg, err := ReadCloseTranscriptConfig()
 			require.NoError(t, err)
 			team, global := cfg.Target("team"), cfg.Target("other")
@@ -166,7 +166,7 @@ agentsview_url = "https://team.example"
 // daemon must still start when a user enables it.
 func TestReadDaemonConfigAcceptsCloseTranscript(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`[close.transcript]
 enabled = true
 agentsview_url = "https://agentsview.example"
@@ -182,8 +182,8 @@ agentsview_url = "https://team.example"
 
 func TestReadCloseTranscriptConfig_AutoInFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("[close.transcript]\nenabled = \"AUTO\"\n"), 0600))
 	cfg, err := ReadCloseTranscriptConfig()
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestReadCloseTranscriptConfig_AutoInFile(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// Only kata close checks enabled, so a mistake there never stops the daemon
+// Only poomsae close checks enabled, so a mistake there never stops the daemon
 // or drops the file's auth settings from other commands.
 func TestReadCloseTranscriptConfig_InvalidEnabledStaysClientSide(t *testing.T) {
 	for _, tc := range []struct{ name, section, value, key string }{
@@ -204,9 +204,9 @@ func TestReadCloseTranscriptConfig_InvalidEnabledStaysClientSide(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_CLOSE_TRANSCRIPT_ENABLED", "")
-			t.Setenv("KATA_AUTH_TOKEN", "")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_CLOSE_TRANSCRIPT_ENABLED", "")
+			t.Setenv("POOMSAE_AUTH_TOKEN", "")
 			path := filepath.Join(home, "config.toml")
 			require.NoError(t, os.WriteFile(path, []byte("[auth]\ntoken = \"file-token\"\n"+tc.section+"\nenabled = "+tc.value+"\n"), 0600))
 			_, err := ReadCloseTranscriptConfig()

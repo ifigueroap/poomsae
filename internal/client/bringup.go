@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemonruntime"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 )
 
 // DiscoverRequest selects a daemon the way the CLI does and says how far
 // discovery may go to reach it.
 type DiscoverRequest struct {
-	// WorkspaceStart anchors the upward .kata.local.toml lookup. Empty uses
+	// WorkspaceStart anchors the upward .poomsae.local.toml lookup. Empty uses
 	// the process working directory.
 	WorkspaceStart string
 	// Name selects a daemon catalog entry, as --daemon does, and replaces
@@ -28,7 +28,7 @@ type DiscoverRequest struct {
 	// ReadOnly never creates or repairs local runtime metadata and leaves a
 	// local profile's identity check to the caller's first request.
 	ReadOnly bool
-	// StartWith is a kata executable. When the selected local daemon has no
+	// StartWith is a poomsae executable. When the selected local daemon has no
 	// live runtime, it runs `daemon start`, or `daemon recover` for a pinned
 	// local profile, and discovery looks again. With autostart disabled, it waits
 	// for the supervisor instead. A remote is never started.
@@ -37,7 +37,7 @@ type DiscoverRequest struct {
 
 // ErrDaemonStartFailed reports that DiscoverRequest.StartWith could not start
 // the selected local daemon.
-var ErrDaemonStartFailed = errors.New("start kata daemon")
+var ErrDaemonStartFailed = errors.New("start poomsae daemon")
 
 // DiscoverSelected finds the live daemon a request selects without starting
 // it unless StartWith is set. A configured remote is returned as selected,
@@ -61,7 +61,7 @@ func DiscoverSelected(ctx context.Context, req DiscoverRequest) (ResolvedDaemon,
 
 // daemonBringUp reaches the local daemon a selection names. The adapter
 // decides whether reaching it may start it: liveDiscovery never does,
-// executableStart runs a kata executable, and inProcessStart starts it from
+// executableStart runs a poomsae executable, and inProcessStart starts it from
 // this process.
 type daemonBringUp interface {
 	profile(context.Context, DaemonSelection) (ResolvedDaemon, bool, error)
@@ -136,8 +136,8 @@ func (d liveDiscovery) local(ctx context.Context, selection DaemonSelection) (Re
 	return resolved, true, nil
 }
 
-// executableStart starts a stopped local daemon by running a kata
-// executable, for programs that are not kata themselves. kata owns the
+// executableStart starts a stopped local daemon by running a poomsae
+// executable, for programs that are not poomsae themselves. poomsae owns the
 // start: `daemon recover` checks a pinned profile's existing storage and
 // instance UID and never creates storage.
 type executableStart struct {
@@ -193,7 +193,7 @@ func (s executableStart) startIfStopped(
 	if err != nil || ok {
 		return resolved, ok, err
 	}
-	output, err := exec.CommandContext(ctx, s.executable, args...).CombinedOutput() //nolint:gosec // G204: the caller names its kata executable; arguments are fixed or caller-selected names.
+	output, err := exec.CommandContext(ctx, s.executable, args...).CombinedOutput() //nolint:gosec // G204: the caller names its poomsae executable; arguments are fixed or caller-selected names.
 	if err != nil {
 		return resolved, false, fmt.Errorf("%w: %s %s: %w: %s",
 			ErrDaemonStartFailed, s.executable, strings.Join(args, " "), err, bytes.TrimSpace(output))
@@ -202,7 +202,7 @@ func (s executableStart) startIfStopped(
 }
 
 // inProcessStart starts a stopped local daemon from this process, which is
-// the kata binary: it verifies and starts a pinned profile, and starts or
+// the poomsae binary: it verifies and starts a pinned profile, and starts or
 // replaces the current home's daemon.
 type inProcessStart struct{}
 

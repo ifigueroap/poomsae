@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"go.kenn.io/kata/internal/config"
+	"github.com/ifigueroap/poomsae/internal/config"
 )
 
-// StorageInspector reads existing kata storage without bootstrap, migration,
+// StorageInspector reads existing poomsae storage without bootstrap, migration,
 // or cutover. The client consults it before it starts or replaces a local
 // daemon. Implementations live outside this package so programs that only
 // discover daemons do not link the storage engines.
@@ -37,9 +37,9 @@ func UseStorageInspector(inspector StorageInspector) {
 	storageInspector = inspector
 }
 
-// ErrStorageInspectorUnavailable means this program cannot read kata storage,
+// ErrStorageInspectorUnavailable means this program cannot read poomsae storage,
 // so it cannot check whether a daemon it starts could open that storage.
-var ErrStorageInspectorUnavailable = errors.New("this program cannot read kata storage")
+var ErrStorageInspectorUnavailable = errors.New("this program cannot read poomsae storage")
 
 func installedStorageInspector() (StorageInspector, error) {
 	if storageInspector == nil {

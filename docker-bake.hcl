@@ -1,5 +1,5 @@
 # Container image definition. Releases publish the oci-* targets as
-# ghcr.io/kenn-io/kata.
+# ghcr.io/ifigueroap/poomsae.
 variable "VERSION" { default = "dev" }
 variable "OCI_VERSION" { default = "dev" }
 variable "COMMIT" { default = "unknown" }
@@ -25,7 +25,7 @@ target "image" {
     "org.opencontainers.image.created"  = BUILD_DATE
     "org.opencontainers.image.licenses" = "MIT"
     "org.opencontainers.image.revision" = REVISION
-    "org.opencontainers.image.source"   = "https://github.com/kenn-io/kata"
+    "org.opencontainers.image.source"   = "https://github.com/ifigueroap/poomsae"
     "org.opencontainers.image.version"  = OCI_VERSION
   }
 }

@@ -10,7 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"go.kenn.io/kata/internal/recurrence/recurrenceclient"
+	"github.com/ifigueroap/poomsae/internal/recurrence/recurrenceclient"
 	"go.kenn.io/kit/tui/termtext"
 )
 

@@ -11,14 +11,14 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore/pgstoretest"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/db/pgstore/pgstoretest"
-	"go.kenn.io/kata/internal/metadata"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const closeAttachmentID = "01K7E222222222222222222222"
@@ -173,7 +173,7 @@ func TestMovedIssueHistoryRetainsAttachmentEvidence(t *testing.T) {
 	require.NoError(t, err)
 	resp, raw = envGetRaw(t, env, fmt.Sprintf("/api/v1/projects/%d/events?issue=%s", destination.ID, issue.UID))
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(raw))
-	require.Equal(t, issue.UID, resp.Header.Get("X-Kata-Events-Issue-UID"))
+	require.Equal(t, issue.UID, resp.Header.Get("X-Poomsae-Events-Issue-UID"))
 	var page api.PollEventsBody
 	require.NoError(t, json.Unmarshal(raw, &page))
 	for _, event := range page.Events {

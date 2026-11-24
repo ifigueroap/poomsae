@@ -19,24 +19,24 @@ describe('createDevChildEnvironment', () => {
           "'-p=2' -p=2 -p 2 -mod=mod -tags=example '-ldflags=-X example.message=hello world'",
         GOMAXPROCS: '2',
         GOPROXY: 'https://proxy.example|direct',
-        KATA_DSN: 'postgres://daemon.example/kata',
-        KATA_DB: '/var/lib/kata.db',
-        KATA_SERVER: 'https://daemon.example',
-        KATA_WORKSPACE: '/srv/example-workspace',
-        KATA_CONFIG: '/srv/kata/config.toml',
-        KATA_AUTH_TOKEN: 'secret-value',
-        KATA_WEB_PUBLIC_ORIGIN: 'https://daemon.example',
-        KATA_TRUST_PRIVATE_NETWORK: '1',
-        KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES: '1',
+        POOMSAE_DSN: 'postgres://daemon.example/poomsae',
+        POOMSAE_DB: '/var/lib/poomsae.db',
+        POOMSAE_SERVER: 'https://daemon.example',
+        POOMSAE_WORKSPACE: '/srv/example-workspace',
+        POOMSAE_CONFIG: '/srv/poomsae/config.toml',
+        POOMSAE_AUTH_TOKEN: 'secret-value',
+        POOMSAE_WEB_PUBLIC_ORIGIN: 'https://daemon.example',
+        POOMSAE_TRUST_PRIVATE_NETWORK: '1',
+        POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES: '1',
         DATABASE_URL: 'postgres://daemon.example/production',
         HTTP_PROXY: 'http://proxy.example:8080',
         EXAMPLE_SERVICE_TOKEN: 'service-secret',
         PORT: '8080',
       },
       {
-        home: '/tmp/kata-web/home',
-        workspace: '/tmp/kata-web/workspace',
-        database: '/tmp/kata-web/home/kata.db',
+        home: '/tmp/poomsae-web/home',
+        workspace: '/tmp/poomsae-web/workspace',
+        database: '/tmp/poomsae-web/home/poomsae.db',
       },
     )
 
@@ -47,18 +47,18 @@ describe('createDevChildEnvironment', () => {
       TEMP: '/example/tmp',
       GOFLAGS: "-mod=mod -tags=example '-ldflags=-X example.message=hello world'",
       GOPROXY: 'https://proxy.example|direct',
-      KATA_HOME: '/tmp/kata-web/home',
-      KATA_DB: '/tmp/kata-web/home/kata.db',
-      KATA_WORKSPACE: '/tmp/kata-web/workspace',
-      KATA_AUTHOR: 'user-a',
+      POOMSAE_HOME: '/tmp/poomsae-web/home',
+      POOMSAE_DB: '/tmp/poomsae-web/home/poomsae.db',
+      POOMSAE_WORKSPACE: '/tmp/poomsae-web/workspace',
+      POOMSAE_AUTHOR: 'user-a',
     })
   })
 })
 
 describe('devDaemonCommand', () => {
   it('binds the Windows shared daemon listener to the selected backend port', () => {
-    expect(devDaemonCommand('kata.exe', 43127, 'win32')).toEqual([
-      'kata.exe',
+    expect(devDaemonCommand('poomsae.exe', 43127, 'win32')).toEqual([
+      'poomsae.exe',
       'daemon',
       'start',
       '--foreground',
@@ -94,10 +94,10 @@ describe('prepareBrowserTestRuntime', () => {
       '-buildvcs=false',
       '-o',
       runtime.binary,
-      './cmd/kata',
+      './cmd/poomsae',
     ])
-    expect(commands[0]?.env.KATA_HOME).toBeTruthy()
-    expect(commands[0]?.env.KATA_DB).toBe(`${commands[0]?.env.KATA_HOME}/kata.db`)
+    expect(commands[0]?.env.POOMSAE_HOME).toBeTruthy()
+    expect(commands[0]?.env.POOMSAE_DB).toBe(`${commands[0]?.env.POOMSAE_HOME}/poomsae.db`)
     expect(commands[0]?.env.GOFLAGS).toBe(
       "-mod=mod -tags=example '-ldflags=-X example.message=hello world'",
     )
@@ -131,7 +131,7 @@ describe('prepareBrowserTestRuntime', () => {
     ).rejects.toBe(setupError)
 
     expect(restoreCount).toBe(1)
-    const home = commands[0]?.env.KATA_HOME
+    const home = commands[0]?.env.POOMSAE_HOME
     expect(home).toBeTruthy()
     await expect(access(dirname(home!))).rejects.toMatchObject({ code: 'ENOENT' })
   })

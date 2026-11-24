@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // Moved issues take the target's access policy. Refuse a merge that could

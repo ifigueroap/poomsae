@@ -5,16 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/uid"
 )
 
 func BenchmarkReadCommentGraphPendingReplyTargets(b *testing.B) {
 	for _, history := range []int{1_000, 10_000, 100_000} {
 		b.Run(fmt.Sprintf("events=%d", history), func(b *testing.B) {
 			ctx := b.Context()
-			store, err := Open(ctx, filepath.Join(b.TempDir(), "kata.db"))
+			store, err := Open(ctx, filepath.Join(b.TempDir(), "poomsae.db"))
 			require.NoError(b, err)
 			b.Cleanup(func() { require.NoError(b, store.Close()) })
 			project, err := store.CreateProject(ctx, "example-project")

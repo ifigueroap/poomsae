@@ -5,12 +5,12 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/version"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/version"
 )
 
-// registerInstanceHandlers installs /api/v1/instance — the local kata
+// registerInstanceHandlers installs /api/v1/instance — the local poomsae
 // installation's stable identifier alongside the daemon's build version and
 // the database's schema_version. The instance UID is set by db.Open at first
 // init and never changes; this endpoint surfaces it for future federation

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import type { KataReachableGraphResponse } from '../kata/types'
+import type { PoomsaeReachableGraphResponse } from '../poomsae/types'
 import { task } from '../../test/task'
 import { filterSnapshotGraph } from './snapshot'
 
@@ -17,7 +17,7 @@ describe('filterSnapshotGraph', () => {
   ] as const)(
     'preserves output at depth %s with hide-done %s',
     (depth, hideDone, uids, edgeIndexes) => {
-      const snapshot: KataReachableGraphResponse = {
+      const snapshot: PoomsaeReachableGraphResponse = {
         source_uid: 'root',
         depth: 'full',
         hide_done: false,

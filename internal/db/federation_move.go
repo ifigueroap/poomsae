@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/httpurl"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 type moveQuery interface {
@@ -421,7 +421,7 @@ func federationMoveProjects(ctx context.Context, tx *sql.Tx, routeID int64, e Re
 	if err := json.Unmarshal(m["snapshot"], &payload.Snapshot); err != nil {
 		return 0, 0, fmt.Errorf("%w: move missing snapshot", ErrFederationIngestValidation)
 	}
-	if e.IssueUID == nil || payload.IssueUID != *e.IssueUID || payload.Snapshot.UID != payload.IssueUID || !katauid.Valid(payload.FromProjectUID) || !katauid.Valid(payload.ToProjectUID) || payload.FromProjectUID == payload.ToProjectUID || e.ProjectUID != payload.ToProjectUID || payload.ToShortID == "" {
+	if e.IssueUID == nil || payload.IssueUID != *e.IssueUID || payload.Snapshot.UID != payload.IssueUID || !poomsaeuid.Valid(payload.FromProjectUID) || !poomsaeuid.Valid(payload.ToProjectUID) || payload.FromProjectUID == payload.ToProjectUID || e.ProjectUID != payload.ToProjectUID || payload.ToShortID == "" {
 		return 0, 0, fmt.Errorf("%w: invalid move payload", ErrFederationIngestValidation)
 	}
 	lookup := func(uid string) (int64, error) {
@@ -500,7 +500,7 @@ func RemoteIssueEventProject(ctx context.Context, tx *sql.Tx, route int64, e Rem
 		}
 	}
 	if missing {
-		if !katauid.Valid(e.ProjectUID) {
+		if !poomsaeuid.Valid(e.ProjectUID) {
 			return 0, fmt.Errorf("%w: invalid project UID", ErrFederationIngestValidation)
 		}
 		return retainFederationProject(ctx, tx, e.ProjectUID)

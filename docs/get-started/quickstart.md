@@ -1,55 +1,45 @@
 ---
-last_edited: 2026-11-23
+last_edited: 2026-11-24
 ---
 
 # Quickstart
 
-Install kata on your machine, bind a workspace, and create your first issue.
+Install poomsae on your machine, bind a workspace, and create your first issue.
 
-On macOS, install kata from Homebrew Core:
-
-```sh
-brew install kata
-```
-
-On Linux, run the release installer:
+On macOS or Linux, run the release installer:
 
 ```sh
-curl -fsSL https://katatracker.com/install.sh | bash
+curl -fsSL https://github.com/ifigueroap/poomsae/install.sh | bash
 ```
-
-If you already use
-[Homebrew on Linux or WSL 2](https://docs.brew.sh/Homebrew-on-Linux), you can
-install Kata with `brew install kata` instead.
 
 On Windows PowerShell, run:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://katatracker.com/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
 ```
 
 See [Install](install.md) for package upgrades and alternative installation
 methods.
 
-Next, move into a workspace, bind it to a kata project, and create your first
+Next, move into a workspace, bind it to a poomsae project, and create your first
 issue:
 
 ```sh
 cd your-repo
-kata init
-kata create "fix login race"
-kata list
-kata show abc4
+poomsae init
+poomsae create "fix login race"
+poomsae list
+poomsae show abc4
 ```
 
-`kata create` prints the issue's short ID, which you use in later commands.
-In the examples on this page, replace `abc4` with the short ID that kata
+`poomsae create` prints the issue's short ID, which you use in later commands.
+In the examples on this page, replace `abc4` with the short ID that poomsae
 returned.
 
 Close an issue only after the work is complete and verified:
 
 ```sh
-kata close abc4 --done \
+poomsae close abc4 --done \
   --message "Fixed the login callback race and verified the browser test passes." \
   --commit <sha>
 ```
@@ -57,15 +47,15 @@ kata close abc4 --done \
 When you want to browse or triage interactively, open the TUI:
 
 ```sh
-kata tui
+poomsae tui
 ```
 
 To jump straight to an issue's detail view, pass its ref. The optional ref
 accepts the same bare short ID, qualified short ID, and full UID forms as
-`kata show`:
+`poomsae show`:
 
 ```sh
-kata tui abc4
+poomsae tui abc4
 ```
 
 In the issue list, press `v` to switch between nested and flat views. Nested
@@ -85,61 +75,61 @@ keeps the cursor on its current screen row when it lands on the first or final
 page, and jumps to the first or last issue only when no further page movement
 is possible. Press `?` inside the TUI to see the full keybinding list.
 
-To open the same project in your browser, run `kata ui`, or jump directly to an
-issue with `kata ui abc4`. The [Web UI guide](../guide/web-ui.md) covers
+To open the same project in your browser, run `poomsae ui`, or jump directly to an
+issue with `poomsae ui abc4`. The [Web UI guide](../guide/web-ui.md) covers
 collections, editing, relationship graphs, recurrences, and daemon switching.
 
 ## Initialize a workspace
 
 ```sh
-kata init
+poomsae init
 ```
 
-`kata init` writes a `.kata.toml` file with a project binding. In a git
-workspace, kata derives the default project name from the git remote and keeps
-config discovery inside that repository. A `.kata.toml` above the git root
+`poomsae init` writes a `.poomsae.toml` file with a project binding. In a git
+workspace, poomsae derives the default project name from the git remote and keeps
+config discovery inside that repository. A `.poomsae.toml` above the git root
 does not bind the repository. For a non-git workspace, or when you want an
 explicit shared project name, pass `--project`:
 
 ```sh
-kata init --project product
+poomsae init --project product
 ```
 
-Commit `.kata.toml` when multiple agents, clones, or worktrees should resolve
-to the same kata project. The file contains no secrets.
+Commit `.poomsae.toml` when multiple agents, clones, or worktrees should resolve
+to the same poomsae project. The file contains no secrets.
 
-If a kata project is not tied to a repository workspace, create it directly in
+If a poomsae project is not tied to a repository workspace, create it directly in
 the daemon instead:
 
 ```sh
-kata projects create example-project
+poomsae projects create example-project
 ```
 
-This creates or returns the named project without writing `.kata.toml`,
-`.gitignore`, or agent guidance files. Run `kata init` later only in workspaces
+This creates or returns the named project without writing `.poomsae.toml`,
+`.gitignore`, or agent guidance files. Run `poomsae init` later only in workspaces
 that should resolve to that project automatically.
 
-To also write a short kata briefing where coding agents look for workspace
+To also write a short poomsae briefing where coding agents look for workspace
 guidance, pass `--with-agents`:
 
 ```sh
-kata init --with-agents
+poomsae init --with-agents
 ```
 
 This adds a marker-delimited block that points coding agents at
-`kata quickstart` and the close discipline. If `AGENTS.md` or a real,
-non-symlinked `CLAUDE.md` already exists, kata refreshes each file in place. If
-neither exists, kata creates `AGENTS.md`. Re-running the command updates only
-kata's section and leaves the rest of each file untouched. Because the flag is
-off by default, a plain `kata init` writes only `.kata.toml`.
+`poomsae quickstart` and the close discipline. If `AGENTS.md` or a real,
+non-symlinked `CLAUDE.md` already exists, poomsae refreshes each file in place. If
+neither exists, poomsae creates `AGENTS.md`. Re-running the command updates only
+poomsae's section and leaves the rest of each file untouched. Because the flag is
+off by default, a plain `poomsae init` writes only `.poomsae.toml`.
 
 If `AGENTS.md` or a real, non-symlinked `CLAUDE.md` still has a Beads
-integration block, which is common when migrating off Beads, kata refuses to
+integration block, which is common when migrating off Beads, poomsae refuses to
 edit it in place. Instead, it leaves the original untouched and writes a
-`<file>.kata-proposed` sidecar with the Beads block removed and kata's block
+`<file>.poomsae-proposed` sidecar with the Beads block removed and poomsae's block
 added, then prints where the sidecar landed. Review the sidecar, and either
-move `<file>.kata-proposed` over the original to adopt it or delete it to keep
-the original. For safety, kata refuses a symlinked `AGENTS.md` before reading it. Replace it
+move `<file>.poomsae-proposed` over the original to adopt it or delete it to keep
+the original. For safety, poomsae refuses a symlinked `AGENTS.md` before reading it. Replace it
 with a regular file before using `--with-agents`.
 
 ## Set up a hookless agent
@@ -148,7 +138,7 @@ Consumer Muse can use a standing instruction block, a skill, and a recurring
 poll specification. Preview the bundle before installing it:
 
 ```sh
-kata agent-hook instructions install muse --home /path/to/muse-home --actor example-agent --dry --json
+poomsae agent-hook instructions install muse --home /path/to/muse-home --actor example-agent --dry --json
 ```
 
 This setup relies on instruction-following and has no native attention hooks.
@@ -158,45 +148,45 @@ installation and both authentication options.
 
 ## Load the contract in every session
 
-In unreleased builds, you can load Kata's contract automatically in Claude Code
-and Codex sessions that start inside a kata workspace on this machine. Setup
+In unreleased builds, you can load Poomsae's contract automatically in Claude Code
+and Codex sessions that start inside a poomsae workspace on this machine. Setup
 selects whichever tools are installed, and sessions in other directories stay
 silent:
 
 ```sh
-kata agent setup
+poomsae agent setup
 ```
 
-The `agent-hook install` command and `--contract-only` require Kata 0.19.0 or
+The `agent-hook install` command and `--contract-only` require Poomsae 0.19.0 or
 later. For Codex, open Codex and run `/hooks` to trust the hooks. In unreleased
-builds, run `kata agent setup --check` to check readiness. See
+builds, run `poomsae agent setup --check` to check readiness. See
 [Contract in every session](../workflows/agents.md#contract-in-every-session)
 for harness selection, Hermes's first-turn behavior, and additional Codex
 homes. Available attention hooks are included by default. You can run
-`kata agent-hook install --contract-only` to opt out,
-`kata agent-hook install --local` for this workspace, or
-`kata init --agent-hooks=codex,pi` when initializing it.
+`poomsae agent-hook install --contract-only` to opt out,
+`poomsae agent-hook install --local` for this workspace, or
+`poomsae init --agent-hooks=codex,pi` when initializing it.
 
 ## External agents without session hooks
 
-An external agent can read `kata quickstart` at the start of each session
+An external agent can read `poomsae quickstart` at the start of each session
 without installing hooks. The command prints the session contract along with
 links to federation and optional embeddings setup, and the compact `--agent`
-and structured `--json` formats include the same setup links. `kata quickstart`
+and structured `--json` formats include the same setup links. `poomsae quickstart`
 does not contact a daemon or read or write configuration. `--format contract`
 remains the static managed contract.
 
 When work is shared through federation, onboard the spoke in four steps:
 
-1. Run `kata federation identity` against the agent's spoke daemon and send
+1. Run `poomsae federation identity` against the agent's spoke daemon and send
    that instance UID to the hub administrator.
 2. After the administrator creates an actor-bound enrollment and returns the
    generated join command, run that command against the spoke using the hub's
    HTTPS hostname that matches its certificate.
-3. Configure the agent's identity. On request-actor spokes, set `KATA_AUTHOR`
+3. Configure the agent's identity. On request-actor spokes, set `POOMSAE_AUTHOR`
    to the actor in that command. On identity-mode spokes, use an identity token
-   whose actor matches the enrollment actor; `KATA_AUTHOR` cannot override it.
-4. Check `kata whoami` and inspect `kata federation status` before claiming
+   whose actor matches the enrollment actor; `POOMSAE_AUTHOR` cannot override it.
+4. Check `poomsae whoami` and inspect `poomsae federation status` before claiming
    work.
 
 Follow the
@@ -205,8 +195,8 @@ for the administrator command, join options, and polling loop.
 
 While the agent is idle, poll the exact inbox recipient. Reading the inbox does
 not acknowledge a request. After handling a request, run
-`kata notify <ref> --to <recipient> --clear` and read the inbox again. Save the
-cursor from `kata events --json` and resume with `--after <cursor>`. On
+`poomsae notify <ref> --to <recipient> --clear` and read the inbox again. Save the
+cursor from `poomsae events --json` and resume with `--after <cursor>`. On
 `reset_required`, discard cached state, refresh it, and resume from the
 returned reset cursor. Federation is eventual. The spoke's local inbox and
 events reflect what it has pulled from the hub.
@@ -216,13 +206,13 @@ events reflect what it has pulled from the hub.
 Lexical search works right away, and embeddings are optional. Quickstart's
 local configuration check does not contact the selected daemon or validate a
 key. When you select a remote daemon or another local profile, configure that
-daemon's home and run `kata health --json` to inspect its actual runtime state.
+daemon's home and run `poomsae health --json` to inspect its actual runtime state.
 
 For a hosted provider, keep the API key outside `config.toml`. A reliable
 option for service and autostart launches is an owner-only file supplied
 through your secret manager. Use an absolute path or a path beginning with
 `~/`, and on Unix restrict the file to its owner with `chmod 600`. For example,
-once your secret manager creates `~/.config/kata/embedding.key`, add this block
+once your secret manager creates `~/.config/poomsae/embedding.key`, add this block
 to `config.toml`:
 
 ```toml
@@ -230,7 +220,7 @@ to `config.toml`:
 base_url = "https://api.voyageai.com/v1"
 model = "voyage-3-large"
 dims = 1024
-api_key_file = "~/.config/kata/embedding.key"
+api_key_file = "~/.config/poomsae/embedding.key"
 ```
 
 This example uses Voyage's
@@ -251,14 +241,14 @@ sources, remove it when switching to a secure source.
 
 After you add or change the endpoint or model, restart the intended daemon. For
 an existing provider configuration, replacing the key file needs only
-`kata daemon reload`. These lifecycle commands operate on the current `KATA_HOME`. Set `KATA_HOME`
+`poomsae daemon reload`. These lifecycle commands operate on the current `POOMSAE_HOME`. Set `POOMSAE_HOME`
 explicitly when administering a registered local profile. For a remote daemon,
 its operator performs the restart or reload.
 
 ```sh
-kata health --json
-kata search "words from existing work" --agent
-kata search "words from existing work" --semantic --agent
+poomsae health --json
+poomsae search "words from existing work" --agent
+poomsae search "words from existing work" --semantic --agent
 ```
 
 Check the `embeddings` object in the health response for credential status,
@@ -275,45 +265,45 @@ than assuming the CLI's local configuration describes the selected server.
 ## Create and inspect issues
 
 ```sh
-kata create "fix login race" \
+poomsae create "fix login race" \
   --body "Safari can double-submit the callback." \
   --label auth \
   --owner alice \
   --priority 1
 
-kata list
-kata show abc4
-kata comment abc4 --body-stdin <<'EOF'
+poomsae list
+poomsae show abc4
+poomsae comment abc4 --body-stdin <<'EOF'
 Reproduced on macOS.
 EOF
 ```
 
-Correct your own comment with `kata comment edit`.
+Correct your own comment with `poomsae comment edit`.
 
 Priorities run from `0` to `4`, with `0` as the highest. If you omit
-`--priority`, kata uses
+`--priority`, poomsae uses
 [`create.default_priority`](../reference/configuration.md#default-priority-for-issue-creation)
 when configured; otherwise, priority stays unset.
 
 Set a schedule, deadline, or undated parking marker with these commands:
 
 ```sh
-kata schedule abc4 2026-09-01T09:30
-kata deadline abc4 2026-09-01T17:00
-kata meta set abc4 someday true --json-value
+poomsae schedule abc4 2026-09-01T09:30
+poomsae deadline abc4 2026-09-01T17:00
+poomsae meta set abc4 someday true --json-value
 ```
 
 A future `scheduled_on` value and `someday=true` keep an issue out of `ready`
-and `next`, while a deadline does not. Clear them with `kata schedule abc4 -`,
-`kata deadline abc4 -`, and `kata meta unset abc4 someday`.
+and `next`, while a deadline does not. Clear them with `poomsae schedule abc4 -`,
+`poomsae deadline abc4 -`, and `poomsae meta unset abc4 someday`.
 
 When a schedule or deadline arrives, the daemon adds an ordinary inbox request
 for the issue owner, or for the author when the issue is unowned. Read it with
-`kata inbox --for <actor>` and acknowledge it with
-`kata notify <ref> --to <actor> --clear`. An existing request in that slot
+`poomsae inbox --for <actor>` and acknowledge it with
+`poomsae notify <ref> --to <actor> --clear`. An existing request in that slot
 remains in place first.
 
-Human `kata list` output groups fetched children beneath their fetched parents
+Human `poomsae list` output groups fetched children beneath their fetched parents
 with tree connectors. When a child's parent is outside the active filters or
 `--limit` result, the child stays as a top-level row so filtering never hides a
 matching issue. JSON and agent output preserve the API's flat order for
@@ -321,13 +311,13 @@ scripts.
 
 ## Use relationships
 
-Attach relationships on `kata create` and `kata edit`. Every relationship flag
+Attach relationships on `poomsae create` and `poomsae edit`. Every relationship flag
 is framed from the issue you are creating or editing:
 
 ```sh
-kata create "ship callback fix" --blocked-by abc4
-kata edit abc4 --blocks d4ex
-kata edit d4ex --related j7m2
+poomsae create "ship callback fix" --blocked-by abc4
+poomsae edit abc4 --blocks d4ex
+poomsae edit d4ex --related j7m2
 ```
 
 | Relationship | Meaning |
@@ -342,28 +332,28 @@ replaces the existing parent. The other relationship flags are repeatable.
 
 ## Find ready work
 
-`kata next` picks the highest-priority open issue that has no open predecessor
+`poomsae next` picks the highest-priority open issue that has no open predecessor
 blocking it:
 
 ```sh
-kata next
-kata next --unowned --label backend
+poomsae next
+poomsae next --unowned --label backend
 ```
 
 Lower numeric priorities win, explicitly prioritized issues beat unprioritized
 ones, and ties preserve ready-list order. When you want to inspect the queue
-instead of picking one issue, run `kata ready`:
+instead of picking one issue, run `poomsae ready`:
 
 ```sh
-kata ready
-kata ready --unowned
-kata ready --label backend --no-label blocked
+poomsae ready
+poomsae ready --unowned
+poomsae ready --label backend --no-label blocked
 ```
 
-Use `kata claim` with a time limit in multi-agent work:
+Use `poomsae claim` with a time limit in multi-agent work:
 
 ```sh
-kata claim abc4 --ttl 2h
+poomsae claim abc4 --ttl 2h
 ```
 
 The claim fails if another actor already owns the issue unless `--force` is
@@ -372,17 +362,17 @@ used. Renew it before it expires by claiming again with `--ttl`, without
 
 ## Set actor identity
 
-kata resolves the active actor in this order:
+poomsae resolves the active actor in this order:
 
 ```text
---as > $KATA_AUTHOR > $USER > git config user.name > anonymous
+--as > $POOMSAE_AUTHOR > $USER > git config user.name > anonymous
 ```
 
-For an agent session, export `KATA_AUTHOR` and check it with `kata whoami`:
+For an agent session, export `POOMSAE_AUTHOR` and check it with `poomsae whoami`:
 
 ```sh
-export KATA_AUTHOR=external-agent
-kata whoami
+export POOMSAE_AUTHOR=external-agent
+poomsae whoami
 ```
 
 ## Output modes
@@ -392,12 +382,12 @@ coding agents to quote, and `--json` only when a script needs the full
 response:
 
 ```sh
-kata list --agent
-kata list --json | jq .
+poomsae list --agent
+poomsae list --json | jq .
 ```
 
 `--format human|json|agent` matches the dedicated switches. For agent harness
-injection, `kata quickstart --format contract` prints the shorter canonical
+injection, `poomsae quickstart --format contract` prints the shorter canonical
 managed briefing without changing the workspace. See
 [Agent contract output](../reference/cli.md#agent-contract-output) for details.
 
@@ -408,17 +398,17 @@ Closing asserts completion. An open, unmerged PR is unfinished. If work is incom
 `needs-review` label:
 
 ```sh
-kata label add abc4 needs-review
+poomsae label add abc4 needs-review
 ```
 
-Record an open issue's PR with `kata meta set abc4 work.pr_url <url>`. When
+Record an open issue's PR with `poomsae meta set abc4 work.pr_url <url>`. When
 the work is done, pass the PR as evidence with `--pr <url>`.
 
 When work is done, close the issue with a reason, a substantive message, and
 evidence:
 
 ```sh
-kata close abc4 --done \
+poomsae close abc4 --done \
   --message "Fixed Safari callback double-submit; verified the browser regression test passes." \
   --commit <sha> \
   --test "go test ./e2e -run TestCallback"

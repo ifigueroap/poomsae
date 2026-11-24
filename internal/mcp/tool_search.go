@@ -108,7 +108,7 @@ func registerToolSearch(server *sdkmcp.Server, options Options) {
 }
 
 func registerToolSearchCatalog(server *sdkmcp.Server, catalog *toolSearchCatalogLoader) {
-	addTool(server, "kata.search_tools", "Find Kata tools", "Find typed MCP tools for a task, with loader, guide and input details. Searches tool metadata only; kata.search searches issues. Available before loading sections.", toolHints(true, false, false),
+	addTool(server, "poomsae.search_tools", "Find Poomsae tools", "Find typed MCP tools for a task, with loader, guide and input details. Searches tool metadata only; poomsae.search searches issues. Available before loading sections.", toolHints(true, false, false),
 		func(ctx context.Context, request *sdkmcp.CallToolRequest, input ToolSearchInput) (*sdkmcp.CallToolResult, ToolSearchOutput, error) {
 			// The SDK repairs malformed Unicode while validating its typed
 			// copy. Decode the retained original strictly before using it.
@@ -137,7 +137,7 @@ func validateToolSearch(input ToolSearchInput) error {
 }
 
 func newToolSearchCatalog(options Options) (*toolSearchCatalog, error) {
-	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "kata-tool-metadata", Version: options.Version}, nil)
+	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "poomsae-tool-metadata", Version: options.Version}, nil)
 	sections := toolSections(options.StorageAdmin != nil, options.EnableTokenAdmin && options.Scope.Mode() == ScopeAll)
 	for _, section := range sections {
 		if section.available {
@@ -153,7 +153,7 @@ func newToolSearchCatalog(options Options) (*toolSearchCatalog, error) {
 		return nil, fmt.Errorf("connect tool metadata catalog: %w", err)
 	}
 	defer func() { _ = serverSession.Close() }()
-	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "kata-tool-discovery", Version: options.Version}, nil)
+	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "poomsae-tool-discovery", Version: options.Version}, nil)
 	session, err := client.Connect(ctx, clientTransport, nil)
 	if err != nil {
 		return nil, fmt.Errorf("initialize tool metadata catalog: %w", err)
@@ -198,12 +198,12 @@ func toolSearchInScope(name string, mode ScopeMode) bool {
 		return true
 	}
 	switch name {
-	case "kata.storage_export", "kata.project_create", "kata.project_update", "kata.project_merge",
-		"kata.project_remove", "kata.project_restore", "kata.project_purge",
-		"kata.connectors", "kata.connector_fields", "kata.connector_field_map",
-		"kata.connector_field_unmap", "kata.bridge_bind",
-		"kata.federation_bridge_connect", "kata.federation_bridge_status", "kata.federation_bridge_disconnect",
-		"kata.federation_spoke_name", "kata.federation_rebind", "kata.federation_root_key_repin":
+	case "poomsae.storage_export", "poomsae.project_create", "poomsae.project_update", "poomsae.project_merge",
+		"poomsae.project_remove", "poomsae.project_restore", "poomsae.project_purge",
+		"poomsae.connectors", "poomsae.connector_fields", "poomsae.connector_field_map",
+		"poomsae.connector_field_unmap", "poomsae.bridge_bind",
+		"poomsae.federation_bridge_connect", "poomsae.federation_bridge_status", "poomsae.federation_bridge_disconnect",
+		"poomsae.federation_spoke_name", "poomsae.federation_rebind", "poomsae.federation_root_key_repin":
 		return false
 	}
 	return true
@@ -247,22 +247,22 @@ func (catalog *toolSearchCatalog) search(input ToolSearchInput) ToolSearchOutput
 		limit = *input.Limit
 	}
 	query := strings.TrimSpace(input.Query)
-	output := ToolSearchOutput{Query: query, Results: make([]ToolSearchResult, 0, limit), SchemaRoute: "Call the result's loader if present, refresh tools/list, and read its inputSchema for full constraints and nested inputs. Call kata.skills with a returned guide name for guidance."}
+	output := ToolSearchOutput{Query: query, Results: make([]ToolSearchResult, 0, limit), SchemaRoute: "Call the result's loader if present, refresh tools/list, and read its inputSchema for full constraints and nested inputs. Call poomsae.skills with a returned guide name for guidance."}
 	// Kit may lazily sort the tree: build one per call so concurrent searches
 	// never mutate shared command state. These commands contain no CLI logic.
-	root := &cobra.Command{Use: "kata"}
+	root := &cobra.Command{Use: "poomsae"}
 	// The CLI evaluation already established these task words for the
 	// corresponding operations. MCP adds search/guide terms because those
 	// routes are otherwise easy to confuse with import and cron workflows.
 	keywords := map[string]string{
-		"kata.comment": "log note", "kata.create": "bug", "kata.show": "details",
-		"kata.ready": "unblocked", "kata.close": "completed", "kata.cron_run": "recorded",
-		"kata.search": "find lookup", "kata.skills": "agent workflow guide",
+		"poomsae.comment": "log note", "poomsae.create": "bug", "poomsae.show": "details",
+		"poomsae.ready": "unblocked", "poomsae.close": "completed", "poomsae.cron_run": "recorded",
+		"poomsae.search": "find lookup", "poomsae.skills": "agent workflow guide",
 	}
 	for name, tool := range catalog.tools {
 		// Titles are searchable names too; otherwise compound MCP names such
 		// as import_issues disproportionately match the common word "issue".
-		command := &cobra.Command{Use: strings.TrimPrefix(name, "kata."), Aliases: []string{catalog.titles[name], keywords[name]}, Short: tool.Summary, Run: func(*cobra.Command, []string) {}}
+		command := &cobra.Command{Use: strings.TrimPrefix(name, "poomsae."), Aliases: []string{catalog.titles[name], keywords[name]}, Short: tool.Summary, Run: func(*cobra.Command, []string) {}}
 		clisearch.SetKeywords(command, catalog.titles[name], keywords[name])
 		root.AddCommand(command)
 	}
@@ -273,7 +273,7 @@ func (catalog *toolSearchCatalog) search(input ToolSearchInput) ToolSearchOutput
 	for _, match := range clisearch.Search(root, query, toolSearchMaxResults, clisearch.Options{Synonyms: map[string][]string{
 		"ticket": {"issue"}, "bug": {"issue"}, "todo": {"issue"}, "note": {"comment"},
 	}}) {
-		name := "kata." + strings.TrimPrefix(match.Command, "kata ")
+		name := "poomsae." + strings.TrimPrefix(match.Command, "poomsae ")
 		if name == query {
 			continue
 		}

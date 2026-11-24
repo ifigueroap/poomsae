@@ -10,9 +10,9 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
 )
 
 type historicalUIReferenceHostAccess struct {
@@ -144,7 +144,7 @@ func TestUIIssueReferenceHistoricalCurrentProject(t *testing.T) {
 					req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+"/api/v1/ui/issue-reference?"+query.Encode(), nil)
 					require.NoError(t, err)
 					if state == "scope-denied" {
-						req.Header.Set("X-Kata-Project-Scope", fmt.Sprintf(`["%s"]`, source.UID))
+						req.Header.Set("X-Poomsae-Project-Scope", fmt.Sprintf(`["%s"]`, source.UID))
 					}
 					response, err := ts.Client().Do(req)
 					require.NoError(t, err)

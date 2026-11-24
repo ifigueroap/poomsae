@@ -13,9 +13,9 @@ import (
 // A selected credential failure must stop the client before any request.
 func TestAuthFileFailureStopsClientConstruction(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_AUTH_TOKEN_FILE", filepath.Join(home, "missing-token"))
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", filepath.Join(home, "missing-token"))
 	_, err := NewHTTPClient(t.Context(), "http://127.0.0.1:7777", Opts{})
 	require.Error(t, err)
 	d := resolvedForRunning(DaemonSourceServerEnv, "", remoteRunningDaemon("http://127.0.0.1:7777", true)).withGlobalAuth()
@@ -25,9 +25,9 @@ func TestAuthFileFailureStopsClientConstruction(t *testing.T) {
 
 func TestAuthFileFailureSurvivesUnrelatedMalformedTOML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_AUTH_TOKEN_FILE", filepath.Join(home, "missing-token"))
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", filepath.Join(home, "missing-token"))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("invalid = ["), 0o600))
 	d := resolvedForRunning(DaemonSourceServerEnv, "", remoteRunningDaemon("http://127.0.0.1:7777", true)).withGlobalAuth()
 	_, err := NewHTTPClientForResolved(t.Context(), d, Opts{})
@@ -38,8 +38,8 @@ func TestAuthFileFailureSurvivesUnrelatedMalformedTOML(t *testing.T) {
 // never acquires it, even when it points at that same endpoint.
 func TestPersistedOwnerTokenOnlyForMarkedLocalRuntime(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	writePrivateAuthFixture(t, filepath.Join(home, "auth-token"), "owner-secret\n")
 	running := runningDaemonForLive(liveDaemon{BaseURL: "http://100.64.0.5:7777", Record: kitdaemon.RuntimeRecord{Address: "100.64.0.5:7777", Metadata: map[string]string{"config_auth_source": "persisted_file"}}})
 	local := resolvedForRunning(DaemonSourceLocalRuntime, "", running).withGlobalAuth()
@@ -57,8 +57,8 @@ func TestPersistedOwnerTokenOnlyForMarkedLocalRuntime(t *testing.T) {
 
 func TestPersistedOwnerTokenDoesNotReachConfiguredRemote(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	writePrivateAuthFixture(t, filepath.Join(home, "auth-token"), "owner-secret\n")
 	d := resolvedForRunning(DaemonSourceServerEnv, "", remoteRunningDaemon("https://daemon.example", true)).withGlobalAuth()
 	require.Empty(t, d.Token)

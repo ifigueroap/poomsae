@@ -10,13 +10,13 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/pkg/federationprovider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/pkg/federationprovider"
 )
 
 type providerLeaveStore struct {
@@ -38,8 +38,8 @@ func (s *providerLeaveStore) FenceRelayDisconnect(ctx context.Context, projectID
 
 func providerMapping(t *testing.T) (config.CatalogDaemonConfig, config.FederationProjectConfig) {
 	t.Helper()
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_TEST_PROVIDER_PROCESS", "1")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_TEST_PROVIDER_PROCESS", "1")
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	return config.CatalogDaemonConfig{Name: "team-hub", URL: "https://hub.example/tasks"}, config.FederationProjectConfig{
@@ -52,7 +52,7 @@ func providerMapping(t *testing.T) (config.CatalogDaemonConfig, config.Federatio
 // test. It verifies that the request already exists in the real credential file
 // before returning a decision. A candidate sent before persistence exits 2.
 func TestFederationProviderProcess(_ *testing.T) {
-	if os.Getenv("KATA_TEST_PROVIDER_PROCESS") != "1" {
+	if os.Getenv("POOMSAE_TEST_PROVIDER_PROCESS") != "1" {
 		return
 	}
 	request, err := federationprovider.DecodeRequest(os.Stdin)
@@ -76,14 +76,14 @@ func TestFederationProviderProcess(_ *testing.T) {
 		(request.Operation == "release" && request.CandidateToken != "") {
 		os.Exit(2)
 	}
-	response := federationprovider.Response{Version: 1, Operation: request.Operation, RequestID: request.RequestID, Status: federationprovider.Status(os.Getenv("KATA_TEST_PROVIDER_STATUS"))}
+	response := federationprovider.Response{Version: 1, Operation: request.Operation, RequestID: request.RequestID, Status: federationprovider.Status(os.Getenv("POOMSAE_TEST_PROVIDER_STATUS"))}
 	if response.Status == "ready" {
 		response.HubURL = request.HubURL
 		response.ProjectID = 42
 		response.ProjectUID = replicaHubProjectUID
 		response.EnrollmentID = 7
 		response.Actor = "Example User"
-		if actor := os.Getenv("KATA_TEST_PROVIDER_ACTOR"); actor != "" {
+		if actor := os.Getenv("POOMSAE_TEST_PROVIDER_ACTOR"); actor != "" {
 			response.Actor = actor
 		}
 		response.Capabilities = "claim,pull,push"
@@ -101,7 +101,7 @@ func TestFederationProviderProcess(_ *testing.T) {
 func TestFederationProviderAttachesEmptyReplicaWithoutAdoption(t *testing.T) {
 	catalog, mapping := providerMapping(t)
 	mapping.Intent = "read_only"
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "ready")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "ready")
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProject(t.Context(), mapping.SpokeProject)
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestFederationProviderRejoinsDetachedProject(t *testing.T) {
 		t.Run(string(intent), func(t *testing.T) {
 			catalog, mapping := providerMapping(t)
 			mapping.Intent = intent
-			t.Setenv("KATA_TEST_PROVIDER_STATUS", "ready")
+			t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "ready")
 			store := openReplicaServiceStore(t)
 			ctx := t.Context()
 			project, err := store.CreateProjectWithUID(ctx, mapping.SpokeProject, replicaHubProjectUID)
@@ -182,7 +182,7 @@ func TestFederationProviderPersistsBeforeContactAndResumes(t *testing.T) {
 	store := openReplicaServiceStore(t)
 	project, err := store.CreateProject(t.Context(), mapping.SpokeProject)
 	require.NoError(t, err)
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "approval_required")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "approval_required")
 	credentials := config.DefaultFederationCredentialStore()
 	peer := config.FederationCredential{HubURL: "https://other.example", Token: "synthetic-peer-credential"}
 	require.NoError(t, credentials.StoreFederationCredential(t.Context(), "peer-project", peer))
@@ -198,7 +198,7 @@ func TestFederationProviderPersistsBeforeContactAndResumes(t *testing.T) {
 
 	// A new store handle rereads disk, as after a daemon restart. Readying the
 	// saved request must not substitute its token or local project identity.
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "ready")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "ready")
 	ready, err := daemon.AuthorizeFederationProvider(t.Context(), store, config.DefaultFederationCredentialStore(), catalog, mapping)
 	require.NoError(t, err)
 	assert.Equal(t, pending.Credential.Provider.RequestID, ready.Credential.Provider.RequestID)
@@ -209,7 +209,7 @@ func TestFederationProviderPersistsBeforeContactAndResumes(t *testing.T) {
 	assert.Equal(t, "2030-01-01T00:00:00Z", ready.Credential.Provider.ExpiresAt.Format(time.RFC3339))
 
 	// Once ready, ordinary local reuse requires no running helper or fresh login.
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "invalid-output")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "invalid-output")
 	replayed, err := daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.NoError(t, err)
 	assert.True(t, ready.Credential.Equal(replayed.Credential))
@@ -251,7 +251,7 @@ func TestFederationProviderPersistsBeforeContactAndResumes(t *testing.T) {
 	require.ErrorIs(t, err, daemon.ErrFederationReplicaLeavePending, "ordinary teardown must not discard an unconfirmed provider release")
 	_, err = daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.ErrorIs(t, err, daemon.ErrFederationReplicaLeavePending)
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "released")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "released")
 	released, err := daemon.ReleaseFederationProvider(t.Context(), store, credentials, project.ID)
 	require.NoError(t, err)
 	assert.Equal(t, federationprovider.StatusReleased, released.Credential.Provider.Status)
@@ -279,7 +279,7 @@ func TestFederationProviderKeepsFailedAndDeniedRequests(t *testing.T) {
 			_, err := store.CreateProject(t.Context(), mapping.SpokeProject)
 			require.NoError(t, err)
 			credentials := config.DefaultFederationCredentialStore()
-			t.Setenv("KATA_TEST_PROVIDER_STATUS", status)
+			t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", status)
 			_, err = daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 			if status == "invalid-output" {
 				require.ErrorIs(t, err, federationprovider.ErrProviderFailed)
@@ -289,7 +289,7 @@ func TestFederationProviderKeepsFailedAndDeniedRequests(t *testing.T) {
 			before, found, err := credentials.FindManagedFederationCredential(t.Context(), mapping.SpokeProject)
 			require.NoError(t, err)
 			require.True(t, found)
-			t.Setenv("KATA_TEST_PROVIDER_STATUS", "ready")
+			t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "ready")
 			after, err := daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 			require.NoError(t, err)
 			assert.Equal(t, before.Credential.Provider.RequestID, after.Credential.Provider.RequestID)
@@ -312,11 +312,11 @@ func TestFederationProviderPreservesUnrelatedCredentials(t *testing.T) {
 	require.NoError(t, credentials.StoreFederationCredential(t.Context(), project.UID, config.FederationCredential{Token: "existing-owner-credential"}))
 	path, err := config.FederationCredentialsPath()
 	require.NoError(t, err)
-	before, err := os.ReadFile(path) //nolint:gosec // credential path belongs to this test's temporary Kata home
+	before, err := os.ReadFile(path) //nolint:gosec // credential path belongs to this test's temporary Poomsae home
 	require.NoError(t, err)
 	_, err = daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.ErrorIs(t, err, daemon.ErrFederationReplicaCredentialConflict)
-	after, err := os.ReadFile(path) //nolint:gosec // credential path belongs to this test's temporary Kata home
+	after, err := os.ReadFile(path) //nolint:gosec // credential path belongs to this test's temporary Poomsae home
 	require.NoError(t, err)
 	assert.True(t, string(before) == string(after), "existing credentials must remain untouched")
 }
@@ -327,8 +327,8 @@ func TestFederationProviderValidatesActorBeforeSavingReady(t *testing.T) {
 	_, err := store.CreateProject(t.Context(), mapping.SpokeProject)
 	require.NoError(t, err)
 	credentials := config.DefaultFederationCredentialStore()
-	t.Setenv("KATA_TEST_PROVIDER_STATUS", "ready")
-	t.Setenv("KATA_TEST_PROVIDER_ACTOR", " BOOTSTRAP ")
+	t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "ready")
+	t.Setenv("POOMSAE_TEST_PROVIDER_ACTOR", " BOOTSTRAP ")
 	_, err = daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.ErrorIs(t, err, federationprovider.ErrProviderFailed)
 	pending, found, err := credentials.FindManagedFederationCredential(t.Context(), mapping.SpokeProject)
@@ -336,7 +336,7 @@ func TestFederationProviderValidatesActorBeforeSavingReady(t *testing.T) {
 	require.True(t, found)
 	assert.Empty(t, pending.Credential.Provider.Status)
 	assert.Empty(t, pending.Credential.Actor)
-	t.Setenv("KATA_TEST_PROVIDER_ACTOR", " Example User ")
+	t.Setenv("POOMSAE_TEST_PROVIDER_ACTOR", " Example User ")
 	ready, err := daemon.AuthorizeFederationProvider(t.Context(), store, credentials, catalog, mapping)
 	require.NoError(t, err)
 	assert.Equal(t, "Example User", ready.Credential.Actor)
@@ -363,7 +363,7 @@ func TestFederationProviderOvertakenLeave(t *testing.T) {
 	}
 	t.Run("detach", func(t *testing.T) {
 		env, source, _ := setup(t)
-		t.Setenv("KATA_TEST_PROVIDER_STATUS", "released")
+		t.Setenv("POOMSAE_TEST_PROVIDER_STATUS", "released")
 		path := fmt.Sprintf("/api/v1/federation/replicas/%d/actions/leave", source.ID)
 		response, raw := envDoRaw(t, env, http.MethodPost, path, map[string]any{"disposition": "detach", "actor": "worker"}, nil)
 		require.Equal(t, http.StatusOK, response.StatusCode, string(raw))

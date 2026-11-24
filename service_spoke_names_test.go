@@ -1,4 +1,4 @@
-package kata_test
+package poomsae_test
 
 import (
 	"bytes"
@@ -10,10 +10,10 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
 )
 
 type spokeNameScopeAccess struct {
@@ -24,24 +24,24 @@ type spokeNameScopeAccess struct {
 	globalFences      int
 }
 
-func (a *spokeNameScopeAccess) Authorize(_ context.Context, request kata.AccessRequest) (kata.AccessDecision, error) {
+func (a *spokeNameScopeAccess) Authorize(_ context.Context, request poomsae.AccessRequest) (poomsae.AccessDecision, error) {
 	if request.Operation.ID != "createFederationEnrollment" {
-		return kata.AccessDecision{}, kata.ErrAccessDenied
+		return poomsae.AccessDecision{}, poomsae.ErrAccessDenied
 	}
 	global := request.Operation.AllProjects
 	if global {
 		a.globalRequests++
 		if !a.allowGlobal {
-			return kata.AccessDecision{}, kata.ErrAccessDenied
+			return poomsae.AccessDecision{}, poomsae.ErrAccessDenied
 		}
 	} else if !slices.Equal(request.Operation.ProjectIDs, []int64{a.projectID}) {
-		return kata.AccessDecision{}, kata.ErrAccessDenied
+		return poomsae.AccessDecision{}, poomsae.ErrAccessDenied
 	}
-	return kata.AccessDecision{TransactionFence: func(context.Context, kata.Transaction) error {
+	return poomsae.AccessDecision{TransactionFence: func(context.Context, poomsae.Transaction) error {
 		if global {
 			a.globalFences++
 			if a.rejectGlobalFence {
-				return kata.ErrAccessDenied
+				return poomsae.ErrAccessDenied
 			}
 		}
 		return nil
@@ -74,14 +74,14 @@ func TestServiceSpokeNameEnrollmentRequiresGlobalAuthority(t *testing.T) {
 			_, err = store.CreateFederationEnrollment(t.Context(), db.CreateFederationEnrollmentParams{ProjectID: &other.ID, SpokeInstanceUID: peer, SpokeName: "laptop", Actor: "member", Capabilities: "pull"})
 			require.NoError(t, err)
 			access := &spokeNameScopeAccess{projectID: project.ID, allowGlobal: tc.allowGlobal, rejectGlobalFence: tc.rejectFence}
-			service, err := kata.New(t.Context(), kata.Config{DSN: databasePath, Access: access})
+			service, err := poomsae.New(t.Context(), poomsae.Config{DSN: databasePath, Access: access})
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = service.Close() })
 			raw, err := json.Marshal(map[string]any{"project_id": project.ID, "spoke_instance_uid": peer, "spoke_name": tc.spokeName, "capabilities": "pull"})
 			require.NoError(t, err)
 			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/federation/enrollments", bytes.NewReader(raw))
 			request.Header.Set("Content-Type", "application/json")
-			request = request.WithContext(kata.WithPrincipal(request.Context(), kata.Principal{Subject: "host-member", Actor: "member"}))
+			request = request.WithContext(poomsae.WithPrincipal(request.Context(), poomsae.Principal{Subject: "host-member", Actor: "member"}))
 			response := httptest.NewRecorder()
 			service.Handler().ServeHTTP(response, request)
 			require.Equal(t, tc.status, response.Code, response.Body.String())

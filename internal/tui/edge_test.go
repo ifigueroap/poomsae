@@ -18,7 +18,7 @@ import (
 // the same three-row mix used by snapshot tests so the comparison
 // stays deterministic.
 func TestEdge_WindowResize_NoPanic(t *testing.T) {
-	t.Setenv("KATA_COLOR_MODE", "none")
+	t.Setenv("POOMSAE_COLOR_MODE", "none")
 	applyDefaultColorMode()
 	prior := renderNow
 	renderNow = func() time.Time { return snapshotFixedNow }

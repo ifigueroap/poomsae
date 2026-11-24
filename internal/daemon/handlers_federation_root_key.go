@@ -10,16 +10,16 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 const (
 	rootRepinConsequencePin      = "The project has no root pin yet; the loaded key becomes its root key."
 	rootRepinConsequenceRotation = "Downstream relays accept the new key through the signed rotation on their next sync."
 	rootRepinConsequenceUnsigned = "Downstream relays that pinned the previous key reject receipts signed by the new key " +
-		"and cannot follow an unsigned repin; Kata has no command that moves them to the new key. " +
+		"and cannot follow an unsigned repin; Poomsae has no command that moves them to the new key. " +
 		"New relays can still connect. Receipts signed by the previous key stay verifiable."
 	rootRepinConsequenceNewKey = "Creates a new federation-root.key. Other projects pinned to the missing key " +
 		"stay unavailable until each is repinned."
@@ -228,6 +228,6 @@ func RootSigningWarning(health api.RootSigningHealth) string {
 	if len(health.Projects) > 0 {
 		projects = strings.Join(health.Projects, ", ")
 	}
-	return fmt.Sprintf("root signing key %s %s; signed writes to %s fail until you restore the key file and restart the daemon, or run `kata federation root-key repin --project <name>`",
+	return fmt.Sprintf("root signing key %s %s; signed writes to %s fail until you restore the key file and restart the daemon, or run `poomsae federation root-key repin --project <name>`",
 		health.KeyFile, problem, projects)
 }

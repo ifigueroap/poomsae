@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
-	"go.kenn.io/kata/internal/db"
 )
 
 func TestFingerprint_DeterministicOverInputOrder(t *testing.T) {
@@ -54,7 +54,7 @@ func TestFingerprint_OutgoingBlocksByteLayoutStable(t *testing.T) {
 }
 
 // TestFingerprintLegacy_DiffersOnDuplicates pins that the legacy hash
-// preserves duplicate link entries (the pre-kata#1 behavior), so the
+// preserves duplicate link entries (the pre-poomsae#1 behavior), so the
 // daemon's lookup path can match idempotency events that were stored
 // before dedupe-in-Fingerprint landed.
 func TestFingerprintLegacy_DiffersOnDuplicates(t *testing.T) {
@@ -73,7 +73,7 @@ func TestFingerprintLegacy_DiffersOnDuplicates(t *testing.T) {
 
 // TestFingerprint_DedupesLinksBeforeHashing pins that fingerprint
 // canonicalization matches what CreateIssue persists. Without dedupe-
-// before-hash, an idempotent retry of `kata create --related 2 --related 2`
+// before-hash, an idempotent retry of `poomsae create --related 2 --related 2`
 // against an existing entry with `--related 2` would trip
 // idempotency_mismatch even though the persisted state is identical.
 func TestFingerprint_DedupesLinksBeforeHashing(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/pkg/connector"
 )
 
 func (r *Reconciler) applyInboundComments(
@@ -124,7 +124,7 @@ func (r *Reconciler) applyOutboundComments(
 	if snapshot.binding.PublishCommentsAfter == nil {
 		return result, fmt.Errorf("%w: publish-comments frontier is missing", db.ErrExternalRootValidation)
 	}
-	for _, comment := range snapshot.kataComments {
+	for _, comment := range snapshot.poomsaeComments {
 		if comment.IssueID != snapshot.binding.IssueID || snapshot.mappedComments[comment.ID] {
 			continue
 		}
@@ -264,7 +264,7 @@ func pendingExternalCommentsToWithhold(snapshot reconcileSnapshot) map[string]bo
 }
 
 func pendingKataComment(snapshot reconcileSnapshot) (db.Comment, bool) {
-	for _, comment := range snapshot.kataComments {
+	for _, comment := range snapshot.poomsaeComments {
 		if comment.UID == snapshot.binding.PendingCommentUID {
 			return comment, true
 		}
@@ -314,6 +314,6 @@ func skippedCommentMapping(
 }
 
 func publicationOperationID(binding db.ExternalRootBinding, comment db.Comment) string {
-	digest := sha256.Sum256([]byte("kata.external-comment.v1\x00" + binding.UID + "\x00" + comment.UID))
+	digest := sha256.Sum256([]byte("poomsae.external-comment.v1\x00" + binding.UID + "\x00" + comment.UID))
 	return hex.EncodeToString(digest[:])
 }

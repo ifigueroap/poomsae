@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -25,7 +25,7 @@ func TestNewHTTPClientForResolvedUsesCarriedUnixSocket(t *testing.T) {
 		t.Skip("Unix sockets are unsupported on Windows")
 	}
 	setupKataEnv(t)
-	socket := filepath.Join(t.TempDir(), "kata.sock")
+	socket := filepath.Join(t.TempDir(), "poomsae.sock")
 	ln, err := new(net.ListenConfig).Listen(t.Context(), "unix", socket)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = ln.Close() })
@@ -66,7 +66,7 @@ func TestNewHTTPClientForResolvedNamedNeedsNoURLCrossCheck(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		gotAuthorization = r.Header.Get("Authorization")
@@ -75,8 +75,8 @@ func TestNewHTTPClientForResolvedNamedNeedsNoURLCrossCheck(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "hub-project-daemon"
@@ -101,9 +101,9 @@ token = "catalog-token"
 func TestResolvedDaemonSameOriginTwoSourcesPicksHigherPriority(t *testing.T) {
 	srv := startResolvableDaemon(t)
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", srv.URL)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", srv.URL)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
@@ -129,7 +129,7 @@ func TestNewHTTPClientForResolvedDoesNotRereadConfiguration(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 			return
 		}
 		gotAuthorization = r.Header.Get("Authorization")
@@ -138,14 +138,14 @@ func TestNewHTTPClientForResolvedDoesNotRereadConfiguration(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_SERVER", "")
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_SERVER", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, writeAuthConfig(home, "resolved-token"))
 
 	workspace := t.TempDir()
 	writeNeutralWorkspaceMarker(t, workspace)
-	localPath := filepath.Join(workspace, ".kata.local.toml")
+	localPath := filepath.Join(workspace, ".poomsae.local.toml")
 	require.NoError(t, os.WriteFile(localPath,
 		[]byte("version = 1\n\n[server]\nurl = \""+srv.URL+"\"\n"), 0o600))
 
@@ -154,7 +154,7 @@ func TestNewHTTPClientForResolvedDoesNotRereadConfiguration(t *testing.T) {
 	require.Equal(t, DaemonSourceLocalConfig, resolved.Source)
 
 	// Construction must consume the value above, not any state changed after it.
-	t.Setenv("KATA_AUTH_TOKEN", "replacement-token")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "replacement-token")
 	require.NoError(t, writeRawConfig(home, "not = valid = toml"))
 	require.NoError(t, os.WriteFile(localPath,
 		[]byte("[server]\nurl = \"http://elsewhere.invalid\"\nallow_insecure = true\n"), 0o600))
@@ -173,15 +173,15 @@ func TestNewHTTPClientForResolvedDoesNotRereadConfiguration(t *testing.T) {
 }
 
 func TestResolvedDaemonSourcesTable(t *testing.T) {
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 
 	t.Run("server env", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", srv.URL)
-		t.Setenv("KATA_ALLOW_INSECURE", "1")
-		t.Setenv("KATA_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", srv.URL)
+		t.Setenv("POOMSAE_ALLOW_INSECURE", "1")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
 		require.NoError(t, writeAuthConfig(home, "global-token"))
 
 		resolved, err := EnsureResolvedInWorkspace(t.Context(), "")
@@ -192,13 +192,13 @@ func TestResolvedDaemonSourcesTable(t *testing.T) {
 	t.Run("workspace local config", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", "")
-		t.Setenv("KATA_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", "")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
 		require.NoError(t, writeAuthConfig(home, "global-token"))
 		workspace := t.TempDir()
 		writeNeutralWorkspaceMarker(t, workspace)
-		require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"), []byte(`
+		require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"), []byte(`
 version = 1
 
 [server]
@@ -215,17 +215,17 @@ allow_insecure = true
 	t.Run("active daemon entry token env", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", "")
-		t.Setenv("KATA_AUTH_TOKEN", "")
-		t.Setenv("KATA_SHARED_TOKEN", "catalog-env-token")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", "")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_SHARED_TOKEN", "catalog-env-token")
 		require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 allow_insecure = true
 `))
 
@@ -238,17 +238,17 @@ allow_insecure = true
 	t.Run("active daemon explicit env override", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", "")
-		t.Setenv("KATA_AUTH_TOKEN", "override-token")
-		t.Setenv("KATA_SHARED_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", "")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "override-token")
+		t.Setenv("POOMSAE_SHARED_TOKEN", "")
 		require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_SHARED_TOKEN"
+token_env = "POOMSAE_SHARED_TOKEN"
 `))
 
 		resolved, err := EnsureResolvedInWorkspace(t.Context(), "")
@@ -259,14 +259,14 @@ token_env = "KATA_SHARED_TOKEN"
 	t.Run("named catalog remote token env", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_AUTH_TOKEN", "")
-		t.Setenv("KATA_NAMED_TOKEN", "catalog-env-token")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_NAMED_TOKEN", "catalog-env-token")
 		require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_NAMED_TOKEN"
+token_env = "POOMSAE_NAMED_TOKEN"
 allow_insecure = true
 `))
 
@@ -279,14 +279,14 @@ allow_insecure = true
 	t.Run("named catalog remote explicit env override", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_AUTH_TOKEN", "override-token")
-		t.Setenv("KATA_NAMED_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "override-token")
+		t.Setenv("POOMSAE_NAMED_TOKEN", "")
 		require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_NAMED_TOKEN"
+token_env = "POOMSAE_NAMED_TOKEN"
 `))
 
 		resolved, err := EnsureResolvedNamed(t.Context(), "shared")
@@ -296,14 +296,14 @@ token_env = "KATA_NAMED_TOKEN"
 
 	t.Run("named catalog local token env", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_AUTH_TOKEN", "global-token")
-		t.Setenv("KATA_LOCAL_TOKEN", "local-entry-token")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
+		t.Setenv("POOMSAE_LOCAL_TOKEN", "local-entry-token")
 		require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "local"
 local = true
-token_env = "KATA_LOCAL_TOKEN"
+token_env = "POOMSAE_LOCAL_TOKEN"
 `))
 		patchEnsureHooks(t, currentVersionForEnsure(), "http://127.0.0.1:27123")
 
@@ -315,8 +315,8 @@ token_env = "KATA_LOCAL_TOKEN"
 
 	t.Run("named catalog local global fallback", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
 		require.NoError(t, writeRawConfig(home, `
 [auth]
 token = "global-token"
@@ -334,11 +334,11 @@ local = true
 
 	t.Run("local runtime", func(t *testing.T) {
 		home := setupKataEnv(t)
-		t.Setenv("KATA_SERVER", "")
-		t.Setenv("KATA_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_SERVER", "")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
 		require.NoError(t, writeAuthConfig(home, "global-token"))
 		_, address := startMockDaemonPing(t, map[string]any{
-			"ok": true, "service": "kata", "version": currentVersionForEnsure(),
+			"ok": true, "service": "poomsae", "version": currentVersionForEnsure(),
 		})
 		require.NoError(t, writeRuntimeRecord(t, home, address))
 
@@ -351,8 +351,8 @@ local = true
 
 	t.Run("injected", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_AUTH_TOKEN", "injected-token")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "injected-token")
 		ctx := context.WithValue(t.Context(), BaseURLKey{}, "https://daemon.example")
 
 		resolved, err := EnsureResolvedInWorkspace(ctx, "")
@@ -379,9 +379,9 @@ func TestResolvedDaemonRunningPreservesEndpointMetadata(t *testing.T) {
 		{
 			name: "local unix",
 			in: resolvedForRunning(DaemonSourceLocalRuntime, "",
-				localRunningDaemon(UnixBase, "unix:///tmp/kata-test.sock")),
-			want:           RunningDaemon{BaseURL: UnixBase, Address: "unix:///tmp/kata-test.sock", Network: "unix", Scheme: "http"},
-			wantUnixSocket: "/tmp/kata-test.sock",
+				localRunningDaemon(UnixBase, "unix:///tmp/poomsae-test.sock")),
+			want:           RunningDaemon{BaseURL: UnixBase, Address: "unix:///tmp/poomsae-test.sock", Network: "unix", Scheme: "http"},
+			wantUnixSocket: "/tmp/poomsae-test.sock",
 		},
 		{
 			name: "configured remote",
@@ -411,7 +411,7 @@ func TestResolvedDaemonWithRunningReplacesOnlyRuntimeMetadata(t *testing.T) {
 		Token:      "target-token", AllowInsecure: true, TrustPrivateNetwork: true,
 	}
 	running := RunningDaemon{
-		BaseURL: UnixBase, Address: "unix:///tmp/fresh-kata.sock",
+		BaseURL: UnixBase, Address: "unix:///tmp/fresh-poomsae.sock",
 		Network: "unix", Scheme: "http",
 	}
 
@@ -424,10 +424,10 @@ func TestResolvedDaemonWithRunningReplacesOnlyRuntimeMetadata(t *testing.T) {
 	assert.True(t, refreshed.AllowInsecure)
 	assert.True(t, refreshed.TrustPrivateNetwork)
 	assert.Equal(t, UnixBase, refreshed.BaseURL)
-	assert.Equal(t, "unix:///tmp/fresh-kata.sock", refreshed.Address)
+	assert.Equal(t, "unix:///tmp/fresh-poomsae.sock", refreshed.Address)
 	assert.Equal(t, "unix", refreshed.Network)
 	assert.Equal(t, "http", refreshed.Scheme)
-	assert.Equal(t, "/tmp/fresh-kata.sock", refreshed.UnixSocket)
+	assert.Equal(t, "/tmp/fresh-poomsae.sock", refreshed.UnixSocket)
 }
 
 func TestDiscoverResolvedPreservesScanErrors(t *testing.T) {
@@ -487,7 +487,7 @@ name = "local"
 local = true
 `))
 	baseURL, address := startMockDaemonPing(t, map[string]any{
-		"ok": true, "service": "kata", "version": currentVersionForEnsure(),
+		"ok": true, "service": "poomsae", "version": currentVersionForEnsure(),
 	})
 	require.NoError(t, writeRuntimeRecord(t, home, address))
 
@@ -519,12 +519,12 @@ func TestRemoteResolutionModesShareSelectionWithoutCredentialLeak(t *testing.T) 
 	t.Run("server environment wins for both modes", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", srv.URL)
-		t.Setenv("KATA_AUTH_TOKEN", "global-token")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", srv.URL)
+		t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
 		workspace := t.TempDir()
 		writeNeutralWorkspaceMarker(t, workspace)
-		require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.local.toml"), []byte(`
+		require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.local.toml"), []byte(`
 version = 1
 
 [server]
@@ -547,17 +547,17 @@ url = "http://127.0.0.1:1"
 	t.Run("credential-free active selection ignores unset token env", func(t *testing.T) {
 		srv := startResolvableDaemon(t)
 		home := t.TempDir()
-		t.Setenv("KATA_HOME", home)
-		t.Setenv("KATA_SERVER", "")
-		t.Setenv("KATA_AUTH_TOKEN", "")
-		t.Setenv("KATA_MISSING_TOKEN", "")
+		t.Setenv("POOMSAE_HOME", home)
+		t.Setenv("POOMSAE_SERVER", "")
+		t.Setenv("POOMSAE_AUTH_TOKEN", "")
+		t.Setenv("POOMSAE_MISSING_TOKEN", "")
 		require.NoError(t, writeRawConfig(home, `
 active_daemon = "shared"
 
 [[daemon]]
 name = "shared"
 url = "`+srv.URL+`"
-token_env = "KATA_MISSING_TOKEN"
+token_env = "POOMSAE_MISSING_TOKEN"
 `))
 
 		baseURL, ok, err := ResolveRemote(t.Context(), "")
@@ -566,7 +566,7 @@ token_env = "KATA_MISSING_TOKEN"
 		assert.Equal(t, srv.URL, baseURL)
 
 		_, _, err = ResolveRemoteDaemon(t.Context(), "")
-		require.EqualError(t, err, `daemon "shared": token_env "KATA_MISSING_TOKEN" is unset or empty`)
+		require.EqualError(t, err, `daemon "shared": token_env "POOMSAE_MISSING_TOKEN" is unset or empty`)
 	})
 }
 
@@ -592,7 +592,7 @@ func startResolvableDaemon(t *testing.T) *httptest.Server {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"kata","version":"test"}`))
+		_, _ = w.Write([]byte(`{"ok":true,"service":"poomsae","version":"test"}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -600,7 +600,7 @@ func startResolvableDaemon(t *testing.T) *httptest.Server {
 
 func writeNeutralWorkspaceMarker(t *testing.T, workspace string) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".kata.toml"), []byte(
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"), []byte(
 		"version = 1\n\n[project]\nidentity = \"example.test/spoke-project\"\nname = \"spoke-project\"\n",
 	), 0o600))
 }

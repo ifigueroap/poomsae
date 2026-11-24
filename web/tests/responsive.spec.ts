@@ -2,11 +2,11 @@ import { expect, test } from './fixtures'
 
 test.use({ trace: 'off' })
 
-test('a long server name leaves New task reachable', async ({ page, kata }) => {
+test('a long server name leaves New task reachable', async ({ page, poomsae }) => {
   const name = 'example-local-server-with-a-very-long-configured-name'
   await page.route('**/api/v1/**', async (route) => {
     const headers = { ...route.request().headers() }
-    if (headers['x-kata-web-daemon'] === name) headers['x-kata-web-daemon'] = 'example-local'
+    if (headers['x-poomsae-web-daemon'] === name) headers['x-poomsae-web-daemon'] = 'example-local'
     if (new URL(route.request().url()).pathname === '/api/v1/ui/daemons') {
       const response = await route.fetch({ headers })
       const roster = await response.json()
@@ -14,7 +14,7 @@ test('a long server name leaves New task reachable', async ({ page, kata }) => {
       await route.fulfill({ response, json: roster })
     } else await route.continue({ headers })
   })
-  await kata.launch(page)
+  await poomsae.launch(page)
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 800 })
     if (width === 390) await page.getByRole('button', { name: 'Open navigation' }).click()
@@ -26,14 +26,14 @@ test('a long server name leaves New task reachable', async ({ page, kata }) => {
   }
 })
 
-test('system views stay beside the list until the mobile layout', async ({ page, kata }) => {
+test('system views stay beside the list until the mobile layout', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 853, height: 684 })
-  await kata.launch(page)
+  await poomsae.launch(page)
 
-  const layout = await page.locator('.kata-layout').evaluate((element) => {
-    const sidebar = element.querySelector('.kata-sidebar')?.getBoundingClientRect()
-    const main = element.querySelector('.kata-main')?.getBoundingClientRect()
-    if (!sidebar || !main) throw new Error('Kata layout panes are missing')
+  const layout = await page.locator('.poomsae-layout').evaluate((element) => {
+    const sidebar = element.querySelector('.poomsae-sidebar')?.getBoundingClientRect()
+    const main = element.querySelector('.poomsae-main')?.getBoundingClientRect()
+    if (!sidebar || !main) throw new Error('Poomsae layout panes are missing')
     return {
       sameRow: Math.round(sidebar.top) === Math.round(main.top),
       sidebarBeforeMain: Math.round(sidebar.right) <= Math.round(main.left),
@@ -43,23 +43,23 @@ test('system views stay beside the list until the mobile layout', async ({ page,
   expect(layout).toEqual({ sameRow: true, sidebarBeforeMain: true })
 })
 
-test('mobile bar opens task capture without opening navigation', async ({ page, kata }) => {
+test('mobile bar opens task capture without opening navigation', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 390, height: 800 })
-  await kata.launch(page)
+  await poomsae.launch(page)
 
   await page.locator('.mobile-navigation-trigger').getByRole('button', { name: 'New task' }).click()
   await expect(page.getByRole('dialog', { name: 'New task' })).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Navigation' })).toHaveCount(0)
 })
 
-test('mobile navigation stays out of the task flow until opened', async ({ page, kata }) => {
+test('mobile navigation stays out of the task flow until opened', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 600, height: 684 })
-  await kata.launch(page)
+  await poomsae.launch(page)
 
-  const layout = await page.locator('.kata-feature').evaluate((element) => {
+  const layout = await page.locator('.poomsae-feature').evaluate((element) => {
     const header = element.querySelector('.mobile-navigation-trigger')?.getBoundingClientRect()
-    const main = element.querySelector('.kata-main')?.getBoundingClientRect()
-    if (!header || !main) throw new Error('Kata header or main pane is missing')
+    const main = element.querySelector('.poomsae-main')?.getBoundingClientRect()
+    if (!header || !main) throw new Error('Poomsae header or main pane is missing')
     return {
       headerBottom: Math.round(header.bottom),
       mainTop: Math.round(main.top),
@@ -79,10 +79,10 @@ test('mobile navigation stays out of the task flow until opened', async ({ page,
 
 test('resizing an open drawer restores desktop navigation and its project state', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   await page.setViewportSize({ width: 1000, height: 684 })
-  await kata.launch(page)
+  await poomsae.launch(page)
   const projects = page.getByRole('button', { name: /Projects/ })
   await projects.click()
   await expect(projects).toHaveAttribute('aria-expanded', 'false')
@@ -97,12 +97,14 @@ test('resizing an open drawer restores desktop navigation and its project state'
   await expect(projects).toHaveAttribute('aria-expanded', 'false')
 })
 
-test('Appearance changes the sidebar color', async ({ page, kata }) => {
+test('Appearance changes the sidebar color', async ({ page, poomsae }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
-  await kata.launch(page)
+  await poomsae.launch(page)
 
   const sidebarColor = () =>
-    page.locator('.kata-sidebar').evaluate((element) => getComputedStyle(element).backgroundColor)
+    page
+      .locator('.poomsae-sidebar')
+      .evaluate((element) => getComputedStyle(element).backgroundColor)
   const darkColor = await sidebarColor()
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: /^Appearance/ }).click()
@@ -110,19 +112,22 @@ test('Appearance changes the sidebar color', async ({ page, kata }) => {
   await expect.poll(sidebarColor).not.toBe(darkColor)
 })
 
-test('task filters stay inside a narrow list pane without overlapping', async ({ page, kata }) => {
+test('task filters stay inside a narrow list pane without overlapping', async ({
+  page,
+  poomsae,
+}) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Narrow pane example' })
-  await page.goto(`${kata.origin}/kata?view=all-open&issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Narrow pane example' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open&issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Display' }).click()
   await page.getByRole('radio', { name: 'Beside list' }).click()
   await page.keyboard.press('Escape')
   await page.setViewportSize({ width: 900, height: 800 })
 
-  const layout = await page.locator('.kata-search-panel').evaluate((panel) => {
+  const layout = await page.locator('.poomsae-search-panel').evaluate((panel) => {
     const panelBounds = panel.getBoundingClientRect()
-    const toolbar = panel.querySelector('.kata-search-toolbar')
+    const toolbar = panel.querySelector('.poomsae-search-toolbar')
     const listHeader = document.querySelector('.issue-list .table-header')
     if (!toolbar || !listHeader) throw new Error('Task filters or list header are missing')
     const toolbarBounds = toolbar.getBoundingClientRect()
@@ -164,11 +169,11 @@ test('task filters stay inside a narrow list pane without overlapping', async ({
   })
 })
 
-test('the title fills space as columns and the list pane resize', async ({ page, kata }) => {
+test('the title fills space as columns and the list pane resize', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, { title: 'Narrow saved column example' })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, { title: 'Narrow saved column example' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   const heading = page.locator('.column-heading-title')
   const wideWidth = (await heading.boundingBox())!.width
   const handle = page.getByRole('separator', { name: 'Resize Due column' })
@@ -185,7 +190,7 @@ test('the title fills space as columns and the list pane resize', async ({ page,
   await expect(page.getByRole('button', { name: /Narrow saved column example/ })).toBeVisible()
 
   await page.evaluate(() =>
-    localStorage.setItem('kata:column-widths/v1', JSON.stringify({ due: 480 })),
+    localStorage.setItem('poomsae:column-widths/v1', JSON.stringify({ due: 480 })),
   )
   await page.reload()
   const dueHeading = page.locator('.column-heading-due')
@@ -200,11 +205,11 @@ test('the title fills space as columns and the list pane resize', async ({ page,
 
 test('task rows stay 36px tall at desktop and mobile widths, including hover', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, { title: 'Compact example task' })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, { title: 'Compact example task' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   const row = page.getByRole('button', { name: /Compact example task/ })
 
   for (const width of [1440, 1024, 600]) {
@@ -216,19 +221,19 @@ test('task rows stay 36px tall at desktop and mobile widths, including hover', a
   }
 })
 
-test('the task list and pane stay aligned beside an open task', async ({ page, kata }) => {
+test('the task list and pane stay aligned beside an open task', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, {
     title: 'Add retries to the task worker',
     priority: 1,
     metadata: { deadline_on: '2026-11-25' },
   })
-  await kata.seedIssue(page, credentials, { title: 'Pin it' })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  await poomsae.seedIssue(page, credentials, { title: 'Pin it' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   const row = page.getByRole('button', { name: /Add retries to the task worker/ })
 
-  const search = (await page.locator('.kata-search-toolbar .kit-search-input').boundingBox())!
+  const search = (await page.locator('.poomsae-search-toolbar .kit-search-input').boundingBox())!
   const listTitle = (await page
     .getByRole('heading', { name: 'All open', exact: true })
     .boundingBox())!
@@ -260,7 +265,7 @@ test('the task list and pane stay aligned beside an open task', async ({ page, k
   }
 
   const right = (box: { x: number; width: number } | null) => box!.x + box!.width
-  const toolbar = right(await page.locator('.kata-search-toolbar').boundingBox())
+  const toolbar = right(await page.locator('.poomsae-search-toolbar').boundingBox())
   const displayRight = right(await page.getByRole('button', { name: 'Display' }).boundingBox())
   const selection = right(await row.boundingBox())
   expect(Math.abs(displayRight - toolbar)).toBeLessThan(1)
@@ -283,11 +288,14 @@ test('the task list and pane stay aligned beside an open task', async ({ page, k
   expect(Math.abs(headerRight - selection)).toBeLessThan(1)
 })
 
-test('a narrow list names the Updated sort its hidden column applies', async ({ page, kata }) => {
+test('a narrow list names the Updated sort its hidden column applies', async ({
+  page,
+  poomsae,
+}) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, { title: 'Sort hint example', priority: 2 })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, { title: 'Sort hint example', priority: 2 })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   const header = page.locator('.table-header')
   const updated = header.getByText('Updated', { exact: true }).filter({ visible: true })
   // At full width the Updated column shows the sort itself.
@@ -310,11 +318,11 @@ test('a narrow list names the Updated sort its hidden column applies', async ({ 
   await expect(header.getByRole('button', { name: /^Sort by Due, currently/ })).toBeVisible()
 })
 
-test('the task count sits beside the list title', async ({ page, kata }) => {
+test('the task count sits beside the list title', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, { title: 'Counted example task' })
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, { title: 'Counted example task' })
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
 
   const list = page.getByRole('region', { name: 'Issues' })
   const title = (await list.getByRole('heading', { name: 'All open' }).boundingBox())!

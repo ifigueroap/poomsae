@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestTwentySyncConfiguration(t *testing.T) {
@@ -14,7 +14,7 @@ func TestTwentySyncConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://api.twenty.com", c.APIOrigin)
 	require.Equal(t, "https://app.twenty.com", c.WebOrigin)
-	require.Equal(t, "KATA_TWENTY_TOKEN", c.TokenEnv)
+	require.Equal(t, "POOMSAE_TWENTY_TOKEN", c.TokenEnv)
 	for _, origin := range []string{"https://twenty.example", "https://TWENTY.example:443/", "http://127.0.0.1:3000", "http://[::1]:3000"} {
 		c, err := config.NormalizeTwentySyncConfig(config.TwentySyncConfig{APIOrigin: origin, TokenEnv: " EXAMPLE_TWENTY_TOKEN "})
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestTwentyDaemonConfigLoading(t *testing.T) {
 }
 
 func TestTwentyLocalProfileCredentials(t *testing.T) {
-	for _, name := range []string{"KATA_TWENTY_TOKEN", "EXAMPLE_TWENTY_TOKEN"} {
+	for _, name := range []string{"POOMSAE_TWENTY_TOKEN", "EXAMPLE_TWENTY_TOKEN"} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv(name, "example-token")
 			c, err := config.NormalizeTwentySyncConfig(config.TwentySyncConfig{TokenEnv: name})
@@ -78,7 +78,7 @@ func TestTwentyLocalProfileCredentials(t *testing.T) {
 			require.Contains(t, env, name+"=example-token")
 		})
 	}
-	for _, name := range []string{"KATA_AUTH_TOKEN", "PORT", "HTTP_PROXY", "PGPASSWORD"} {
+	for _, name := range []string{"POOMSAE_AUTH_TOKEN", "PORT", "HTTP_PROXY", "PGPASSWORD"} {
 		_, err := config.LocalProfileEnvironment(config.LocalProfileConfig{Home: t.TempDir(), Config: &config.DaemonConfig{TwentySync: config.TwentySyncConfig{TokenEnv: name}}}, true)
 		require.Error(t, err, name)
 	}

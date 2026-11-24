@@ -7,10 +7,10 @@ test.use({ trace: 'off' })
 
 test('standalone shell preserves the Forge base typography and header geometry', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   await page.setViewportSize({ width: 1440, height: 800 })
-  await kata.launch(page)
+  await poomsae.launch(page)
 
   const shell = await page.locator('.sidebar-header').evaluate((element) => {
     const style = getComputedStyle(element)
@@ -20,15 +20,15 @@ test('standalone shell preserves the Forge base typography and header geometry',
   await expect(page.locator('body')).toHaveCSS('font-size', '13px')
 })
 
-test('standalone issue table retains its own vertical scroll plane', async ({ page, kata }) => {
+test('standalone issue table retains its own vertical scroll plane', async ({ page, poomsae }) => {
   await page.setViewportSize({ width: 1100, height: 600 })
-  const credentials = await kata.launch(page)
+  const credentials = await poomsae.launch(page)
   await Promise.all(
     Array.from({ length: 32 }, (_, index) =>
-      kata.seedIssue(page, credentials, { title: `Scrollable example task ${index + 1}` }),
+      poomsae.seedIssue(page, credentials, { title: `Scrollable example task ${index + 1}` }),
     ),
   )
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
 
   const tableBody = page.locator('.table-body')
   await expect(tableBody.getByRole('button', { name: /Scrollable example task/ })).toHaveCount(32)
@@ -46,13 +46,13 @@ test('standalone issue table retains its own vertical scroll plane', async ({ pa
 
 // Give each full-page audit its own test deadline.
 for (const view of ['desktop editor', 'responsive editor']) {
-  test(`${view} stays axe-clean`, async ({ page, kata }) => {
-    const credentials = await kata.launch(page)
-    const issue = await kata.seedIssue(page, credentials, {
+  test(`${view} stays axe-clean`, async ({ page, poomsae }) => {
+    const credentials = await poomsae.launch(page)
+    const issue = await poomsae.seedIssue(page, credentials, {
       title: 'Accessible example task',
       body: 'Accessible content',
     })
-    await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+    await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
     await expect(page.getByRole('button', { name: 'Switch daemon' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Open workspace' })).toHaveCount(0)
@@ -74,7 +74,7 @@ for (const view of ['desktop editor', 'responsive editor']) {
   })
 }
 
-test('dark read-only detail actions keep a dark Kit UI surface', async ({ page, kata }) => {
+test('dark read-only detail actions keep a dark Kit UI surface', async ({ page, poomsae }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.route('**/api/v1/ui/snapshot?*', async (route) => {
     const response = await route.fetch()
@@ -85,9 +85,9 @@ test('dark read-only detail actions keep a dark Kit UI surface', async ({ page, 
     await route.fulfill({ response, json: snapshot })
   })
 
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Dark theme example task' })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Dark theme example task' })
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   const action = page.getByRole('button', { name: 'Complete…' })
   await expect(action).toBeDisabled()
@@ -103,14 +103,14 @@ test('dark read-only detail actions keep a dark Kit UI surface', async ({ page, 
   )
 })
 
-test('dark accent-filled editor controls keep AA text contrast', async ({ page, kata }) => {
+test('dark accent-filled editor controls keep AA text contrast', async ({ page, poomsae }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, {
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, {
     title: 'Dark accent example task',
     body: 'Accent content',
   })
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
 
   await page.getByRole('button', { name: 'Edit description' }).first().click()
   await page.getByRole('textbox', { name: 'Edit description' }).fill('Changed accent content')

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // EnsureSystemProject creates the hidden project used to anchor daemon-global

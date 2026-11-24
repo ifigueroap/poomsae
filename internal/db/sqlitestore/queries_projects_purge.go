@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // PurgeProject permanently deletes an archived project and every project-scoped
@@ -255,7 +255,7 @@ func insertProjectIssuePurgeLogs(ctx context.Context, c projectPurgeQueryer, pro
 		return fmt.Errorf("iterate project issue purge snapshots: %w", err)
 	}
 	for _, snapshot := range snapshots {
-		purgeUID, err := katauid.New()
+		purgeUID, err := poomsaeuid.New()
 		if err != nil {
 			return fmt.Errorf("generate project issue purge uid: %w", err)
 		}
@@ -278,7 +278,7 @@ func insertProjectPurgeLog(ctx context.Context, c connExec, project db.Project,
 	counts projectPurgeCounts, reservedCursor sql.NullInt64, actor string, reason *string,
 	originInstanceUID string,
 ) (int64, error) {
-	purgeUID, err := katauid.New()
+	purgeUID, err := poomsaeuid.New()
 	if err != nil {
 		return 0, fmt.Errorf("generate project purge uid: %w", err)
 	}

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 func (s *Store) importComments(
@@ -39,7 +39,7 @@ func (s *Store) importComments(
 			}
 			continue
 		}
-		commentUID, err := katauid.New()
+		commentUID, err := poomsaeuid.New()
 		if err != nil {
 			return nil, 0, fmt.Errorf("generate imported comment uid: %w", err)
 		}

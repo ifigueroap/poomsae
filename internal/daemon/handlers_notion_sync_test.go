@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/githubsync"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/githubsync"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/notionsync"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 const notionSourceID = "11111111-1111-1111-1111-111111111111"
@@ -594,8 +594,8 @@ func TestNotionRouteAuthority(t *testing.T) {
 		for _, action := range []string{"enable", "disable", "once"} {
 			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, origin+issueSyncEndpoint(project.ID, "notion", action), nil)
 			request.AddCookie(manager.Cookie(issued.Cookie))
-			request.Header.Set("X-Kata-Web-Session", issued.Session)
-			request.Header.Set("X-Kata-CSRF", issued.CSRF)
+			request.Header.Set("X-Poomsae-Web-Session", issued.Session)
+			request.Header.Set("X-Poomsae-CSRF", issued.CSRF)
 			request.Header.Set("Origin", origin)
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)
@@ -605,7 +605,7 @@ func TestNotionRouteAuthority(t *testing.T) {
 }
 
 func TestNotionEnableDefaultClientUsesDaemonTokenEnv(t *testing.T) {
-	t.Setenv("KATA_NOTION_TOKEN", "unrelated-default-secret")
+	t.Setenv("POOMSAE_NOTION_TOKEN", "unrelated-default-secret")
 	t.Setenv("EXAMPLE_NOTION_TOKEN", "")
 	h := newNotionLifecycleHarness(t, func(cfg *daemon.ServerConfig) {
 		cfg.NotionSyncFetcher = nil

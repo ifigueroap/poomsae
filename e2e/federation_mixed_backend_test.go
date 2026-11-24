@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 type federationMatrixBackend string
@@ -226,20 +226,20 @@ func startFederationMatrixNode(
 	t.Helper()
 	dirs := newE2EDirs(t)
 	overrides := map[string]string{
-		"KATA_FEDERATION_PULL_INTERVAL_MS": "25",
-		"KATA_HTTP_TIMEOUT":                "15s",
+		"POOMSAE_FEDERATION_PULL_INTERVAL_MS": "25",
+		"POOMSAE_HTTP_TIMEOUT":                "15s",
 	}
 	switch backend {
 	case federationMatrixSQLite:
-		overrides["KATA_DB"] = dirs.dbPath
-		overrides["KATA_DSN"] = ""
-		overrides["KATA_POSTGRES_SCHEMA"] = ""
-		overrides["KATA_POSTGRES_SCHEMA_MODE"] = ""
+		overrides["POOMSAE_DB"] = dirs.dbPath
+		overrides["POOMSAE_DSN"] = ""
+		overrides["POOMSAE_POSTGRES_SCHEMA"] = ""
+		overrides["POOMSAE_POSTGRES_SCHEMA_MODE"] = ""
 	case federationMatrixPostgres:
-		overrides["KATA_DB"] = ""
-		overrides["KATA_DSN"] = dsn
-		overrides["KATA_POSTGRES_SCHEMA"] = schema
-		overrides["KATA_POSTGRES_SCHEMA_MODE"] = "bootstrap"
+		overrides["POOMSAE_DB"] = ""
+		overrides["POOMSAE_DSN"] = dsn
+		overrides["POOMSAE_POSTGRES_SCHEMA"] = schema
+		overrides["POOMSAE_POSTGRES_SCHEMA_MODE"] = "bootstrap"
 	default:
 		require.FailNow(t, "unsupported federation matrix backend", string(backend))
 	}
@@ -322,7 +322,7 @@ type federationMatrixCommandResult struct {
 func federationMatrixRunOK(t *testing.T, node federationMatrixNode, args ...string) federationMatrixCommandResult {
 	t.Helper()
 	result := federationMatrixRunCommand(t, node, args...)
-	require.Equalf(t, 0, result.exitCode, "%s kata %s\nstdout: %s\nstderr: %s",
+	require.Equalf(t, 0, result.exitCode, "%s poomsae %s\nstdout: %s\nstderr: %s",
 		node.backend, strings.Join(args, " "), result.stdout, result.stderr)
 	return result
 }
@@ -332,7 +332,7 @@ func federationMatrixRunJSON[T any](t *testing.T, node federationMatrixNode, arg
 	result := federationMatrixRunOK(t, node, append([]string{"--json"}, args...)...)
 	var value T
 	require.NoErrorf(t, json.Unmarshal([]byte(result.stdout), &value),
-		"%s kata %s\nstdout: %s\nstderr: %s", node.backend, strings.Join(args, " "), result.stdout, result.stderr)
+		"%s poomsae %s\nstdout: %s\nstderr: %s", node.backend, strings.Join(args, " "), result.stdout, result.stderr)
 	return value
 }
 
@@ -348,7 +348,7 @@ func federationMatrixRunCommand(t *testing.T, node federationMatrixNode, args ..
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if ctx.Err() != nil {
-		require.FailNowf(t, "kata command timed out", "%s kata %s\nstdout: %s\nstderr: %s",
+		require.FailNowf(t, "poomsae command timed out", "%s poomsae %s\nstdout: %s\nstderr: %s",
 			node.backend, strings.Join(args, " "), stdout.String(), stderr.String())
 	}
 	result := federationMatrixCommandResult{stdout: stdout.String(), stderr: stderr.String()}

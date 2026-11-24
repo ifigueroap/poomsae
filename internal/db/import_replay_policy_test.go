@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // unknownRecord implements db.ImportRecord but is not one of the 22 replay
@@ -59,7 +59,7 @@ func TestValidateImportRecordsAcceptsEveryPayloadType(t *testing.T) {
 		&db.RecurrenceExport{}, &db.IssueExport{}, &db.IssueEmbeddingExport{},
 		&db.CommentExport{}, &db.IssueLabelExport{}, &db.LinkExport{},
 		&db.ImportMappingExport{}, &db.ExternalFieldMappingExport{
-			ConnectorInstance: "connector-one", KataField: "scheduled_on",
+			ConnectorInstance: "connector-one", PoomsaeField: "scheduled_on",
 			ExternalFieldID: "schedule-one", ExternalFieldName: "Schedule",
 			AcceptedKinds: []string{"date"}, Nullable: true, Writable: true,
 			SchemaRevision: "schema-one", CreatedAt: mappingTime, UpdatedAt: mappingTime,

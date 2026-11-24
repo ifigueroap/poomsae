@@ -1,0 +1,279 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/v2"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/textsafe"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/spf13/cobra"
+)
+
+type issueStatusProjection struct {
+	Issue               string     `json:"issue"`
+	Project             string     `json:"project"`
+	IssueStatus         string     `json:"issue_status"`
+	Revision            int64      `json:"revision"`
+	Actor               string     `json:"actor"`
+	ActorSource         string     `json:"actor_source"`
+	Auth                string     `json:"auth"`
+	Instance            string     `json:"instance"`
+	Owner               *string    `json:"owner,omitempty"`
+	AssignmentExpiresOn *time.Time `json:"assignment_expires_on,omitempty"`
+	Hold                string     `json:"hold"`
+	Holder              string     `json:"holder,omitempty"`
+	HolderInstance      string     `json:"holder_instance,omitempty"`
+	LeaseKind           string     `json:"lease_kind,omitempty"`
+	ExpiresAt           *time.Time `json:"expires_at,omitempty"`
+	PendingLeaseCount   int        `json:"pending_lease_count,omitzero"`
+}
+
+type instanceStatusForCLI struct {
+	InstanceUID string `json:"instance_uid"`
+	Auth        struct {
+		Kind  string `json:"kind"`
+		Actor string `json:"actor"`
+	} `json:"auth"`
+}
+
+func newStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status <issue-ref>",
+		Short: "show owner, your actor, and claim hold for one issue",
+		Long: `Print the issue's identity, current owner, your effective actor, and its
+ownership hold: closed, active, expired, pending, assigned, or unassigned.
+Use it before claim or unassign; poomsae show's "by <name>" line is the author,
+not the owner. Schedules, someday, and blockers appear in poomsae show.`,
+		Example: `  poomsae status abc4 --agent`,
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runIssueStatus(cmd, args[0])
+		},
+	}
+}
+
+func runIssueStatus(cmd *cobra.Command, issueRef string) error {
+	ctx, baseURL, pid, ref, err := resolveIssueRefForCommand(cmd, issueRef)
+	if err != nil {
+		return err
+	}
+	client, err := httpClientFor(ctx, baseURL)
+	if err != nil {
+		return err
+	}
+
+	_, body, err := fetchMetaIssue(ctx, client, baseURL, pid, ref.RefForAPI)
+	if err != nil {
+		return err
+	}
+	var show showResponseForCLI
+	if err := json.Unmarshal(body, &show); err != nil {
+		return err
+	}
+	var instance instanceStatusForCLI
+	if err := getInstanceStatus(ctx, client, baseURL, &instance); err != nil {
+		return err
+	}
+
+	actor, source := resolveActor(ctx, flags.As, nil)
+	if instance.Auth.Actor != "" {
+		actor = instance.Auth.Actor
+		source = "daemon"
+	}
+	authKind := instance.Auth.Kind
+	if authKind == "" {
+		authKind = "unknown"
+	}
+	now := time.Now().UTC()
+	if show.LeaseHubNow != nil && !show.LeaseHubNow.IsZero() {
+		now = show.LeaseHubNow.UTC()
+	}
+	displayRef, displayProject, err := issueRefAndProjectForOutput(daemonAPI{ctx: ctx, baseURL: baseURL, client: client}, pid, ref.ProjectName,
+		issueIdentityForOutput{ProjectID: show.Issue.ProjectID, UID: show.Issue.UID, ShortID: show.Issue.ShortID})
+	if err != nil {
+		return err
+	}
+	if currentOutputMode() == outputJSON && displayProject != "" {
+		// JSON callers combine the current project and bare short ID. When
+		// the project lookup fails, displayRef instead retains the stable UID.
+		displayRef = show.Issue.ShortID
+	}
+	projection := issueStatusProjection{
+		Issue:               displayRef,
+		Project:             displayProject,
+		IssueStatus:         show.Issue.Status,
+		Revision:            show.Issue.Revision,
+		Actor:               actor,
+		ActorSource:         source,
+		Auth:                authKind,
+		Instance:            instance.InstanceUID,
+		Owner:               show.Issue.Owner,
+		AssignmentExpiresOn: show.Issue.AssignmentExpiresOn,
+		Hold: projectedHoldState(show.Issue.Status, show.Issue.Owner, show.Issue.AssignmentExpiresOn,
+			show.Lease, show.PendingLeases, now),
+		PendingLeaseCount: len(show.PendingLeases),
+	}
+	if show.Lease != nil {
+		projection.Holder = show.Lease.Holder
+		projection.HolderInstance = show.Lease.HolderInstanceUID
+		projection.LeaseKind = show.Lease.ClaimKind
+		projection.ExpiresAt = show.Lease.ExpiresAt
+	}
+	return printIssueStatus(cmd, projection)
+}
+
+func getInstanceStatus(ctx context.Context, client *http.Client, baseURL string, out any) error {
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+	if err != nil {
+		return err
+	}
+	response, callErr := apiClient.InstanceWithResponse(ctx)
+	if response == nil {
+		return externalCLITransportError(response, callErr)
+	}
+	if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+		return err
+	}
+	return json.Unmarshal(response.Body, out)
+}
+
+func projectedHoldState(
+	issueStatus string,
+	owner *string,
+	assignmentExpiresOn *time.Time,
+	lease *claimForShowCLI,
+	pending []pendingClaimForCLI,
+	now time.Time,
+) string {
+	if issueStatus == "closed" {
+		return "closed"
+	}
+	if lease != nil {
+		if lease.ClaimKind == "timed" && lease.ExpiresAt != nil && !lease.ExpiresAt.After(now) {
+			return "expired"
+		}
+		return "active"
+	}
+	if len(pending) > 0 {
+		return "pending"
+	}
+	if owner != nil && *owner != "" {
+		if assignmentExpiresOn != nil && !assignmentExpiresOn.After(now) {
+			return "expired"
+		}
+		return "assigned"
+	}
+	return "unassigned"
+}
+
+func printIssueStatus(cmd *cobra.Command, status issueStatusProjection) error {
+	switch currentOutputMode() {
+	case outputJSON:
+		var out bytes.Buffer
+		if err := emitJSON(&out, status); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(cmd.OutOrStdout(), out.String())
+		return err
+	case outputAgent:
+		return printIssueStatusAgent(cmd.OutOrStdout(), status)
+	default:
+		return printIssueStatusHuman(cmd.OutOrStdout(), status)
+	}
+}
+
+func printIssueStatusAgent(out io.Writer, status issueStatusProjection) error {
+	fields := []agentField{
+		agentRowField("issue", status.Issue),
+		agentRowField("project", status.Project),
+		agentRowField("issue_status", status.IssueStatus),
+		agentRowField("revision", fmt.Sprint(status.Revision)),
+		agentRowField("actor", status.Actor),
+		agentRowField("actor_source", status.ActorSource),
+		agentRowField("auth", status.Auth),
+		agentRowField("instance", status.Instance),
+		agentOptionalRowField("owner", status.Owner),
+	}
+	if status.AssignmentExpiresOn != nil {
+		expires := status.AssignmentExpiresOn.UTC().Format(time.RFC3339Nano)
+		fields = append(fields, agentRowField("assignment_expires_on", expires))
+	}
+	fields = append(fields,
+		agentRowField("hold", status.Hold),
+		agentOptionalRowField("holder", optionalStatusString(status.Holder)),
+		agentOptionalRowField("holder_instance", optionalStatusString(status.HolderInstance)),
+		agentOptionalRowField("lease_kind", optionalStatusString(status.LeaseKind)),
+	)
+	if status.ExpiresAt != nil {
+		expires := status.ExpiresAt.UTC().Format(time.RFC3339Nano)
+		fields = append(fields, agentRowField("expires_at", expires))
+	}
+	if status.PendingLeaseCount > 0 {
+		fields = append(fields, agentRowField("pending_leases", fmt.Sprint(status.PendingLeaseCount)))
+	}
+	if _, err := fmt.Fprint(out, "OK status"); err != nil {
+		return err
+	}
+	for _, field := range fields {
+		if field.value == nil {
+			continue
+		}
+		if _, err := fmt.Fprintf(out, " %s=%s", field.name, agentValue(*field.value)); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintln(out)
+	return err
+}
+
+func optionalStatusString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func printIssueStatusHuman(out io.Writer, status issueStatusProjection) error {
+	if _, err := fmt.Fprintf(out, "%s  [%s]  hold=%s\n",
+		textsafe.Line(status.Issue), textsafe.Line(status.IssueStatus), status.Hold); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "actor: %s (%s; auth=%s)\ninstance: %s\n",
+		textsafe.Line(status.Actor), textsafe.Line(status.ActorSource),
+		textsafe.Line(status.Auth), textsafe.Line(status.Instance)); err != nil {
+		return err
+	}
+	if status.Owner != nil && *status.Owner != "" {
+		if _, err := fmt.Fprintln(out, "owner:", textsafe.Line(*status.Owner)); err != nil {
+			return err
+		}
+	}
+	if status.AssignmentExpiresOn != nil {
+		if _, err := fmt.Fprintln(out, "assignment expires:", status.AssignmentExpiresOn.UTC().Format(time.RFC3339)); err != nil {
+			return err
+		}
+	}
+	if status.Holder != "" {
+		if _, err := fmt.Fprintf(out, "lease: %s from instance %s (%s)\n",
+			textsafe.Line(status.Holder), textsafe.Line(status.HolderInstance),
+			textsafe.Line(status.LeaseKind)); err != nil {
+			return err
+		}
+	}
+	if status.ExpiresAt != nil {
+		if _, err := fmt.Fprintln(out, "expires:", status.ExpiresAt.UTC().Format(time.RFC3339)); err != nil {
+			return err
+		}
+	}
+	if status.PendingLeaseCount > 0 {
+		if _, err := fmt.Fprintln(out, "pending leases:", status.PendingLeaseCount); err != nil {
+			return err
+		}
+	}
+	return nil
+}

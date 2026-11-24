@@ -13,7 +13,7 @@ import (
 
 func TestWriteFederationCredentialPartialTempWriteLeavesOldFileUnchanged(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const (
 		localUID = "01HZNQ7VFPK1XGD8R5MABCD4EA"
 		otherUID = "01HZNQ7VFPK1XGD8R5MABCD4EY"
@@ -32,7 +32,7 @@ func TestWriteFederationCredentialPartialTempWriteLeavesOldFileUnchanged(t *test
 	require.NoError(t, WriteFederationCredential(otherUID, other))
 	path, err := FederationCredentialsPath()
 	require.NoError(t, err)
-	before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+	before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 	require.NoError(t, err)
 
 	originalWriter := writeFederationCredentialsTempFile
@@ -49,7 +49,7 @@ func TestWriteFederationCredentialPartialTempWriteLeavesOldFileUnchanged(t *test
 	err = WriteFederationCredential(localUID, changed)
 	require.ErrorContains(t, err, "injected partial temporary write failure")
 
-	after, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+	after, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 	require.NoError(t, err)
 	assert.Equal(t, before, after)
 	credentials, err := ReadFederationCredentials()
@@ -83,7 +83,7 @@ func TestReplaceFederationCredentialSupportsManualAndManagedCredentials(t *testi
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("KATA_HOME", t.TempDir())
+			t.Setenv("POOMSAE_HOME", t.TempDir())
 			const projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 			replacement := tc.current
 			replacement.HubURL = "https://hub.example"
@@ -104,7 +104,7 @@ func TestReplaceFederationCredentialSupportsManualAndManagedCredentials(t *testi
 
 func TestReplaceFederationCredentialExactTargetDoesNotRewriteFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	const projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 	target := FederationCredential{
 		HubURL: "https://hub.example", HubProjectID: 42,
@@ -113,7 +113,7 @@ func TestReplaceFederationCredentialExactTargetDoesNotRewriteFile(t *testing.T) 
 	require.NoError(t, WriteFederationCredential(projectUID, target))
 	path, err := FederationCredentialsPath()
 	require.NoError(t, err)
-	before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+	before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 	require.NoError(t, err)
 
 	writes := 0
@@ -132,7 +132,7 @@ func TestReplaceFederationCredentialExactTargetDoesNotRewriteFile(t *testing.T) 
 
 	require.NoError(t, err)
 	assert.Zero(t, writes)
-	after, readErr := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+	after, readErr := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 	require.NoError(t, readErr)
 	assert.Equal(t, before, after)
 }
@@ -162,19 +162,19 @@ func TestReplaceFederationCredentialRejectsMissingOrChangedSource(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			if tc.stored != nil {
 				require.NoError(t, WriteFederationCredential(projectUID, *tc.stored))
 			}
 			path := filepath.Join(home, "credentials.toml")
-			before, _ := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+			before, _ := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 
 			err := ReplaceFederationCredential(FederationCredentialReplacement{
 				ProjectUID: tc.projectUID, Expected: current, Replacement: target,
 			})
 
 			require.ErrorIs(t, err, ErrFederationCredentialConflict)
-			after, _ := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+			after, _ := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 			assert.Equal(t, before, after)
 		})
 	}
@@ -200,7 +200,7 @@ func TestReplaceFederationCredentialWriteFailuresLeaveSourceUnchanged(t *testing
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			const projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 			current := FederationCredential{
 				HubURL: "http://192.0.2.10:7777", HubProjectID: 42,
@@ -213,7 +213,7 @@ func TestReplaceFederationCredentialWriteFailuresLeaveSourceUnchanged(t *testing
 			require.NoError(t, WriteFederationCredential(projectUID, current))
 			path, err := FederationCredentialsPath()
 			require.NoError(t, err)
-			before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+			before, err := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 			require.NoError(t, err)
 			tc.inject(t)
 
@@ -222,7 +222,7 @@ func TestReplaceFederationCredentialWriteFailuresLeaveSourceUnchanged(t *testing
 			})
 
 			require.Error(t, err)
-			after, readErr := os.ReadFile(path) //nolint:gosec // path is the test's isolated KATA_HOME.
+			after, readErr := os.ReadFile(path) //nolint:gosec // path is the test's isolated POOMSAE_HOME.
 			require.NoError(t, readErr)
 			assert.Equal(t, before, after)
 			credentials, readErr := ReadFederationCredentials()
@@ -233,7 +233,7 @@ func TestReplaceFederationCredentialWriteFailuresLeaveSourceUnchanged(t *testing
 }
 
 func TestDefaultFederationCredentialStoreSupportsExactReplacement(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	ctx := t.Context()
 	const projectUID = "01HZNQ7VFPK1XGD8R5MABCD4EX"
 	current := FederationCredential{
@@ -258,7 +258,7 @@ func TestDefaultFederationCredentialStoreSupportsExactReplacement(t *testing.T) 
 
 func TestWriteFederationCredentialRefusesSymlinkedCredentialsFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	linkTarget := filepath.Join(t.TempDir(), "elsewhere.toml")
 	require.NoError(t, os.WriteFile(linkTarget, []byte("# untouched\n"), 0o600))
 	path, err := FederationCredentialsPath()

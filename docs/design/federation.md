@@ -69,18 +69,18 @@ visible-state convergence.
 
 ## Tokens And Trust Boundaries
 
-Kata federation uses two different bearer-token systems. They are intentionally
+Poomsae federation uses two different bearer-token systems. They are intentionally
 separate:
 
 - **Daemon API tokens** identify clients talking to a daemon's normal API. They
-  are configured with `KATA_AUTH_TOKEN` or `[auth].token` and managed with
-  `kata tokens ...` when token identity is required. Local operator commands
-  such as `kata federation status`, `kata federation quarantine skip`, and
+  are configured with `POOMSAE_AUTH_TOKEN` or `[auth].token` and managed with
+  `poomsae tokens ...` when token identity is required. Local operator commands
+  such as `poomsae federation status`, `poomsae federation quarantine skip`, and
   hub-local force-release use the default daemon's normal API auth surface.
   Federation enrollment and hub revoke requests instead use a target-scoped
   hub admin credential from `--hub-token-env` or a daemon-catalog entry for that
   same hub origin. They never send the default daemon's global token to the
-  hub. `kata federation enroll` selects the hub with `--hub-url` while the CLI's
+  hub. `poomsae federation enroll` selects the hub with `--hub-url` while the CLI's
   default daemon remains the spoke being enrolled.
 - **Federation enrollment tokens** authorize one spoke to call hub federation transport routes
   for an enrolled scope and capability set. They are created by bridge connection or direct
@@ -107,11 +107,11 @@ token = "..."
 trust_private_network = true
 ```
 
-The equivalent environment variables are `KATA_AUTH_TOKEN` and
-`KATA_TRUST_PRIVATE_NETWORK=1`. Plain HTTP private-network clients that attach
+The equivalent environment variables are `POOMSAE_AUTH_TOKEN` and
+`POOMSAE_TRUST_PRIVATE_NETWORK=1`. Plain HTTP private-network clients that attach
 bearer tokens also require this trust opt-in. That includes normal CLI/TUI
 access to a remote daemon and spoke-to-hub federation calls that use enrollment
-tokens. Without the opt-in, kata refuses to put bearer tokens on plaintext
+tokens. Without the opt-in, poomsae refuses to put bearer tokens on plaintext
 non-loopback HTTP connections. HTTPS, Unix sockets, and loopback HTTP do not
 need the private-network trust opt-in.
 
@@ -131,7 +131,7 @@ need the private-network trust opt-in.
   attachment, Unix-socket HTTP clients, TCP remote selection, and SSE clients.
 - `internal/federation`: spoke-side hub HTTP client, pull/push runner, pending
   lease retry, failpoints, and federation runner tests.
-- `cmd/kata`: federation operator CLI, lease CLI, daemon runner startup, and
+- `cmd/poomsae`: federation operator CLI, lease CLI, daemon runner startup, and
   normal CLI client wiring.
 - `e2e` and `docker/federation`: multi-daemon, mixed-storage matrix, randomized
   stress, failpoint, and Docker Compose smoke coverage.
@@ -310,7 +310,7 @@ The event poll accepts an optional `wait` in seconds. When the cursor is caught
 up, the hub holds the request until an event commits in the project, including
 a move out of it, or until the wait ends, and then answers with the page as it
 would without a wait. Successful event-poll responses advertise the longest wait
-the hub accepts in `X-Kata-Federation-Poll-Wait-Max`, 45 seconds. A spoke holds
+the hub accepts in `X-Poomsae-Federation-Poll-Wait-Max`, 45 seconds. A spoke holds
 polls only at hubs that send that header and keeps its interval pull
 otherwise. The wait counts from when the hub accepts the request, so a slow
 first read shortens it. Before each read a held poll makes after waiting, the
@@ -463,7 +463,7 @@ When a hub purge removes replay history, it records a reset boundary in
 state. A spoke whose pull cursor is below that boundary receives
 `reset_required` and re-bootstrap from the current federation horizon. A
 push-enabled spoke refuses to reset while it has unaccepted local-origin events
-or an active quarantine. `kata federation status` reports these reset blockers.
+or an active quarantine. `poomsae federation status` reports these reset blockers.
 
 ## Cron Replay And Compatibility
 
@@ -475,9 +475,9 @@ adopting a project, joining a second peer, and rebuilding after a purge all carr
 pre-existing cron definitions and portable run history.
 
 Upgrade hubs before publishing cron. Federation clients advertise
-`X-Kata-Event-Features: cron_v1`. Successful metadata, event-poll, and
+`X-Poomsae-Event-Features: cron_v1`. Successful metadata, event-poll, and
 ingest responses advertise server support in that same header. A project's
-`X-Kata-Required-Event-Features: cron_v1` header instead means that its
+`X-Poomsae-Required-Event-Features: cron_v1` header instead means that its
 history requires the feature. This requirement latches after the first event
 requiring `cron_v1` and survives deletion of its definitions. Missing support causes
 HTTP 409 `unsupported_event_features` before returning events or a reset cursor,
@@ -536,7 +536,7 @@ records remain visible. `db.CheckCronDependencies(ctx, query, projectID,
 jobDefinition)` returns descriptive errors for missing, tombstoned or
 cross-project workflow/issue dependencies and preserves database errors. Local
 definition writes use the same helper. The plugin owns activation, overlap,
-catchup, retries, recovery and process/session management, using ordinary Kata
+catchup, retries, recovery and process/session management, using ordinary Poomsae
 notify for exact-recipient inbox delivery. This replay layer introduces no
 scheduler or process launcher.
 

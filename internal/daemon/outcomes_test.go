@@ -13,15 +13,15 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v7"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
+	"github.com/ifigueroap/poomsae/internal/linearsync"
+	"github.com/ifigueroap/poomsae/internal/notionsync"
+	"github.com/ifigueroap/poomsae/internal/planesync"
+	"github.com/ifigueroap/poomsae/internal/tickticksync"
+	"github.com/ifigueroap/poomsae/internal/todoistsync"
+	"github.com/ifigueroap/poomsae/internal/twentysync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/issuesync"
-	"go.kenn.io/kata/internal/linearsync"
-	"go.kenn.io/kata/internal/notionsync"
-	"go.kenn.io/kata/internal/planesync"
-	"go.kenn.io/kata/internal/tickticksync"
-	"go.kenn.io/kata/internal/todoistsync"
-	"go.kenn.io/kata/internal/twentysync"
 )
 
 func TestOutcomesSyncTransitions(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/metadata"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/metadata"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const externalRootBindingSelect = `SELECT
@@ -393,7 +393,7 @@ func (d *Store) CreateExternalRootBinding(
 	params.ExternalRootKey = strings.TrimSpace(params.ExternalRootKey)
 	params.ExternalAccountKey = strings.TrimSpace(params.ExternalAccountKey)
 	params.InitialClaimToken = strings.TrimSpace(params.InitialClaimToken)
-	bindingUID, err := katauid.New()
+	bindingUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.ExternalRootBinding{}, db.Event{}, fmt.Errorf("generate external root binding uid: %w", err)
 	}
@@ -1068,7 +1068,7 @@ func (d *Store) UpsertExternalCommentProjection(
 			return comment, &event, true, nil
 		}
 
-		commentUID, err := katauid.New()
+		commentUID, err := poomsaeuid.New()
 		if err != nil {
 			return db.Comment{}, nil, false, fmt.Errorf("generate external comment projection uid: %w", err)
 		}
@@ -1220,7 +1220,7 @@ func (d *Store) EnsureExternalRootLifecycleRequest(
 			)
 		}
 
-		commentUID, err := katauid.New()
+		commentUID, err := poomsaeuid.New()
 		if err != nil {
 			return db.Comment{}, nil, false, fmt.Errorf("generate external lifecycle comment uid: %w", err)
 		}
@@ -1552,7 +1552,7 @@ func (d *Store) nextExternalFieldMappingTimestamp(
 ) (string, error) {
 	stamp := d.externalRootTimestamp()
 	rows, err := tx.QueryContext(ctx, `SELECT created_at FROM external_field_mappings
-WHERE connector_instance=$1 AND kata_field=$2`, params.ConnectorInstance, params.KataField)
+WHERE connector_instance=$1 AND kata_field=$2`, params.ConnectorInstance, params.PoomsaeField)
 	if err != nil {
 		return "", fmt.Errorf("read latest external field mapping identity: %w", mapSQLError(err, nil))
 	}
@@ -1878,7 +1878,7 @@ func (d *Store) ApplyExternalFieldProjection(
 		if err != nil {
 			return db.Issue{}, nil, false, err
 		}
-		if mapping.KataField != params.KataField || params.IntegrationActor != "connector:"+binding.ConnectorInstance {
+		if mapping.PoomsaeField != params.PoomsaeField || params.IntegrationActor != "connector:"+binding.ConnectorInstance {
 			return db.Issue{}, nil, false, fmt.Errorf(
 				"%w: field projection does not match binding", db.ErrExternalRootValidation,
 			)
@@ -1980,7 +1980,7 @@ func (d *Store) UpsertExternalFieldMapping(
 		}
 		existing, err := scanExternalFieldMapping((externalRootTxQueryer{tx}).QueryRowContext(ctx, externalFieldMappingSelect+`
  WHERE m.connector_instance=? AND m.kata_field=? AND m.active=1`,
-			params.ConnectorInstance, params.KataField))
+			params.ConnectorInstance, params.PoomsaeField))
 		hasExisting := err == nil
 		if err == nil && externalFieldMappingMatches(existing, params) {
 			if err := tx.Commit(); err != nil {
@@ -2010,7 +2010,7 @@ func (d *Store) UpsertExternalFieldMapping(
 		err = (externalRootTxQueryer{tx}).QueryRowContext(ctx, `INSERT INTO external_field_mappings(
  connector_instance, kata_field, external_field_id, external_field_name,
  accepted_kinds_json, nullable, writable, schema_revision, created_at, updated_at
-) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id`, params.ConnectorInstance, params.KataField,
+) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id`, params.ConnectorInstance, params.PoomsaeField,
 			params.ExternalFieldID, params.ExternalFieldName, string(kinds), boolInt(params.Nullable),
 			boolInt(params.Writable), params.SchemaRevision, stamp, stamp).Scan(&mappingID)
 		if err != nil {
@@ -2055,7 +2055,7 @@ func externalFieldMappingByIDTx(ctx context.Context, tx *sql.Tx, mappingID int64
 func (d *Store) UnmapExternalField(
 	ctx context.Context,
 	connectorInstance string,
-	kataField string,
+	poomsaeField string,
 ) (db.ExternalFieldMapping, error) {
 	return retryExternalRootWrite1(ctx, d, func() (db.ExternalFieldMapping, error) {
 		tx, err := d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
@@ -2071,7 +2071,7 @@ func (d *Store) UnmapExternalField(
 		}
 		mapping, err := scanExternalFieldMapping((externalRootTxQueryer{tx}).QueryRowContext(ctx, externalFieldMappingSelect+`
  WHERE m.connector_instance=? AND m.kata_field=? AND m.active=1`,
-			connectorInstance, strings.TrimSpace(kataField)))
+			connectorInstance, strings.TrimSpace(poomsaeField)))
 		if err != nil {
 			return db.ExternalFieldMapping{}, err
 		}
@@ -2167,7 +2167,7 @@ ON CONFLICT(binding_id, mapping_id) DO UPDATE SET
 		}
 		var event *db.Event
 		if params.Conflicted && (errors.Is(previousErr, db.ErrNotFound) || !previous.Conflicted) {
-			payload, err := db.MarshalExternalRootAuditPayload(binding, "conflicted", params.Actor, "", mapping.KataField)
+			payload, err := db.MarshalExternalRootAuditPayload(binding, "conflicted", params.Actor, "", mapping.PoomsaeField)
 			if err != nil {
 				return db.ExternalFieldState{}, nil, err
 			}
@@ -2231,7 +2231,7 @@ func (d *Store) ResolveExternalFieldConflict(
 		if err != nil {
 			return db.ExternalFieldState{}, db.Event{}, err
 		}
-		payload, err := db.MarshalExternalRootAuditPayload(binding, "resolved", params.Actor, "", mapping.KataField)
+		payload, err := db.MarshalExternalRootAuditPayload(binding, "resolved", params.Actor, "", mapping.PoomsaeField)
 		if err != nil {
 			return db.ExternalFieldState{}, db.Event{}, err
 		}
@@ -2372,7 +2372,7 @@ func scanExternalFieldMapping(row rowScanner) (db.ExternalFieldMapping, error) {
 	var kinds string
 	var nullable, writable, active int
 	var createdAt, updatedAt string
-	err := row.Scan(&mapping.ID, &mapping.ConnectorInstance, &mapping.KataField,
+	err := row.Scan(&mapping.ID, &mapping.ConnectorInstance, &mapping.PoomsaeField,
 		&mapping.ExternalFieldID, &mapping.ExternalFieldName, &kinds,
 		&nullable, &writable, &mapping.SchemaRevision, &active,
 		&createdAt, &updatedAt)

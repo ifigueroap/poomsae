@@ -12,9 +12,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"go.kenn.io/kata/internal/db"
 )
 
 // PostgreSQL permits every connected role to listen and notify on any channel.
@@ -24,7 +24,7 @@ import (
 // authorization before reading its project.
 const (
 	pollWakeSecretKey   = "federation_poll_wake_secret"
-	pollWakeChannelInfo = "kata federation poll wake channel v1\x00"
+	pollWakeChannelInfo = "poomsae federation poll wake channel v1\x00"
 	// pollWakeChannelBytes keeps the hex channel name within PostgreSQL's
 	// 63-byte identifier limit.
 	pollWakeChannelBytes = 24

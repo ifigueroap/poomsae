@@ -13,10 +13,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 	"go.kenn.io/kit/tui/helplayout"
 	"go.kenn.io/kit/tui/splitlayout"
 )
@@ -695,7 +695,7 @@ type quietMoveAPI struct{ *moveTestAPI }
 
 func (quietMoveAPI) ReportScreenViewed(context.Context, string) error { return nil }
 
-// A launch on `kata tui <ref>` opens the pane on that issue before the list
+// A launch on `poomsae tui <ref>` opens the pane on that issue before the list
 // has a say. Esc returns focus to the list, whose highlight is another row, and
 // the pane keeps the opened issue with an empty Back history. A move of the
 // highlighted row must leave that pane, its scroll and its tab alone.

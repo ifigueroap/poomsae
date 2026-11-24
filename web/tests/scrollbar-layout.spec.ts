@@ -57,15 +57,15 @@ async function addCatalogProjects(page: Page): Promise<void> {
 
 test('issue list columns stay in place when clearing a search makes the list scroll', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   await page.setViewportSize({ width: 1400, height: 700 })
-  const credentials = await kata.launch(page)
-  await kata.seedIssue(page, credentials, { title: 'Scrollbar list anchor' })
+  const credentials = await poomsae.launch(page)
+  await poomsae.seedIssue(page, credentials, { title: 'Scrollbar list anchor' })
   for (let index = 0; index < 40; index++) {
-    await kata.seedIssue(page, credentials, { title: `Scrollbar list filler ${index}` })
+    await poomsae.seedIssue(page, credentials, { title: `Scrollbar list filler ${index}` })
   }
-  await page.goto(`${kata.origin}/kata?view=all-open`)
+  await page.goto(`${poomsae.origin}/poomsae?view=all-open`)
   const search = page.getByRole('searchbox', { name: 'Search tasks' })
   await search.fill('Scrollbar list anchor')
   const filler = page.getByRole('button', { name: /Scrollbar list filler 39/ })
@@ -87,23 +87,23 @@ for (const viewport of [
 ]) {
   test(`issue actions stay in place when the detail scrolls at ${viewport.width}x${viewport.height}`, async ({
     page,
-    kata,
+    poomsae,
   }) => {
     await page.setViewportSize(viewport)
-    const credentials = await kata.launch(page)
-    const short = await kata.seedIssue(page, credentials, {
+    const credentials = await poomsae.launch(page)
+    const short = await poomsae.seedIssue(page, credentials, {
       title: 'Scrollbar short detail',
       body: 'Short body',
     })
-    const long = await kata.seedIssue(page, credentials, {
+    const long = await poomsae.seedIssue(page, credentials, {
       title: 'Scrollbar long detail',
       body: Array.from({ length: 200 }, (_, index) => `Paragraph ${index}.`).join('\n\n'),
     })
-    await page.goto(`${kata.origin}/kata?issue=${short.uid}`)
+    await page.goto(`${poomsae.origin}/poomsae?issue=${short.uid}`)
     await expect(page.getByRole('heading', { name: 'Scrollbar short detail' })).toBeVisible()
 
     await expectNoShiftWhenScrollbarAppears(
-      page.locator('.kata-detail'),
+      page.locator('.poomsae-detail'),
       page.getByRole('button', { name: 'Edit title' }),
       async () => {
         await page.locator(`button.row[data-uid="${long.uid}"] .title-text`).click()
@@ -115,10 +115,10 @@ for (const viewport of [
 
 test('credential controls stay in place when clearing a search makes the page scroll', async ({
   page,
-  kata,
+  poomsae,
 }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
-  await kata.launch(page)
+  await poomsae.launch(page)
   await page.route('**/api/v1/ui/snapshot?*', async (route) => {
     const response = await route.fetch()
     if (response.status() !== 200) return route.fulfill({ response })
@@ -139,7 +139,7 @@ test('credential controls stay in place when clearing a search makes the page sc
       },
     }),
   )
-  await page.goto(`${kata.origin}/kata?view=credentials`)
+  await page.goto(`${poomsae.origin}/poomsae?view=credentials`)
   const search = page.getByRole('searchbox', { name: 'Search credentials' })
   await search.fill('example-name-59')
   const filler = page.getByText('example-name-0', { exact: true })
@@ -157,12 +157,12 @@ test('credential controls stay in place when clearing a search makes the page sc
 
 test('move picker counts stay in place when clearing its search makes the list scroll', async ({
   page,
-  kata,
+  poomsae,
 }) => {
-  const credentials = await kata.launch(page)
-  const issue = await kata.seedIssue(page, credentials, { title: 'Scrollbar move picker' })
+  const credentials = await poomsae.launch(page)
+  const issue = await poomsae.seedIssue(page, credentials, { title: 'Scrollbar move picker' })
   await addCatalogProjects(page)
-  await page.goto(`${kata.origin}/kata?issue=${issue.uid}`)
+  await page.goto(`${poomsae.origin}/poomsae?issue=${issue.uid}`)
   await page.getByRole('button', { name: 'Project: example-project', exact: true }).click()
   const search = page.getByRole('searchbox', { name: 'Find project' })
   const picker = page.getByRole('dialog', { name: 'Move task' })
@@ -202,7 +202,7 @@ test('website column stays in place when leaving the short not-found page', asyn
   })
   const rootOverflows = () =>
     page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)
-  const wordmark = page.getByRole('link', { name: /^kata/ }).first()
+  const wordmark = page.getByRole('link', { name: /^poomsae/ }).first()
 
   await page.goto('http://website.example/404.html')
   expect(await rootOverflows()).toBe(false)

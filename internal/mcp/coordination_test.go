@@ -11,10 +11,10 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/notification"
-	kataclient "go.kenn.io/kata/pkg/client"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/notification"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 )
 
 func TestNewSectionLoadersRegisterOnlyTheirTools(t *testing.T) {
@@ -22,8 +22,8 @@ func TestNewSectionLoadersRegisterOnlyTheirTools(t *testing.T) {
 		loader, section string
 		tools           []string
 	}{
-		{"kata.load_coordination", "coordination", []string{"kata.assign", "kata.inbox", "kata.status", "kata.unassign"}},
-		{"kata.load_docs", "docs", []string{"kata.read_doc", "kata.search_docs"}},
+		{"poomsae.load_coordination", "coordination", []string{"poomsae.assign", "poomsae.inbox", "poomsae.status", "poomsae.unassign"}},
+		{"poomsae.load_docs", "docs", []string{"poomsae.read_doc", "poomsae.search_docs"}},
 	} {
 		t.Run(test.section, func(t *testing.T) {
 			session := connectRawTestServerWithOptions(t, Options{
@@ -39,7 +39,7 @@ func TestNewSectionLoadersRegisterOnlyTheirTools(t *testing.T) {
 
 			listed, err := session.ListTools(t.Context(), nil)
 			require.NoError(t, err)
-			want := append(append([]string(nil), sectionLoaderNames...), append([]string{"kata.search_tools", "kata.skills"}, test.tools...)...)
+			want := append(append([]string(nil), sectionLoaderNames...), append([]string{"poomsae.search_tools", "poomsae.skills"}, test.tools...)...)
 			sort.Strings(want)
 			require.Equal(t, want, toolNames(listed.Tools))
 		})
@@ -48,7 +48,7 @@ func TestNewSectionLoadersRegisterOnlyTheirTools(t *testing.T) {
 
 func newCoordinationSession(t *testing.T) (*sdkmcp.ClientSession, *sqlitestore.Store) {
 	t.Helper()
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "spoke-project")
@@ -59,7 +59,7 @@ func newCoordinationSession(t *testing.T) (*sdkmcp.ClientSession, *sqlitestore.S
 	t.Cleanup(func() { require.NoError(t, daemonServer.Close()) })
 	httpServer := httptest.NewServer(daemonServer.Handler())
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{
 		Client: client, ProjectID: project.ID, ProjectName: project.Name,
@@ -78,35 +78,35 @@ func callToolError(t *testing.T, session *sdkmcp.ClientSession, name string, arg
 
 func TestAssignStatusAndUnassignRoundTripAgainstDaemon(t *testing.T) {
 	session, _ := newCoordinationSession(t)
-	created := callAdministrationTool(t, session, "kata.create", map[string]any{"title": "Hand off review", "idempotency_key": "handoff-1"})
+	created := callAdministrationTool(t, session, "poomsae.create", map[string]any{"title": "Hand off review", "idempotency_key": "handoff-1"})
 	ref := created["issue"].(map[string]any)["ref"].(string)
 
-	status := callAdministrationTool(t, session, "kata.status", map[string]any{"ref": ref})
+	status := callAdministrationTool(t, session, "poomsae.status", map[string]any{"ref": ref})
 	require.Equal(t, "unassigned", status["hold"])
 	require.Equal(t, "example-agent", status["actor"])
 	require.Equal(t, "startup", status["actor_source"])
 	require.Equal(t, "spoke-project#"+ref, status["qualified_ref"])
 
-	assigned := callAdministrationTool(t, session, "kata.assign", map[string]any{"ref": ref, "owner": "reviewer-agent"})
+	assigned := callAdministrationTool(t, session, "poomsae.assign", map[string]any{"ref": ref, "owner": "reviewer-agent"})
 	require.Equal(t, true, assigned["changed"])
 	require.Equal(t, "reviewer-agent", assigned["issue"].(map[string]any)["owner"])
-	status = callAdministrationTool(t, session, "kata.status", map[string]any{"ref": ref})
+	status = callAdministrationTool(t, session, "poomsae.status", map[string]any{"ref": ref})
 	require.Equal(t, "assigned", status["hold"])
 	require.Equal(t, "reviewer-agent", status["owner"])
 
-	callToolError(t, session, "kata.assign", map[string]any{"ref": ref, "owner": "   "})
-	callToolError(t, session, "kata.unassign", map[string]any{"ref": ref, "expected_owner": "someone-else"})
-	status = callAdministrationTool(t, session, "kata.status", map[string]any{"ref": ref})
+	callToolError(t, session, "poomsae.assign", map[string]any{"ref": ref, "owner": "   "})
+	callToolError(t, session, "poomsae.unassign", map[string]any{"ref": ref, "expected_owner": "someone-else"})
+	status = callAdministrationTool(t, session, "poomsae.status", map[string]any{"ref": ref})
 	require.Equal(t, "reviewer-agent", status["owner"], "a failed guard must keep the owner")
 
-	cleared := callAdministrationTool(t, session, "kata.unassign", map[string]any{"ref": ref, "expected_owner": "reviewer-agent"})
+	cleared := callAdministrationTool(t, session, "poomsae.unassign", map[string]any{"ref": ref, "expected_owner": "reviewer-agent"})
 	require.Equal(t, true, cleared["changed"])
 	require.NotContains(t, cleared["issue"].(map[string]any), "owner")
-	status = callAdministrationTool(t, session, "kata.status", map[string]any{"ref": ref})
+	status = callAdministrationTool(t, session, "poomsae.status", map[string]any{"ref": ref})
 	require.Equal(t, "unassigned", status["hold"])
 
 	outside, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{
-		Name: "kata.status", Arguments: map[string]any{"ref": "other-project#abcd"},
+		Name: "poomsae.status", Arguments: map[string]any{"ref": "other-project#abcd"},
 	})
 	require.NoError(t, err)
 	require.True(t, outside.IsError)
@@ -123,15 +123,15 @@ func TestInboxReadsAttentionRequestsAgainstDaemon(t *testing.T) {
 		{"from": "", "message": "Malformed request"},
 	}
 	for i, value := range requests {
-		created := callAdministrationTool(t, session, "kata.create", map[string]any{
+		created := callAdministrationTool(t, session, "poomsae.create", map[string]any{
 			"title": "Attention issue " + string(rune('a'+i)), "idempotency_key": "attention-" + string(rune('a'+i)),
 		})
 		ref := created["issue"].(map[string]any)["ref"].(string)
-		callAdministrationTool(t, session, "kata.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{key: value}})
+		callAdministrationTool(t, session, "poomsae.set_metadata", map[string]any{"ref": ref, "patch": map[string]any{key: value}})
 	}
-	callAdministrationTool(t, session, "kata.create", map[string]any{"title": "Quiet issue", "idempotency_key": "quiet"})
+	callAdministrationTool(t, session, "poomsae.create", map[string]any{"title": "Quiet issue", "idempotency_key": "quiet"})
 
-	inbox := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": " reviewer-agent "})
+	inbox := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": " reviewer-agent "})
 	require.Equal(t, "reviewer-agent", inbox["recipient"])
 	require.Equal(t, false, inbox["truncated"])
 	listed := inbox["requests"].([]any)
@@ -153,15 +153,15 @@ func TestInboxReadsAttentionRequestsAgainstDaemon(t *testing.T) {
 	require.NotContains(t, messages["Please review"], "teammate")
 	require.Contains(t, messages, "Please review")
 
-	limited := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "reviewer-agent", "limit": 1})
+	limited := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "reviewer-agent", "limit": 1})
 	require.Equal(t, true, limited["truncated"])
 	require.LessOrEqual(t, len(limited["requests"].([]any)), 1)
 
-	again := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "reviewer-agent"})
+	again := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "reviewer-agent"})
 	require.Len(t, again["requests"], 2, "reading must not clear requests")
-	empty := callAdministrationTool(t, session, "kata.inbox", map[string]any{"for": "nobody"})
+	empty := callAdministrationTool(t, session, "poomsae.inbox", map[string]any{"for": "nobody"})
 	require.Empty(t, empty["requests"])
-	callToolError(t, session, "kata.inbox", map[string]any{"for": "   "})
+	callToolError(t, session, "poomsae.inbox", map[string]any{"for": "   "})
 }
 
 func TestProjectShowReturnsProjectAndAliasesAgainstDaemon(t *testing.T) {
@@ -171,12 +171,12 @@ func TestProjectShowReturnsProjectAndAliasesAgainstDaemon(t *testing.T) {
 	_, err = store.AttachAlias(t.Context(), project.ID, "host-a.example/repository", "git")
 	require.NoError(t, err)
 
-	shown := callAdministrationTool(t, session, "kata.project_show", map[string]any{})
+	shown := callAdministrationTool(t, session, "poomsae.project_show", map[string]any{})
 	require.Equal(t, "spoke-project", shown["project"].(map[string]any)["name"])
 	aliases := shown["aliases"].([]any)
 	require.Len(t, aliases, 1)
 	require.Equal(t, "host-a.example/repository", aliases[0].(map[string]any)["identity"])
 	require.Equal(t, "git", aliases[0].(map[string]any)["kind"])
 
-	callToolError(t, session, "kata.project_show", map[string]any{"project": "other-project"})
+	callToolError(t, session, "poomsae.project_show", map[string]any{"project": "other-project"})
 }

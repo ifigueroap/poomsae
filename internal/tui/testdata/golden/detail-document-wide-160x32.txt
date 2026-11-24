@@ -1,4 +1,4 @@
- Project: kata                                                                                                                                  kata カタ · dev
+ Project: poomsae                                                                                                                            poomsae カタ · dev
 
   #aaa1  fix the tui to be less shitty                                                      [open]
   authored by anonymous · created May 2 19:15 · updated 21h ago

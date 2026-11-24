@@ -1,10 +1,10 @@
-# kata installer for Windows
-# Usage: powershell -ExecutionPolicy ByPass -c "irm https://katatracker.com/install.ps1 | iex"
+# poomsae installer for Windows
+# Usage: powershell -ExecutionPolicy ByPass -c "irm https://github.com/ifigueroap/poomsae/install.ps1 | iex"
 
 $ErrorActionPreference = 'Stop'
 
-$repo = 'kenn-io/kata'
-$binaryName = 'kata.exe'
+$repo = 'ifigueroap/poomsae'
+$binaryName = 'poomsae.exe'
 
 function Write-Info($msg) { Write-Host $msg -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host $msg -ForegroundColor Yellow }
@@ -134,7 +134,7 @@ function Resolve-ReleaseArch {
     param([string]$DetectedArch, [string]$Version)
 
     $versionNum = $Version.TrimStart('v')
-    $name = "kata_${versionNum}_windows_${DetectedArch}.zip"
+    $name = "poomsae_${versionNum}_windows_${DetectedArch}.zip"
     $url = "https://github.com/$repo/releases/download/$Version/$name"
     if (Test-ReleaseAsset $url) {
         return $DetectedArch
@@ -177,10 +177,10 @@ function Verify-Checksum {
 }
 
 function Get-InstallDir {
-    if ($env:KATA_INSTALL_DIR) {
-        return $env:KATA_INSTALL_DIR
+    if ($env:POOMSAE_INSTALL_DIR) {
+        return $env:POOMSAE_INSTALL_DIR
     }
-    return Join-Path $env:USERPROFILE '.kata\bin'
+    return Join-Path $env:USERPROFILE '.poomsae\bin'
 }
 
 function Test-ReleasePredatesWebUi {
@@ -204,7 +204,7 @@ function Assert-ReleaseBinary {
         # Normalize execution and verifier failures to one installer error.
     }
     if (-not $valid) {
-        throw 'Downloaded release does not contain the validated Kata web UI'
+        throw 'Downloaded release does not contain the validated Poomsae web UI'
     }
 }
 
@@ -227,8 +227,8 @@ function Add-ToPath($dir) {
     return $true
 }
 
-function Install-Kata {
-    Write-Info "Installing kata..."
+function Install-Poomsae {
+    Write-Info "Installing poomsae..."
     Write-Host ""
 
     $arch = Get-Architecture
@@ -236,7 +236,7 @@ function Install-Kata {
 
     if ($arch -eq '386') {
         Write-Err "Error: 32-bit Windows is not supported."
-        Write-Err "kata requires 64-bit Windows (amd64 or arm64)."
+        Write-Err "poomsae requires 64-bit Windows (amd64 or arm64)."
         exit 1
     }
 
@@ -252,7 +252,7 @@ function Install-Kata {
     $arch = $resolvedArch
 
     $versionNum = $version.TrimStart('v')
-    $archiveName = "kata_${versionNum}_windows_${arch}.zip"
+    $archiveName = "poomsae_${versionNum}_windows_${arch}.zip"
     $downloadUrl = "https://github.com/$repo/releases/download/$version/$archiveName"
 
     $installDir = Get-InstallDir
@@ -263,7 +263,7 @@ function Install-Kata {
         New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     }
 
-    $tmpDir = Join-Path $env:TEMP "kata-install-$(Get-Random)"
+    $tmpDir = Join-Path $env:TEMP "poomsae-install-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 
     try {
@@ -329,7 +329,7 @@ function Install-Kata {
         Write-Info "Installation complete!"
         Write-Host ""
 
-        if (-not (Test-EnvBool 'KATA_NO_MODIFY_PATH')) {
+        if (-not (Test-EnvBool 'POOMSAE_NO_MODIFY_PATH')) {
             $pathUpdated = Add-ToPath $installDir
             if ($pathUpdated) {
                 Write-Info "Added $installDir to PATH"
@@ -339,13 +339,13 @@ function Install-Kata {
         }
 
         Write-Host "Check the install:"
-        Write-Host "  kata version"
-        Write-Host "  kata update --check"
+        Write-Host "  poomsae version"
+        Write-Host "  poomsae update --check"
         Write-Host ""
         Write-Host "Get started:"
         Write-Host "  cd your-repo"
-        Write-Host "  kata init"
-        Write-Host "  kata tui"
+        Write-Host "  poomsae init"
+        Write-Host "  poomsae tui"
 
     } finally {
         if (Test-Path $tmpDir) {
@@ -355,5 +355,5 @@ function Install-Kata {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Install-Kata
+    Install-Poomsae
 }

@@ -10,8 +10,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/importlabels"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/importlabels"
 )
 
 const maxMarkdownBytes = 1 << 20

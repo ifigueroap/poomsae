@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/storageadmin"
-	kataclient "go.kenn.io/kata/pkg/client"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/storageadmin"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 )
 
 func TestReadEventStreamAcceptsLargeEvents(t *testing.T) {
@@ -1050,7 +1050,7 @@ func TestEditReportsCommittedMutationWhenLinkChangeScopingFails(t *testing.T) {
 }
 
 func TestEditRelationshipTargetSurvivesScopedProjectNameReuse(t *testing.T) {
-	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	sourceProject, err := store.CreateProject(t.Context(), "source-project")
@@ -1092,7 +1092,7 @@ func TestEditRelationshipTargetSurvivesScopedProjectNameReuse(t *testing.T) {
 		daemonHandler.ServeHTTP(writer, request)
 	}))
 	t.Cleanup(httpServer.Close)
-	client, err := kataclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(httpServer.URL, httpServer.Client())
 	require.NoError(t, err)
 	scope, err := NewAllowlistScope([]ProjectIdentity{
 		{ID: sourceProject.ID, UID: sourceProject.UID, Name: sourceProject.Name},
@@ -1103,7 +1103,7 @@ func TestEditRelationshipTargetSurvivesScopedProjectNameReuse(t *testing.T) {
 		Client: client, Scope: scope, Actor: "example-agent", Version: "test-version",
 	})
 
-	callWorkflowTool(t, session, "kata.edit", map[string]any{
+	callWorkflowTool(t, session, "poomsae.edit", map[string]any{
 		"ref": sourceProject.Name + "#" + source.ShortID,
 		"add_blocks": []any{
 			targetProject.Name + "#" + target.ShortID,
@@ -2018,11 +2018,11 @@ func reviewDigestBodyJSON(projectID int64, projectName string) map[string]any {
 	}
 }
 
-func reviewClient(t *testing.T, handler http.HandlerFunc) *kataclient.Client {
+func reviewClient(t *testing.T, handler http.HandlerFunc) *poomsaeclient.Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	return client
 }
@@ -2043,7 +2043,7 @@ func TestDestructiveActionsAddressIssueByUID(t *testing.T) {
 			shortIDMutations++
 			http.Error(writer, "mutation addressed by mutable short id", http.StatusInternalServerError)
 		case "/api/v1/projects/1/issues/" + issueUID + "/actions/delete":
-			require.Equal(t, "DELETE spoke-project#abc4", request.Header.Get("X-Kata-Confirm"))
+			require.Equal(t, "DELETE spoke-project#abc4", request.Header.Get("X-Poomsae-Confirm"))
 			issue := issueJSON(1, "spoke-project", "abc4")
 			issue["uid"] = issueUID
 			issue["status"] = "deleted"
@@ -2057,7 +2057,7 @@ func TestDestructiveActionsAddressIssueByUID(t *testing.T) {
 				},
 			})
 		case "/api/v1/projects/1/issues/" + issueUID + "/actions/purge":
-			require.Equal(t, "PURGE spoke-project#abc4", request.Header.Get("X-Kata-Confirm"))
+			require.Equal(t, "PURGE spoke-project#abc4", request.Header.Get("X-Poomsae-Confirm"))
 			writeJSON(writer, map[string]any{"purge_log": map[string]any{
 				"id": 1, "project_id": 1, "issue_uid": issueUID, "actor": "example-agent",
 				"purged_at": "2026-08-12T00:00:00Z",

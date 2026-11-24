@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 	"go.kenn.io/kit/tui/splitlayout"
 )
 

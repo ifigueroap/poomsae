@@ -9,7 +9,7 @@ import (
 
 func TestResolveColorMode_NoColorOverridesAll(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	t.Setenv("KATA_COLOR_MODE", "dark")
+	t.Setenv("POOMSAE_COLOR_MODE", "dark")
 	if got := resolveColorMode(); got != colorNone {
 		t.Fatalf("NO_COLOR=1 must force colorNone, got %v", got)
 	}
@@ -26,9 +26,9 @@ func TestResolveColorMode_KataColorModeRespected(t *testing.T) {
 	for in, want := range cases {
 		t.Run(in, func(t *testing.T) {
 			t.Setenv("NO_COLOR", "")
-			t.Setenv("KATA_COLOR_MODE", in)
+			t.Setenv("POOMSAE_COLOR_MODE", in)
 			if got := resolveColorMode(); got != want {
-				t.Fatalf("KATA_COLOR_MODE=%q -> %v, want %v", in, got, want)
+				t.Fatalf("POOMSAE_COLOR_MODE=%q -> %v, want %v", in, got, want)
 			}
 		})
 	}
@@ -36,7 +36,7 @@ func TestResolveColorMode_KataColorModeRespected(t *testing.T) {
 
 func TestResolveColorMode_InvalidFallsBackToAuto(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
-	t.Setenv("KATA_COLOR_MODE", "rainbow")
+	t.Setenv("POOMSAE_COLOR_MODE", "rainbow")
 	if got := resolveColorMode(); got != colorAuto {
 		t.Fatalf("invalid value should fall back to colorAuto, got %v", got)
 	}

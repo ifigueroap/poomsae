@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // openTestDB opens a fresh database in a temporary directory and registers
@@ -28,7 +28,7 @@ func openTestDB(t *testing.T) *sqlitestore.Store {
 // useful for tests that need to reopen the database or pre-seed it.
 func openTestDBWithPath(t *testing.T) (*sqlitestore.Store, string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := testfix.OpenSQLite(t.Context(), path)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = d.Close() })
@@ -72,11 +72,11 @@ func assertSchemaVersion(t *testing.T, d *sqlitestore.Store, expected int) {
 	assert.Equal(t, strconv.Itoa(expected), got)
 }
 
-// createKataProject creates the canonical "kata" project used by tests that
+// createKataProject creates the canonical "poomsae" project used by tests that
 // need a project to exist but don't care about its name.
 func createKataProject(ctx context.Context, t *testing.T, d *sqlitestore.Store) db.Project {
 	t.Helper()
-	return createProject(ctx, t, d, "kata")
+	return createProject(ctx, t, d, "poomsae")
 }
 
 // createProject creates a project with the given name, asserting no error.

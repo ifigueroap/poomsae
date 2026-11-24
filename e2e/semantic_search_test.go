@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestE2E_SemanticSearch_HybridAndDegraded boots a real `kata daemon`
+// TestE2E_SemanticSearch_HybridAndDegraded boots a real `poomsae daemon`
 // subprocess configured with [search.embeddings] pointing at an in-test
 // deterministic embedder, and exercises the whole semantic-search path that
 // only exists in the daemon's process wiring (startEmbeddingReconciler: the
@@ -160,7 +160,7 @@ func TestE2E_SemanticSearch_HybridAndDegraded(t *testing.T) {
 	require.Equalf(t, http.StatusServiceUnavailable, status,
 		"explicit hybrid with a dead embedder must be 503, not a downgrade: %s", body)
 
-	// 6. Label filters end to end through the real `kata` binary. Two issues
+	// 6. Label filters end to end through the real `poomsae` binary. Two issues
 	// share a token that appears nowhere else in this test ("zorblatt"), so
 	// the query's result set is exactly this pair; only one is labeled,
 	// isolating the filter's contribution from lexical relevance order. This
@@ -230,8 +230,8 @@ func TestE2E_SemanticSearch_ModelChangeCutover(t *testing.T) {
 	baseline := waitForSemanticHit(t, client, baseURL, pidStr, paraphrase, short, stderr)
 	require.Equal(t, "hybrid", baseline.Mode, "baseline search before the model change: %+v", baseline)
 
-	// Restart the daemon on the same KATA_HOME with a changed model. The
-	// sidecar vector database (kata.vectors.db) lives next to kata.db and
+	// Restart the daemon on the same POOMSAE_HOME with a changed model. The
+	// sidecar vector database (poomsae.vectors.db) lives next to poomsae.db and
 	// survives the restart, so the generation built under fixtureModelV1 is
 	// still on disk when the new daemon process opens the index — this is
 	// what the new generation must eventually cut over from.
@@ -352,7 +352,7 @@ func vectorForModel(model, text string) []float32 {
 
 // writeEmbeddingsConfig drops a config.toml under home enabling semantic
 // search against baseURL under the given model. The daemon subprocess reads
-// this from KATA_HOME at startup, so the full startEmbeddingReconciler wiring
+// this from POOMSAE_HOME at startup, so the full startEmbeddingReconciler wiring
 // runs; a later call (e.g. after stopping the daemon) with a different model
 // is how the model-change e2e exercises a config change across a restart.
 func writeEmbeddingsConfig(t *testing.T, home, baseURL, model string) {
@@ -491,11 +491,11 @@ func addLabelE2E(t *testing.T, client *http.Client, baseURL string, pid int64, r
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "add label: %s", raw)
 }
 
-// runKataSearchCLI runs `kata search <query> --lexical --agent --workspace
+// runKataSearchCLI runs `poomsae search <query> --lexical --agent --workspace
 // <repoDir>` plus extraArgs as a real subprocess against the daemon this
-// test already booted (discovered via the same KATA_HOME runtime files
+// test already booted (discovered via the same POOMSAE_HOME runtime files
 // connectDaemon polls) and requires success. This is the one assertion in
-// the file that drives the actual `kata` binary end to end — CLI flag
+// the file that drives the actual `poomsae` binary end to end — CLI flag
 // parsing, the HTTP query params, and the store-level filter — rather than
 // talking to the daemon directly over HTTP like the rest of this test.
 // --lexical pins the search mode so the assertion doesn't depend on
@@ -507,7 +507,7 @@ func runKataSearchCLI(t *testing.T, bin, repoDir string, env []string, query str
 	cmd := exec.CommandContext(t.Context(), bin, args...)
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	require.NoErrorf(t, err, "kata %s: %s", strings.Join(args, " "), out)
+	require.NoErrorf(t, err, "poomsae %s: %s", strings.Join(args, " "), out)
 	return string(out)
 }
 
@@ -594,7 +594,7 @@ func waitForBacklogZero(t *testing.T, client *http.Client, baseURL string, daemo
 
 // startDaemonCmd is startDaemon (see hooks_test.go) but also returns the
 // *exec.Cmd, so a caller can explicitly stop this daemon mid-test — e.g. to
-// restart it with a changed config on the same KATA_HOME — instead of only
+// restart it with a changed config on the same POOMSAE_HOME — instead of only
 // stopping it via t.Cleanup at test end.
 func startDaemonCmd(t *testing.T, bin string, env []string) (*exec.Cmd, *safeBuffer) {
 	t.Helper()

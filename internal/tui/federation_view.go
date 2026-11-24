@@ -9,8 +9,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	clientpkg "go.kenn.io/kata/internal/client"
-	hubfederation "go.kenn.io/kata/internal/federation"
+	clientpkg "github.com/ifigueroap/poomsae/internal/client"
+	hubfederation "github.com/ifigueroap/poomsae/internal/federation"
 )
 
 type federationMode int
@@ -321,7 +321,7 @@ func (m Model) handleFederationHubProjectsLoaded(msg federationHubProjectsLoaded
 //
 // The enroll flow has one branch of its own: a failure that produced a
 // recovery payload goes to the recovery screen (which shows the operator the
-// manual `kata federation join` command) instead of the preview.
+// manual `poomsae federation join` command) instead of the preview.
 func (m Model) handleFederationOpResult(out federationOpOutcome) (Model, tea.Cmd) {
 	if m.staleConnMsg(out.connGen) ||
 		out.attempt != m.federation.op.attempt ||
@@ -745,7 +745,7 @@ func (m Model) federationLeaveHubTarget(hubURL string, allowInsecure bool) daemo
 		}
 	}
 	// No catalog match: an unauthenticated, non-implicit target. Implicit
-	// targets could pick up the global KATA_AUTH_TOKEN/[auth].token during
+	// targets could pick up the global POOMSAE_AUTH_TOKEN/[auth].token during
 	// implicit resolution, which must never be sent to the hub origin.
 	return daemonTarget{
 		URL: want,
@@ -844,7 +844,7 @@ func revokeFederationLeaveEnrollments(
 	ids, globals, foreign := matchFederationLeaveEnrollments(enrollments, draft.InstanceUID, draft.HubProjectID)
 	if len(ids) == 0 && len(foreign) > 0 {
 		return 0, nil, fmt.Errorf(
-			"no active enrollment matches this spoke's instance UID, but enrollment(s) %s still authorize the hub project — the instance UID can change after a clone/import, or the enrollment may belong to another spoke instance; revoke the right one with `kata federation revoke <id>` on the hub, or retry with local-only to tear down locally without revoking",
+			"no active enrollment matches this spoke's instance UID, but enrollment(s) %s still authorize the hub project — the instance UID can change after a clone/import, or the enrollment may belong to another spoke instance; revoke the right one with `poomsae federation revoke <id>` on the hub, or retry with local-only to tear down locally without revoking",
 			formatEnrollmentIDs(foreign))
 	}
 	for _, id := range ids {

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // CreateLink inserts a links row. Distinct error types let the caller emit
@@ -319,7 +319,7 @@ func relationshipChunkPlaceholders(chunk []int64) (string, []any) {
 
 // LinksByIssue returns every link involving issueID (either endpoint), ordered
 // by id ASC. Used to build the show-issue response and to back the
-// list-then-delete flow used by `kata edit --remove-*`.
+// list-then-delete flow used by `poomsae edit --remove-*`.
 func (d *Store) LinksByIssue(ctx context.Context, issueID int64) ([]db.Link, error) {
 	args := []any{issueID, issueID}
 	statement := linkSelect + ` WHERE (from_issue_id = ? OR to_issue_id = ?) AND ` + authorizedLinkPredicate(ctx, "", &args) + ` ORDER BY id ASC`

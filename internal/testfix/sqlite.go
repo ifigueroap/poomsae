@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
 )
 
 var sqliteTemplate struct {
@@ -42,12 +42,12 @@ func OpenSQLite(ctx context.Context, path string) (*sqlitestore.Store, error) {
 }
 
 func buildSQLiteTemplate(ctx context.Context) ([]byte, error) {
-	dir, err := os.MkdirTemp("", "kata-sqlite-template-")
+	dir, err := os.MkdirTemp("", "poomsae-sqlite-template-")
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
-	path := filepath.Join(dir, "kata.db")
+	path := filepath.Join(dir, "poomsae.db")
 	store, err := sqlitestore.Open(ctx, path)
 	if err != nil {
 		return nil, err

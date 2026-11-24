@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/recurrence"
-	katauid "go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/recurrence"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 )
 
 const recurrenceSelect = `SELECT r.id, r.uid, r.project_id, r.rrule, r.dtstart, r.timezone,
@@ -47,7 +47,7 @@ func (s *Store) CreateRecurrence(ctx context.Context, input db.CreateRecurrenceI
 	if len(input.Template.Metadata) > 0 {
 		metadataJSON = input.Template.Metadata
 	}
-	recurrenceUID, err := katauid.New()
+	recurrenceUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.Recurrence{}, db.Event{}, fmt.Errorf("generate recurrence uid: %w", err)
 	}
@@ -140,7 +140,7 @@ func (s *Store) CreateRecurrenceForIssue(
 	if len(create.Template.Metadata) > 0 {
 		metadataJSON = create.Template.Metadata
 	}
-	recurrenceUID, err := katauid.New()
+	recurrenceUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.CreateRecurrenceForIssueOut{}, fmt.Errorf("generate recurrence uid: %w", err)
 	}
@@ -583,7 +583,7 @@ func (s *Store) materializeOccurrenceTx(
 	if err != nil {
 		return db.MaterializeNextOut{}, fmt.Errorf("compose recurrence issue metadata: %w", err)
 	}
-	issueUID, err := katauid.New()
+	issueUID, err := poomsaeuid.New()
 	if err != nil {
 		return db.MaterializeNextOut{}, fmt.Errorf("generate issue uid: %w", err)
 	}

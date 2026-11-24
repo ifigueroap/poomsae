@@ -1,0 +1,467 @@
+package main
+
+import (
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"maps"
+	"strings"
+
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
+	"github.com/ifigueroap/poomsae/internal/api"
+)
+
+func newCloseCmd() *cobra.Command {
+	var (
+		reason         string
+		message        string
+		evidence       []string
+		dryRun         bool
+		idempotencyKey string
+		ifMatch        string
+
+		sugarDone          bool
+		sugarWontfix       bool
+		sugarAuditNoChange bool
+		sugarDuplicateOf   string
+		sugarSupersededBy  string
+		sugarCommit        []string
+		sugarPR            []string
+		sugarTest          []string
+		sugarReviewed      []string
+		sugarDocbank       []string
+	)
+	cmd := &cobra.Command{
+		Use:   "close <issue-ref>",
+		Short: "close finished work with a reason, message, and evidence",
+		Long: `Closing an issue asserts that the work it describes is complete.
+This is a stronger claim than a comment. Provide evidence and a
+substantive message.
+
+Close each issue as soon as its work is verified, not in a batch at
+the end. By default the daemon allows sibling close bursts when each
+close has valid evidence and a substantive message. Operators can enable
+stricter burst/prose throttling via
+[close.throttle] enabled = true in <POOMSAE_HOME>/config.toml.
+Each successful CLI close prints a reminder that the close is a completion
+claim and that the message and evidence should be specific to the issue.
+
+If you have not completed and tested this work, or its PR is open and
+not merged, do not close it. Instead, leave it open, update work.attention
+and work.attention_msg with what remains, and add the needs-review label.
+Closing removes the needs-review label.
+
+The close message has a minimum length that depends on the reason:
+    --done, --audit-no-change           at least 40 characters
+    --duplicate-of, --superseded-by     at least 20 characters
+    --wontfix                           at least 60 characters`,
+		Example: `  poomsae close abc4 --done -m "Fixed Safari double-submit; go test ./auth passes." --commit <sha> --agent
+  poomsae close abc4 --done -m "Docs updated and link check passes for the guide." --pr <url> --test "make docs-check" --agent
+  poomsae close abc4 --duplicate-of d4ex -m "Same Safari race as d4ex." --agent`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("idempotency-key") && strings.TrimSpace(idempotencyKey) == "" {
+				return &cliError{
+					Message:  "--idempotency-key must not be blank",
+					Kind:     kindValidation,
+					ExitCode: ExitValidation,
+				}
+			}
+			if err := validateMetaIfMatchFlag(cmd, ifMatch); err != nil {
+				return err
+			}
+			// Resolve sugar -> reason (with conflict checks). Multiple sugar
+			// flags are mutually exclusive: a sequential switch would silently
+			// keep the first match and drop the rest (`--done --wontfix` would
+			// close as done without flagging the conflict).
+			sugarSet := []string{}
+			if sugarDone {
+				sugarSet = append(sugarSet, "done")
+			}
+			if sugarWontfix {
+				sugarSet = append(sugarSet, "wontfix")
+			}
+			if sugarAuditNoChange {
+				sugarSet = append(sugarSet, "audit-no-change")
+			}
+			if sugarDuplicateOf != "" {
+				sugarSet = append(sugarSet, "duplicate")
+			}
+			if sugarSupersededBy != "" {
+				sugarSet = append(sugarSet, "superseded")
+			}
+			if len(sugarSet) > 1 {
+				return &cliError{Kind: kindUsage, ExitCode: ExitUsage,
+					Message: fmt.Sprintf("flag conflict: multiple reason sugar flags set: %s", strings.Join(sugarSet, ", "))}
+			}
+			sugarReason := ""
+			if len(sugarSet) == 1 {
+				sugarReason = sugarSet[0]
+			}
+			if sugarReason != "" && reason != "" {
+				return &cliError{Kind: kindUsage, ExitCode: ExitUsage,
+					Message: fmt.Sprintf("flag conflict: --reason=%s and corresponding sugar flag both set", reason)}
+			}
+			if sugarReason != "" {
+				reason = sugarReason
+			}
+			if reason == "" {
+				return &cliError{Kind: kindUsage, ExitCode: ExitUsage,
+					Message: "close needs a reason: --done (with --commit, --pr, --test, or --reviewed), --wontfix, --duplicate-of <ref>, --superseded-by <ref>, or --audit-no-change"}
+			}
+
+			// Resolve sugar -> evidence (appended to user-supplied --evidence values).
+			for _, sha := range sugarCommit {
+				evidence = append(evidence, "commit:"+sha)
+			}
+			for _, url := range sugarPR {
+				evidence = append(evidence, "pr:"+url)
+			}
+			for _, command := range sugarTest {
+				evidence = append(evidence, "test:"+command)
+			}
+			for _, p := range sugarReviewed {
+				evidence = append(evidence, "reviewed-paths:"+p)
+			}
+			if sugarDuplicateOf != "" {
+				evidence = append(evidence, "duplicate-of:"+sugarDuplicateOf)
+			}
+			if sugarSupersededBy != "" {
+				evidence = append(evidence, "superseded-by:"+sugarSupersededBy)
+			}
+
+			parsed, err := parseEvidenceFlags(evidence)
+			if err != nil {
+				return err
+			}
+			if dup := findDuplicateEvidence(parsed); dup != "" {
+				return &cliError{Kind: kindUsage, ExitCode: ExitUsage,
+					Message: fmt.Sprintf("flag conflict: duplicate evidence item %s (provided more than once via canonical and/or sugar)", dup)}
+			}
+
+			parsed, err = prepareCloseAttachments(cmd, args[0], reason, message, parsed, sugarDocbank, dryRun)
+			if err != nil {
+				return err
+			}
+
+			extra := map[string]any{
+				"reason":   reason,
+				"message":  message,
+				"evidence": parsed,
+				"dry_run":  dryRun,
+			}
+			// Route the dry-run banner to stderr only in human mode so
+			// machine-parseable output modes stay unprefixed.
+			if dryRun && currentOutputMode() == outputHuman && !flags.Quiet {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "close: dry-run (no mutations will occur)")
+			}
+			headers := map[string]string{}
+			if idempotencyKey != "" {
+				headers["Idempotency-Key"] = idempotencyKey
+			}
+			if strings.TrimSpace(ifMatch) != "" {
+				etag, err := normalizeMetaIfMatch(ifMatch)
+				if err != nil {
+					return err
+				}
+				headers["If-Match"] = etag
+			}
+			return runActionWithHeaders(cmd, args[0], "close", extra, headers)
+		},
+	}
+	cmd.Flags().StringVar(&reason, "reason", "",
+		"one of: done, wontfix, duplicate, superseded, audit-no-change")
+	cmd.Flags().StringVarP(&message, "message", "m", "",
+		"substantive message describing scope and verification")
+	// StringArrayVar (not StringSliceVar) so commas inside a single
+	// --evidence value survive intact: no-change-audit:<text> and
+	// test:<cmd> often carry prose or shell snippets with commas, and
+	// StringSliceVar would shred them into broken sub-items.
+	cmd.Flags().StringArrayVar(&evidence, "evidence", nil,
+		"typed evidence, repeatable: commit:<sha>, pr:<url>, test:<cmd>, "+
+			"reviewed-paths:<path>, external:<account>, no-change-audit:<text>, "+
+			"duplicate-of:<N>, superseded-by:<N>, attachment:<id-or-suffix>")
+	cmd.Flags().BoolVar(&dryRun, "dry", false,
+		"validate without mutating; reports the would-be close event")
+	cmd.Flags().StringVar(&idempotencyKey, "idempotency-key", "",
+		"send Idempotency-Key header for safe retry")
+	cmd.Flags().StringVar(&ifMatch, "if-match", "",
+		"expected issue revision (N or rev-N)")
+
+	cmd.Flags().BoolVar(&sugarDone, "done", false, "sugar for --reason done")
+	cmd.Flags().BoolVar(&sugarWontfix, "wontfix", false, "sugar for --reason wontfix")
+	cmd.Flags().BoolVar(&sugarAuditNoChange, "audit-no-change", false, "sugar for --reason audit-no-change")
+	cmd.Flags().StringVar(&sugarDuplicateOf, "duplicate-of", "", "sugar for --reason duplicate --evidence duplicate-of:<ref>")
+	cmd.Flags().StringVar(&sugarSupersededBy, "superseded-by", "", "sugar for --reason superseded --evidence superseded-by:<ref>")
+	cmd.Flags().StringArrayVar(&sugarCommit, "commit", nil, "sugar for --evidence commit:<sha>, repeatable")
+	cmd.Flags().StringArrayVar(&sugarPR, "pr", nil, "sugar for --evidence pr:<url>, repeatable")
+	cmd.Flags().StringArrayVar(&sugarTest, "test", nil, "sugar for --evidence test:<command>, repeatable")
+	cmd.Flags().StringArrayVar(&sugarReviewed, "reviewed", nil, "sugar for --evidence reviewed-paths:<path>, repeatable")
+	cmd.Flags().StringArrayVar(&sugarDocbank, "docbank", nil, "link a Docbank node id or absolute path as done evidence, repeatable")
+	addCommentFlag(cmd)
+	cmd.Flags().SetNormalizeFunc(normalizeCloseBodyFlag)
+	return cmd
+}
+
+// parseEvidenceFlags turns CLI strings like "commit:abc1234" into the wire
+// shape expected by the daemon. reviewed-paths repeats are merged into a
+// single evidence item with a paths array, per spec §3.3.
+func parseEvidenceFlags(raw []string) ([]api.Evidence, error) {
+	var out []api.Evidence
+	var reviewedPaths []string
+	seenReviewedPath := map[string]struct{}{}
+	for _, s := range raw {
+		before, after, ok := strings.Cut(s, ":")
+		if !ok {
+			return nil, evidenceValueError("evidence %q: expected <type>:<value>", s)
+		}
+		kind, value := api.EvidenceType(before), after
+		switch kind {
+		case api.EvidenceAttachment:
+			if strings.TrimSpace(value) == "" {
+				return nil, evidenceValueError("attachment requires an id or unique suffix")
+			}
+			out = append(out, api.Evidence{Type: kind, AttachmentID: value})
+		case api.EvidenceCommit:
+			out = append(out, api.Evidence{Type: kind, SHA: value})
+		case api.EvidencePR:
+			out = append(out, api.Evidence{Type: kind, URL: value})
+		case api.EvidenceTest:
+			out = append(out, api.Evidence{Type: kind, Command: value})
+		case api.EvidenceReviewedPaths:
+			if _, dup := seenReviewedPath[value]; dup {
+				return nil, &cliError{Kind: kindUsage, ExitCode: ExitUsage,
+					Message: fmt.Sprintf("evidence reviewed-paths:%s: duplicate path (provided more than once via canonical and/or sugar)", value)}
+			}
+			seenReviewedPath[value] = struct{}{}
+			reviewedPaths = append(reviewedPaths, value)
+		case api.EvidenceExternal:
+			out = append(out, api.Evidence{Type: kind, Account: value})
+		case api.EvidenceNoChangeAudit:
+			out = append(out, api.Evidence{Type: kind, Rationale: value})
+		case api.EvidenceDuplicateOf:
+			if value == "" {
+				return nil, evidenceValueError("evidence duplicate-of: expected issue ref, got empty value")
+			}
+			out = append(out, api.Evidence{Type: kind, IssueRef: value})
+		case api.EvidenceSupersededBy:
+			if value == "" {
+				return nil, evidenceValueError("evidence superseded-by: expected issue ref, got empty value")
+			}
+			out = append(out, api.Evidence{Type: kind, IssueRef: value})
+		default:
+			return nil, evidenceValueError("evidence %q: unknown type %q", s, kind)
+		}
+	}
+	if len(reviewedPaths) > 0 {
+		out = append(out, api.Evidence{Type: api.EvidenceReviewedPaths, Paths: reviewedPaths})
+	}
+	return out, nil
+}
+
+func evidenceValueError(format string, args ...any) *cliError {
+	return &cliError{
+		Message:  fmt.Sprintf(format, args...),
+		Kind:     kindValidation,
+		ExitCode: ExitValidation,
+	}
+}
+
+// runAction is shared by close and reopen. It resolves the issue reference,
+// resolves the project, merges extra fields into the request body, and calls
+// the daemon action endpoint. If --comment was passed on the command, the
+// comment is appended in a separate POST after the action succeeds.
+func runAction(cmd *cobra.Command, raw, action string, extra map[string]any) error {
+	return runActionWithHeaders(cmd, raw, action, extra, nil)
+}
+
+func runActionWithHeaders(
+	cmd *cobra.Command, raw, action string, extra map[string]any, headers map[string]string,
+) error {
+	comment, handle, err := prepareFollowupComment(cmd)
+	if err != nil {
+		return err
+	}
+	ctx, baseURL, pid, issue, err := resolveIssueRefForCommand(cmd, raw)
+	if err != nil {
+		return err
+	}
+	actor, _ := resolveActor(ctx, flags.As, nil)
+	body := map[string]any{"actor": actor}
+	maps.Copy(body, extra)
+	if action == "close" && len(headers) > 0 {
+		body["retry_protocol"] = api.CloseRetryProtocol
+	}
+	client, err := httpClientFor(ctx, baseURL)
+	if err != nil {
+		return err
+	}
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+	if err != nil {
+		return err
+	}
+	if action == "close" {
+		unconfigured := false
+		if evidence, ok := body["evidence"].([]api.Evidence); ok && len(evidence) > 0 {
+			ref, selection, noEntry := prepareCloseTranscript(ctx, cmd, baseURL, pid, issue, headers["Idempotency-Key"] != "")
+			unconfigured = noEntry
+			if ref != nil {
+				body["transcript"] = ref
+				if selection != nil {
+					body["transcript_selection"] = selection
+				}
+			}
+		}
+		if err := dropUnrecordedTranscript(ctx, cmd, client, baseURL, body, unconfigured, headers["Idempotency-Key"] != ""); err != nil {
+			return err
+		}
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	var bs []byte
+	var parentRef string
+	switch action {
+	case "close":
+		var payload generated.CloseIssueBody
+		if err := json.Unmarshal(encoded, &payload); err != nil {
+			return err
+		}
+		options := &generated.CloseIssueRequestOptions{
+			PathParams: &generated.CloseIssuePath{ProjectID: pid, Ref: issue.RefForAPI}, Body: &payload,
+			Header: &generated.CloseIssueHeaders{},
+		}
+		if value, ok := headers["Idempotency-Key"]; ok {
+			options.Header.IdempotencyKey = &value
+		}
+		if value, ok := headers["If-Match"]; ok {
+			options.Header.IfMatch = &value
+		}
+		if reportsCLIUse(cmd) {
+			options.Header.XPoomsaeSurface = new("cli")
+		}
+		response, callErr := apiClient.CloseIssueWithResponse(ctx, options)
+		if response == nil {
+			return externalCLITransportError(response, callErr)
+		}
+		if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+			return err
+		}
+		bs = response.Body
+		if response.JSON200 != nil && response.JSON200.ParentReady != nil {
+			parentRef = response.JSON200.ParentReady.QualifiedID
+		}
+	case "reopen":
+		var payload generated.ReopenIssueBody
+		if err := json.Unmarshal(encoded, &payload); err != nil {
+			return err
+		}
+		response, callErr := apiClient.ReopenIssueWithResponse(ctx, &generated.ReopenIssueRequestOptions{
+			PathParams: &generated.ReopenIssuePath{ProjectID: pid, Ref: issue.RefForAPI}, Body: &payload,
+		})
+		if response == nil {
+			return externalCLITransportError(response, callErr)
+		}
+		if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+			return err
+		}
+		bs = response.Body
+	default:
+		return fmt.Errorf("unknown issue action %q", action)
+	}
+	if extra["dry_run"] == true {
+		return printMutationWithApplied(cmd, bs, nil, issue.ProjectName)
+	}
+	commentKey := ""
+	if key := headers["Idempotency-Key"]; key != "" {
+		commentKey = "close-comment:" + key
+	}
+	commentProjectID, commentIssueRef := pid, issue.RefForAPI
+	if comment != "" && commentKey != "" {
+		var response api.MutationResponse
+		if err := json.Unmarshal(bs, &response.Body); err != nil {
+			return fmt.Errorf("decode close response for follow-up comment: %w", err)
+		}
+		if response.Body.Issue.ProjectID <= 0 || response.Body.Issue.UID == "" {
+			return fmt.Errorf("close response is missing the issue identity for the follow-up comment")
+		}
+		commentProjectID = response.Body.Issue.ProjectID
+		commentIssueRef = response.Body.Issue.UID
+	}
+	commentErr := postFollowupCommentWithKey(
+		ctx, client, baseURL, commentProjectID, commentIssueRef, actor, comment, handle, commentKey,
+	)
+	if commentErr != nil && parentRef == "" {
+		return commentErr
+	}
+	if parentRef != "" {
+		bs, err = reportHint(cmd, bs, parentReadyHint(parentRef))
+		if err != nil {
+			return errors.Join(commentErr, err)
+		}
+	}
+	if err := printMutationWithApplied(cmd, bs, nil, issue.ProjectName); err != nil {
+		return errors.Join(commentErr, err)
+	}
+	return commentErr
+}
+
+func parentReadyHint(ref string) cliHint {
+	quoted := shellQuote(ref)
+	if project, short, ok := strings.Cut(ref, "#"); ok && shellQuote(project) == project && shellQuote(short) == short {
+		quoted = ref
+	}
+	command := "poomsae close " + quoted + moveBatchRecoveryFlags() + " --done …"
+	return cliHint{Code: "parent_ready", Message: fmt.Sprintf("parent %s has no open children: close it with %s", ref, command)}
+}
+
+// findDuplicateEvidence returns the first duplicate "type:value" pair, or
+// "" if none. Detects user-error like `--duplicate-of 7 --evidence duplicate-of:7`.
+func findDuplicateEvidence(items []api.Evidence) string {
+	seen := map[string]struct{}{}
+	for _, e := range items {
+		key := fmt.Sprintf("%s:%v", e.Type, evidencePayloadKey(e))
+		if _, dup := seen[key]; dup {
+			return key
+		}
+		seen[key] = struct{}{}
+	}
+	return ""
+}
+
+func evidencePayloadKey(e api.Evidence) string {
+	switch e.Type {
+	case api.EvidenceAttachment:
+		return e.AttachmentID
+	case api.EvidenceCommit:
+		return e.SHA
+	case api.EvidencePR:
+		return e.URL
+	case api.EvidenceTest:
+		return e.Command
+	case api.EvidenceExternal:
+		return e.Account
+	case api.EvidenceNoChangeAudit:
+		return e.Rationale
+	case api.EvidenceDuplicateOf, api.EvidenceSupersededBy:
+		return e.IssueRef
+	case api.EvidenceReviewedPaths:
+		return strings.Join(e.Paths, ",")
+	}
+	return ""
+}
+
+// normalizeCloseBodyFlag makes --body an alias of --message, so the text flag
+// from `poomsae comment` also sets the close message here. --comment still posts
+// a separate follow-up comment.
+func normalizeCloseBodyFlag(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	if name == "body" {
+		return "message"
+	}
+	return pflag.NormalizedName(name)
+}

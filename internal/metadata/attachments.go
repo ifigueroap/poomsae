@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 	"uuid"
 
-	"go.kenn.io/kata/internal/uid"
+	"github.com/ifigueroap/poomsae/internal/uid"
 )
 
 // AttachmentPrefix gives each file an independent, opaque metadata key.
@@ -17,7 +17,7 @@ const AttachmentPrefix = "attachment."
 
 // Attachment refers to an immutable Docbank content version.
 type Attachment struct {
-	// Origin is the serving Kata instance UID. Empty means a legacy reference.
+	// Origin is the serving Poomsae instance UID. Empty means a legacy reference.
 	Origin         string    `json:"origin,omitempty"`
 	Name           string    `json:"name"`
 	MediaType      string    `json:"media_type"`

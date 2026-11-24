@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func TestMCPTeammateSharedCalls(t *testing.T) {
@@ -42,16 +42,16 @@ func TestMCPTeammateSharedCalls(t *testing.T) {
 		writeJSON(w, response)
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, ProjectID: 42, ProjectName: "spoke-project", Actor: "coordinator", Version: "test"})
 	var wg sync.WaitGroup
 	for _, handle := range []string{"reviewer-7", "implementer-3", ""} {
 		wg.Go(func() {
-			for _, tool := range []string{"kata.comment", "kata.create"} {
+			for _, tool := range []string{"poomsae.comment", "poomsae.create"} {
 				key := tool + handle
 				args := map[string]any{"ref": "abc1", "body": "progress", "teammate": handle, "idempotency_key": key}
-				if tool == "kata.create" {
+				if tool == "poomsae.create" {
 					delete(args, "ref")
 					args["title"] = "New work"
 					args["metadata"] = map[string]any{"context": "keep"}
@@ -59,7 +59,7 @@ func TestMCPTeammateSharedCalls(t *testing.T) {
 				result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: tool, Arguments: args})
 				require.NoError(t, err)
 				require.False(t, result.IsError, "%s", mustJSON(t, result))
-				if tool == "kata.comment" {
+				if tool == "poomsae.comment" {
 					comment := result.StructuredContent.(map[string]any)["comment"].(map[string]any)
 					require.Equal(t, "coordinator", comment["author"])
 					if handle != "" {
@@ -76,9 +76,9 @@ func TestMCPTeammateSharedCalls(t *testing.T) {
 	require.Len(t, requests, 6)
 	for key, body := range requests {
 		require.Equal(t, "coordinator", body["actor"])
-		handle := strings.TrimPrefix(strings.TrimPrefix(key, "kata.comment"), "kata.create")
+		handle := strings.TrimPrefix(strings.TrimPrefix(key, "poomsae.comment"), "poomsae.create")
 		attribution := body
-		if strings.HasPrefix(key, "kata.create") {
+		if strings.HasPrefix(key, "poomsae.create") {
 			attribution = body["metadata"].(map[string]any)
 			require.Equal(t, "keep", attribution["context"])
 		}
@@ -89,7 +89,7 @@ func TestMCPTeammateSharedCalls(t *testing.T) {
 		}
 	}
 	mu.Unlock()
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.comment", Arguments: map[string]any{"ref": "other-project#abc1", "body": "progress", "teammate": "reviewer-7", "idempotency_key": "outside"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.comment", Arguments: map[string]any{"ref": "other-project#abc1", "body": "progress", "teammate": "reviewer-7", "idempotency_key": "outside"}})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	mu.Lock()
@@ -111,17 +111,17 @@ func TestMCPTeammateRejectsOldDaemonBeforePost(t *testing.T) {
 		_, _ = w.Write(daemonResponse(r))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithClient(t, client)
 	for _, handle := range []string{"reviewer-7", "bad/handle"} {
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.comment", Arguments: map[string]any{"ref": "abc1", "body": "progress", "teammate": handle, "idempotency_key": handle}})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.comment", Arguments: map[string]any{"ref": "abc1", "body": "progress", "teammate": handle, "idempotency_key": handle}})
 		require.NoError(t, err)
 		require.True(t, result.IsError)
 		require.Contains(t, string(mustJSON(t, result)), "teammate")
 	}
 	require.Zero(t, posts.Load())
-	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.comment", Arguments: map[string]any{"ref": "abc1", "body": "progress", "idempotency_key": "legacy"}})
+	result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.comment", Arguments: map[string]any{"ref": "abc1", "body": "progress", "idempotency_key": "legacy"}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%s", mustJSON(t, result))
 	require.Equal(t, int32(1), posts.Load())
@@ -144,7 +144,7 @@ func TestMCPTeammateStartupFallbackAndMetadata(t *testing.T) {
 		_, _ = w.Write(daemonResponse(r))
 	}))
 	t.Cleanup(daemon.Close)
-	client, err := kataclient.NewWithHTTPClient(daemon.URL, daemon.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(daemon.URL, daemon.Client())
 	require.NoError(t, err)
 	session := connectTestServerWithOptions(t, Options{Client: client, ProjectID: 42, ProjectName: "spoke-project", Actor: "coordinator", Version: "test", Teammate: "default-1"})
 	for _, tc := range []struct {
@@ -174,7 +174,7 @@ func TestMCPTeammateStartupFallbackAndMetadata(t *testing.T) {
 			mu.Lock()
 			before := len(requests)
 			mu.Unlock()
-			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.create", Arguments: args})
+			result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.create", Arguments: args})
 			require.NoError(t, err)
 			require.Equal(t, tc.fail, result.IsError, "%s", mustJSON(t, result))
 			mu.Lock()
@@ -202,7 +202,7 @@ func TestMCPTeammateStartupFallbackAndMetadata(t *testing.T) {
 		if tc.override != nil {
 			args["teammate"] = tc.override
 		}
-		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "kata.comment", Arguments: args})
+		result, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "poomsae.comment", Arguments: args})
 		require.NoError(t, err)
 		require.False(t, result.IsError, "%s", mustJSON(t, result))
 		mu.Lock()

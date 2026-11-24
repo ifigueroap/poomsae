@@ -10,7 +10,7 @@ import (
 
 func TestHandlerReleaseStatusRejectsCompilationStub(t *testing.T) {
 	stub := fstest.MapFS{
-		"index.html": &fstest.MapFile{Data: []byte("Kata UI assets are not built")},
+		"index.html": &fstest.MapFile{Data: []byte("Poomsae UI assets are not built")},
 	}
 	_, release, err := newHandlerWithReleaseStatus(stub)
 	require.NoError(t, err)
@@ -20,7 +20,7 @@ func TestHandlerReleaseStatusRejectsCompilationStub(t *testing.T) {
 
 func TestHandlerReleaseStatusAcceptsProductionMarkerAndManifest(t *testing.T) {
 	files := fstest.MapFS{
-		"index.html":             &fstest.MapFile{Data: []byte(`<meta name="kata-web-distribution" content="production"><script src="/assets/app-a1b2c3d4.js"></script>`)},
+		"index.html":             &fstest.MapFile{Data: []byte(`<meta name="poomsae-web-distribution" content="production"><script src="/assets/app-a1b2c3d4.js"></script>`)},
 		".vite/manifest.json":    &fstest.MapFile{Data: []byte(`{"entry":{"file":"assets/app-a1b2c3d4.js","isEntry":true}}`)},
 		"assets/app-a1b2c3d4.js": &fstest.MapFile{Data: []byte("export const ready = true")},
 	}

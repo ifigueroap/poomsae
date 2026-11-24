@@ -248,7 +248,7 @@ type ExternalRootBindingExport struct {
 // descriptor revisions remain distinct without exporting local integer IDs.
 type ExternalFieldMappingExport struct {
 	ConnectorInstance string    `json:"connector_instance"`
-	KataField         string    `json:"kata_field"`
+	PoomsaeField      string    `json:"kata_field"`
 	ExternalFieldID   string    `json:"external_field_id"`
 	ExternalFieldName string    `json:"external_field_name"`
 	AcceptedKinds     []string  `json:"accepted_kinds"`

@@ -9,7 +9,7 @@ installPreloadRecovery({
   storage: window.sessionStorage,
   entrypoint: new URL(import.meta.url).pathname,
   reload: () => window.location.reload(),
-  showMismatch: () => window.dispatchEvent(new Event('kata:versionMismatch')),
+  showMismatch: () => window.dispatchEvent(new Event('poomsae:versionMismatch')),
 })
 
 const target = document.getElementById('app')

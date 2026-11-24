@@ -1,33 +1,33 @@
 ---
 title: Diagnosing setup
-description: Diagnose setup with kata doctor.
+description: Diagnose setup with poomsae doctor.
 last_edited: 2026-11-20
 ---
 
 # Diagnosing setup
 
-When the CLI, daemon, workspace binding, or hooks seem broken, run `kata doctor`
+When the CLI, daemon, workspace binding, or hooks seem broken, run `poomsae doctor`
 first. It checks your setup and suggests fixes, even when the selected daemon is
 stopped. It does not apply those fixes.
 
 ```sh
-kata doctor
-kata doctor --json
-kata doctor --agent --workspace /path/to/example-workspace
-kata doctor --daemon example-remote --project example-project
+poomsae doctor
+poomsae doctor --json
+poomsae doctor --agent --workspace /path/to/example-workspace
+poomsae doctor --daemon example-remote --project example-project
 ```
 
 Doctor selects a daemon using the standard CLI precedence: an explicit
-`--daemon`, then `KATA_SERVER`, the workspace's `.kata.local.toml`,
+`--daemon`, then `POOMSAE_SERVER`, the workspace's `.poomsae.local.toml`,
 `active_daemon`, and finally local runtime discovery. A local override can point
 to a URL or a named local profile. Doctor validates the closest honored
-`.kata.local.toml` between your starting directory and its workspace boundary,
+`.poomsae.local.toml` between your starting directory and its workspace boundary,
 including subdirectory overrides. If a configured target is unavailable, doctor
 does not fall back to a local daemon.
 
 A stopped local daemon or local profile is informational. The next ordinary
-`kata` command starts it, so doctor skips the daemon checks without failing. To
-check the daemon itself, run `kata daemon start` and rerun `kata doctor`.
+`poomsae` command starts it, so doctor skips the daemon checks without failing. To
+check the daemon itself, run `poomsae daemon start` and rerun `poomsae doctor`.
 
 If a default local runtime directory does not have owner-only
 permissions, doctor reports a warning; it does not inspect or repair the
@@ -56,18 +56,18 @@ from the selected daemon.
 
 | Check ID | What it checks | Suggested next step |
 | --- | --- | --- |
-| `agent.claude`, `agent.codex` | User-scope hook configuration and readiness; project hooks from `kata init --agent-hooks` do not clear it | Run `kata agent setup`; for untrusted Codex hooks, open Codex and run `/hooks`. |
-| `config.daemon` | Local daemon/display config and environment overrides | Check spelling, types, URLs and supported fields in `<KATA_HOME>/config.toml`. |
-| `config.workspace` | Workspace path, project binding and local override syntax; ignored keys | Correct `.kata.toml`/`.kata.local.toml`, or supply `--project`. |
+| `agent.claude`, `agent.codex` | User-scope hook configuration and readiness; project hooks from `poomsae init --agent-hooks` do not clear it | Run `poomsae agent setup`; for untrusted Codex hooks, open Codex and run `/hooks`. |
+| `config.daemon` | Local daemon/display config and environment overrides | Check spelling, types, URLs and supported fields in `<POOMSAE_HOME>/config.toml`. |
+| `config.workspace` | Workspace path, project binding and local override syntax; ignored keys | Correct `.poomsae.toml`/`.poomsae.local.toml`, or supply `--project`. |
 | `config.hooks` | Local `hooks.toml` validation, including events that can fire | Correct events, commands, timeouts and tunable fields. |
 | `config.federation_signing` | No two available, unexpired federation signing keys share a secret | Give each key its own secret and rotate the shared secret. |
-| `daemon.connection` | Exact selected endpoint identifies as Kata | Check target selection; start a stopped local daemon to run the remaining checks. |
+| `daemon.connection` | Exact selected endpoint identifies as Poomsae | Check target selection; start a stopped local daemon to run the remaining checks. |
 | `daemon.health` | The daemon's storage schema is readable | Inspect daemon logs and storage/credential configuration on its host. |
 | `daemon.version` | CLI/daemon version and API contract | Align versions; explicitly restart an upgraded daemon. |
-| `workspace.project` | Effective name exists in the visible active project catalog | Check target and name; use `kata init` to repair a stale/renamed binding. |
+| `workspace.project` | Effective name exists in the visible active project catalog | Check target and name; use `poomsae init` to repair a stale/renamed binding. |
 | `daemon.hooks` | Currently loaded hook executable and working-directory availability | Fix the daemon service's PATH or working directory, then explicitly reload/restart it. |
 | `daemon.hook_queue` | Current queue and process-lifetime dropped count | Inspect hook capacity and slow or failing commands. |
-| `daemon.hook_runs` | Failures among scanned runs ended in the last seven days | Inspect `kata daemon logs --hooks` and the hook output on its host. |
+| `daemon.hook_runs` | Failures among scanned runs ended in the last seven days | Inspect `poomsae daemon logs --hooks` and the hook output on its host. |
 | `daemon.embeddings` | Existing reconciler error and backlog aggregate | Check model/provider credentials and daemon logs. |
 | `daemon.docbank` | The daemon can resolve its `[docbank]` API key, and Docbank answers one read-only request and accepts that key. `local = true` has no key source to check, and a daemon older than API 0.54.0 resolves the key without contacting Docbank. A daemon that has the probe route but cannot answer it also warns | Fix the key source the check names on the daemon host, the `[docbank]` url, or the key Docbank issued; see the [key file rules](../reference/configuration.md#credentials-and-batching). |
 | `daemon.federation` | Declarative mapping convergence | Resolve pending/conflicting mappings and credential origin problems. |
@@ -77,9 +77,9 @@ the reason in `details`. Reports omit other configuration errors, parser text,
 unknown key names, and credentials.
 
 Doctor looks up the same project name that ordinary commands use: `--project`
-first, then `[project].name` in `.kata.toml`. It matches by exact name using GET
+first, then `[project].name` in `.poomsae.toml`. It matches by exact name using GET
 requests only, and it does not resolve aliases, follow a renamed binding, or
-rewrite `.kata.toml`. If your principal cannot see the project catalog, doctor
+rewrite `.poomsae.toml`. If your principal cannot see the project catalog, doctor
 reports an unverified-project warning. Archived projects do not count as usable.
 
 The daemon resolves active hook commands using its own PATH, and doctor compares

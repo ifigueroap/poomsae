@@ -61,11 +61,11 @@ func TestLoadedConfig_FieldsExist(t *testing.T) {
 	}
 }
 
-// setupKataHome creates a temp directory and points $KATA_HOME at it.
+// setupKataHome creates a temp directory and points $POOMSAE_HOME at it.
 func setupKataHome(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	t.Setenv("KATA_HOME", dir)
+	t.Setenv("POOMSAE_HOME", dir)
 	return dir
 }
 
@@ -244,8 +244,8 @@ func TestLoad_KataPrefixedEnv_Error(t *testing.T) {
 event   = "issue.created"
 command = "true"
 [hook.env]
-KATA_FOO = "x"
-`, "[hook.env] keys matching ^KATA_ must be rejected")
+POOMSAE_FOO = "x"
+`, "[hook.env] keys matching ^POOMSAE_ must be rejected")
 }
 
 func TestLoad_HookCountCap(t *testing.T) {
@@ -390,9 +390,9 @@ func TestMatch_IssueStarOnlyKnown(t *testing.T) {
 }
 
 // TestMatch_LinksChangedRecognized pins that the aggregated event added
-// for kata#1 is in knownEventTypes — both the explicit form and the
+// for poomsae#1 is in knownEventTypes — both the explicit form and the
 // wildcard matchers must accept it. Without this, hook configs cannot
-// subscribe to relationship changes routed through `kata edit`.
+// subscribe to relationship changes routed through `poomsae edit`.
 func TestMatch_LinksChangedRecognized(t *testing.T) {
 	_, exact, err := compileEventMatcher("issue.links_changed")
 	if err != nil {

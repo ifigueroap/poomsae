@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
 )
 
 func TestAssign_HappyPath(t *testing.T) {
@@ -638,7 +638,7 @@ func TestClaim_HonorsBrowserSessionPrincipal(t *testing.T) {
 		Updates: "sse", Auth: config.AuthConfig{Token: "static-token"}, DB: d.db,
 	})
 	require.NoError(t, err)
-	issued, err := manager.IssueSession(daemon.Principal{Kind: daemon.PrincipalStaticToken}, "/kata")
+	issued, err := manager.IssueSession(daemon.Principal{Kind: daemon.PrincipalStaticToken}, "/poomsae")
 	require.NoError(t, err)
 	server := daemon.NewServer(daemon.ServerConfig{
 		DB: d.db, StartedAt: d.now, WebSessions: manager, Auth: config.AuthConfig{Token: "static-token"},
@@ -656,8 +656,8 @@ func TestClaim_HonorsBrowserSessionPrincipal(t *testing.T) {
 	request.RemoteAddr = "127.0.0.1:40123"
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://127.0.0.1:27123")
-	request.Header.Set("X-Kata-Web-Session", issued.Session)
-	request.Header.Set("X-Kata-CSRF", issued.CSRF)
+	request.Header.Set("X-Poomsae-Web-Session", issued.Session)
+	request.Header.Set("X-Poomsae-CSRF", issued.CSRF)
 	request.AddCookie(manager.Cookie(issued.Cookie))
 	request = request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey,
 		net.Addr(&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 27123})))
@@ -686,7 +686,7 @@ func TestClaim_HonorsLocalBrowserSessionPrincipal(t *testing.T) {
 		Updates: "sse", Auth: config.AuthConfig{}, DB: d.db,
 	})
 	require.NoError(t, err)
-	issued, err := manager.IssueSession(daemon.Principal{Kind: daemon.PrincipalWebLocal}, "/kata")
+	issued, err := manager.IssueSession(daemon.Principal{Kind: daemon.PrincipalWebLocal}, "/poomsae")
 	require.NoError(t, err)
 	server := daemon.NewServer(daemon.ServerConfig{
 		DB: d.db, StartedAt: d.now, WebSessions: manager, Auth: config.AuthConfig{},
@@ -705,8 +705,8 @@ func TestClaim_HonorsLocalBrowserSessionPrincipal(t *testing.T) {
 	request.RemoteAddr = "127.0.0.1:40123"
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://127.0.0.1:27123")
-	request.Header.Set("X-Kata-Web-Session", issued.Session)
-	request.Header.Set("X-Kata-CSRF", issued.CSRF)
+	request.Header.Set("X-Poomsae-Web-Session", issued.Session)
+	request.Header.Set("X-Poomsae-CSRF", issued.CSRF)
 	request.AddCookie(manager.Cookie(issued.Cookie))
 	request = request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey,
 		net.Addr(&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 27123})))
@@ -781,7 +781,7 @@ func TestClaim_HonorsTrustedProxyActor(t *testing.T) {
 			require.NoError(t, err)
 			server := daemon.NewServer(daemon.ServerConfig{DB: d.db, StartedAt: d.now,
 				Auth: config.AuthConfig{Proxy: config.ProxyConfig{
-					TrustedActorHeader: "X-Kata-Actor", TrustedProxyListeners: []string{"127.0.0.1:27123"},
+					TrustedActorHeader: "X-Poomsae-Actor", TrustedProxyListeners: []string{"127.0.0.1:27123"},
 				}},
 			})
 			t.Cleanup(func() { _ = server.Close() })
@@ -789,7 +789,7 @@ func TestClaim_HonorsTrustedProxyActor(t *testing.T) {
 				"http://127.0.0.1:27123"+issuePathRef(project.ID, issue.ShortID, "actions/claim"),
 				strings.NewReader(`{"actor":"forged"}`))
 			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("X-Kata-Actor", tc.header)
+			request.Header.Set("X-Poomsae-Actor", tc.header)
 			request = request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey,
 				net.Addr(&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 27123})))
 			response := httptest.NewRecorder()

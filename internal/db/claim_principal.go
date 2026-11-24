@@ -20,14 +20,14 @@ func BoundSpokeClaimPrincipal(binding FederationBinding, principal ClaimPrincipa
 	}
 	if binding.RelayConfig != nil {
 		identity, _ := json.Marshal([3]string{principal.HolderInstanceUID, principal.Holder, principal.ClientKind})
-		digest := sha256.Sum256(append([]byte("kata:relay-claim-holder:v1\x00"), identity...))
+		digest := sha256.Sum256(append([]byte("poomsae:relay-claim-holder:v1\x00"), identity...))
 		principal.HolderInstanceUID = localInstanceUID
 		principal.ClientKind = "relay:v1:" + base64.RawURLEncoding.EncodeToString(digest[:])
 		principal.Holder = actor
 		return principal
 	}
 	if principal.AuthenticatedHost {
-		ownerDigest := sha256.Sum256([]byte("kata:spoke-host-claim-owner:v1\x00" + principal.Holder))
+		ownerDigest := sha256.Sum256([]byte("poomsae:spoke-host-claim-owner:v1\x00" + principal.Holder))
 		principal.ClientKind = "spoke-host:v1:" + base64.RawURLEncoding.EncodeToString(ownerDigest[:])
 	}
 	principal.Holder = actor

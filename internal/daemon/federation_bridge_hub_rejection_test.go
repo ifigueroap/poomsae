@@ -11,7 +11,7 @@ import (
 // A hub that rejects the catalog credential is reported as an upstream
 // failure, not as the local caller's own authorization failure.
 func TestFederationBridgeConnectReportsHubCredentialRejection(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	catalog := hub.catalog(hub.root.server.URL)
 	catalog[0].Token = "unknown-member-test-token"
@@ -32,7 +32,7 @@ func TestFederationBridgeConnectReportsHubCredentialRejection(t *testing.T) {
 // A hub project the account cannot see is also an upstream answer: the hub's
 // 404 must not read as the local bridge route being missing.
 func TestFederationBridgeConnectReportsMissingHubProject(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	hub := newBridgeHubFixture(t)
 	local := newBridgeLocalDaemon(t, openReplicaServiceStore(t), hub.catalog(hub.root.server.URL))
 	code, _, raw := local.request(t, http.MethodPost, "/api/v1/federation/bridges", "", bridgeConnectBody("no-such-hub-project", true), bridgeOwnerHeaders)

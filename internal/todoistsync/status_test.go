@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/issuesync"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/issuesync"
 )
 
 func statusSession(t *testing.T, f *apiFixture) (StatusSession, Config) {
@@ -44,7 +44,7 @@ func TestStatusCloseVerifyAndReopen(t *testing.T) {
 	require.Len(t, f.posts, 2)
 }
 
-// Contract: Kata refuses writes that Todoist would apply to more than the
+// Contract: Poomsae refuses writes that Todoist would apply to more than the
 // mapped task, and nothing is sent when delivery admission fails.
 func TestStatusGuardsBeforeMutation(t *testing.T) {
 	for _, kind := range []string{"recurring", "child cascade", "ancestor cascade", "archived section", "admission", "moved", "empty subtask reply", "empty section reply"} {
@@ -131,7 +131,7 @@ func TestStatusReopenFindsTaskEditedAfterCompletion(t *testing.T) {
 }
 
 // Contract: a task Todoist returns deleted or in another project is out of
-// scope. Kata reports it as blocked instead of reusing an earlier closed result.
+// scope. Poomsae reports it as blocked instead of reusing an earlier closed result.
 func TestStatusOutOfScopeTaskIsBlockedNotClosed(t *testing.T) {
 	for _, kind := range []string{"moved", "deleted"} {
 		t.Run(kind, func(t *testing.T) {
@@ -152,7 +152,7 @@ func TestStatusOutOfScopeTaskIsBlockedNotClosed(t *testing.T) {
 	}
 }
 
-// Contract: a task that reopens while Kata reads completion history is open.
+// Contract: a task that reopens while Poomsae reads completion history is open.
 func TestStatusReopenDuringHistoryReadWins(t *testing.T) {
 	f := newAPIFixture(t)
 	f.row.Checked, f.row.CompletedAt = true, new(f.row.UpdatedAt)

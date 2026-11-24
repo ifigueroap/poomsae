@@ -13,7 +13,7 @@ import (
 )
 
 type undoTestAPI struct {
-	KataAPI
+	PoomsaeAPI
 	issue         Issue
 	closeResp     *MutationResp
 	closeErr      error
@@ -695,7 +695,7 @@ func TestModelCapabilityRefreshClearsHistoryForChangedPrincipal(t *testing.T) {
 }
 
 func TestModelDaemonSwitchClearsHistoryAndLateCompletion(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	f := &undoTestAPI{issue: Issue{UID: "01JZ0000000000000000000001", ProjectID: 7, Status: "open"},
 		closeResp: &MutationResp{Issue: &Issue{UID: "01JZ0000000000000000000001", ProjectID: 7, Status: "closed"}, Changed: true}}
 	oldClient := newConnectedUndoClient(t, f)
@@ -834,7 +834,7 @@ func TestUndoClientReusesConnectionIdentityForWrites(t *testing.T) {
 	require.Equal(t, 1, f.instanceCalls, "write must reuse the connection's identity request")
 }
 
-func newConnectedUndoClient(t *testing.T, base KataAPI) *undoClient {
+func newConnectedUndoClient(t *testing.T, base PoomsaeAPI) *undoClient {
 	t.Helper()
 	m := initialModel(Options{})
 	c := newUndoClient(base)

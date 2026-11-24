@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/cron"
 )
 
 // CronDefinitionEvent is a complete portable document. Snapshot envelopes

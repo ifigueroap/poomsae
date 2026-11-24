@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/doordash-oss/oapi-codegen-dd/v3/pkg/runtime"
-	"go.kenn.io/kata/pkg/client/generated"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
 
-	"go.kenn.io/kata/internal/federationsigning/signingpolicy"
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/federationsigning/signingpolicy"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 
-	"go.kenn.io/kata/internal/api"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/federationcoord"
-	"go.kenn.io/kata/internal/federationsigning"
+	"github.com/ifigueroap/poomsae/internal/api"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/federationcoord"
+	"github.com/ifigueroap/poomsae/internal/federationsigning"
 )
 
 const (
@@ -536,7 +536,7 @@ func fetchFederationRebindMetadata(
 				return api.ProjectFederationBody{}, federationReplicaError(
 					ErrFederationReplicaInvalidInput,
 					"federation signing source is pinned to a different hub base",
-					"Run kata federation signing configure --project-uid <local-project-uid> with the existing --key-id and --key-env or --key-file, and --hub-url <new-https-base>, then retry.",
+					"Run poomsae federation signing configure --project-uid <local-project-uid> with the existing --key-id and --key-env or --key-file, and --hub-url <new-https-base>, then retry.",
 				)
 			}
 		}
@@ -549,13 +549,13 @@ func fetchFederationRebindMetadata(
 		return api.ProjectFederationBody{}, federationReplicaError(ErrFederationReplicaInvalidInput, "build replacement hub metadata request", "")
 	}
 	features := db.SupportedEventFeatures
-	result, _ := apiClient.GetFederationProjectMetadataWithResponse(ctx, &generated.GetFederationProjectMetadataRequestOptions{PathParams: &generated.GetFederationProjectMetadataPath{ProjectID: hubProjectID}, Header: &generated.GetFederationProjectMetadataHeaders{XKataEventFeatures: &features}})
+	result, _ := apiClient.GetFederationProjectMetadataWithResponse(ctx, &generated.GetFederationProjectMetadataRequestOptions{PathParams: &generated.GetFederationProjectMetadataPath{ProjectID: hubProjectID}, Header: &generated.GetFederationProjectMetadataHeaders{XPoomsaeEventFeatures: &features}})
 	if result == nil {
 		return api.ProjectFederationBody{}, federationReplicaError(ErrFederationReplicaHubUnavailable, "replacement hub metadata request failed", "check the HTTPS catalog endpoint and retry")
 	}
 	response := result.HTTPResponse
 	if response.StatusCode == http.StatusPreconditionRequired {
-		return api.ProjectFederationBody{}, federationReplicaError(ErrFederationReplicaCredentialConflict, "replacement hub requires signed requests", "Run kata federation signing configure --project-uid <local-project-uid> with --key-id and --key-env or --key-file, and --hub-url <new-https-base>, then retry.")
+		return api.ProjectFederationBody{}, federationReplicaError(ErrFederationReplicaCredentialConflict, "replacement hub requires signed requests", "Run poomsae federation signing configure --project-uid <local-project-uid> with --key-id and --key-env or --key-file, and --hub-url <new-https-base>, then retry.")
 	}
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
 		return api.ProjectFederationBody{}, federationReplicaError(

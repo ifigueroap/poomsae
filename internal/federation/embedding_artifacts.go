@@ -3,7 +3,7 @@ package federation
 import (
 	"context"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // relayArtifactBatchLimit is the manifest offers one artifact batch carries.

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/docbank"
+	"github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/docbank"
-	"go.kenn.io/kata/internal/uid"
 )
 
 // The origin UID remains absolute when a project loses or disables its route.
@@ -26,7 +26,7 @@ func TestFederatedDocbankRecoveryForeignOriginNeverUsesLocalVault(t *testing.T) 
 			attachmentID, err := uid.New()
 			require.NoError(t, err)
 			version := uuid.MustParse(linkVersion)
-			vault.Seed("/kata/matching.pdf", docbank.Node{ID: 42, Name: "matching.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("local bytes")})
+			vault.Seed("/poomsae/matching.pdf", docbank.Node{ID: 42, Name: "matching.pdf", Kind: "file", CurrentVersionID: version}, map[uuid.UUID][]byte{version: []byte("local bytes")})
 			raw := jsontext.Value(fmt.Sprintf(`{"name":"matching.pdf","media_type":"application/pdf","size":11,"docbank_version":%q,"origin":%q}`, version.String(), origin))
 			_, err = env.DB.PatchIssueMetadata(t.Context(), db.PatchIssueMetadataIn{IssueID: issue.ID, Actor: "operator", Patch: map[string]jsontext.Value{"attachment." + attachmentID: raw}})
 			require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestFederatedDocbankRecoveryForeignOriginNeverUsesLocalVault(t *testing.T) 
 				status, body = attachmentUpload(t, env, endpoint, "file.pdf", strings.NewReader("local bytes"))
 				require.Equal(t, http.StatusServiceUnavailable, status, string(body))
 				require.Contains(t, string(body), "federation_offline")
-				status, body, err = postAttachmentLink(t, env, endpoint+"/links", `{"path":"/kata/matching.pdf","actor":"operator"}`)
+				status, body, err = postAttachmentLink(t, env, endpoint+"/links", `{"path":"/poomsae/matching.pdf","actor":"operator"}`)
 				require.NoError(t, err)
 				require.Equal(t, http.StatusServiceUnavailable, status, string(body))
 				require.Contains(t, string(body), "federation_offline")

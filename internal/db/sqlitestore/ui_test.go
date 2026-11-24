@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/dbtest"
 )
 
 func TestUISnapshotGraphReachContract(t *testing.T) {
@@ -501,7 +501,7 @@ func TestReadUIReferencesFiltersIssueUIDs(t *testing.T) {
 
 func openUIStore(t *testing.T) *Store {
 	t.Helper()
-	store, err := Open(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	store, err := Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	return store

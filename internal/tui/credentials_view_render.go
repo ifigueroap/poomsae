@@ -15,7 +15,7 @@ const credentialCardRows = 5
 func renderCredentials(m Model) string {
 	state := m.credentials
 	body := []string{
-		titleStyle.Render("kata / credentials"),
+		titleStyle.Render("poomsae / credentials"),
 		subtleStyle.Render(credentialsSummary(state)),
 		"",
 	}

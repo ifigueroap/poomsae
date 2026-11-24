@@ -4,13 +4,13 @@ services:
       context: ../..
       dockerfile: docker/federation/Dockerfile
     volumes:
-      - hub-data:/data/kata
+      - hub-data:/data/poomsae
     environment:
-      KATA_HOME: /data/kata
-      KATA_AUTH_TOKEN: federation-hub-token
-      KATA_TRUST_PRIVATE_NETWORK: "1"
-      KATA_WEB_ALLOWED_HOSTS: "hub:7373"
-      KATA_FEDERATION_PULL_INTERVAL_MS: "250"
+      POOMSAE_HOME: /data/poomsae
+      POOMSAE_AUTH_TOKEN: federation-hub-token
+      POOMSAE_TRUST_PRIVATE_NETWORK: "1"
+      POOMSAE_WEB_ALLOWED_HOSTS: "hub:7373"
+      POOMSAE_FEDERATION_PULL_INTERVAL_MS: "250"
     command: ["daemon", "start", "--foreground", "--listen", "0.0.0.0:7373"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7373/api/v1/health"]
@@ -23,13 +23,13 @@ services:
       context: ../..
       dockerfile: docker/federation/Dockerfile
     volumes:
-      - spoke-a-data:/data/kata
+      - spoke-a-data:/data/poomsae
     environment:
-      KATA_HOME: /data/kata
-      KATA_AUTH_TOKEN: federation-hub-token
-      KATA_TRUST_PRIVATE_NETWORK: "1"
-      KATA_WEB_ALLOWED_HOSTS: "spoke-a:7374"
-      KATA_FEDERATION_PULL_INTERVAL_MS: "250"
+      POOMSAE_HOME: /data/poomsae
+      POOMSAE_AUTH_TOKEN: federation-hub-token
+      POOMSAE_TRUST_PRIVATE_NETWORK: "1"
+      POOMSAE_WEB_ALLOWED_HOSTS: "spoke-a:7374"
+      POOMSAE_FEDERATION_PULL_INTERVAL_MS: "250"
     command: ["daemon", "start", "--foreground", "--listen", "0.0.0.0:7374"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7374/api/v1/health"]
@@ -42,13 +42,13 @@ services:
       context: ../..
       dockerfile: docker/federation/Dockerfile
     volumes:
-      - spoke-b-data:/data/kata
+      - spoke-b-data:/data/poomsae
     environment:
-      KATA_HOME: /data/kata
-      KATA_AUTH_TOKEN: federation-hub-token
-      KATA_TRUST_PRIVATE_NETWORK: "1"
-      KATA_WEB_ALLOWED_HOSTS: "spoke-b:7375"
-      KATA_FEDERATION_PULL_INTERVAL_MS: "250"
+      POOMSAE_HOME: /data/poomsae
+      POOMSAE_AUTH_TOKEN: federation-hub-token
+      POOMSAE_TRUST_PRIVATE_NETWORK: "1"
+      POOMSAE_WEB_ALLOWED_HOSTS: "spoke-b:7375"
+      POOMSAE_FEDERATION_PULL_INTERVAL_MS: "250"
     command: ["daemon", "start", "--foreground", "--listen", "0.0.0.0:7375"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7375/api/v1/health"]
@@ -69,13 +69,13 @@ services:
       spoke-b:
         condition: service_healthy
     volumes:
-      - runner-data:/data/kata
+      - runner-data:/data/poomsae
     environment:
-      KATA_HOME: /data/kata
-      KATA_AUTH_TOKEN: federation-hub-token
-      KATA_ALLOW_INSECURE: "1"
-      KATA_HTTP_TIMEOUT: 15s
-      KATA_FEDERATION_DOCKER_CURL_TIMEOUT: ${KATA_FEDERATION_DOCKER_CURL_TIMEOUT:-15}
+      POOMSAE_HOME: /data/poomsae
+      POOMSAE_AUTH_TOKEN: federation-hub-token
+      POOMSAE_ALLOW_INSECURE: "1"
+      POOMSAE_HTTP_TIMEOUT: 15s
+      POOMSAE_FEDERATION_DOCKER_CURL_TIMEOUT: ${POOMSAE_FEDERATION_DOCKER_CURL_TIMEOUT:-15}
 
 volumes:
   hub-data:

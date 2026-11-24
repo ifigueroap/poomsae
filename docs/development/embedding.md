@@ -1,19 +1,19 @@
 ---
-title: Embedding kata in Go
-description: Mount kata's HTTP service inside a Go application.
+title: Embedding poomsae in Go
+description: Mount poomsae's HTTP service inside a Go application.
 ---
 
-# Embedding kata in Go
+# Embedding poomsae in Go
 
-The module root, `go.kenn.io/kata`, exposes kata as a listener-free application
+The module root, `github.com/ifigueroap/poomsae`, exposes poomsae as a listener-free application
 service. Use it when a Go application should own the HTTP server and process
-lifecycle instead of supervising a separate `kata daemon` process. The mounted
+lifecycle instead of supervising a separate `poomsae daemon` process. The mounted
 handler serves the same [HTTP API](../reference/http-api.md) used by the CLI and
-TUI. Embedded services are API-only by default; importing `go.kenn.io/kata`
+TUI. Embedded services are API-only by default; importing `github.com/ifigueroap/poomsae`
 does not include the browser application assets.
 
 The host application remains responsible for the listener, TLS, signal
-handling, and HTTP server shutdown. A `kata.Service` owns its storage handle and
+handling, and HTTP server shutdown. A `poomsae.Service` owns its storage handle and
 the federation, GitHub sync, timed-claim, due-notification, assignment-expiry,
 and optional MCP Events background workers associated with that handle.
 
@@ -22,7 +22,7 @@ and optional MCP Events background workers associated with that handle.
 A Postgres-backed service can enable semantic and hybrid issue search with
 `Config.Embeddings`. Set `BaseURL` and `Model` for an embedding server, or set
 `Local` with `Model: "nomic-embed-text"` to use an already installed local
-model server. Kata does not install or download a model for the host. Call
+model server. Poomsae does not install or download a model for the host. Call
 `Run` to build and update issue vectors. A host that runs its own workers can
 call `RunSemanticIndex` to run only the semantic index reconciler. Writes on
 another replica or from host-owned workers that write directly to storage can
@@ -32,7 +32,7 @@ A host worker fence stops the embedding worker when it rejects a transaction.
 Set `Config.EmbeddingProjectAllowed` to limit indexing and query embedding to
 host-approved project UIDs. Returning false excludes a project and removes its
 existing mirror and vectors on the next refresh. Returning an error aborts the
-attempt; the worker retries with backoff. Kata checks the callback again on
+attempt; the worker retries with backoff. Poomsae checks the callback again on
 later attempts. A nil callback allows every project. For excluded projects,
 explicit semantic and hybrid searches return unavailable, while auto search
 falls back to keyword search.
@@ -54,9 +54,9 @@ normal loopback/login, paired session, CSRF, snapshot, and event-stream
 contracts.
 
 The ported issue editor retains an optional neutral workspace-action component
-property, but Kata's root application does not wire it and renders no external
+property, but Poomsae's root application does not wire it and renders no external
 workspace controls. Supplying such an action or adding cross-service deep links
-is outside this milestone. The listener-free `kata.Service` API likewise does
+is outside this milestone. The listener-free `poomsae.Service` API likewise does
 not turn host authentication into a browser-session transfer mechanism; hosts
 that mount it continue to own their HTTP authentication boundary as documented
 below.
@@ -79,7 +79,7 @@ import (
 	"syscall"
 	"time"
 
-	"go.kenn.io/kata"
+	"github.com/ifigueroap/poomsae"
 )
 
 func main() {
@@ -88,10 +88,10 @@ func main() {
 	)
 	defer stop()
 
-	service, err := kata.New(ctx, kata.Config{
-		DSN: "/var/lib/example-app/kata.db",
-		Auth: kata.AuthConfig{
-			Token: os.Getenv("EXAMPLE_KATA_TOKEN"),
+	service, err := poomsae.New(ctx, poomsae.Config{
+		DSN: "/var/lib/example-app/poomsae.db",
+		Auth: poomsae.AuthConfig{
+			Token: os.Getenv("EXAMPLE_POOMSAE_TOKEN"),
 		},
 	})
 	if err != nil {
@@ -153,16 +153,16 @@ It is safe to call more than once.
 
 ## Authentication is explicit
 
-`kata.New` requires exactly one authentication policy:
+`poomsae.New` requires exactly one authentication policy:
 
-- Set `Auth.Token` to make kata enforce a bearer token on its protected HTTP
+- Set `Auth.Token` to make poomsae enforce a bearer token on its protected HTTP
   routes. The host remains responsible for transport security.
 - Set `Auth.TrustCallerAuthentication` to `true` only when trusted middleware
   already authenticates every request before it reaches `service.Handler()`.
   Never expose that handler directly on an untrusted listener.
 - Set `Config.Access` when the host owns both identity and per-operation
   authorization. The host middleware attaches an authenticated
-  `kata.Principal` in process with `kata.WithPrincipal`; Kata never accepts
+  `poomsae.Principal` in process with `poomsae.WithPrincipal`; Poomsae never accepts
   that principal from a network header.
 
 Construction fails when no policy is selected or when policies are combined. The
@@ -176,30 +176,30 @@ token over plaintext non-loopback HTTP.
 
 ## Serve the browser application
 
-The standalone `kata daemon` serves the bundled browser application
+The standalone `poomsae daemon` serves the bundled browser application
 automatically. An embedded service is API-only unless the host passes a
-handler in `kata.Config.WebHandler`. Hosts that served the browser application
+handler in `poomsae.Config.WebHandler`. Hosts that served the browser application
 before 0.19.0 must now select it explicitly:
 
 ```go
 import (
-	"go.kenn.io/kata"
-	"go.kenn.io/kata/webui"
+	"github.com/ifigueroap/poomsae"
+	"github.com/ifigueroap/poomsae/webui"
 )
 
 web, err := webui.NewEmbeddedHandler()
 if err != nil {
 	return err
 }
-service, err := kata.New(ctx, kata.Config{
-	DSN:        "/var/lib/example-app/kata.db",
-	Auth:       kata.AuthConfig{Token: os.Getenv("EXAMPLE_KATA_TOKEN")},
+service, err := poomsae.New(ctx, poomsae.Config{
+	DSN:        "/var/lib/example-app/poomsae.db",
+	Auth:       poomsae.AuthConfig{Token: os.Getenv("EXAMPLE_POOMSAE_TOKEN")},
 	WebHandler: web,
 })
 ```
 
 API-only hosts can leave `WebHandler` nil and avoid linking the browser assets.
-A custom `WebHandler` must serve public, data-free assets: Kata's bearer check
+A custom `WebHandler` must serve public, data-free assets: Poomsae's bearer check
 protects API requests, not the static shell.
 
 ## Mount below a URL path
@@ -219,20 +219,20 @@ segments. `/api` and paths below it are reserved for the browser application's
 API routes. `HandlerAt` changes routing only; the host still owns
 [authentication](#authentication-is-explicit).
 
-Standalone `/kata/` redirects to `/kata`, preserving view and filter queries
+Standalone `/poomsae/` redirects to `/poomsae`, preserving view and filter queries
 so relative assets load from the origin root.
 
 ## Host-owned access
 
-`AccessController` is the fine-grained embedding seam. Kata calls it after a
+`AccessController` is the fine-grained embedding seam. Poomsae calls it after a
 route matches and before protected data is returned or changed. The request
 contains the opaque authenticated subject, the actor snapshot used for new
 event and projection rows, and the matched operation ID, method, path template,
-path parameters, and Kata's operation policy. The policy contains a stable
+path parameters, and Poomsae's operation policy. The policy contains a stable
 domain kind, the required product-neutral `read`, `write`, `manage`, or
 `federate` capability, and explicit mutation and long-lived-response flags.
 Hosts map those capability classes to their own roles; they do not need to
-infer policy from operation names or HTTP verbs. Kata's registration test fails
+infer policy from operation names or HTTP verbs. Poomsae's registration test fails
 if a new route has no policy, and host-access mode fails closed if metadata is
 unavailable.
 
@@ -242,7 +242,7 @@ both projects; omitting the project filter from the event stream sets
 `AllProjects` instead of silently broadening an empty scope. Body- and
 query-selected projects are decoded and validated before this decision. When
 an operation discovers another project while resolving a link, UID, or graph,
-Kata asks again with the expanded scope before returning or changing protected
+Poomsae asks again with the expanded scope before returning or changing protected
 data. Controllers should therefore make retry-safe decisions from the complete
 request rather than treating a call as a one-time notification. Global
 operations set `AllProjects` explicitly. Operations such as purge, close,
@@ -254,7 +254,7 @@ same applies to tolerant relationship removals, whose missing-target no-op
 must not reveal whether a target belongs to a denied project. The request
 deliberately contains no application roles or tenant model.
 
-For lease operations, Kata derives an opaque holder key from the stable
+For lease operations, Poomsae derives an opaque holder key from the stable
 `Principal.Subject`; a request-provided `holder` cannot select or impersonate
 another mounted caller. Subject bytes are compared exactly after rejecting
 empty or whitespace-only values, so the embedding host must provide one
@@ -272,8 +272,8 @@ An embedding host typically mounts the service behind its ordinary session or
 credential middleware:
 
 ```go
-service, err := kata.New(ctx, kata.Config{
-	DSN:    "/var/lib/example-app/kata.db",
+service, err := poomsae.New(ctx, poomsae.Config{
+	DSN:    "/var/lib/example-app/poomsae.db",
 	Access: applicationAccessController,
 })
 if err != nil {
@@ -286,7 +286,7 @@ handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "authentication required", http.StatusUnauthorized)
 		return
 	}
-	ctx := kata.WithPrincipal(r.Context(), kata.Principal{
+	ctx := poomsae.WithPrincipal(r.Context(), poomsae.Principal{
 		Subject: principal.StableID,
 		Actor:   principal.DisplayName,
 	})
@@ -294,17 +294,17 @@ handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
-The controller returns `kata.ErrAccessDenied` for a rejected operation. Kata
+The controller returns `poomsae.ErrAccessDenied` for a rejected operation. Poomsae
 answers with a generic not-found envelope so the response does not confirm that
 a protected resource exists. Other controller failures return a bounded
 service-unavailable envelope without exposing the underlying error.
 
 Long-lived operations require an `AccessLease` in the successful decision.
-Kata revalidates that lease before each event or heartbeat; a failed
+Poomsae revalidates that lease before each event or heartbeat; a failed
 revalidation closes the stream before more protected data is written. Bounded
 requests may return a decision with no lease.
 
-Return a `TransactionFence` with every successful decision. Kata invokes it
+Return a `TransactionFence` with every successful decision. Poomsae invokes it
 only when handling the operation begins a writable SQLite or PostgreSQL
 transaction, before the first domain write. This also covers read operations
 that perform transactional maintenance, while explicitly read-only snapshots
@@ -317,11 +317,11 @@ back and make only the mounted service temporarily unavailable. A missing
 fence fails closed before writing.
 
 If the host must record a denial outside that transaction, return
-`kata.AfterTransactionRollback(err, finish)` from the fence. Kata rolls back
+`poomsae.AfterTransactionRollback(err, finish)` from the fence. Poomsae rolls back
 and releases its connection before calling `finish` once. The callback can
 use a separate host transaction to save an audit event or suspend a credential.
 It receives the request context, must tolerate retries, and must not reuse the
-rolled-back transaction. Kata still denies the original operation if recording
+rolled-back transaction. Poomsae still denies the original operation if recording
 succeeds or fails. Rollback and callback failures remain in the returned error.
 HTTP callers receive a temporary-unavailable response when finalization fails,
 not a completed authorization decision. The rejected write still does not run.
@@ -330,9 +330,9 @@ An earlier fence's denial prevents later fences and their callbacks from running
 Serializable transactions may retry, so a fence must be safe to invoke once
 per transaction attempt. The transaction exposes only `ExecContext` and
 `QueryRowContext`, which is enough to call a fixed host-owned validation
-function without exposing Kata's internal storage packages.
+function without exposing Poomsae's internal storage packages.
 
-When `Config.Access` is set, also configure `WorkerTransactionFence`. Kata
+When `Config.Access` is set, also configure `WorkerTransactionFence`. Poomsae
 applies it to every writable transaction started by the federation, GitHub
 sync, timed-claim, due-notification, assignment-expiry, and MCP Events workers. A rejection
 rolls the transaction back and finishes host recording before canceling all
@@ -346,15 +346,15 @@ audit attribution tied to the authenticated principal rather than caller input.
 middleware mode; use `Config.Access` when projects or operations need distinct
 authorization decisions.
 
-Federation transport and lease routes may authenticate with Kata-managed,
+Federation transport and lease routes may authenticate with Poomsae-managed,
 project-scoped bearer credentials. When such a request has no in-process host
-principal, Kata validates the scoped credential in the route instead of calling
+principal, Poomsae validates the scoped credential in the route instead of calling
 the ordinary `AccessController`. The outer server must preserve the
 `Authorization` header on those routes. A request without either an in-process
 principal or a scoped bearer credential remains unauthenticated.
 
 Mounting applications that have additional credential-lifecycle rules can set
-`Config.FederationAccess`. Kata calls that controller only after its own token,
+`Config.FederationAccess`. Poomsae calls that controller only after its own token,
 project, and capability checks succeed. The request contains the retained
 enrollment without its token hash, the resolved project, the exact `pull`,
 `push`, or `claim` capability, and the stable operation ID. Returning
@@ -363,13 +363,13 @@ disclosing which outside condition changed. Standalone behavior is unchanged
 when the controller is absent.
 
 Federation mutations require the controller to return a `TransactionFence`.
-Kata runs it inside the same storage transaction as event ingest or lease state,
+Poomsae runs it inside the same storage transaction as event ingest or lease state,
 so a concurrent revocation is ordered with the protected write. A missing fence
 fails closed. Federation metadata and lease-status requests also require a fence
 because they may refresh baselines, expire claims, or update a spoke's cached
 lease state even though their HTTP method is `GET`. Tokenless lease-status reads
 remain available in explicitly trusted-caller mode; once a bearer credential is
-supplied, Kata authenticates and authorizes that credential. When a request
+supplied, Poomsae authenticates and authorizes that credential. When a request
 carries both an in-process principal and a scoped federation credential, the
 ordinary host-access fence runs first and the federation fence runs only after
 it succeeds; neither authorization layer replaces the other. The callback
@@ -381,9 +381,9 @@ host implements `FederationReferenceAccessController` on
 `Config.FederationAccess`. This applies to link additions in issue creation or
 composite edits, and to parent link additions, removals, or replacements.
 The spoke supplies the referenced project's push
-credential for the same hub URL, including its mount path. Kata calls
+credential for the same hub URL, including its mount path. Poomsae calls
 `AuthorizeFederation` for that project with the mutation operation
-`authorizeFederationIssueReference`. After fencing both credentials, Kata calls
+`authorizeFederationIssueReference`. After fencing both credentials, Poomsae calls
 `AuthorizeFederationReference` in the ingest transaction. The host must check
 that both enrollments belong to the same current principal through commit.
 Returning `ErrAccessDenied` rolls back the batch and leaves it pending on the
@@ -403,10 +403,10 @@ lifecycle, API-token administration, federation setup, and external issue-sync
 configuration:
 
 ```go
-service, err := kata.New(ctx, kata.Config{
-	DSN:     "/var/lib/example-app/kata.db",
+service, err := poomsae.New(ctx, poomsae.Config{
+	DSN:     "/var/lib/example-app/poomsae.db",
 	Access:  applicationAccessController,
-	Profile: kata.EmbeddingProfileRestricted,
+	Profile: poomsae.EmbeddingProfileRestricted,
 })
 ```
 
@@ -414,7 +414,7 @@ Restricted mode returns a generic not-found response for native project
 mutations, token administration, federation administration, and issue-sync
 administration. Rejection happens before host authorization or request-body
 processing. Project and task reads, ordinary task changes, event streams, and
-Kata-authenticated federation transport remain available under their normal
+Poomsae-authenticated federation transport remain available under their normal
 access checks. The zero-value profile preserves the full standalone-compatible
 HTTP API.
 
@@ -424,11 +424,11 @@ more host-owned application methods without changing standalone defaults.
 
 ## Host-managed projects
 
-Applications that keep their own project catalog can establish one stable Kata
+Applications that keep their own project catalog can establish one stable Poomsae
 project without calling the HTTP API internally:
 
 ```go
-result, err := service.EnsureProject(ctx, kata.ProjectSpec{
+result, err := service.EnsureProject(ctx, poomsae.ProjectSpec{
 	UID:  "01HZNQ7VFPK1XGD8R5MABCD4EX",
 	Name: "example-host-project",
 })
@@ -436,9 +436,9 @@ result, err := service.EnsureProject(ctx, kata.ProjectSpec{
 
 `EnsureProject` is idempotent across processes. An exact UID-and-name match
 returns the existing numeric identity and history; a reused UID or name that
-points at a different project returns `kata.ErrProjectConflict`. The caller can
+points at a different project returns `poomsae.ErrProjectConflict`. The caller can
 therefore retry after an interrupted catalog update without creating a second
-project. Archived projects are returned as `kata.ProjectArchived` and are not
+project. Archived projects are returned as `poomsae.ProjectArchived` and are not
 silently reactivated.
 
 `ArchiveProject` retains that same UID, numeric identity, tasks, and events
@@ -458,36 +458,36 @@ result, err := service.PurgeArchivedProject(
 ```
 
 - The project must be archived first. An active project returns
-  `kata.ErrProjectNotArchived`.
+  `poomsae.ErrProjectNotArchived`.
 - The actor is required, because the purge log records who purged the
-  project. A blank actor returns `kata.ErrProjectPurgeActorRequired`.
-- A project that is a federation hub is accepted, unlike `kata projects purge`.
+  project. A blank actor returns `poomsae.ErrProjectPurgeActorRequired`.
+- A project that is a federation hub is accepted, unlike `poomsae projects purge`.
   The purge retires the hub binding and deletes every enrollment scoped to the
   project, active or revoked, in the same transaction. Those credentials stop
   working at once. Hub-wide enrollments are unchanged.
 - A spoke still joined to the project is not notified. Its next sync fails, and
-  its operator runs `kata federation leave <project> --local-only`.
-- A replica of another hub's project returns `kata.ErrProjectFederationReplica`.
+  its operator runs `poomsae federation leave <project> --local-only`.
+- A replica of another hub's project returns `poomsae.ErrProjectFederationReplica`.
   Leave that hub first.
-- `kata.ErrProjectPurgeBlocked` wraps a condition the operator must resolve
+- `poomsae.ErrProjectPurgeBlocked` wraps a condition the operator must resolve
   first: an active external root binding, or a joined project whose move
   history still needs this project's identity.
 - The purge writes the same project and task purge log entries as
-  `kata projects purge`, and the result reports the log entry's UID with the
+  `poomsae projects purge`, and the result reports the log entry's UID with the
   deleted task, event, and enrollment counts.
-- A purge cannot be undone. A second call returns `kata.ErrProjectNotFound`,
+- A purge cannot be undone. A second call returns `poomsae.ErrProjectNotFound`,
   and `EnsureProject` may then create the same UID and name as a new, empty
   project.
 
 ## Host-managed federation enrollments
 
-Restricted embedding keeps Kata's scoped federation transport routes but
+Restricted embedding keeps Poomsae's scoped federation transport routes but
 removes its native enrollment-administration routes. After applying its own
 authorization policy, a host can issue a project-scoped transport credential
 directly through the service:
 
 ```go
-created, err := service.CreateFederationEnrollment(ctx, kata.FederationEnrollmentSpec{
+created, err := service.CreateFederationEnrollment(ctx, poomsae.FederationEnrollmentSpec{
 	ProjectUID:       "01HZNQ7VFPK1XGD8R5MABCD4EX",
 	SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 	Capabilities:     "pull,push,claim",
@@ -496,7 +496,7 @@ created, err := service.CreateFederationEnrollment(ctx, kata.FederationEnrollmen
 ```
 
 Creation atomically enables hub federation for the active project when
-necessary. Kata generates the bearer secret, stores only its hash, and returns
+necessary. Poomsae generates the bearer secret, stores only its hash, and returns
 the plaintext in `created.Token` exactly once. `ListFederationEnrollments`
 returns retained history for one stable project UID without either form of the
 secret.
@@ -512,7 +512,7 @@ retry safely after an interrupted request. Generate 32 random bytes, encode
 them as unpadded base64url, and save the token before calling:
 
 ```go
-enrollment, err := service.EnsureFederationEnrollment(ctx, kata.FederationEnrollmentSpec{
+enrollment, err := service.EnsureFederationEnrollment(ctx, poomsae.FederationEnrollmentSpec{
 	ProjectUID:       "01HZNQ7VFPK1XGD8R5MABCD4EX",
 	SpokeInstanceUID: "01HZNQ7VFPK1XGD8R5MABCD4EA",
 	Capabilities:     "claim,pull,push",
@@ -539,22 +539,22 @@ authorize create, ensure, list, and revoke operations before calling them.
 
 ## Federation credential providers
 
-A credential provider lets a host application approve Kata federation using
+A credential provider lets a host application approve Poomsae federation using
 its own account and project permissions. The caller supplies a saved token;
 the provider authorizes that exact token for one project and installation.
 The request carries a candidate federation token, not a daemon administration
 token. The helper itself is trusted local code, not a sandboxed process.
 
 **Development branch; not a tagged release.** The Go package
-`go.kenn.io/kata/pkg/federationprovider` handles the helper exchange. Choose the
+`github.com/ifigueroap/poomsae/pkg/federationprovider` handles the helper exchange. Choose the
 entry point for the code you are writing:
 
 | Your code | Entry point | Responsibility |
 | --- | --- | --- |
-| Kata caller | `Exchange` | Run the configured helper with a previously saved request. |
+| Poomsae caller | `Exchange` | Run the configured helper with a previously saved request. |
 | Helper | `DecodeRequest`, `WriteResponse` | Read a request, decide access, then write a checked reply. |
 | Helper forwarding another service's reply | `DecodeResponse` | Check that reply against the original request before forwarding it. |
-| Application embedding Kata | `Service.EnsureFederationEnrollment` | Register the exact saved token after approving access. |
+| Application embedding Poomsae | `Service.EnsureFederationEnrollment` | Register the exact saved token after approving access. |
 
 Pending approval and denial are normal responses, not Go errors. Errors mean
 the exchange could not finish or a document was invalid. Callers still own
@@ -566,7 +566,7 @@ redacted status use the same saved request. See the
 [operator guide](../operations/federation.md#external-credential-providers)
 for configuration and cleanup instructions.
 
-Kata handles interrupted requests as follows:
+Poomsae handles interrupted requests as follows:
 
 - Saves the request and candidate token before running the helper.
 - Reuses them after pending approval, a failed exchange, or restart.
@@ -577,7 +577,7 @@ Kata handles interrupted requests as follows:
 Provider-backed reconciliation makes no catalog-administration calls. It checks
 the metadata's project ID and UID against the saved approval and retains that
 approval when metadata retrieval or local attachment fails. The provider resolves
-the requested project key to those identifiers. That key need not equal Kata's
+the requested project key to those identifiers. That key need not equal Poomsae's
 internal project name, and a rename does not change the approved identity.
 
 - `read_only` and `collaborate` attach an empty local project or rejoin a
@@ -590,21 +590,21 @@ internal project name, and a rename does not change the approved identity.
   hub identity. Their checksums name the old identity. One new local event
   updates browser readers without pushing empty metadata to the hub.
 - Changing `intent` between `read_only` and `collaborate` on an attached
-  replica keeps its binding and data. Kata releases the saved request, then
+  replica keeps its binding and data. Poomsae releases the saved request, then
   authorizes a new request UUID and candidate token with the new intent and
   the original `spoke_instance_uid` and `local_project_uid`. The provider must
   approve the same hub project. The new approval may name a different
-  `actor`; that actor replaces the replica's bound actor. Kata applies the
+  `actor`; that actor replaces the replica's bound actor. Poomsae applies the
   replacement only after the hub accepted every local change and no claim,
   claim request, or running cron run belongs to the old actor, and retries
-  until then. Kata repeats an unconfirmed release, so a release of an already
+  until then. Poomsae repeats an unconfirmed release, so a release of an already
   released request must return `released`.
 - Normal leave stops transport and asks the saved provider to release the
   exact request. Unconfirmed cleanup remains pending rather than deleting its
   credential. Once confirmed, the secret is removed; a closed marker prevents
   the still-configured mapping from reopening after restart.
 
-Kata's credential file can retain the provider operation beside its saved
+Poomsae's credential file can retain the provider operation beside its saved
 token. It stores the request UUID, executable arguments, intent, original local
 project and installation identifiers, any accepted enrollment and expiry, and,
 after an intent change, the bound actor the new approval replaces.
@@ -633,7 +633,7 @@ marker does not authorize the reconciler to guess whether to archive local data.
 - Release cancels or revokes exactly the saved request. Keep that request until
   the provider confirms `released`, including after a failed exchange.
 - A host that expires credentials supplies and enforces the expiry time.
-  Standalone Kata storage does not enforce expiry.
+  Standalone Poomsae storage does not enforce expiry.
 
 ### Executable exchange
 
@@ -643,10 +643,10 @@ directly, without a shell, and inherits the caller's environment. A provider can
 use the operator's normal account configuration.
 
 Only configure helpers you trust with the daemon's operating-system account.
-They can read inherited variables, including `KATA_AUTH_TOKEN` if exported,
+They can read inherited variables, including `POOMSAE_AUTH_TOKEN` if exported,
 and files and sockets available to that account. The protocol's restricted
 credential fields do not isolate a local executable from those resources.
-Kata's federation HTTP requests use the approved project token, not the
+Poomsae's federation HTTP requests use the approved project token, not the
 daemon administration token.
 
 - Stdin and stdout each carry one UTF-8 JSON object. No progress text or prompts.
@@ -678,7 +678,7 @@ Retries never replace or forget the saved request.
 ### Request fields
 
 Both operations require `version` (integer `1`), `operation`, and `request_id`.
-The UUID uses lowercase, hyphenated text and must not be nil. Kata identity
+The UUID uses lowercase, hyphenated text and must not be nil. Poomsae identity
 fields use uppercase ULIDs. String fields must be nonempty when present.
 
 An `authorize` request also requires:
@@ -687,7 +687,7 @@ An `authorize` request also requires:
 | --- | --- |
 | `hub_url` | Expected HTTPS base, including its mount. No user info, query, or fragment. |
 | `project` | Destination project key understood by the host. |
-| `spoke_instance_uid` | The caller's Kata installation identity. |
+| `spoke_instance_uid` | The caller's Poomsae installation identity. |
 | `local_project_uid` | The caller's local project identity. |
 | `intent` | `read_only`, `collaborate`, or `migrate`. |
 | `candidate_token` | The saved 32-byte token encoded as unpadded base64url. |
@@ -705,7 +705,7 @@ A minimal `release` request needs only the shared fields:
 Release may also repeat `hub_url`, `project`, `spoke_instance_uid`,
 `local_project_uid`, and `intent` from the saved request. These optional fields
 help the provider find that request; they never select a different project or
-enrollment to revoke. Kata sends its saved values, not values from a provider
+enrollment to revoke. Poomsae sends its saved values, not values from a provider
 response. Release must not include `candidate_token`.
 
 Providers use `DecodeRequest(io.Reader)` and
@@ -749,9 +749,9 @@ permissions and report `ready`. Read-only never permits pushing. Write replicas
 need both pull and push; claiming work is optional. Responses never return a token.
 
 The Go package exports `Intent` and `Status` constants for callers and helpers.
-It shares URL and actor validation with Kata without importing daemon configuration.
+It shares URL and actor validation with Poomsae without importing daemon configuration.
 
-URL matching uses Kata's canonical HTTP base rules: normalize host case and
+URL matching uses Poomsae's canonical HTTP base rules: normalize host case and
 the default HTTPS port, remove trailing slashes, and preserve the mount path.
 A different host, nondefault port, or mount is rejected. A successful `Exchange`
 returns the canonical base.
@@ -761,17 +761,17 @@ returns the canonical base.
 MCP Events is off in an embedded `Service`. Set `Config.MCPEvents` to run it:
 
 ```go
-service, err := kata.New(ctx, kata.Config{
-	DSN:  os.Getenv("EXAMPLE_KATA_DSN"),
-	Auth: kata.AuthConfig{Token: os.Getenv("EXAMPLE_KATA_TOKEN")},
-	MCPEvents: kata.MCPEventsConfig{
+service, err := poomsae.New(ctx, poomsae.Config{
+	DSN:  os.Getenv("EXAMPLE_POOMSAE_DSN"),
+	Auth: poomsae.AuthConfig{Token: os.Getenv("EXAMPLE_POOMSAE_TOKEN")},
+	MCPEvents: poomsae.MCPEventsConfig{
 		Enabled: true,
-		Key:     exampleEventsKey{}, // implements kata.MCPEventsKeyProvider
+		Key:     exampleEventsKey{}, // implements poomsae.MCPEventsKeyProvider
 	},
 })
 ```
 
-`Key` supplies the 32-byte key that seals webhook secrets. `Load` returns `kata.ErrMCPEventsKeyMissing` when no key exists and
+`Key` supplies the 32-byte key that seals webhook secrets. `Load` returns `poomsae.ErrMCPEventsKeyMissing` when no key exists and
 never creates one. `Create` returns the existing key or publishes a new one, and
 concurrent callers must converge on one key. Every service that shares a
 database must return identical key material. Persist the key outside the
@@ -807,14 +807,14 @@ the operator contract.
 handling explicit:
 
 ```go
-service, err := kata.New(ctx, kata.Config{
-	DSN: os.Getenv("EXAMPLE_KATA_DSN"),
-	Postgres: kata.PostgresConfig{
-		Schema:      "kata",
-		SchemaMode:  kata.PostgresSchemaValidate,
+service, err := poomsae.New(ctx, poomsae.Config{
+	DSN: os.Getenv("EXAMPLE_POOMSAE_DSN"),
+	Postgres: poomsae.PostgresConfig{
+		Schema:      "poomsae",
+		SchemaMode:  poomsae.PostgresSchemaValidate,
 		SchemaOwner: "kata_schema_owner",
 	},
-	Auth: kata.AuthConfig{Token: os.Getenv("EXAMPLE_KATA_TOKEN")},
+	Auth: poomsae.AuthConfig{Token: os.Getenv("EXAMPLE_POOMSAE_TOKEN")},
 })
 ```
 
@@ -829,14 +829,14 @@ role, migration, TLS, and rollback requirements.
 
 GitHub sync credentials are supplied through `Config.GitHubSync`. Federation
 credentials are isolated per service through `Config.FederationCredentials`.
-When that field is nil, kata uses a service-owned in-memory credential store;
+When that field is nil, poomsae uses a service-owned in-memory credential store;
 credentials then disappear when the process exits. Applications that need
 federation enrollment to survive restarts should implement
-`kata.FederationCredentialStore` with durable, concurrency-safe storage.
+`poomsae.FederationCredentialStore` with durable, concurrency-safe storage.
 
 The embedded service does not read a listener address, install signal handlers,
 or take over the host application's logger. Pass a `*slog.Logger` in
-`Config.Logger` when kata should use an application-specific logger.
+`Config.Logger` when poomsae should use an application-specific logger.
 
 Plane polling uses `Config.PlaneSync` with `APIOrigin`, `WebOrigin`, and `TokenEnv`.
 Defaults match `[plane_sync]`; service construction validates origins without
@@ -852,7 +852,7 @@ polling share its client, live progress, and committed-event publication.
 See [Twenty sync](../operations/twenty-sync.md).
 
 TickTick polling uses `Config.TickTickSync` with `TokenEnv`, which defaults to
-`KATA_TICKTICK_TOKEN` like `[ticktick_sync]`. The API origin is fixed. `Run`
+`POOMSAE_TICKTICK_TOKEN` like `[ticktick_sync]`. The API origin is fixed. `Run`
 starts the TickTick worker, and manual routes and polling share its client,
 live progress, and committed-event publication. See
 [TickTick sync](../operations/ticktick-sync.md).

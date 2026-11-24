@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
 )
 
 func TestReadDaemonMCPStartupSections(t *testing.T) {
@@ -23,8 +23,8 @@ func TestReadDaemonMCPStartupSections(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_MCP_STARTUP_SECTIONS", "")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_MCP_STARTUP_SECTIONS", "")
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tt.content), 0o600))
 			cfg, err := config.ReadDaemonConfig()
 			require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestReadDaemonMCPStartupSections(t *testing.T) {
 
 func TestReadDaemonConfigNormalizesConnectors(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	absoluteCommand := filepath.Join(t.TempDir(), "example-connector-connector")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf(`
 [[connector]]
@@ -63,7 +63,7 @@ enabled = true
 
 func TestReadDisplayConfigPreservesRendererArgv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [display]
 markdown_renderer = ["renderer", "--style", "dark theme", "-"]
@@ -76,7 +76,7 @@ markdown_renderer = ["renderer", "--style", "dark theme", "-"]
 
 func TestReadDisplayConfigRejectsEmptyExecutable(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [display]
 markdown_renderer = [""]
@@ -89,7 +89,7 @@ markdown_renderer = [""]
 
 func TestReadDisplayConfigRejectsUnknownDisplayKey(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [display]
 markdown_renderer = ["renderer"]
@@ -112,8 +112,8 @@ func TestReadTUIConfig(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 			if tc.content != "" {
 				require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tc.content), 0o600))
 			}
@@ -144,28 +144,28 @@ func TestReadSearchConfig(t *testing.T) {
 		{
 			name: "environment without file",
 			env: map[string]string{
-				"KATA_SEARCH_EMBEDDINGS_BASE_URL": "https://embedding.example/v1",
-				"KATA_SEARCH_EMBEDDINGS_MODEL":    "example-model",
-				"KATA_SEARCH_EMBEDDINGS_DIMS":     "2",
+				"POOMSAE_SEARCH_EMBEDDINGS_BASE_URL": "https://embedding.example/v1",
+				"POOMSAE_SEARCH_EMBEDDINGS_MODEL":    "example-model",
+				"POOMSAE_SEARCH_EMBEDDINGS_DIMS":     "2",
 			},
 			want: config.SearchConfig{Embeddings: config.EmbeddingsConfig{BaseURL: "https://embedding.example/v1", Model: "example-model", Dims: 2}},
 		},
 		{
 			name:      "partial environment without file",
-			env:       map[string]string{"KATA_SEARCH_EMBEDDINGS_BASE_URL": "https://embedding.example/v1"},
+			env:       map[string]string{"POOMSAE_SEARCH_EMBEDDINGS_BASE_URL": "https://embedding.example/v1"},
 			wantError: "base_url and model must both be set or both omitted",
 		},
 		{
 			name:      "invalid dimensions without file",
-			env:       map[string]string{"KATA_SEARCH_EMBEDDINGS_DIMS": "-1"},
-			wantError: "KATA_SEARCH_EMBEDDINGS_DIMS must be a non-negative integer",
+			env:       map[string]string{"POOMSAE_SEARCH_EMBEDDINGS_DIMS": "-1"},
+			wantError: "POOMSAE_SEARCH_EMBEDDINGS_DIMS must be a non-negative integer",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-			for _, key := range []string{"KATA_SEARCH_EMBEDDINGS_BASE_URL", "KATA_SEARCH_EMBEDDINGS_MODEL", "KATA_SEARCH_EMBEDDINGS_DIMS", "KATA_SEARCH_EMBEDDINGS_API_KEY_FILE", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "KATA_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_PREFIX", "KATA_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "KATA_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS"} {
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+			for _, key := range []string{"POOMSAE_SEARCH_EMBEDDINGS_BASE_URL", "POOMSAE_SEARCH_EMBEDDINGS_MODEL", "POOMSAE_SEARCH_EMBEDDINGS_DIMS", "POOMSAE_SEARCH_EMBEDDINGS_API_KEY_FILE", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_DOCUMENT_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_PREFIX", "POOMSAE_SEARCH_EMBEDDINGS_QUERY_SUFFIX", "POOMSAE_SEARCH_EMBEDDINGS_REQUEST_DIMENSIONS"} {
 				t.Setenv(key, "")
 			}
 			for key, value := range tc.env {
@@ -204,7 +204,7 @@ option = 5
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tc.section), 0o600))
 
 			_, err := config.ReadDaemonConfig()
@@ -248,7 +248,7 @@ option = 5
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [auth]
 token = "client-token"
@@ -265,7 +265,7 @@ trust_private_network = true
 
 func TestReadAuthConfigRejectsUnknownNonDisplayKey(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [auth]
 token = "client-token"
@@ -280,7 +280,7 @@ markdown_renderer = ["renderer"]
 }
 
 func TestReadDaemonConfig_Missing(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
@@ -289,7 +289,7 @@ func TestReadDaemonConfig_Missing(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsListen(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte(`listen = "100.64.0.5:7777"`+"\n"), 0o600))
 
@@ -300,7 +300,7 @@ func TestReadDaemonConfig_ReadsListen(t *testing.T) {
 
 func TestReadDaemonConfigReadsAutostartIdleTimeout(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("autostart_idle_timeout = \"15m\"\n"), 0o600))
 
@@ -313,8 +313,8 @@ func TestReadDaemonConfigReadsAutostartIdleTimeout(t *testing.T) {
 
 func TestReadDaemonConfigAutostartIdleTimeoutEnvironmentOverridesFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTOSTART_IDLE_TIMEOUT", "45s")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTOSTART_IDLE_TIMEOUT", "45s")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("autostart_idle_timeout = \"15m\"\n"), 0o600))
 
@@ -327,7 +327,7 @@ func TestReadDaemonConfigAutostartIdleTimeoutEnvironmentOverridesFile(t *testing
 
 func TestReadDaemonConfigRejectsTooShortAutostartIdleTimeout(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("autostart_idle_timeout = \"9s\"\n"), 0o600))
 
@@ -338,7 +338,7 @@ func TestReadDaemonConfigRejectsTooShortAutostartIdleTimeout(t *testing.T) {
 
 func TestReadDaemonConfigReadsTimezone(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("timezone = \"  America/Los_Angeles  \"\n"), 0o600))
 
@@ -349,7 +349,7 @@ func TestReadDaemonConfigReadsTimezone(t *testing.T) {
 
 func TestReadDaemonConfigRejectsInvalidTimezone(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("timezone = \"Not/AZone\"\n"), 0o600))
 
@@ -360,7 +360,7 @@ func TestReadDaemonConfigRejectsInvalidTimezone(t *testing.T) {
 
 func TestReadDaemonConfig_TrimsWhitespace(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte(`listen = "  127.0.0.1:7777  "`+"\n"), 0o600))
 
@@ -371,7 +371,7 @@ func TestReadDaemonConfig_TrimsWhitespace(t *testing.T) {
 
 func TestReadDaemonConfigWeb(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [web]
 listen = " 127.0.0.1:27123 "
@@ -396,7 +396,7 @@ func TestReadDaemonConfigWebCanonicalizesDefaultOriginPorts(t *testing.T) {
 	} {
 		t.Run(tt.origin, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(
 				"[auth]\ntrust_private_network = true\n\n[web]\npublic_origin = \""+tt.origin+"\"\n",
 			), 0o600))
@@ -415,7 +415,7 @@ func TestReadDaemonConfigWebRejectsInvalidAllowedHost(t *testing.T) {
 	} {
 		t.Run(host, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(
 				"[web]\nallowed_hosts = [\""+host+"\"]\n",
 			), 0o600))
@@ -428,8 +428,8 @@ func TestReadDaemonConfigWebRejectsInvalidAllowedHost(t *testing.T) {
 }
 
 func TestReadDaemonConfigWebAllowedHostsEnvironment(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_WEB_ALLOWED_HOSTS", " spoke-a:7374, DAEMON.EXAMPLE ")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_WEB_ALLOWED_HOSTS", " spoke-a:7374, DAEMON.EXAMPLE ")
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
@@ -444,14 +444,14 @@ func TestReadDaemonConfigWebRejectsInvalidPublicOrigin(t *testing.T) {
 		{name: "relative", origin: "daemon.example"},
 		{name: "unsupported scheme", origin: "ftp://daemon.example"},
 		{name: "credentials", origin: "https://user-a@daemon.example"},
-		{name: "path", origin: "https://daemon.example/kata"},
+		{name: "path", origin: "https://daemon.example/poomsae"},
 		{name: "query", origin: "https://daemon.example?mode=web"},
 		{name: "fragment", origin: "https://daemon.example#session"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(
 				"[web]\npublic_origin = \""+tt.origin+"\"\n",
 			), 0o600))
@@ -465,7 +465,7 @@ func TestReadDaemonConfigWebRejectsInvalidPublicOrigin(t *testing.T) {
 
 func TestReadDaemonConfigWebRejectsUntrustedHTTPPublicOrigin(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [web]
 public_origin = "http://daemon.example"
@@ -478,7 +478,7 @@ public_origin = "http://daemon.example"
 
 func TestReadDaemonConfigWebAllowsTrustedHTTPPublicOrigin(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [auth]
 trust_private_network = true
@@ -494,7 +494,7 @@ public_origin = "http://daemon.example"
 
 func TestReadDaemonConfigWebAllowsLoopbackHTTPPublicOrigin(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [web]
 public_origin = "http://127.0.0.1:27123"
@@ -507,7 +507,7 @@ public_origin = "http://127.0.0.1:27123"
 
 func TestReadDaemonConfig_ReadsTUIMouse(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[tui]\nmouse = true\n"), 0o600))
 
@@ -518,7 +518,7 @@ func TestReadDaemonConfig_ReadsTUIMouse(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsDaemonCatalog(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "remote"
 
@@ -528,7 +528,7 @@ local = true
 
 [[daemon]]
 name = "remote"
-url = "https://kata.example.test"
+url = "https://poomsae.example.test"
 token = "target-token"
 allow_insecure = true
 `), 0o600))
@@ -540,7 +540,7 @@ allow_insecure = true
 	assert.Equal(t, config.CatalogDaemonConfig{Name: "local", Local: true}, cfg.Daemons[0])
 	assert.Equal(t, config.CatalogDaemonConfig{
 		Name:          "remote",
-		URL:           "https://kata.example.test",
+		URL:           "https://poomsae.example.test",
 		Token:         "target-token",
 		AllowInsecure: true,
 	}, cfg.Daemons[1])
@@ -548,7 +548,7 @@ allow_insecure = true
 
 func TestReadDaemonConfig_RejectsDuplicateDaemonNames(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "prod"
@@ -556,7 +556,7 @@ local = true
 
 [[daemon]]
 name = "prod"
-url = "https://kata.example.test"
+url = "https://poomsae.example.test"
 `), 0o600))
 
 	_, err := config.ReadDaemonConfig()
@@ -567,12 +567,12 @@ url = "https://kata.example.test"
 
 func TestReadDaemonConfig_RejectsDaemonWithLocalAndURL(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "ambiguous"
 local = true
-url = "https://kata.example.test"
+url = "https://poomsae.example.test"
 `), 0o600))
 
 	_, err := config.ReadDaemonConfig()
@@ -583,7 +583,7 @@ url = "https://kata.example.test"
 
 func TestReadDaemonConfig_RejectsActiveDaemonMissingFromCatalog(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "missing"
 
@@ -600,13 +600,13 @@ local = true
 
 func TestReadDaemonConfig_TrimsDaemonFields(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "  remote  "
 
 [[daemon]]
 name = "  remote  "
-url = "  https://kata.example.test  "
+url = "  https://poomsae.example.test  "
 token = "  target-token  "
 `), 0o600))
 
@@ -615,33 +615,33 @@ token = "  target-token  "
 	require.Len(t, cfg.Daemons, 1)
 	assert.Equal(t, "remote", cfg.ActiveDaemon)
 	assert.Equal(t, "remote", cfg.Daemons[0].Name)
-	assert.Equal(t, "https://kata.example.test", cfg.Daemons[0].URL)
+	assert.Equal(t, "https://poomsae.example.test", cfg.Daemons[0].URL)
 	assert.Equal(t, "target-token", cfg.Daemons[0].Token)
 }
 
 func TestReadDaemonConfig_PreservesDaemonTokenEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_WORK_TOKEN", "secret-from-env")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_WORK_TOKEN", "secret-from-env")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "work"
-url = "https://kata.example.test"
-token_env = "KATA_WORK_TOKEN"
+url = "https://poomsae.example.test"
+token_env = "POOMSAE_WORK_TOKEN"
 `), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.Len(t, cfg.Daemons, 1)
 	assert.Empty(t, cfg.Daemons[0].Token)
-	assert.Equal(t, "KATA_WORK_TOKEN", cfg.Daemons[0].TokenEnv,
+	assert.Equal(t, "POOMSAE_WORK_TOKEN", cfg.Daemons[0].TokenEnv,
 		"token_env resolution is deferred until a daemon target is selected")
 }
 
 func TestReadDaemonConfig_AllowsInactiveDaemonTokenEnvUnset(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_WORK_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_WORK_TOKEN", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 active_daemon = "local"
 
@@ -651,44 +651,44 @@ local = true
 
 [[daemon]]
 name = "work"
-url = "https://kata.example.test"
-token_env = "KATA_WORK_TOKEN"
+url = "https://poomsae.example.test"
+token_env = "POOMSAE_WORK_TOKEN"
 `), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.Len(t, cfg.Daemons, 2)
-	assert.Equal(t, "KATA_WORK_TOKEN", cfg.Daemons[1].TokenEnv)
+	assert.Equal(t, "POOMSAE_WORK_TOKEN", cfg.Daemons[1].TokenEnv)
 	assert.Empty(t, cfg.Daemons[1].Token)
 }
 
 func TestReadDaemonConfig_TrimsDaemonTokenEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_WORK_TOKEN", "secret-from-env")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_WORK_TOKEN", "secret-from-env")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "work"
-url = "https://kata.example.test"
-token_env = "  KATA_WORK_TOKEN  "
+url = "https://poomsae.example.test"
+token_env = "  POOMSAE_WORK_TOKEN  "
 `), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.Len(t, cfg.Daemons, 1)
-	assert.Equal(t, "KATA_WORK_TOKEN", cfg.Daemons[0].TokenEnv)
+	assert.Equal(t, "POOMSAE_WORK_TOKEN", cfg.Daemons[0].TokenEnv)
 	assert.Empty(t, cfg.Daemons[0].Token)
 }
 
 func TestReadDaemonConfigFederationProjects(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_TEAM_HUB_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_TEAM_HUB_TOKEN", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[daemon]]
 name = "team-hub"
 url = "https://hub.example"
-token_env = "KATA_TEAM_HUB_TOKEN"
+token_env = "POOMSAE_TEAM_HUB_TOKEN"
 
 [[federation.project]]
 hub = " team-hub "
@@ -712,7 +712,7 @@ actor = " user-a "
 	assert.Equal(t, config.CatalogDaemonConfig{ //nolint:gosec // TokenEnv is an environment variable name, not a credential.
 		Name:     "team-hub",
 		URL:      "https://hub.example",
-		TokenEnv: "KATA_TEAM_HUB_TOKEN",
+		TokenEnv: "POOMSAE_TEAM_HUB_TOKEN",
 	}, target, "the catalog entry remains the source of URL and auth policy")
 }
 
@@ -920,7 +920,7 @@ credential = "not-allowed"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tt.config), 0o600))
 
 			_, err := config.ReadDaemonConfig()
@@ -931,20 +931,20 @@ credential = "not-allowed"
 }
 
 func TestReadDaemonConfig_GitHubSyncDefaultsTokenEnv(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 
-	assert.Equal(t, "KATA_GITHUB_TOKEN", cfg.GitHubSync.TokenEnvName())
+	assert.Equal(t, "POOMSAE_GITHUB_TOKEN", cfg.GitHubSync.TokenEnvName())
 	assert.Equal(t, "github.com", cfg.GitHubSync.TokenHostName())
 	assert.Empty(t, cfg.GitHubSync.Apps)
 }
 
 func TestReadDaemonConfig_ReadsGitHubSyncConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_GITHUB_TOKEN", "secret-from-env")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_GITHUB_TOKEN", "secret-from-env")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [github_sync]
 token_env = "EXAMPLE_GITHUB_TOKEN"
@@ -974,7 +974,7 @@ private_key_path = " /secure/example-app.pem "
 
 func TestReadDaemonConfig_GitHubSyncRejectsDuplicateApps(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[github_sync.app]]
 host = "github.example"
@@ -1001,7 +1001,7 @@ private_key_path = "/secure/two.pem"
 
 func TestReadDaemonConfig_GitHubSyncRejectsIncompleteApp(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [[github_sync.app]]
 owner = "example-owner"
@@ -1048,7 +1048,7 @@ private_key_path = "/secure/example.pem"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
+			t.Setenv("POOMSAE_HOME", home)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tt.config), 0o600))
 
 			_, err := config.ReadDaemonConfig()
@@ -1060,7 +1060,7 @@ private_key_path = "/secure/example.pem"
 }
 
 func TestReadDaemonConfig_ThrottleDefaultsDisabled(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	assert.False(t, cfg.Close.Throttle.ThrottleEnabled(),
@@ -1069,7 +1069,7 @@ func TestReadDaemonConfig_ThrottleDefaultsDisabled(t *testing.T) {
 
 func TestReadDaemonConfig_ThrottleExplicitlyDisabled(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[close.throttle]\nenabled = false\n"), 0o600))
 
@@ -1080,7 +1080,7 @@ func TestReadDaemonConfig_ThrottleExplicitlyDisabled(t *testing.T) {
 
 func TestReadDaemonConfig_ThrottleExplicitlyEnabled(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[close.throttle]\nenabled = true\n"), 0o600))
 
@@ -1091,7 +1091,7 @@ func TestReadDaemonConfig_ThrottleExplicitlyEnabled(t *testing.T) {
 
 func TestReadDaemonConfig_ThrottleWindow(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[close.throttle]\nenabled = true\nwindow = \"2m\"\n"), 0o600))
 
@@ -1104,7 +1104,7 @@ func TestReadDaemonConfig_ThrottleWindow(t *testing.T) {
 
 func TestReadDaemonConfig_ThrottleWindowRejectsInvalidDuration(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[close.throttle]\nwindow = \"eventually\"\n"), 0o600))
 
@@ -1115,7 +1115,7 @@ func TestReadDaemonConfig_ThrottleWindowRejectsInvalidDuration(t *testing.T) {
 
 func TestReadDaemonConfig_RejectsMalformed(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte(`listen = `+"\n"), 0o600)) // unterminated
 
@@ -1126,8 +1126,8 @@ func TestReadDaemonConfig_RejectsMalformed(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsAuthToken(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntoken = \"abc-123\"\n"), 0o600))
 
@@ -1138,8 +1138,8 @@ func TestReadDaemonConfig_ReadsAuthToken(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsAuthTrustPrivateNetwork(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntrust_private_network = true\n"), 0o600))
 
@@ -1150,8 +1150,8 @@ func TestReadDaemonConfig_ReadsAuthTrustPrivateNetwork(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsAllowUnauthenticatedPrivateNetworkWrites(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES", "")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\nallow_unauthenticated_private_network_writes = true\n"), 0o600))
 
@@ -1162,7 +1162,7 @@ func TestReadDaemonConfig_ReadsAllowUnauthenticatedPrivateNetworkWrites(t *testi
 
 func TestReadDaemonConfig_ReadsRequireTokenIdentity(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\nrequire_token_identity = true\n"), 0o600))
 
@@ -1173,7 +1173,7 @@ func TestReadDaemonConfig_ReadsRequireTokenIdentity(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsAllowIdentityConnectorAdministration(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\nallow_identity_connector_administration = true\n"), 0o600))
 
@@ -1183,8 +1183,8 @@ func TestReadDaemonConfig_ReadsAllowIdentityConnectorAdministration(t *testing.T
 }
 
 func TestReadDaemonConfig_AllowIdentityConnectorAdministrationDefaultsDisabled(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION", "")
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
@@ -1195,8 +1195,8 @@ func TestReadDaemonConfig_AllowIdentityConnectorAdministrationEnvOverridesTOML(t
 	for _, value := range []string{"1", "true"} {
 		t.Run(value, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("KATA_HOME", home)
-			t.Setenv("KATA_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION", value)
+			t.Setenv("POOMSAE_HOME", home)
+			t.Setenv("POOMSAE_ALLOW_IDENTITY_CONNECTOR_ADMINISTRATION", value)
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 				[]byte("[auth]\nallow_identity_connector_administration = false\n"), 0o600))
 
@@ -1209,8 +1209,8 @@ func TestReadDaemonConfig_AllowIdentityConnectorAdministrationEnvOverridesTOML(t
 
 func TestReadDaemonConfig_AuthTrustPrivateNetworkEnvOverridesTOML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "1")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntrust_private_network = false\n"), 0o600))
 
@@ -1221,8 +1221,8 @@ func TestReadDaemonConfig_AuthTrustPrivateNetworkEnvOverridesTOML(t *testing.T) 
 
 func TestReadDaemonConfig_AllowUnauthenticatedPrivateNetworkWritesEnvOverridesTOML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK_WRITES", "1")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\nallow_unauthenticated_private_network_writes = false\n"), 0o600))
 
@@ -1233,22 +1233,22 @@ func TestReadDaemonConfig_AllowUnauthenticatedPrivateNetworkWritesEnvOverridesTO
 
 func TestReadDaemonConfig_AuthTokenEnvOverridesTOML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "from-env")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "from-env")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntoken = \"from-toml\"\n"), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	assert.Equal(t, "from-env", cfg.Auth.Token,
-		"KATA_AUTH_TOKEN must override config.toml")
+		"POOMSAE_AUTH_TOKEN must override config.toml")
 }
 
 func TestReadDaemonConfig_AutostartIdentityModeKeepsConfiguredBootstrapToken(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTH_TOKEN", "client-db-token")
-	t.Setenv("KATA_AUTOSTART", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTH_TOKEN", "client-db-token")
+	t.Setenv("POOMSAE_AUTOSTART", "1")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth]\ntoken = \"bootstrap-token\"\nrequire_token_identity = true\n"), 0o600))
 
@@ -1259,11 +1259,11 @@ func TestReadDaemonConfig_AutostartIdentityModeKeepsConfiguredBootstrapToken(t *
 
 func TestReadDaemonConfig_AutostartIdentityModeKeepsConfiguredTokenFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_AUTOSTART", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_AUTOSTART", "1")
 	configuredTokenFile := filepath.Join(home, "bootstrap-token")
 	envTokenFile := filepath.Join(home, "client-token")
-	t.Setenv("KATA_AUTH_TOKEN_FILE", envTokenFile)
+	t.Setenv("POOMSAE_AUTH_TOKEN_FILE", envTokenFile)
 	writePrivateCredentialFixture(t, configuredTokenFile, []byte("bootstrap-token\n"))
 	writePrivateCredentialFixture(t, envTokenFile, []byte("client-db-token\n"))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
@@ -1276,8 +1276,8 @@ func TestReadDaemonConfig_AutostartIdentityModeKeepsConfiguredTokenFile(t *testi
 }
 
 func TestReadDaemonConfig_AuthTokenEnvWorksWithoutTOML(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_AUTH_TOKEN", "from-env")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "from-env")
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
@@ -1285,48 +1285,48 @@ func TestReadDaemonConfig_AuthTokenEnvWorksWithoutTOML(t *testing.T) {
 }
 
 func TestReadDaemonConfig_AuthTokenAbsent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	t.Setenv("KATA_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	assert.Empty(t, cfg.Auth.Token)
 }
 
 func TestReadDaemonConfig_AuthProxy(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "")
 
 	dir := t.TempDir()
-	t.Setenv("KATA_HOME", dir)
+	t.Setenv("POOMSAE_HOME", dir)
 	path := filepath.Join(dir, "config.toml")
 	body := `
 [auth]
 token = "tok"
 
 [auth.proxy]
-trusted_actor_header = "X-Kata-Actor"
-trusted_proxy_listeners = ["unix:///run/kata/proxy.sock", "100.64.0.5:7777"]
+trusted_actor_header = "X-Poomsae-Actor"
+trusted_proxy_listeners = ["unix:///run/poomsae/proxy.sock", "100.64.0.5:7777"]
 `
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
-	require.Equal(t, "X-Kata-Actor", cfg.Auth.Proxy.TrustedActorHeader)
+	require.Equal(t, "X-Poomsae-Actor", cfg.Auth.Proxy.TrustedActorHeader)
 	require.Equal(t,
-		[]string{"unix:///run/kata/proxy.sock", "100.64.0.5:7777"},
+		[]string{"unix:///run/poomsae/proxy.sock", "100.64.0.5:7777"},
 		cfg.Auth.Proxy.TrustedProxyListeners)
 }
 
 func TestApplyDaemonConfigEnv_AuthProxyHeader(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "X-Env-Actor")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "X-Env-Actor")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "")
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	// Listeners are set in TOML so the resolved config is complete; this
 	// test asserts only that the env header beats the TOML header.
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
@@ -1334,19 +1334,19 @@ func TestApplyDaemonConfigEnv_AuthProxyHeader(t *testing.T) {
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	require.Equal(t, "X-Env-Actor", cfg.Auth.Proxy.TrustedActorHeader,
-		"KATA_TRUSTED_ACTOR_HEADER must override config.toml")
+		"POOMSAE_TRUSTED_ACTOR_HEADER must override config.toml")
 }
 
 func TestReadDaemonConfig_RejectsHeaderWithoutListeners(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "")
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
-		[]byte("[auth.proxy]\ntrusted_actor_header = \"X-Kata-Actor\"\n"), 0o600))
+		[]byte("[auth.proxy]\ntrusted_actor_header = \"X-Poomsae-Actor\"\n"), 0o600))
 
 	_, err := config.ReadDaemonConfig()
 	require.Error(t, err,
@@ -1361,11 +1361,11 @@ func TestReadDaemonConfig_RejectsEnvOnlyHeaderWithoutListeners(t *testing.T) {
 	// would silently start with proxy attribution effectively off — the
 	// exact misconfig the file-present path rejects. Both paths must
 	// agree.
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "X-Kata-Actor")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "")
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "X-Poomsae-Actor")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "")
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 
 	_, err := config.ReadDaemonConfig()
 	require.Error(t, err,
@@ -1378,13 +1378,13 @@ func TestReadDaemonConfig_AcceptsListenersWithoutHeader(t *testing.T) {
 	// principal overwrite ever happens), so it has no security impact.
 	// Accept it silently so partial configs in the safe direction don't
 	// block daemon start.
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "")
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth.proxy]\ntrusted_proxy_listeners = [\"unix:///s\"]\n"), 0o600))
 
@@ -1397,47 +1397,47 @@ func TestReadDaemonConfig_AcceptsListenersWithoutHeader(t *testing.T) {
 func TestReadDaemonConfig_EnvCompletesPartialTOMLProxy(t *testing.T) {
 	// TOML supplies only the header (would be rejected alone); env adds
 	// listeners. Validation runs after env merge, so this is valid.
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_ACTOR_HEADER", "")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS", "unix:///s")
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_ACTOR_HEADER", "")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS", "unix:///s")
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
-		[]byte("[auth.proxy]\ntrusted_actor_header = \"X-Kata-Actor\"\n"), 0o600))
+		[]byte("[auth.proxy]\ntrusted_actor_header = \"X-Poomsae-Actor\"\n"), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
-	assert.Equal(t, "X-Kata-Actor", cfg.Auth.Proxy.TrustedActorHeader)
+	assert.Equal(t, "X-Poomsae-Actor", cfg.Auth.Proxy.TrustedActorHeader)
 	assert.Equal(t, []string{"unix:///s"}, cfg.Auth.Proxy.TrustedProxyListeners)
 }
 
 func TestReadDaemonConfig_ReadsStorageDSN(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
-		[]byte("[storage]\ndsn = \"postgres://db/kata\"\n"), 0o600))
+		[]byte("[storage]\ndsn = \"postgres://db/poomsae\"\n"), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://db/kata", cfg.Storage.DSN)
+	assert.Equal(t, "postgres://db/poomsae", cfg.Storage.DSN)
 }
 
 func TestReadDaemonConfig_TrimsStorageDSN(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
-		[]byte("[storage]\ndsn = \"  postgres://db/kata  \"\n"), 0o600))
+		[]byte("[storage]\ndsn = \"  postgres://db/poomsae  \"\n"), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://db/kata", cfg.Storage.DSN)
+	assert.Equal(t, "postgres://db/poomsae", cfg.Storage.DSN)
 }
 
 func TestReadDaemonConfig_EmptyStorageDSNIsZero(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[storage]\ndsn = \"\"\n"), 0o600))
 
@@ -1448,10 +1448,10 @@ func TestReadDaemonConfig_EmptyStorageDSNIsZero(t *testing.T) {
 
 func TestReadDaemonConfig_ReadsPostgresRuntimePolicy(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [storage]
-dsn = "postgres://db/kata"
+dsn = "postgres://db/poomsae"
 
 [storage.postgres]
 schema = "service_store"
@@ -1470,11 +1470,11 @@ allow_insecure = true
 
 func TestReadDaemonConfig_PostgresEnvironmentOverridesTOML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_POSTGRES_SCHEMA", "environment_store")
-	t.Setenv("KATA_POSTGRES_SCHEMA_MODE", "validate")
-	t.Setenv("KATA_POSTGRES_SCHEMA_OWNER", " Environment Owner ")
-	t.Setenv("KATA_POSTGRES_ALLOW_INSECURE", "1")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "environment_store")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA_MODE", "validate")
+	t.Setenv("POOMSAE_POSTGRES_SCHEMA_OWNER", " Environment Owner ")
+	t.Setenv("POOMSAE_POSTGRES_ALLOW_INSECURE", "1")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [storage.postgres]
 schema = "file_store"
@@ -1491,7 +1491,7 @@ mode = "bootstrap"
 
 func TestReadDaemonConfig_StorageRejectsUnknownKey(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[storage]\nfoo = \"bar\"\n"), 0o600))
 
@@ -1502,7 +1502,7 @@ func TestReadDaemonConfig_StorageRejectsUnknownKey(t *testing.T) {
 
 func TestReadDaemonConfig_SearchEmbeddingsValid(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://localhost:11434/v1"
@@ -1522,7 +1522,7 @@ max_batch_tokens = 120000
 }
 
 func TestReadDaemonConfig_SearchEmbeddingsDisabledWhenAbsent(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
+	t.Setenv("POOMSAE_HOME", t.TempDir())
 	cfg, err := config.ReadDaemonConfig()
 	require.NoError(t, err)
 	assert.False(t, cfg.Search.Embeddings.Enabled(),
@@ -1531,7 +1531,7 @@ func TestReadDaemonConfig_SearchEmbeddingsDisabledWhenAbsent(t *testing.T) {
 
 func TestReadDaemonConfig_SearchEmbeddingsRejectsBaseURLWithoutModel(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://localhost:11434/v1"
@@ -1545,7 +1545,7 @@ base_url = "http://localhost:11434/v1"
 
 func TestReadDaemonConfig_SearchEmbeddingsRejectsModelWithoutBaseURL(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 model = "nomic-embed-text"
@@ -1559,7 +1559,7 @@ model = "nomic-embed-text"
 
 func TestReadDaemonConfig_SearchEmbeddingsInlineOverridesAPIKeyEnv(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://localhost:11434/v1"
@@ -1574,7 +1574,7 @@ api_key_env = "Y"
 
 func TestReadDaemonConfig_SearchEmbeddingsRejectsNegativeDims(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://localhost:11434/v1"
@@ -1589,13 +1589,13 @@ dims = -1
 
 func TestReadDaemonConfig_SearchEmbeddingsCredential(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
-	t.Setenv("KATA_EMBED_KEY", "secret-from-env")
+	t.Setenv("POOMSAE_HOME", home)
+	t.Setenv("POOMSAE_EMBED_KEY", "secret-from-env")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://localhost:11434/v1"
 model = "m"
-api_key_env = "KATA_EMBED_KEY"
+api_key_env = "POOMSAE_EMBED_KEY"
 `), 0o600))
 
 	cfg, err := config.ReadDaemonConfig()
@@ -1606,13 +1606,13 @@ api_key_env = "KATA_EMBED_KEY"
 }
 
 func TestApplyDaemonConfigEnv_AuthProxyListeners(t *testing.T) {
-	t.Setenv("KATA_AUTH_TOKEN", "")
-	t.Setenv("KATA_TRUST_PRIVATE_NETWORK", "")
-	t.Setenv("KATA_TRUSTED_PROXY_LISTENERS",
+	t.Setenv("POOMSAE_AUTH_TOKEN", "")
+	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
+	t.Setenv("POOMSAE_TRUSTED_PROXY_LISTENERS",
 		"unix:///s1 , 100.64.0.5:7777 ,, ")
 
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte("[auth.proxy]\ntrusted_proxy_listeners = [\"unix:///toml-only\"]\n"), 0o600))
 	cfg, err := config.ReadDaemonConfig()
@@ -1620,13 +1620,13 @@ func TestApplyDaemonConfigEnv_AuthProxyListeners(t *testing.T) {
 	require.Equal(t,
 		[]string{"unix:///s1", "100.64.0.5:7777"},
 		cfg.Auth.Proxy.TrustedProxyListeners,
-		"KATA_TRUSTED_PROXY_LISTENERS must split on commas, trim, drop empties, override config.toml")
+		"POOMSAE_TRUSTED_PROXY_LISTENERS must split on commas, trim, drop empties, override config.toml")
 }
 
 // Literal affixes must survive config loading, including leading and trailing spaces.
 func TestEmbeddingAffixesLoadVerbatim(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("KATA_HOME", home)
+	t.Setenv("POOMSAE_HOME", home)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
 base_url = "http://127.0.0.1:9/v1"

@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/danielgtaylor/huma/v2"
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // IssuePlanningDates exposes required nullable date objects on the read wire.

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/jackc/pgx/v5/pgconn"
-	"go.kenn.io/kata/internal/db"
 )
 
 // ErrNotImplemented is emitted only by stubgen when db.Storage grows before

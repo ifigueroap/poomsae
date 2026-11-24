@@ -1,4 +1,4 @@
-// Package twentysync maps Twenty workspace tasks to native Kata issues.
+// Package twentysync maps Twenty workspace tasks to native Poomsae issues.
 package twentysync
 
 import "time"

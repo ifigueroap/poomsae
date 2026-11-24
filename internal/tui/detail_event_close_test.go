@@ -5,16 +5,16 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/ifigueroap/poomsae/internal/metadata"
 	"github.com/mattn/go-runewidth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/metadata"
 )
 
 // TestEventChunkLines_CloseDetail covers the events-tab rendering for
 // issue.closed events. Before this change the tab showed only
 // "closed (done)" with no message or evidence; reviewers had to drop to
-// `kata audit closes` to see what was actually closed.
+// `poomsae audit closes` to see what was actually closed.
 func TestEventChunkLines_CloseDetail(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -47,8 +47,8 @@ func TestEventChunkLines_CloseDetail(t *testing.T) {
 					map[string]any{"type": "reviewed-paths", "paths": []any{"a.go", "b.go"}},
 					map[string]any{"type": "external", "account": "email thread archived"},
 					map[string]any{"type": "no-change-audit", "rationale": "schema unchanged"},
-					map[string]any{"type": "duplicate-of", "issue_ref": "kata#d4ex"},
-					map[string]any{"type": "superseded-by", "issue_ref": "kata#sxyz"},
+					map[string]any{"type": "duplicate-of", "issue_ref": "poomsae#d4ex"},
+					map[string]any{"type": "superseded-by", "issue_ref": "poomsae#sxyz"},
 				},
 			},
 			want: []string{
@@ -59,8 +59,8 @@ func TestEventChunkLines_CloseDetail(t *testing.T) {
 				"  evidence: reviewed-paths a.go, b.go",
 				"  evidence: external email thread archived",
 				"  evidence: no-change-audit schema unchanged",
-				"  evidence: duplicate-of kata#d4ex",
-				"  evidence: superseded-by kata#sxyz",
+				"  evidence: duplicate-of poomsae#d4ex",
+				"  evidence: superseded-by poomsae#sxyz",
 			},
 		},
 		{

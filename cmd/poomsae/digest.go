@@ -1,0 +1,283 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/textsafe"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+)
+
+func newDigestCmd() *cobra.Command {
+	var (
+		sinceStr     string
+		untilStr     string
+		projectIDArg int64
+		allProjects  bool
+		actors       []string
+	)
+	cmd := &cobra.Command{
+		Use:   "digest",
+		Short: "summarize recent activity by actor",
+		Long: `poomsae digest reads the event stream over a time window and prints a
+human-readable changelog grouped by actor. Use --since with a duration
+(e.g. 24h, 7d) or an RFC3339 timestamp; --until defaults to now.
+
+By default, digest is scoped to the current workspace's project. Use
+--project-id to scope to a specific project, or --all for a
+cross-project digest.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if allProjects && strings.TrimSpace(flags.Workspace) != "" {
+				return &cliError{Message: "--all and --workspace are mutually exclusive", Kind: kindUsage, ExitCode: ExitUsage}
+			}
+			if allProjects && projectIDArg != 0 {
+				return &cliError{
+					Message:  "--all and --project-id are mutually exclusive",
+					Kind:     kindUsage,
+					ExitCode: ExitUsage,
+				}
+			}
+			if strings.TrimSpace(flags.Project) != "" && (allProjects || projectIDArg != 0) {
+				return &cliError{
+					Message:  "--project cannot be combined with --all or --project-id",
+					Kind:     kindUsage,
+					ExitCode: ExitUsage,
+				}
+			}
+			if strings.TrimSpace(sinceStr) == "" {
+				return &cliError{
+					Message:  "--since is required (e.g. --since 24h)",
+					Kind:     kindUsage,
+					ExitCode: ExitUsage,
+				}
+			}
+			now := time.Now().UTC()
+			since, err := parseSinceUntil(sinceStr, now)
+			if err != nil {
+				return &cliError{Message: err.Error(), Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			var until time.Time
+			if untilStr == "" {
+				until = now
+			} else {
+				until, err = parseSinceUntil(untilStr, now)
+				if err != nil {
+					return &cliError{Message: err.Error(), Kind: kindValidation, ExitCode: ExitValidation}
+				}
+			}
+			if !until.After(since) {
+				return &cliError{
+					Message:  "--until must be strictly after --since",
+					Kind:     kindValidation,
+					ExitCode: ExitValidation,
+				}
+			}
+
+			ctx := cmd.Context()
+			ctx, baseURL, err := ensureDaemonContext(ctx)
+			if err != nil {
+				return err
+			}
+			client, err := httpClientFor(ctx, baseURL)
+			if err != nil {
+				return err
+			}
+			bs, err := fetchDigest(ctx, client, baseURL, digestURLOpts{
+				ProjectIDArg: projectIDArg,
+				AllProjects:  allProjects,
+				Since:        since,
+				Until:        until,
+				Actors:       actors,
+			})
+			if err != nil {
+				return err
+			}
+
+			mode := currentOutputMode()
+			if mode == outputJSON {
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			}
+			if mode == outputAgent {
+				return printDigestAgent(cmd, bs)
+			}
+			return printDigestHuman(cmd, bs)
+		},
+	}
+	cmd.Flags().StringVar(&sinceStr, "since", "", "window start (duration like 24h or RFC3339)")
+	cmd.Flags().StringVar(&untilStr, "until", "", "window end (default: now)")
+	cmd.Flags().Int64Var(&projectIDArg, "project-id", 0, "scope to a specific project id")
+	cmd.Flags().BoolVar(&allProjects, "all", false, "summarize all projects")
+	cmd.Flags().StringSliceVar(&actors, "actor", nil, "limit to one or more actors (repeatable)")
+	return cmd
+}
+
+// parseSinceUntil accepts either a Go duration (e.g. 24h, 30m, 7d) or an
+// RFC3339 timestamp. Durations are interpreted as "now minus duration"; the
+// "d" suffix is expanded to hours since Go's time.ParseDuration doesn't
+// support days natively.
+func parseSinceUntil(s string, now time.Time) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC(), nil
+	}
+	expanded := s
+	if before, ok := strings.CutSuffix(s, "d"); ok {
+		num := before
+		// Trust no integer-overflow wraparound here: a multi-year window is
+		// the user's call, and ParseDuration will reject pathological inputs
+		// (e.g. trailing "d" with non-numeric prefix).
+		expanded = num + "h"
+		if d, err := time.ParseDuration(expanded); err == nil {
+			return now.Add(-24 * d).UTC(), nil
+		}
+	}
+	d, err := time.ParseDuration(expanded)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid time spec %q: must be a duration (24h, 7d) or RFC3339 timestamp", s)
+	}
+	return now.Add(-d).UTC(), nil
+}
+
+type digestURLOpts struct {
+	ProjectIDArg int64
+	AllProjects  bool
+	Since        time.Time
+	Until        time.Time
+	Actors       []string
+}
+
+func fetchDigest(ctx context.Context, client *http.Client, baseURL string, opts digestURLOpts) ([]byte, error) {
+	apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+	if err != nil {
+		return nil, err
+	}
+	// Keep subsecond precision so the window includes events just emitted.
+	since, until := opts.Since.UTC().Format(time.RFC3339Nano), opts.Until.UTC().Format(time.RFC3339Nano)
+	if opts.AllProjects {
+		response, callErr := apiClient.DigestGlobalWithResponse(ctx, &generated.DigestGlobalRequestOptions{Query: &generated.DigestGlobalQuery{Since: since, Until: &until, Actor: opts.Actors}})
+		if response == nil {
+			return nil, externalCLITransportError(response, callErr)
+		}
+		if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+			return nil, err
+		}
+		return response.Body, nil
+	}
+	pid := opts.ProjectIDArg
+	if pid == 0 {
+		start, err := resolveStartPath(flags.Workspace)
+		if err != nil {
+			return nil, err
+		}
+		pid, err = resolveProjectID(ctx, baseURL, start)
+		if err != nil {
+			return nil, err
+		}
+	}
+	response, callErr := apiClient.DigestProjectWithResponse(ctx, &generated.DigestProjectRequestOptions{PathParams: &generated.DigestProjectPath{ProjectID: pid}, Query: &generated.DigestProjectQuery{Since: since, Until: &until, Actor: opts.Actors}})
+	if response == nil {
+		return nil, externalCLITransportError(response, callErr)
+	}
+	if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+		return nil, err
+	}
+	return response.Body, nil
+}
+
+func printDigestHuman(cmd *cobra.Command, bs []byte) error {
+	var b generated.DigestResponseBody
+	if err := json.Unmarshal(bs, &b); err != nil {
+		return err
+	}
+	b.Actors = authorname.GroupDigest(b.Actors)
+	out := cmd.OutOrStdout()
+	if _, err := fmt.Fprintf(out, "digest %s → %s  (%d events)\n",
+		b.Since.Format(time.RFC3339), b.Until.Format(time.RFC3339), b.EventCount); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out,
+		"  totals: created=%d closed=%d reopened=%d commented=%d unblocked=%d\n",
+		b.Totals.Created, b.Totals.Closed, b.Totals.Reopened, b.Totals.Commented, b.Totals.Unblocked); err != nil {
+		return err
+	}
+	if len(b.Actors) == 0 {
+		_, err := fmt.Fprintln(out, "  (no activity)")
+		return err
+	}
+	for _, a := range b.Actors {
+		if _, err := fmt.Fprintf(out,
+			"\n%s — created=%d closed=%d reopened=%d commented=%d unblocked=%d\n",
+			textsafe.Line(a.Actor), a.Totals.Created, a.Totals.Closed,
+			a.Totals.Reopened, a.Totals.Commented, a.Totals.Unblocked); err != nil {
+			return err
+		}
+		for _, iss := range a.Issues {
+			prefix := iss.IssueShortID
+			// On cross-project digests, prefix the project name so the
+			// reader can disambiguate colliding short_ids.
+			if b.ProjectID == 0 && iss.ProjectName != "" {
+				prefix = fmt.Sprintf("%s#%s", textsafe.Line(iss.ProjectName), iss.IssueShortID)
+			}
+			if _, err := fmt.Fprintf(out, "  %-14s %s\n",
+				prefix, textsafe.Line(strings.Join(iss.Actions, ", "))); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func printDigestAgent(cmd *cobra.Command, bs []byte) error {
+	var b generated.DigestResponseBody
+	if err := json.Unmarshal(bs, &b); err != nil {
+		return err
+	}
+	filters := authorname.DigestFilters(b.Actors)
+	b.Actors = authorname.GroupDigest(b.Actors)
+	count := 0
+	for _, a := range b.Actors {
+		count += len(a.Issues)
+	}
+	out := cmd.OutOrStdout()
+	if _, err := fmt.Fprintf(out, "OK digest count=%d events=%d since=%s until=%s\n",
+		count, b.EventCount,
+		agentValue(b.Since.Format(time.RFC3339)),
+		agentValue(b.Until.Format(time.RFC3339))); err != nil {
+		return err
+	}
+	for _, a := range b.Actors {
+		encoded, err := json.Marshal(filters[a.Actor])
+		if err != nil {
+			return err
+		}
+		for _, iss := range a.Issues {
+			fields := []agentField{
+				agentRowField("actor", a.Actor),
+				agentRowField("issue", iss.IssueShortID),
+				agentRowListField("actions", iss.Actions),
+			}
+			if iss.ProjectName != "" {
+				fields = append(fields, agentRowField("project", iss.ProjectName))
+			}
+			fields = append(fields, agentRowField("actor_filters", string(encoded)))
+			if err := writeAgentKVRow(out, fields...); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

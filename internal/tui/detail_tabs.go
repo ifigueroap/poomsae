@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"go.kenn.io/kata/internal/authorname"
-	"go.kenn.io/kata/internal/commentref"
-	"go.kenn.io/kata/internal/metadata"
+	"github.com/ifigueroap/poomsae/internal/authorname"
+	"github.com/ifigueroap/poomsae/internal/commentref"
+	"github.com/ifigueroap/poomsae/internal/metadata"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/mattn/go-runewidth"
@@ -117,7 +117,7 @@ func wrapCommentTags(tags string, width int) []string {
 // "[type] timestamp actor — description". issue.closed events expand
 // to additional indented lines surfacing the close message and each
 // evidence item so reviewers can audit the close from the events tab
-// without dropping to `kata audit closes`.
+// without dropping to `poomsae audit closes`.
 func eventChunks(es []EventLogEntry, width, cursor int, ts tabState) []entryChunk {
 	if placeholder := tabPlaceholder(ts, "events", "(no events yet)", len(es)); placeholder != nil {
 		return []entryChunk{*placeholder}
@@ -134,7 +134,7 @@ func eventChunks(es []EventLogEntry, width, cursor int, ts tabState) []entryChun
 // status isn't on the LinkEntry projection; pressing Enter jumps to
 // the target. Type is daemon-defined; Author is agent-supplied and is
 // sanitized so a malicious link author can't push the terminal around.
-// Task 18 owns the final visual shape (kata#abc4 qualified rendering);
+// Task 18 owns the final visual shape (poomsae#abc4 qualified rendering);
 // this commit only swaps the wire field names so the package compiles
 // against the new LinkEntry shape.
 func linkChunks(ls []LinkEntry, width, cursor int, ts tabState) []entryChunk {

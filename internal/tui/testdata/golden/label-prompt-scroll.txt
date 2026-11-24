@@ -1,4 +1,4 @@
- Project: kata                                                                                          kata カタ · dev
+ Project: poomsae                                                                                    poomsae カタ · dev
 
   #42aa  fix login bug on Safari                                                            [open]
   authored by wesm

@@ -23,9 +23,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/processtree"
-	protocol "go.kenn.io/kata/pkg/connector"
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/processtree"
+	protocol "github.com/ifigueroap/poomsae/pkg/connector"
 	"go.kenn.io/kit/consolewindow"
 )
 

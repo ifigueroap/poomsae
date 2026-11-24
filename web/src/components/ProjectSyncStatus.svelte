@@ -279,17 +279,18 @@
             {/if}
           </div>
           {#if status.has_sync_error}
-            {@const bashCommand = `kata federation status --project '${status.project_name.replaceAll("'", "'\\''")}'`}
+            {@const bashCommand = `poomsae federation status --project '${status.project_name.replaceAll("'", "'\\''")}'`}
             {@const powershellName = status.project_name.replace(/['‘’‚‛]/g, '$&$&')}
             {@const legacyName = powershellName.replace(/(\\*)"/g, '$1$1\\"')}
             {@const powershellCommand =
               legacyName === powershellName
-                ? `kata federation status --project '${powershellName}'`
-                : `kata federation status --project $(if ($PSVersionTable.PSVersion -lt [version]'7.3' -or $PSNativeCommandArgumentPassing -eq 'Legacy') { '${legacyName}' } else { '${powershellName}' })`}
+                ? `poomsae federation status --project '${powershellName}'`
+                : `poomsae federation status --project $(if ($PSVersionTable.PSVersion -lt [version]'7.3' -or $PSNativeCommandArgumentPassing -eq 'Legacy') { '${legacyName}' } else { '${powershellName}' })`}
             <div class="sync-attention">
-              <span>Connect the Kata CLI to this daemon with your own credential, then run:</span>
+              <span>Connect the Poomsae CLI to this daemon with your own credential, then run:</span
+              >
               <span class="sync-note"
-                >For a remote daemon, select it with its --daemon profile or KATA_SERVER.</span
+                >For a remote daemon, select it with its --daemon profile or POOMSAE_SERVER.</span
               >
               {#if bashCommand === powershellCommand}
                 <div class="command">

@@ -15,19 +15,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/config"
+	"github.com/ifigueroap/poomsae/internal/daemon"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/pgstore"
+	"github.com/ifigueroap/poomsae/internal/embedding"
+	mcpserver "github.com/ifigueroap/poomsae/internal/mcp"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	"github.com/ifigueroap/poomsae/internal/testfix"
+	"github.com/ifigueroap/poomsae/internal/vector"
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/config"
-	"go.kenn.io/kata/internal/daemon"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/pgstore"
-	"go.kenn.io/kata/internal/embedding"
-	mcpserver "go.kenn.io/kata/internal/mcp"
-	"go.kenn.io/kata/internal/testenv"
-	"go.kenn.io/kata/internal/testfix"
-	"go.kenn.io/kata/internal/vector"
-	kataclient "go.kenn.io/kata/pkg/client"
 )
 
 func newFederationSearchHub(t *testing.T) (*testenv.Env, *vector.Index, db.Project, db.Issue, string) {
@@ -67,7 +67,7 @@ func newFederationSearchHub(t *testing.T) (*testenv.Env, *vector.Index, db.Proje
 func connectSearchMCP(t *testing.T, cfg daemon.ServerConfig) *sdkmcp.ClientSession {
 	t.Helper()
 	server := startTestServer(t, cfg)
-	client, err := kataclient.NewWithHTTPClient(server.URL, server.Client())
+	client, err := poomsaeclient.NewWithHTTPClient(server.URL, server.Client())
 	require.NoError(t, err)
 	mcp, err := mcpserver.New(mcpserver.Options{Client: client, Actor: "tester", Version: "test", Scope: mcpserver.NewAllScope(), StartupSections: []string{"issue_discovery"}})
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestDirectSpokeSearchUnpulledReferenceCannotResolveCollision(t *testing.T) 
 	require.Zero(t, result.Results[0].Issue.ID)
 	require.Equal(t, issue.UID, result.Results[0].Issue.ShortID)
 	session := connectSearchMCP(t, daemon.ServerConfig{DB: spoke.DB})
-	shown, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "kata.show", Arguments: map[string]any{"ref": replica.Name + "#" + result.Results[0].Issue.ShortID}})
+	shown, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "poomsae.show", Arguments: map[string]any{"ref": replica.Name + "#" + result.Results[0].Issue.ShortID}})
 	require.NoError(t, err)
 	require.True(t, shown.IsError, "%+v", shown.Content)
 }
@@ -189,9 +189,9 @@ func TestDirectSpokeSearchUsesHubResults(t *testing.T) {
 		switch hit.Issue.UID {
 		case unpulled.UID:
 			require.Equal(t, unpulled.UID, hit.Issue.ShortID)
-			require.Equal(t, "https://tasks.example/kata?issue="+unpulled.UID+"#direct=1", hit.WebURL)
+			require.Equal(t, "https://tasks.example/poomsae?issue="+unpulled.UID+"#direct=1", hit.WebURL)
 		case issue.UID:
-			require.Equal(t, "https://spoke.example/kata?issue="+issue.UID+"#direct=1", hit.WebURL)
+			require.Equal(t, "https://spoke.example/poomsae?issue="+issue.UID+"#direct=1", hit.WebURL)
 		}
 	}
 	require.True(t, seen[issue.UID])
@@ -305,7 +305,7 @@ func TestDirectSpokeSearchMCPMissingEmbeddings(t *testing.T) {
 	_, err := spoke.DB.CreateProject(ctx, "local-only")
 	require.NoError(t, err)
 	session := connectSearchMCP(t, daemon.ServerConfig{DB: spoke.DB})
-	result, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "concept", "mode": "semantic"}})
+	result, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "concept", "mode": "semantic"}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%+v", result.Content)
 	output := result.StructuredContent.(map[string]any)
@@ -318,7 +318,7 @@ func TestDirectSpokeSearchMCPMissingEmbeddings(t *testing.T) {
 		resultIssue := hit.(map[string]any)["issue"].(map[string]any)
 		if resultIssue["uid"] == unpulled.UID {
 			foundRemote = true
-			require.Equal(t, "https://tasks.example/kata?issue="+unpulled.UID+"#direct=1", resultIssue["web_url"])
+			require.Equal(t, "https://tasks.example/poomsae?issue="+unpulled.UID+"#direct=1", resultIssue["web_url"])
 		}
 	}
 	require.True(t, foundRemote)
@@ -363,7 +363,7 @@ func TestDirectSpokeSearchMCPLocalAndHubSemantic(t *testing.T) {
 	require.Contains(t, inputs[0], "local concept")
 	require.NoError(t, localIndex.CutOver(ctx, localKey))
 	configuredSession := connectSearchMCP(t, daemon.ServerConfig{DB: spoke.DB, Embedder: localEmbedder, VectorIndex: localIndex})
-	result, err := configuredSession.CallTool(ctx, &sdkmcp.CallToolParams{Name: "kata.search", Arguments: map[string]any{"query": "concept", "mode": "semantic"}})
+	result, err := configuredSession.CallTool(ctx, &sdkmcp.CallToolParams{Name: "poomsae.search", Arguments: map[string]any{"query": "concept", "mode": "semantic"}})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "%+v", result.Content)
 	hits := result.StructuredContent.(map[string]any)["results"].([]any)
@@ -516,8 +516,8 @@ func TestFederationSearchRequiresPullEnrollment(t *testing.T) {
 }
 
 func TestDirectSpokeSearchProjectAccessPrecedesHub(t *testing.T) {
-	t.Setenv("KATA_HOME", t.TempDir())
-	store, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "kata.db"))
+	t.Setenv("POOMSAE_HOME", t.TempDir())
+	store, err := testfix.OpenSQLite(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	f := newProjectAccessFixture(t, store)

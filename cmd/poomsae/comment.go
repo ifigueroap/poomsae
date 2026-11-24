@@ -1,0 +1,279 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json/jsontext"
+	"fmt"
+	"io"
+	"strings"
+
+	poomsaeclient "github.com/ifigueroap/poomsae/pkg/client"
+	"github.com/ifigueroap/poomsae/pkg/client/generated"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
+
+func newCommentCmd() *cobra.Command {
+	var src BodySources
+	var reply, confirm, refute, supersede, idempotencyKey string
+	var force bool
+	var unsupportedRelationships commentRelationshipFlags
+	cmd := &cobra.Command{
+		Use:   "comment <issue-ref>",
+		Short: "append a comment to an issue",
+		Long: `Append a comment. Body comes from -m/--body, --body-file, or --body-stdin.
+POOMSAE_TEAMMATE (or --teammate) records which teammate wrote it.
+
+Comment only with findings a later reader needs; keep live status in
+work.attention_msg. Correct your own comment with poomsae comment edit. An open,
+unmerged PR is unfinished: leave the issue open, update work.attention and
+work.attention_msg, and add the needs-review label.`,
+		Example: `  poomsae comment abc4 --body-stdin --agent <<-'EOF'
+	Safari 18 fires the callback twice; ` + "`retry()`" + ` runs on both.
+	EOF
+
+  poomsae comment abc4 --body-file notes.md --agent`,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().StringVar(&reply, "reply", "", "reply to a comment reference")
+	cmd.Flags().StringVar(&confirm, "confirm", "", "verify or reproduce a comment with at least 40 characters of evidence")
+	cmd.Flags().StringVar(&refute, "refute", "", "refute a comment with at least 40 characters of evidence")
+	cmd.Flags().StringVar(&supersede, "supersede", "", "supersede a comment reference")
+	cmd.MarkFlagsMutuallyExclusive("reply", "confirm", "refute", "supersede")
+	cmd.Flags().BoolVar(&force, "force", false, "allow another reply of the same kind by this author and teammate")
+	cmd.Flags().StringVarP(&src.Body, "body", "m", "", "comment body")
+	cmd.Flags().StringVar(&src.File, "body-file", "", "read body from file")
+	cmd.Flags().BoolVar(&src.Stdin, "body-stdin", false, "read body from stdin")
+	cmd.Flags().StringVar(&idempotencyKey, "idempotency-key", "", "send Idempotency-Key header for safe retry")
+	cmd.Flags().SetNormalizeFunc(normalizeCommentMessageFlag)
+	cmd.Flags().StringVar(&unsupportedRelationships.Parent, "parent", "", "unsupported on comment; use edit")
+	cmd.Flags().StringVar(&unsupportedRelationships.Blocks, "blocks", "", "unsupported on comment; use edit")
+	cmd.Flags().StringVar(&unsupportedRelationships.BlockedBy, "blocked-by", "", "unsupported on comment; use edit")
+	cmd.Flags().StringVar(&unsupportedRelationships.Related, "related", "", "unsupported on comment; use edit")
+	_ = cmd.Flags().MarkHidden("parent")
+	_ = cmd.Flags().MarkHidden("blocks")
+	_ = cmd.Flags().MarkHidden("blocked-by")
+	_ = cmd.Flags().MarkHidden("related")
+
+	// RunE is set after flag registration so we can reference cmd.Flags().Changed.
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if err := unsupportedRelationships.err(cmd, args[0]); err != nil {
+			return err
+		}
+		replyTo, kind := "", ""
+		for _, link := range []struct{ ref, kind string }{{reply, "reply"}, {confirm, "confirm"}, {refute, "refute"}, {supersede, "supersede"}} {
+			if cmd.Flags().Changed(link.kind) {
+				if strings.TrimSpace(link.ref) == "" {
+					return fmt.Errorf("--%s requires a comment reference", link.kind)
+				}
+				replyTo, kind = link.ref, link.kind
+			}
+		}
+		if replyTo != "" || force {
+			a, err := dialDaemon(cmd.Context())
+			if err != nil {
+				return err
+			}
+			if err := requireDaemonAPIVersion(a.ctx, a.client, a.baseURL, apiVersionCommentLinks, "typed comment replies"); err != nil {
+				return err
+			}
+		}
+		src.BodySet = cmd.Flags().Changed("body")
+		src.FileSet = cmd.Flags().Changed("body-file")
+
+		body, err := resolveCommentBody(cmd, src)
+		if err != nil {
+			return err
+		}
+		handle, err := resolveTeammate(cmd)
+		if err != nil {
+			return err
+		}
+		if err := preflightCommentTeammate(cmd, handle); err != nil {
+			return err
+		}
+		project, issue, err := prepareIssueMutation(cmd, args[0], false)
+		if err != nil {
+			return err
+		}
+		actor, _ := resolveActor(project.api.ctx, flags.As, nil)
+		payload := &generated.CreateCommentBody{Actor: &actor, Body: body}
+		if replyTo != "" {
+			payload.ReplyTo = &replyTo
+			replyKind := generated.CommentRequestBodyKind(kind)
+			payload.Kind = &replyKind
+		}
+		if force {
+			payload.Force = &force
+		}
+		if handle != "" {
+			payload.Teammate = &handle
+		}
+		apiClient, err := project.generatedClient()
+		if err != nil {
+			return err
+		}
+		options := &generated.CreateCommentRequestOptions{PathParams: &generated.CreateCommentPath{ProjectID: project.selector, Ref: issue.RefForAPI}, Body: payload}
+		if idempotencyKey != "" {
+			options.Header = &generated.CreateCommentHeaders{IdempotencyKey: &idempotencyKey}
+		}
+		response, callErr := apiClient.CreateCommentWithResponse(project.api.ctx, options)
+		if err := externalCLITransportError(response, callErr); err != nil {
+			return err
+		}
+		bs, err := project.finishMutation(response.HTTPResponse, response.Body, callErr)
+		if err != nil {
+			return err
+		}
+		switch currentOutputMode() {
+		case outputJSON:
+			var buf bytes.Buffer
+			if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+				return err
+			}
+			_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+			return err
+		case outputAgent:
+			return printAgentMutation(cmd, "comment", bs, project.name, func(w io.Writer, _ agentIssueMutation) error {
+				return writeAgentField(w, "Comment", "appended")
+			})
+		}
+		if !flags.Quiet {
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), "comment appended")
+			return err
+		}
+		return nil
+	}
+	cmd.AddCommand(newCommentEditCmd())
+	return cmd
+}
+
+func newCommentEditCmd() *cobra.Command {
+	var src BodySources
+	cmd := &cobra.Command{
+		Use:   "edit <issue-ref> <comment-uid>",
+		Short: "edit a comment body",
+		Long:  `Replace the body of one comment. Find its comment UID with poomsae show; use -m/--body, --body-file, or --body-stdin.`,
+		Example: `  poomsae comment edit abc4 <comment-uid> --body-stdin --agent <<-'EOF'
+	Corrected repro steps: run ` + "`make test`" + ` twice.
+	EOF`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			src.BodySet = cmd.Flags().Changed("body")
+			src.FileSet = cmd.Flags().Changed("body-file")
+			body, err := resolveCommentBody(cmd, src)
+			if err != nil {
+				return err
+			}
+			commentRef := strings.TrimSpace(args[1])
+			if commentRef == "" {
+				return &cliError{Message: "comment uid is required", Kind: kindValidation, ExitCode: ExitValidation}
+			}
+			ctx, baseURL, pid, issue, err := resolveIssueRefForCommand(cmd, args[0])
+			if err != nil {
+				return err
+			}
+			actor, _ := resolveActor(ctx, flags.As, nil)
+			client, err := httpClientFor(ctx, baseURL)
+			if err != nil {
+				return err
+			}
+			apiClient, err := poomsaeclient.NewWithHTTPClient(baseURL, client)
+			if err != nil {
+				return err
+			}
+			response, callErr := apiClient.EditCommentWithResponse(ctx, &generated.EditCommentRequestOptions{
+				PathParams: &generated.EditCommentPath{ProjectID: pid, Ref: issue.RefForAPI, CommentRef: commentRef},
+				Body:       &generated.EditCommentBody{Actor: actor, Body: body},
+			})
+			if err := externalCLITransportError(response, callErr); err != nil {
+				return err
+			}
+			if err := externalCLIResponseError(response.StatusCode, response.Body, callErr); err != nil {
+				return err
+			}
+			bs := response.Body
+			switch currentOutputMode() {
+			case outputJSON:
+				var buf bytes.Buffer
+				if err := emitJSON(&buf, jsontext.Value(bs)); err != nil {
+					return err
+				}
+				_, err := fmt.Fprint(cmd.OutOrStdout(), buf.String())
+				return err
+			case outputAgent:
+				return printAgentMutation(cmd, "comment", bs, issue.ProjectName, func(w io.Writer, _ agentIssueMutation) error {
+					return writeAgentField(w, "Comment", "edited")
+				})
+			}
+			if !flags.Quiet {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), "comment edited")
+				return err
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVarP(&src.Body, "body", "m", "", "comment body")
+	cmd.Flags().StringVar(&src.File, "body-file", "", "read body from file")
+	cmd.Flags().BoolVar(&src.Stdin, "body-stdin", false, "read body from stdin")
+	cmd.Flags().SetNormalizeFunc(normalizeCommentMessageFlag)
+	return cmd
+}
+
+// normalizeCommentMessageFlag makes --message an alias of --body, so the flag
+// `poomsae close` uses for its text also works on comment commands. Normalizing
+// instead of registering a second flag keeps Changed("body") and last-wins
+// semantics identical for both spellings.
+func normalizeCommentMessageFlag(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	if name == "message" {
+		return "body"
+	}
+	return pflag.NormalizedName(name)
+}
+
+func resolveCommentBody(cmd *cobra.Command, src BodySources) (string, error) {
+	body, err := resolveBody(src, cmd.InOrStdin())
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(body) == "" {
+		return "", &cliError{Message: "comment body is required (--body, --body-file, --body-stdin)", Kind: kindValidation, ExitCode: ExitValidation}
+	}
+	return body, nil
+}
+
+type commentRelationshipFlags struct {
+	Parent    string
+	Blocks    string
+	BlockedBy string
+	Related   string
+}
+
+func (f commentRelationshipFlags) err(cmd *cobra.Command, issueRef string) error {
+	for _, rel := range []struct {
+		flag  string
+		value string
+	}{
+		{flag: "parent", value: f.Parent},
+		{flag: "blocks", value: f.Blocks},
+		{flag: "blocked-by", value: f.BlockedBy},
+		{flag: "related", value: f.Related},
+	} {
+		if !cmd.Flags().Changed(rel.flag) {
+			continue
+		}
+		target := rel.value
+		if strings.TrimSpace(target) == "" {
+			target = "<target-ref>"
+		}
+		return &cliError{
+			Message: fmt.Sprintf(
+				"poomsae comment does not support --%s; use `poomsae edit %s --%s %s --comment \"...\"`",
+				rel.flag, issueRef, rel.flag, target,
+			),
+			Kind:     kindUsage,
+			ExitCode: ExitUsage,
+		}
+	}
+	return nil
+}

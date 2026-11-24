@@ -1,11 +1,11 @@
-display_name = "kata"
+display_name = "poomsae"
 
 review_guidelines = """
 Latest stable Go. Be pragmatic — theoretical findings produce churn.
 
 ## Stacked delivery boundaries
 
-Kata may land a cumulative delivery sequence as separate protocol, storage,
+Poomsae may land a cumulative delivery sequence as separate protocol, storage,
 reconciliation, and runtime-integration pull requests. Review each pull request
 against the scope and dependency boundary stated in its description. Missing
 later-layer daemon or CLI wiring is not a finding when the current pull request
@@ -15,15 +15,15 @@ claims production availability or leaves its own declared layer unusable.
 
 ## Module path
 
-The Go module path is `go.kenn.io/kata`, not `github.com/wesm/kata`.
-Imports using `go.kenn.io/kata/...` are correct for this repository.
+The Go module path is `github.com/ifigueroap/poomsae`, not `github.com/wesm/poomsae`.
+Imports using `github.com/ifigueroap/poomsae/...` are correct for this repository.
 
 ## Federation CLI is registered
 
-`cmd/kata/main.go` includes `newFederationCmd()` in the root command list,
-with implementation in `cmd/kata/federation.go` and lease subcommands in
-`cmd/kata/federation_lease.go`. `cmd/kata/main_test.go` pins that registration.
-Do not flag public `kata federation ...` docs as advertising an unavailable
+`cmd/poomsae/main.go` includes `newFederationCmd()` in the root command list,
+with implementation in `cmd/poomsae/federation.go` and lease subcommands in
+`cmd/poomsae/federation_lease.go`. `cmd/poomsae/main_test.go` pins that registration.
+Do not flag public `poomsae federation ...` docs as advertising an unavailable
 command unless those registrations or tests are removed.
 
 ## Don't assert external facts you cannot verify
@@ -54,7 +54,7 @@ entering public build output.
 
 ## Trust model — local daemon plus first-class browser client
 
-Kata is a single-operator tool, not a public multi-tenant service. The default
+Poomsae is a single-operator tool, not a public multi-tenant service. The default
 daemon API uses an owner-local Unix socket on Unix and loopback TCP on Windows.
 The default browser listener deliberately follows the established
 keyless-loopback convention: same-host processes and users are inside its
@@ -68,7 +68,7 @@ plus `[auth].trust_private_network`, or the explicit
 private IP bind. That tokenless writable mode deliberately treats the private
 network as the access boundary, uses client-supplied actors, and blocks token
 administration. Hosted mode (`docs/operations/hosted-mode.md`) binds
-`0.0.0.0:$PORT` for `kata daemon start --foreground` when `PORT` is set and no
+`0.0.0.0:$PORT` for `poomsae daemon start --foreground` when `PORT` is set and no
 listen address is configured; auto-started daemons do not. Do not report these
 opt-in modes as missing authentication or public exposure. Do flag a path that
 reaches them without the opt-in, or that lets the tokenless mode administer
@@ -77,7 +77,7 @@ tokens.
 Not findings: missing multi-user authorization on owner-local or direct-loopback paths,
 `validateActor` "not authorizing" (it is audit metadata), DoS via large bodies
 or bulk endpoints on trusted local/private input, symlink following beneath the
-owner-only Kata data directory, or races exploitable only by another process
+owner-only Poomsae data directory, or races exploitable only by another process
 already running as the same OS user.
 
 The browser is a distinct ambient-credential boundary even though it is served
@@ -92,13 +92,13 @@ by the daemon. Reviewers MUST enforce all of these invariants:
    unavailable on non-loopback, proxied, or identity-authenticated
    deployments. The resulting data authority still requires the split cookie
    and tab header in item 2 and never grants token administration.
-   `kata ui` opens the advertised loopback URL directly; launch credentials,
+   `poomsae ui` opens the advertised loopback URL directly; launch credentials,
    secret runtime siblings, credential fragments, and private browser handoffs
    are not part of the contract. The resulting local-web principal may perform
    ordinary attributed UI writes but must never gain token administration.
 2. Every authenticated browser data request requires both the instance-scoped
-   HttpOnly cookie and `X-Kata-Web-Session`; mutation requests additionally
-   require matching `X-Kata-CSRF` and same-origin validation. Cookie-only,
+   HttpOnly cookie and `X-Poomsae-Web-Session`; mutation requests additionally
+   require matching `X-Poomsae-CSRF` and same-origin validation. Cookie-only,
    header-only, or CSRF-only authorization is a HIGH finding. The cookie is one
    manager-scoped ambient value shared by tabs; session and CSRF values are
    tab-local. Issuing or logging out one tab must not rotate/delete the ambient
@@ -109,7 +109,7 @@ by the daemon. Reviewers MUST enforce all of these invariants:
    streams revalidate browser authority before every event, reset, and heartbeat;
    handshake-only authentication is insufficient. Authenticated API responses
    are private and non-cacheable and vary on both the cookie and
-   `X-Kata-Web-Session`; do flag responses a shared proxy could replay across
+   `X-Poomsae-Web-Session`; do flag responses a shared proxy could replay across
    browser principals. Browser authentication and credentialed API fetches use
    redirect mode `error`; following redirects with tokens, cookies, or
    session headers is a credential-boundary defect.
@@ -147,7 +147,7 @@ by the daemon. Reviewers MUST enforce all of these invariants:
    backend port.
 7. `--insecure-readonly` may expose anonymous snapshots and polling, but must
    never authorize mutations, token administration, or writable sessions.
-   `kata ui` opens its validated origin directly when the runtime advertises
+   `poomsae ui` opens its validated origin directly when the runtime advertises
    readonly. Cookie-only ambient state is ignored
    in this mode; a session header still opts into split browser authentication.
 8. Browser capabilities are principal-derived. In identity mode the bootstrap
@@ -186,7 +186,7 @@ by the daemon. Reviewers MUST enforce all of these invariants:
    one configured daemon are not findings by themselves.
 10. The production CSP keeps scripts same-origin-only. `script-src 'self'
    'wasm-unsafe-eval'` allows Shiki's regex engine; JavaScript eval and inline
-   scripts stay blocked. Kata's dynamic layout requires inline style
+   scripts stay blocked. Poomsae's dynamic layout requires inline style
    attributes, so `style-src-attr 'unsafe-inline'` is an intentional narrow
    allowance and must not be broadened to inline scripts.
 11. When `[mcp]` mounts `/mcp` on the daemon, that path requires its own MCP
@@ -228,7 +228,7 @@ violations as functional data-isolation defects rather than optional hardening.
 
 Versioned CLI releases intentionally start with checksum verification only:
 release archives and Linux packages are published with one aggregate
-`SHA256SUMS`, and `kata update` uses kit's checksum-only mode for this first
+`SHA256SUMS`, and `poomsae update` uses kit's checksum-only mode for this first
 release line. Signed update metadata is future work. Do not raise a blocking
 finding solely because release assets use `SHA256SUMS` without detached
 signatures. Valid findings remain: skipped checksum verification in the
@@ -257,9 +257,9 @@ already exist or weakens an existing verification step.
 
 ## Tailscale/private-overlay hostnames
 
-Kata intentionally supports private-network daemon access over operator-
+Poomsae intentionally supports private-network daemon access over operator-
 trusted plaintext. A configured `allow_insecure = true` daemon target, or
-`KATA_ALLOW_INSECURE=1` for `KATA_SERVER`, means the operator explicitly
+`POOMSAE_ALLOW_INSECURE=1` for `POOMSAE_SERVER`, means the operator explicitly
 accepted HTTP for a trusted private overlay such as Tailscale. Do not raise a
 Medium/High finding merely because a token-bearing `http://hostname:port`
 request uses DNS or plaintext; Tailscale, MagicDNS, mDNS, and similar

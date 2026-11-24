@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/jsonl"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/db/sqlitestore"
-	"go.kenn.io/kata/internal/jsonl"
 )
 
 func TestAutoCutoverCheckpointsSourceWALBeforeSwap(t *testing.T) {
@@ -32,7 +32,7 @@ func TestAutoCutoverCheckpointsSourceWALBeforeSwap(t *testing.T) {
 
 	// Copy a stable committed database+WAL pair while its writer stays open.
 	// This is a crash image: no graceful-close checkpoint touches the copy.
-	path := filepath.Join(t.TempDir(), "kata.db")
+	path := filepath.Join(t.TempDir(), "poomsae.db")
 	for _, suffix := range []string{"", "-wal"} {
 		body, err := os.ReadFile(original + suffix) //nolint:gosec // source and WAL files are created under this test's temporary database directory.
 		require.NoError(t, err)

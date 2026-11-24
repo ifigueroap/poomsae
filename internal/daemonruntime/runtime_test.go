@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/daemonruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/daemonruntime"
 	kitdaemon "go.kenn.io/kit/daemon"
 )
 
@@ -17,8 +17,8 @@ func TestRuntimeFile_RoundTripWriteRead(t *testing.T) {
 	rec := kitdaemon.RuntimeRecord{
 		PID:       4242,
 		Network:   "unix",
-		Address:   "/tmp/kata.sock",
-		Metadata:  map[string]string{"db_path": "/tmp/kata.db"},
+		Address:   "/tmp/poomsae.sock",
+		Metadata:  map[string]string{"db_path": "/tmp/poomsae.db"},
 		StartedAt: time.Date(2026, 4, 29, 0, 0, 0, 0, time.UTC),
 	}
 	store := kitdaemon.RuntimeStore{Dir: dir}
@@ -30,7 +30,7 @@ func TestRuntimeFile_RoundTripWriteRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, rec.PID, got.PID)
 	assert.Equal(t, rec.Address, got.Address)
-	assert.Equal(t, "/tmp/kata.db", got.Metadata["db_path"])
+	assert.Equal(t, "/tmp/poomsae.db", got.Metadata["db_path"])
 }
 
 func TestListRuntimeFiles_FindsAllInDir(t *testing.T) {

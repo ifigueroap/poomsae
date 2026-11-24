@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"go.kenn.io/kata/internal/db"
+	"github.com/ifigueroap/poomsae/internal/db"
 )
 
 // ImportReplay atomically restores normalized JSONL records into Postgres.
@@ -397,7 +397,7 @@ func pgReplayExternalFieldMapping(
 		accepted_kinds_json, nullable, writable, schema_revision, active,
 		created_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		mapping.ConnectorInstance, mapping.KataField, mapping.ExternalFieldID,
+		mapping.ConnectorInstance, mapping.PoomsaeField, mapping.ExternalFieldID,
 		mapping.ExternalFieldName, string(acceptedKinds), boolInt(mapping.Nullable),
 		boolInt(mapping.Writable), mapping.SchemaRevision, boolInt(active),
 		formatExternalObservationTime(mapping.CreatedAt), formatExternalObservationTime(mapping.UpdatedAt))
@@ -412,7 +412,7 @@ func pgReuseProjectMergeExternalFieldMapping(
 ) (bool, error) {
 	queryer := externalRootTxQueryer{tx}
 	candidate, found, err := pgReplayExternalFieldMappingByIdentity(ctx, queryer,
-		mapping.ConnectorInstance, mapping.KataField, mapping.ExternalFieldID,
+		mapping.ConnectorInstance, mapping.PoomsaeField, mapping.ExternalFieldID,
 		mapping.SchemaRevision, formatExternalObservationTime(mapping.CreatedAt),
 	)
 	if err != nil {
@@ -453,7 +453,7 @@ func pgReplayExternalFieldMappingByIdentity(
 	ctx context.Context,
 	queryer externalRootTxQueryer,
 	connectorInstance string,
-	kataField string,
+	poomsaeField string,
 	externalFieldID string,
 	schemaRevision string,
 	createdAt string,
@@ -467,7 +467,7 @@ func pgReplayExternalFieldMappingByIdentity(
 		FROM external_field_mappings
 		WHERE connector_instance = $1 AND kata_field = $2 AND external_field_id = $3
 		  AND schema_revision = $4`,
-		connectorInstance, kataField, externalFieldID, schemaRevision,
+		connectorInstance, poomsaeField, externalFieldID, schemaRevision,
 	)
 	if err != nil {
 		return pgReplayExternalFieldMappingCandidate{}, false, err

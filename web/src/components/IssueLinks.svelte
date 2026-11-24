@@ -4,19 +4,19 @@
   import { markColor } from '../lib/marks'
 
   import {
-    kataLinkMatchesFilters,
+    poomsaeLinkMatchesFilters,
     relationForKataLink,
-    type KataLinkFilters,
-    type KataLinkPeerResolution,
-    type KataLinkRelation,
-  } from '../lib/kata/linkFilters'
+    type PoomsaeLinkFilters,
+    type PoomsaeLinkPeerResolution,
+    type PoomsaeLinkRelation,
+  } from '../lib/poomsae/linkFilters'
   import type {
-    KataTaskDetail,
-    KataTaskEditPatch,
-    KataTaskLink,
-    KataTaskLinkPeer,
-    KataTaskSummary,
-  } from '../lib/kata/types'
+    PoomsaeTaskDetail,
+    PoomsaeTaskEditPatch,
+    PoomsaeTaskLink,
+    PoomsaeTaskLinkPeer,
+    PoomsaeTaskSummary,
+  } from '../lib/poomsae/types'
   import LinkFilterMenu from './LinkFilterMenu.svelte'
   import type { UIIssueReference } from '../lib/api/generated'
 
@@ -25,14 +25,14 @@
   }
 
   interface Props {
-    issue: KataTaskDetail
-    issueCatalog: readonly KataTaskSummary[]
+    issue: PoomsaeTaskDetail
+    issueCatalog: readonly PoomsaeTaskSummary[]
     searchReferences?: ((query: string) => Promise<UIIssueReference[]>) | undefined
-    linkFilters: KataLinkFilters
-    onLinkFiltersChange: (next: KataLinkFilters) => void
+    linkFilters: PoomsaeLinkFilters
+    onLinkFiltersChange: (next: PoomsaeLinkFilters) => void
     actionsDisabled?: boolean | undefined
     draftFenceGeneration?: number | undefined
-    onEditIssue: (uid: string, patch: KataTaskEditPatch) => boolean | Promise<boolean>
+    onEditIssue: (uid: string, patch: PoomsaeTaskEditPatch) => boolean | Promise<boolean>
     onSelectIssue: (target: IssueNavigationTarget) => void | Promise<void>
   }
 
@@ -63,7 +63,7 @@
 
   const visibleLinks = $derived(
     issue.links.filter((link) =>
-      kataLinkMatchesFilters(link, issue.issue.uid, peerResolution(link), linkFilters),
+      poomsaeLinkMatchesFilters(link, issue.issue.uid, peerResolution(link), linkFilters),
     ),
   )
   $effect(() => {
@@ -79,46 +79,46 @@
     searchGeneration += 1
   })
 
-  function linkPeerUIDFor(link: KataTaskLink, selectedUID: string | undefined): string {
+  function linkPeerUIDFor(link: PoomsaeTaskLink, selectedUID: string | undefined): string {
     return link.from.uid === selectedUID ? link.to.uid : link.from.uid
   }
 
-  function linkPeerUID(link: KataTaskLink): string {
+  function linkPeerUID(link: PoomsaeTaskLink): string {
     return linkPeerUIDFor(link, issue.issue.uid)
   }
 
-  function linkPeer(link: KataTaskLink): KataTaskLinkPeer {
+  function linkPeer(link: PoomsaeTaskLink): PoomsaeTaskLinkPeer {
     return link.from.uid === issue.issue.uid ? link.to : link.from
   }
 
   // A peer in another project names that project after its title.
-  function linkPeerProject(link: KataTaskLink): string {
+  function linkPeerProject(link: PoomsaeTaskLink): string {
     const qualified = linkPeer(link).qualified_id
     const separator = qualified.lastIndexOf('#')
     const project = separator === -1 ? '' : qualified.slice(0, separator)
     return project === issue.issue.project_name ? '' : project
   }
 
-  function linkPeerLabel(link: KataTaskLink): string {
+  function linkPeerLabel(link: PoomsaeTaskLink): string {
     const peer = linkPeer(link)
     return peer.qualified_id.startsWith(`${issue.issue.project_name}#`)
       ? peer.short_id
       : peer.qualified_id
   }
 
-  function peerResolution(link: KataTaskLink): KataLinkPeerResolution {
+  function peerResolution(link: PoomsaeTaskLink): PoomsaeLinkPeerResolution {
     const peer = issueCatalog.find((candidate) => candidate.uid === linkPeerUID(link))
     return { kind: 'resolved', peer: peer ?? linkPeer(link) }
   }
 
-  function peerClosed(link: KataTaskLink): boolean {
+  function peerClosed(link: PoomsaeTaskLink): boolean {
     return (
       (issueCatalog.find((candidate) => candidate.uid === linkPeerUID(link)) ?? linkPeer(link))
         .status === 'closed'
     )
   }
 
-  const relationLabels: Record<KataLinkRelation, string> = {
+  const relationLabels: Record<PoomsaeLinkRelation, string> = {
     parent: 'Parent',
     child: 'Child',
     blocks: 'Blocks',
@@ -126,7 +126,7 @@
     related: 'Related',
   }
 
-  function linkLabel(link: KataTaskLink): string {
+  function linkLabel(link: PoomsaeTaskLink): string {
     return relationLabels[relationForKataLink(link, issue.issue.uid)]
   }
 
@@ -141,7 +141,7 @@
   }
 </script>
 
-{#snippet linkRow(link: KataTaskLink)}
+{#snippet linkRow(link: PoomsaeTaskLink)}
   {@const resolution = peerResolution(link)}
   {@const peer = resolution.kind === 'resolved' ? resolution.peer : undefined}
   <button
@@ -194,9 +194,13 @@
     {@const open = grouped.filter((link) => !peerClosed(link))}
     {@const closed = grouped.filter(peerClosed)}
     {#if grouped.length}
-      <div class="link-group" role="group" aria-label={relationLabels[group as KataLinkRelation]}>
+      <div
+        class="link-group"
+        role="group"
+        aria-label={relationLabels[group as PoomsaeLinkRelation]}
+      >
         <p class="link-group-heading">
-          {relationLabels[group as KataLinkRelation]}
+          {relationLabels[group as PoomsaeLinkRelation]}
           <span class="link-group-count">{grouped.length}</span>
         </p>
         {#each open as link (link.id)}{@render linkRow(link)}{/each}

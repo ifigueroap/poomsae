@@ -7,11 +7,11 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ifigueroap/poomsae/internal/cron"
+	"github.com/ifigueroap/poomsae/internal/db"
+	"github.com/ifigueroap/poomsae/internal/testenv"
+	poomsaeuid "github.com/ifigueroap/poomsae/internal/uid"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/cron"
-	"go.kenn.io/kata/internal/db"
-	"go.kenn.io/kata/internal/testenv"
-	katauid "go.kenn.io/kata/internal/uid"
 )
 
 func workflowRecord() db.CronWorkflow {
@@ -41,7 +41,7 @@ func TestWorkflowFormKeysAndAuthority(t *testing.T) {
 	m, _ = updateModel(m, keyRune('n'))
 	require.NotNil(t, m.cron.form)
 	require.True(t, m.cron.form.wf)
-	require.True(t, katauid.Valid(m.cron.form.uid))
+	require.True(t, poomsaeuid.Valid(m.cron.form.uid))
 	require.Equal(t, []cronField{cfName, cfDefinition}, m.cron.form.order())
 	require.Contains(t, stripANSI(m.viewBody()), "New workflow")
 	for _, detail := range []bool{false, true} {

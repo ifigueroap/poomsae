@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.kenn.io/kata/internal/httpurl"
+	"github.com/ifigueroap/poomsae/internal/httpurl"
 )
 
 const maxOriginPinnedRedirects = 10

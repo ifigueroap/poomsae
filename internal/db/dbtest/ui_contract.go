@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifigueroap/poomsae/internal/db"
 	"github.com/stretchr/testify/require"
-	"go.kenn.io/kata/internal/db"
 )
 
 // RunUISnapshotGraphReachContract checks that graph traversal stays within visible issues.
@@ -246,7 +246,7 @@ func RunUISnapshotMutationCursorContract(t *testing.T, open func(*testing.T) db.
 }
 
 // RunUISnapshotCollectionContract verifies the browser collection authority
-// needed by the ported Kata issue list on every storage backend.
+// needed by the ported Poomsae issue list on every storage backend.
 func RunUISnapshotCollectionContract(t *testing.T, open func(*testing.T) db.Storage) {
 	t.Helper()
 	store := open(t)
