@@ -1,7 +1,7 @@
 ---
 title: Configuration
 description: Reference Poomsae environment variables, workspace files, daemon settings, authentication, and integrations.
-last_edited: 2026-11-21
+last_edited: 2026-11-25
 ---
 
 # Configuration

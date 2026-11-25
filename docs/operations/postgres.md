@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL operations
 description: Operate Poomsae on PostgreSQL with split migration and runtime roles, backups, upgrades, and health checks.
-last_edited: 2026-11-20
+last_edited: 2026-11-25
 ---
 
 # PostgreSQL operations

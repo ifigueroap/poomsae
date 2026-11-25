@@ -25,6 +25,8 @@ docs/*~
 docs/**/*~
 docs/.DS_Store
 docs/**/.DS_Store
+docs/.poomsae.local.toml
+docs/**/.poomsae.local.toml
 docs/*.test
 docs/**/*.test
 docs/*.out

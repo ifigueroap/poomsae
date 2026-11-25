@@ -1,7 +1,7 @@
 ---
 title: Alert on cron run failures
 description: Notify an inbox recipient when a cron run observation reports a failure.
-last_edited: 2026-11-21
+last_edited: 2026-11-25
 ---
 
 # Alert on cron run failures

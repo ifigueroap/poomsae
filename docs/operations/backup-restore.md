@@ -1,7 +1,7 @@
 ---
 title: Backup and restore
 description: Back up, restore, and move Poomsae data safely with JSONL export and import workflows.
-last_edited: 2026-11-20
+last_edited: 2026-11-25
 ---
 
 # Backup and restore

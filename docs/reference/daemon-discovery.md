@@ -1,7 +1,7 @@
 ---
 title: Daemon discovery
 description: Discover and select the same Poomsae daemon endpoint and transport precedence used by the CLI.
-last_edited: 2026-11-20
+last_edited: 2026-11-25
 ---
 
 # Daemon discovery
