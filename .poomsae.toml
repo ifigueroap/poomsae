@@ -1,3 +1,5 @@
+# This repository tracks its work in poomsae.
+# Coding agents: read `poomsae quickstart --format contract` before changing code here.
 version = 1
 
 [project]
