@@ -3,5 +3,5 @@
 version = 1
 
 [project]
-identity = "github.com/wesm/poomsae"
+identity = "github.com/ifigueroap/poomsae"
 name     = "poomsae"
