@@ -40,8 +40,11 @@ func TestSchemaBootstrapRejectsExtensionsOutsidePublic(t *testing.T) {
 				t.Cleanup(func() { _ = store.Close() })
 			}
 			require.Error(t, err)
+			// The unaccent guard lives in the version-pinned canonical
+			// schema, which still names the product kata; changing it needs
+			// a schema version. Assert the operator instruction only.
 			assert.Contains(t, err.Error(), fmt.Sprintf(
-				`postgres extension %q is installed in schema "extension_source"; move it to "public" before installing poomsae`,
+				`postgres extension %q is installed in schema "extension_source"; move it to "public" before installing`,
 				extension))
 
 			var installedSchema string
