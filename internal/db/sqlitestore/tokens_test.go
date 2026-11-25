@@ -64,46 +64,6 @@ func TestEnsureSystemProjectRejectsConflictingSentinelUID(t *testing.T) {
 	assert.Contains(t, err.Error(), db.SystemProjectName)
 }
 
-// A database created before the kata -> poomsae rename holds the system
-// project as .kata-system. Reopening it must rename that row in place instead
-// of failing on the sentinel UID, and its token events must carry the new name
-// because import replay requires system events to name SystemProjectName.
-func TestOpenRenamesLegacySystemProject(t *testing.T) {
-	t.Parallel()
-	d, path := openTestDBWithPath(t)
-	ctx := t.Context()
-	_, created, err := d.CreateAPIToken(ctx, db.CreateAPITokenParams{
-		PlaintextToken: "legacy-token",
-		Actor:          "automation",
-		AdminActor:     db.BootstrapActor,
-	})
-	require.NoError(t, err)
-	_, err = d.ExecContext(ctx, `UPDATE projects SET name = ? WHERE uid = ?`,
-		db.LegacySystemProjectName, db.SystemProjectUID)
-	require.NoError(t, err)
-	_, err = d.ExecContext(ctx, `UPDATE events SET project_name = ? WHERE id = ?`,
-		db.LegacySystemProjectName, created.ID)
-	require.NoError(t, err)
-	require.NoError(t, d.Close())
-
-	reopened, err := sqlitestore.Open(ctx, path)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = reopened.Close() })
-
-	sys, err := reopened.SystemProject(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, db.SystemProjectUID, sys.UID)
-	assert.Equal(t, created.ProjectID, sys.ID)
-	var eventProject string
-	require.NoError(t, reopened.QueryRowContext(ctx,
-		`SELECT project_name FROM events WHERE id = ?`, created.ID).Scan(&eventProject))
-	assert.Equal(t, db.SystemProjectName, eventProject)
-	var legacyRows int
-	require.NoError(t, reopened.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM projects WHERE name = ?`, db.LegacySystemProjectName).Scan(&legacyRows))
-	assert.Zero(t, legacyRows)
-}
-
 func TestBatchProjectStatsHidesSystemProject(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)

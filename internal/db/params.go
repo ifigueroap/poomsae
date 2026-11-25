@@ -941,9 +941,6 @@ type CreatedFederationEnrollment struct {
 const (
 	// SystemProjectName is the hidden project used for daemon-global events.
 	SystemProjectName = ".poomsae-system"
-	// LegacySystemProjectName is the system project's name in databases
-	// created before the kata -> poomsae rename. EnsureSystemProject renames it.
-	LegacySystemProjectName = ".kata-system"
 	// SystemProjectUID is the stable UID for the hidden system project.
 	SystemProjectUID = "00000000000000000000000000"
 	// BootstrapActor is the audit actor for bootstrap/admin token operations.

@@ -97,35 +97,6 @@ Go installs to `$(go env GOBIN)`, falling back to `$(go env GOPATH)/bin` (often
 [Install](docs/get-started/install.md) for package downloads, manual release
 downloads, and build-from-source steps.
 
-## Migrating from kata
-
-The first `poomsae` command copies an existing kata data directory when the
-poomsae directory is not there yet. You can also run it yourself:
-
-```sh
-poomsae migrate-from-kata
-```
-
-The command looks for kata data in `$KATA_HOME`, `$HOME/.kata`, the XDG data
-and config locations (`$XDG_DATA_HOME/kata`, `$XDG_CONFIG_HOME/kata`, or
-`~/.local/share/kata` and `~/.config/kata`), and on Windows `%APPDATA%\kata`
-and `%LOCALAPPDATA%\kata`. It stops a running kata daemon when it can, then
-copies the directory. The copy includes the SQLite database, `kata.db-wal`,
-`kata.db-shm`, attachments, and backups. The database is also available as
-`poomsae.db`, and opening it runs the current schema migrations. The original
-kata directory is not moved or deleted.
-
-In a workspace, `.kata.toml` and `.kata.local.toml` are copied to
-`.poomsae.toml` and `.poomsae.local.toml` the first time poomsae reads them, and
-again when you pass that workspace to `migrate-from-kata`. Existing poomsae
-files are left as they are, so the command is safe to repeat.
-
-`KATA_*` environment variables are copied to the matching `POOMSAE_*` names
-when the poomsae variable is unset, and poomsae prints a deprecation warning.
-`KATA_HOME`, `KATA_DB`, and `KATA_DSN` are not pointed back at the original
-files. A Postgres `KATA_DSN` is mapped to `POOMSAE_DSN`. Set `POOMSAE_HOME` when
-the data should live somewhere other than `~/.poomsae`.
-
 Coding agents follow this loop. `poomsae quickstart` covers subagents, inboxes,
 attention signals, and scheduling.
 

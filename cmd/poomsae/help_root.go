@@ -71,7 +71,6 @@ var poomsaeCommandGroups = map[string]string{
 	"mcp":                 "setup",
 	"ui":                  "setup",
 	"tui":                 "setup",
-	"migrate-from-kata":   "setup",
 	"update":              "setup",
 	"version":             "setup",
 	"projects":            "admin",

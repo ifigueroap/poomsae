@@ -471,9 +471,6 @@ func findLocalConfig(ctx context.Context, start string) (root, path string, ok b
 	foundLocal := false
 
 	for {
-		if _, adoptErr := config.AdoptLegacyProjectFiles(dir); adoptErr != nil {
-			return "", "", false, adoptErr
-		}
 		if !foundLocal {
 			candidate := filepath.Join(dir, config.LocalConfigFilename)
 			if _, err := os.Stat(candidate); err == nil {

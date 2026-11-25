@@ -194,11 +194,6 @@ func DiscoverPaths(startPath string) (DiscoveredPaths, error) {
 func walkUp(start, entry string, allowDir bool, stop string) (string, error) {
 	dir := start
 	for {
-		if entry == ProjectConfigFilename {
-			if _, err := AdoptLegacyProjectFiles(dir); err != nil {
-				return "", err
-			}
-		}
 		path := filepath.Join(dir, entry)
 		info, err := os.Stat(path)
 		switch {
