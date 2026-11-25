@@ -25,6 +25,9 @@ type tokenRevokedPayload struct {
 // EnsureSystemProject creates the hidden project that owns daemon-global
 // audit events. Existing rows must carry both reserved identity values.
 func (s *Store) EnsureSystemProject(ctx context.Context) error {
+	if err := s.withTx(ctx, sql.LevelReadCommitted, renameLegacySystemProject(ctx)); err != nil {
+		return fmt.Errorf("ensure system project: %w", err)
+	}
 	return s.RetryTransient(ctx, func() error {
 		if _, err := s.ExecContext(ctx, `INSERT INTO projects(uid, name)
 VALUES($1, $2) ON CONFLICT DO NOTHING`, db.SystemProjectUID, db.SystemProjectName); err != nil {
@@ -40,6 +43,30 @@ VALUES($1, $2) ON CONFLICT DO NOTHING`, db.SystemProjectUID, db.SystemProjectNam
 		}
 		return nil
 	})
+}
+
+// renameLegacySystemProject moves a pre-rename system project and its events to
+// SystemProjectName. Event project names are outside the content hash, and
+// import replay rejects system events under any other name.
+func renameLegacySystemProject(ctx context.Context) transactionFunc {
+	return func(tx *sql.Tx) error {
+		var id int64
+		err := tx.QueryRowContext(ctx, `UPDATE projects SET name = $1
+WHERE uid = $2 AND name = $3 RETURNING id`,
+			db.SystemProjectName, db.SystemProjectUID, db.LegacySystemProjectName).Scan(&id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("rename legacy system project: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE events SET project_name = $1
+WHERE project_id = $2 AND project_name = $3`,
+			db.SystemProjectName, id, db.LegacySystemProjectName); err != nil {
+			return fmt.Errorf("rename legacy system project events: %w", err)
+		}
+		return nil
+	}
 }
 
 // SystemProject returns the hidden project used for daemon-global events.

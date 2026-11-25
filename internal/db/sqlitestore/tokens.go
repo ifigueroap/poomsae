@@ -19,6 +19,9 @@ import (
 // normal schema bootstrap path.
 func (d *Store) EnsureSystemProject(ctx context.Context) error {
 	return d.RetryTransient(ctx, func() error {
+		if err := d.renameLegacySystemProject(ctx); err != nil {
+			return fmt.Errorf("ensure system project: %w", err)
+		}
 		_, err := d.ExecContext(ctx, `
 			INSERT INTO projects(uid, name)
 			VALUES(?, ?)
@@ -37,6 +40,33 @@ func (d *Store) EnsureSystemProject(ctx context.Context) error {
 		}
 		return nil
 	})
+}
+
+// renameLegacySystemProject moves a pre-rename system project and its events to
+// SystemProjectName. Event project names are outside the content hash, and
+// import replay rejects system events under any other name.
+func (d *Store) renameLegacySystemProject(ctx context.Context) error {
+	tx, err := d.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var id int64
+	err = tx.QueryRowContext(ctx, `
+		UPDATE projects SET name = ? WHERE uid = ? AND name = ? RETURNING id
+	`, db.SystemProjectName, db.SystemProjectUID, db.LegacySystemProjectName).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("rename legacy system project: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE events SET project_name = ? WHERE project_id = ? AND project_name = ?
+	`, db.SystemProjectName, id, db.LegacySystemProjectName); err != nil {
+		return fmt.Errorf("rename legacy system project events: %w", err)
+	}
+	return tx.Commit()
 }
 
 // SystemProject returns the hidden project row for internal token-event code.
