@@ -67,7 +67,7 @@ func TestForegroundDaemonLoggingSinks(t *testing.T) {
 			if mode == "stderr-failed" && runtime.GOOS != "linux" {
 				t.Skip("fixture requires /dev/full")
 			}
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("PORT", "")
 			ns, err := daemonruntime.NewNamespace()

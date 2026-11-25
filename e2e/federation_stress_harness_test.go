@@ -104,7 +104,7 @@ func newFederationStressFixture(t federationStressTB, spokeCount int) *federatio
 	t.Helper()
 	require.Positive(t, spokeCount)
 
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	fx := &federationStressFixture{
 		bin:    bin,
 		hub:    startFederationStressHub(t, bin),

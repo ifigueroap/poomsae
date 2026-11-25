@@ -154,7 +154,7 @@ func TestRemoteProjectResolutionWithoutBinding(t *testing.T) {
 			_, err := env.DB.CreateProject(t.Context(), "daemon-project")
 			require.NoError(t, err)
 			bound := t.TempDir()
-			testfix.WriteKataToml(t, bound, "daemon-project")
+			testfix.WritePoomsaeToml(t, bound, "daemon-project")
 			for _, daemonState := range []string{"missing", "bound"} {
 				t.Run(daemonState, func(t *testing.T) {
 					daemonPath := bound
@@ -224,10 +224,10 @@ func TestRemoteProjectResolutionSelectorsStayPathFree(t *testing.T) {
 					// Anchor a workspace URL while proving --project bypasses
 					// both the missing path and an unrelated local binding.
 					if source == "workspace" {
-						testfix.WriteKataToml(t, workspace, "other-project")
+						testfix.WritePoomsaeToml(t, workspace, "other-project")
 					}
 				case "binding":
-					testfix.WriteKataToml(t, workspace, project.Name)
+					testfix.WritePoomsaeToml(t, workspace, project.Name)
 				case "git":
 					runGit(t, workspace, "init", "--quiet")
 					runGit(t, workspace, "remote", "add", "origin", "https://github.com/example-org/example-project.git")
@@ -263,7 +263,7 @@ func TestRemoteProjectResolutionSelectorsStayPathFree(t *testing.T) {
 func TestRemoteProjectResolutionWorkspaceURLMissingPath(t *testing.T) {
 	env := testenv.New(t, testenv.WithAuthToken("fixture-token"))
 	workspace := t.TempDir()
-	testfix.WriteKataToml(t, workspace, "example-project")
+	testfix.WritePoomsaeToml(t, workspace, "example-project")
 	t.Chdir(workspace)
 	server, recorder := projectResolutionProxy(t, env, "")
 	selectProjectResolutionRemote(t, env, workspace, server.URL, "workspace")
@@ -296,7 +296,7 @@ func TestRemoteMCPProjectResolutionWithoutBinding(t *testing.T) {
 			env := testenv.New(t, testenv.WithAuthToken("fixture-token"))
 			workspace := t.TempDir()
 			if source == "workspace" {
-				testfix.WriteKataToml(t, workspace, "example-project")
+				testfix.WritePoomsaeToml(t, workspace, "example-project")
 			}
 			t.Chdir(workspace)
 			server, recorder := projectResolutionProxy(t, env, filepath.Join(t.TempDir(), "missing"))

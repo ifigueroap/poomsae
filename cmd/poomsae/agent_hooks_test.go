@@ -130,7 +130,7 @@ func TestAgentHooksContractHermesSessionStartIsNeutral(t *testing.T) {
 }
 
 func TestAgentHooksContractKitManagedProfilesNativeResponses(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	for _, profile := range agenthook.Profiles() {
 		if !agentHookUsesKit(string(profile.Agent)) {
 			continue
@@ -157,8 +157,8 @@ func TestAgentHooksContractKitManagedProfilesNativeResponses(t *testing.T) {
 	}
 }
 
-// writeKataWorkspace binds dir the way poomsae init does and returns it.
-func writeKataWorkspace(t *testing.T, dir string) string {
+// writePoomsaeWorkspace binds dir the way poomsae init does and returns it.
+func writePoomsaeWorkspace(t *testing.T, dir string) string {
 	t.Helper()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), []byte("version = 1\n\n[project]\nname = \"example-project\"\n"), 0o600))
 	return dir
@@ -173,8 +173,8 @@ func assertContractOrNone(t *testing.T, agent agenthook.Agent, out, text string)
 	assertNativePrompt(t, agent, out, text)
 }
 
-func TestAgentHooksContractOnlyInKataWorkspaces(t *testing.T) {
-	workspace := writeKataWorkspace(t, t.TempDir())
+func TestAgentHooksContractOnlyInPoomsaeWorkspaces(t *testing.T) {
+	workspace := writePoomsaeWorkspace(t, t.TempDir())
 	nested := filepath.Join(workspace, "src", "pkg")
 	require.NoError(t, os.MkdirAll(nested, 0o700))
 	outside := t.TempDir()

@@ -67,10 +67,10 @@ func TestEmbeddingCredentialStartupAndReload(t *testing.T) {
 }
 
 func TestEmbeddingCredentialReloadRetriesRejectedBacklog(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	defer func() { require.NoError(t, store.Close()) }()
 	proj, err := store.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
@@ -148,7 +148,7 @@ func TestEmbeddingReloadUsesSharedChoice(t *testing.T) {
 	for _, saved := range []bool{false, true} {
 		t.Run(fmt.Sprintf("saved=%t", saved), func(t *testing.T) {
 			clearLocalEmbeddingsEnv(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			require.NoError(t, embedlocal.RecordChoice())
 			cfg, err := config.ParseSearchConfig(nil)
 			require.NoError(t, err)

@@ -44,7 +44,7 @@ func (nopLogger) Printf(string, ...any) {}
 
 func TestRunReloadLoop_DispatchesOnSignal(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		dir := setupKataEnv(t)
+		dir := setupPoomsaeEnv(t)
 		path := filepath.Join(dir, "hooks.toml")
 		require.NoError(t, os.WriteFile(path, []byte(`[[hook]]
 event = "issue.created"

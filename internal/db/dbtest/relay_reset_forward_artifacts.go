@@ -49,7 +49,7 @@ func RunRelayResetSupersedesArtifactOffers(t *testing.T, store db.Storage) {
 
 	// Vectors for the kept issue arrive; their manifest is offered to the
 	// device, which does not acknowledge it before the root resets.
-	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: kept.entity.EntityUID, ProducerInstanceUID: rootUID, Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: kept.entity.EntityUID, ProducerInstanceUID: rootUID, Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	artifact, err := embedding.NewArtifact(identity, embedding.EmbedText("Kept issue", ""), [][]float32{{1, 0}})
 	require.NoError(t, err)
 	durable, err := artifacts.RetainEmbeddingArtifact(ctx, artifact)

@@ -60,7 +60,7 @@ type ColumnStorage = Pick<Storage, 'getItem' | 'setItem'>
 const knownColumns = new Set<string>(POOMSAE_OPTIONAL_TASK_COLUMNS.map((column) => column.id))
 const widthColumns = new Set([...knownColumns, 'date', 'closed'])
 
-export function defaultKataTaskColumnVisibility(): PoomsaeTaskColumnVisibility {
+export function defaultPoomsaeTaskColumnVisibility(): PoomsaeTaskColumnVisibility {
   return {
     id: false,
     project: true,
@@ -82,17 +82,17 @@ function browserStorage(): ColumnStorage | null {
   }
 }
 
-export function loadKataTaskColumnVisibility(
+export function loadPoomsaeTaskColumnVisibility(
   storage: ColumnStorage | null = browserStorage(),
 ): PoomsaeTaskColumnVisibility {
-  if (!storage) return defaultKataTaskColumnVisibility()
+  if (!storage) return defaultPoomsaeTaskColumnVisibility()
   try {
     const current = storage.getItem(POOMSAE_TASK_COLUMNS_STORAGE_KEY)
     const raw = current ?? storage.getItem('poomsae:issue-columns/v1')
-    if (raw === null) return defaultKataTaskColumnVisibility()
+    if (raw === null) return defaultPoomsaeTaskColumnVisibility()
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed) || !parsed.every((value) => typeof value === 'string')) {
-      return defaultKataTaskColumnVisibility()
+      return defaultPoomsaeTaskColumnVisibility()
     }
     const visible = new Set(parsed.filter((value) => knownColumns.has(value)))
     if (current === null) {
@@ -102,11 +102,11 @@ export function loadKataTaskColumnVisibility(
       POOMSAE_OPTIONAL_TASK_COLUMNS.map((column) => [column.id, visible.has(column.id)]),
     ) as PoomsaeTaskColumnVisibility
   } catch {
-    return defaultKataTaskColumnVisibility()
+    return defaultPoomsaeTaskColumnVisibility()
   }
 }
 
-export function persistKataTaskColumnVisibility(
+export function persistPoomsaeTaskColumnVisibility(
   visibility: PoomsaeTaskColumnVisibility,
   storage: ColumnStorage | null = browserStorage(),
 ): void {
@@ -125,7 +125,7 @@ export function clampColumnWidth(width: number): number {
   return Math.round(Math.max(48, Math.min(480, width)))
 }
 
-export function loadKataTaskColumnWidths(
+export function loadPoomsaeTaskColumnWidths(
   storage: ColumnStorage | null = browserStorage(),
 ): PoomsaeTaskColumnWidths {
   if (!storage) return {}
@@ -146,7 +146,7 @@ export function loadKataTaskColumnWidths(
   }
 }
 
-export function persistKataTaskColumnWidths(
+export function persistPoomsaeTaskColumnWidths(
   widths: PoomsaeTaskColumnWidths,
   storage: ColumnStorage | null = browserStorage(),
 ): void {

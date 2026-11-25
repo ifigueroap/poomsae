@@ -22,7 +22,7 @@ func TestSmoke_FederationPhase1PullReplication(t *testing.T) {
 	ctx := t.Context()
 	hub := testenv.New(t)
 	spokeDirs := newE2EDirs(t)
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	spokeStderr := startDaemon(t, bin, append(spokeDirs.env(), "POOMSAE_FEDERATION_PULL_INTERVAL_MS=25"))
 	spokeURL, spokeHTTP := connectDaemon(t, spokeDirs, spokeStderr)
 	spokeDB, err := sqlitestore.Open(ctx, spokeDirs.dbPath)

@@ -1,0 +1,1 @@
+Rename the remaining kata identifiers and clear stale embedding artifacts.

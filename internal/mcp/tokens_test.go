@@ -85,7 +85,7 @@ func checkScopedTokenToolProtectedFile(t *testing.T, historical bool) {
 	secret, err := os.ReadFile(tokenPath) //nolint:gosec // tokenPath is a test-owned temporary path.
 	require.NoError(t, err)
 	plaintext := strings.TrimSpace(string(secret))
-	require.True(t, strings.HasPrefix(plaintext, "kata_"))
+	require.True(t, strings.HasPrefix(plaintext, "poomsae_"))
 	encoded := string(mustJSON(t, output))
 	require.NotContains(t, encoded, plaintext)
 	resolved, err := store.ResolveAPIToken(t.Context(), plaintext)

@@ -3,11 +3,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('../lib/poomsae/projection', async (importOriginal) => {
   const original = await importOriginal<typeof import('../lib/poomsae/projection')>()
-  return { ...original, normalizeKataUISnapshot: vi.fn(original.normalizeKataUISnapshot) }
+  return { ...original, normalizePoomsaeUISnapshot: vi.fn(original.normalizePoomsaeUISnapshot) }
 })
 
 import { setGeneratedFetch } from '../lib/api/client'
-import { normalizeKataUISnapshot } from '../lib/poomsae/projection'
+import { normalizePoomsaeUISnapshot } from '../lib/poomsae/projection'
 import type { MutationContext, MutationResult } from '../lib/mutations/controller'
 import type { SettingsSection, ShareableFilters } from '../lib/router'
 import type { UISnapshot } from '../lib/state/snapshot'
@@ -72,11 +72,11 @@ describe('AppShell', () => {
       },
     })
     expect(screen.getByText('now')).not.toBeNull()
-    const normalizations = vi.mocked(normalizeKataUISnapshot).mock.calls.length
+    const normalizations = vi.mocked(normalizePoomsaeUISnapshot).mock.calls.length
     expect(normalizations).toBeGreaterThan(0)
     await vi.advanceTimersByTimeAsync(45_000)
     expect(screen.getByText('1m')).not.toBeNull()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations)
   })
 
   test('moves a scheduled task into Inbox at midnight without a new snapshot', async () => {
@@ -101,11 +101,11 @@ describe('AppShell', () => {
       },
     })
     expect(screen.queryByRole('button', { name: /Example issue/ })).toBeNull()
-    const normalizations = vi.mocked(normalizeKataUISnapshot).mock.calls.length
+    const normalizations = vi.mocked(normalizePoomsaeUISnapshot).mock.calls.length
     expect(normalizations).toBeGreaterThan(0)
     await vi.advanceTimersByTimeAsync(1000)
     expect(screen.getByRole('button', { name: /Example issue/ })).not.toBeNull()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations)
   })
 
   test('identifies the current browser hub when a connection needs attention', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { PoomsaeReachableGraphResponse } from '../poomsae/types'
 import { task } from '../../test/task'
-import { buildKataReachableGraph } from './layout'
+import { buildPoomsaeReachableGraph } from './layout'
 
 function graph(
   overrides: Partial<PoomsaeReachableGraphResponse> = {},
@@ -18,12 +18,12 @@ function graph(
   }
 }
 
-describe('buildKataReachableGraph', () => {
+describe('buildPoomsaeReachableGraph', () => {
   it('keeps stable layer ordering when new nodes become ready', () => {
     const nodes = ['root', 'a', 'b', 'c', 'd', 'z'].map((uid) =>
       task({ uid, short_id: uid, title: uid }),
     )
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: 'root',
       graph: graph({
         source_uid: 'root',
@@ -47,7 +47,7 @@ describe('buildKataReachableGraph', () => {
       ['z', { x: 570, y: 38 }],
     ])
 
-    const wider = buildKataReachableGraph({
+    const wider = buildPoomsaeReachableGraph({
       sourceUID: 'root',
       graph: graph({
         source_uid: 'root',
@@ -98,12 +98,12 @@ describe('buildKataReachableGraph', () => {
           })),
         }),
       }
-      const built = buildKataReachableGraph(input)
+      const built = buildPoomsaeReachableGraph(input)
       expect(built.nodes).toHaveLength(size + 1)
       expect(built.edges).toHaveLength(size)
       const samples = Array.from({ length: 3 }, () => {
         const start = performance.now()
-        buildKataReachableGraph(input)
+        buildPoomsaeReachableGraph(input)
         return performance.now() - start
       })
       return samples.sort((a, b) => a - b)[1]!
@@ -114,7 +114,7 @@ describe('buildKataReachableGraph', () => {
   it('uses the native graph node and edge set directly', () => {
     const root = task({ uid: 'issue-root', short_id: 'root', title: 'Root' })
     const child = task({ uid: 'issue-child', short_id: 'child', title: 'Child' })
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: root.uid,
       graph: graph({
         source_uid: root.uid,
@@ -138,7 +138,7 @@ describe('buildKataReachableGraph', () => {
     const blocked = task({ uid: 'issue-blocked', short_id: 'blkd' })
     const child = task({ uid: 'issue-child', short_id: 'chld' })
     const related = task({ uid: 'issue-related', short_id: 'rltd' })
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: root.uid,
       graph: graph({
         source_uid: root.uid,
@@ -164,7 +164,7 @@ describe('buildKataReachableGraph', () => {
     const a = task({ uid: 'issue-a', short_id: 'a' })
     const b = task({ uid: 'issue-b', short_id: 'b' })
     const c = task({ uid: 'issue-c', short_id: 'c' })
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: a.uid,
       graph: graph({
         source_uid: a.uid,
@@ -196,12 +196,12 @@ describe('buildKataReachableGraph', () => {
         { from_uid: one.uid, to_uid: two.uid, kind: 'blocks', layout: true },
       ],
     })
-    const allContext = buildKataReachableGraph({
+    const allContext = buildPoomsaeReachableGraph({
       sourceUID: root.uid,
       graph: payload,
       contextDepth: 'all',
     })
-    const oneEdgeContext = buildKataReachableGraph({
+    const oneEdgeContext = buildPoomsaeReachableGraph({
       sourceUID: root.uid,
       graph: payload,
       contextDepth: '1',
@@ -219,7 +219,7 @@ describe('buildKataReachableGraph', () => {
     const child = task({ uid: 'issue-child', short_id: 'child' })
     const blocked = task({ uid: 'issue-blocked', short_id: 'blocked' })
     const blocker = task({ uid: 'issue-blocker', short_id: 'blocker' })
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: child.uid,
       graph: graph({
         source_uid: child.uid,
@@ -246,7 +246,7 @@ describe('buildKataReachableGraph', () => {
   it('renders unresolved graph endpoints as non-selectable nodes', () => {
     const root = task({ uid: 'issue-root', short_id: 'root' })
     const missingUID = 'issue-missing'
-    const built = buildKataReachableGraph({
+    const built = buildPoomsaeReachableGraph({
       sourceUID: root.uid,
       graph: graph({
         source_uid: root.uid,

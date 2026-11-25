@@ -391,7 +391,7 @@ WHERE links.id = import_mappings.link_id
 // descriptor identities. Project-filtered exports retain active mappings for
 // bound connector instances plus historical mappings referenced by field state.
 func (s *Store) ExportExternalFieldMappings(ctx context.Context, filter db.ExportFilter) iter.Seq2[db.ExternalFieldMappingExport, error] {
-	query := `SELECT m.connector_instance, m.kata_field, m.external_field_id,
+	query := `SELECT m.connector_instance, m.poomsae_field, m.external_field_id,
        m.external_field_name, m.accepted_kinds_json, m.nullable, m.writable,
        m.schema_revision, m.active, m.created_at, m.updated_at
   FROM external_field_mappings m`
@@ -522,9 +522,9 @@ func (s *Store) ExportExternalRootBindings(ctx context.Context, filter db.Export
 // ExportExternalFieldStates retains JSON values byte-for-byte while replacing
 // local integer references with stable identities.
 func (s *Store) ExportExternalFieldStates(ctx context.Context, filter db.ExportFilter) iter.Seq2[db.ExternalFieldStateExport, error] {
-	query := `SELECT b.uid, m.connector_instance, m.kata_field,
+	query := `SELECT b.uid, m.connector_instance, m.poomsae_field,
        m.external_field_id, m.schema_revision, m.created_at,
-       s.baseline_json, s.conflict_kata, s.conflict_external,
+       s.baseline_json, s.conflict_poomsae, s.conflict_external,
        s.conflicted, s.conflict_at, s.updated_at
   FROM external_field_states s
   JOIN external_root_bindings b ON b.id = s.binding_id
@@ -544,12 +544,12 @@ func (s *Store) ExportExternalFieldStates(ctx context.Context, filter db.ExportF
 		func(rows *sql.Rows) (db.ExternalFieldStateExport, error) {
 			var record db.ExternalFieldStateExport
 			var mappingCreatedAt, updatedAt string
-			var baseline, conflictKata, conflictExternal, conflictAt sql.NullString
+			var baseline, conflictPoomsae, conflictExternal, conflictAt sql.NullString
 			var conflicted int
 			if err := rows.Scan(&record.BindingUID, &record.MappingConnectorInstance,
-				&record.MappingKataField, &record.MappingExternalFieldID,
+				&record.MappingPoomsaeField, &record.MappingExternalFieldID,
 				&record.MappingSchemaRevision, &mappingCreatedAt, &baseline,
-				&conflictKata, &conflictExternal, &conflicted, &conflictAt,
+				&conflictPoomsae, &conflictExternal, &conflicted, &conflictAt,
 				&updatedAt); err != nil {
 				return db.ExternalFieldStateExport{}, pgExportScanError("external_field_state", err)
 			}
@@ -570,8 +570,8 @@ func (s *Store) ExportExternalFieldStates(ctx context.Context, filter db.ExportF
 			if baseline.Valid {
 				record.Baseline = jsontext.Value(baseline.String)
 			}
-			if conflictKata.Valid {
-				record.ConflictKata = jsontext.Value(conflictKata.String)
+			if conflictPoomsae.Valid {
+				record.ConflictPoomsae = jsontext.Value(conflictPoomsae.String)
 			}
 			if conflictExternal.Valid {
 				record.ConflictExternal = jsontext.Value(conflictExternal.String)

@@ -1,7 +1,7 @@
 ---
 title: Daemon discovery
 description: Discover and select the same Poomsae daemon endpoint and transport precedence used by the CLI.
-last_edited: 2026-11-20
+last_edited: 2026-11-25
 ---
 
 # Daemon discovery
@@ -51,7 +51,7 @@ Pass `--json` for the complete machine-readable contract. For a configured remot
 
 ```json
 {
-  "kata_api_version": 1,
+  "poomsae_api_version": 1,
   "source": "configured",
   "kind": "remote",
   "network": "tcp",
@@ -63,7 +63,7 @@ Pass `--json` for the complete machine-readable contract. For a configured remot
 
 | Field | Meaning |
 | --- | --- |
-| `kata_api_version` | Version of the JSON schema. Consumers should ignore additional fields they do not recognize. |
+| `poomsae_api_version` | Version of the JSON schema. Consumers should ignore additional fields they do not recognize. |
 | `source` | Selection group described above. |
 | `kind` | `local` or `remote`. |
 | `network` | `unix` or `tcp`. |
@@ -81,7 +81,7 @@ The address fields take these forms:
 
 Over TCP, append API paths to `request_base_url`. Over a Unix socket, parse the `unix://` address, connect to its path component, and send ordinary HTTP requests over that connection. You can find the available request and response types in the [HTTP API schema](http-api.md).
 
-Agent output prints the same endpoint metadata on one line and omits the JSON-only `kata_api_version` field:
+Agent output prints the same endpoint metadata on one line and omits the JSON-only `poomsae_api_version` field:
 
 ```text
 OK daemon source=configured kind=remote network=tcp scheme=https address=https://daemon.example request_base_url=https://daemon.example

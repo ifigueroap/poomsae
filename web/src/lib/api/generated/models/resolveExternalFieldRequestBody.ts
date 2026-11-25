@@ -4,6 +4,6 @@
 
 export interface ResolveExternalFieldRequestBody {
   actor?: string
-  kata_field: string
+  poomsae_field: string
   use: string
 }

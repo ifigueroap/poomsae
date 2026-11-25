@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  defaultKataTaskSearchFilters,
-  deriveKataAreas,
-  projectKataWorkspaceView,
+  defaultPoomsaeTaskSearchFilters,
+  derivePoomsaeAreas,
+  projectPoomsaeWorkspaceView,
 } from './authority'
 import type {
   PoomsaeProjectSummary,
@@ -35,11 +35,11 @@ function issue(uid: string, metadata: PoomsaeTaskSummary['metadata'] = {}): Poom
   }
 }
 
-function titles(view: ReturnType<typeof projectKataWorkspaceView>): string[] {
+function titles(view: ReturnType<typeof projectPoomsaeWorkspaceView>): string[] {
   return view.groups.flatMap((group) => group.issues.map((item) => item.title))
 }
 
-describe('projectKataWorkspaceView', () => {
+describe('projectPoomsaeWorkspaceView', () => {
   const groupedFilterCases: [
     string,
     {
@@ -53,7 +53,7 @@ describe('projectKataWorkspaceView', () => {
       'Today search',
       {
         view: 'today',
-        filters: { ...defaultKataTaskSearchFilters('today'), query: 'alert' },
+        filters: { ...defaultPoomsaeTaskSearchFilters('today'), query: 'alert' },
         issues: [
           issue('alert-late', { deadline_on: '2026-05-14' }),
           issue('alert-today', { deadline_on: '2026-05-15' }),
@@ -69,7 +69,7 @@ describe('projectKataWorkspaceView', () => {
       {
         view: 'delegated',
         filters: {
-          ...defaultKataTaskSearchFilters('delegated'),
+          ...defaultPoomsaeTaskSearchFilters('delegated'),
           relationships: ['blocks'],
         },
         issues: [
@@ -85,7 +85,7 @@ describe('projectKataWorkspaceView', () => {
       'Scheduled ready status',
       {
         view: 'scheduled',
-        filters: { ...defaultKataTaskSearchFilters('scheduled'), status: 'ready' },
+        filters: { ...defaultPoomsaeTaskSearchFilters('scheduled'), status: 'ready' },
         issues: [issue('ready', { scheduled_on: '2026-05-20' })],
         expected: [['2026-05-20', ['ready']]],
       },
@@ -94,7 +94,7 @@ describe('projectKataWorkspaceView', () => {
       'Scheduled owner filter',
       {
         view: 'scheduled',
-        filters: { ...defaultKataTaskSearchFilters('scheduled'), owner: 'user-a' },
+        filters: { ...defaultPoomsaeTaskSearchFilters('scheduled'), owner: 'user-a' },
         issues: [
           {
             ...issue('first-scheduled-task', { scheduled_on: '2026-05-20' }),
@@ -122,7 +122,7 @@ describe('projectKataWorkspaceView', () => {
 
   test.each(groupedFilterCases)('keeps groups for %s', (_name, options) => {
     const { view: viewName, filters, issues, expected } = options
-    const view = projectKataWorkspaceView({
+    const view = projectPoomsaeWorkspaceView({
       view: viewName,
       filters,
       issues,
@@ -143,9 +143,9 @@ describe('projectKataWorkspaceView', () => {
       ['open-task', 'closed-task'],
     ],
   ] as const)('keeps Results when Today expands to %s tasks', (status, issues, expected) => {
-    const view = projectKataWorkspaceView({
+    const view = projectPoomsaeWorkspaceView({
       view: 'today',
-      filters: { ...defaultKataTaskSearchFilters('today'), status },
+      filters: { ...defaultPoomsaeTaskSearchFilters('today'), status },
       snapshot: { projects, fetched_at: '2026-05-15T16:00:00.000Z' },
       issues,
       today: '2026-05-15',
@@ -157,9 +157,9 @@ describe('projectKataWorkspaceView', () => {
   })
 
   test('holds future start dates out of filtered Inbox results', () => {
-    const view = projectKataWorkspaceView({
+    const view = projectPoomsaeWorkspaceView({
       view: 'inbox',
-      filters: { ...defaultKataTaskSearchFilters('inbox'), owner: 'user-a' },
+      filters: { ...defaultPoomsaeTaskSearchFilters('inbox'), owner: 'user-a' },
       snapshot: { projects, fetched_at: '2026-05-15T16:00:00.000Z' },
       issues: [
         issue('now', { scheduled_on: '2026-05-15' }),
@@ -172,9 +172,9 @@ describe('projectKataWorkspaceView', () => {
   })
 })
 
-describe('deriveKataAreas', () => {
+describe('derivePoomsaeAreas', () => {
   test('groups projects without an area under Projects, including the capture Inbox', () => {
-    const areas = deriveKataAreas([
+    const areas = derivePoomsaeAreas([
       {
         id: 1,
         uid: 'p-work',

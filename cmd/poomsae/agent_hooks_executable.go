@@ -39,7 +39,7 @@ func resolveAgentHookExecutable(override string, env agentHookExecutableEnv) (st
 			return "", "", fmt.Errorf("hook executable %s is not a regular file", path)
 		}
 		// Preserve recognized bare Poomsae commands.
-		if !strings.ContainsAny(override, "/\\") && isKataHookExecutable(override) {
+		if !strings.ContainsAny(override, "/\\") && isPoomsaeHookExecutable(override) {
 			return override, "", nil
 		}
 		path, err = filepath.Abs(path)

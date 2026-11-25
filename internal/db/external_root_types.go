@@ -171,7 +171,7 @@ type ExternalFieldState struct {
 	BindingID        int64
 	MappingID        int64
 	Baseline         jsontext.Value
-	ConflictKata     jsontext.Value
+	ConflictPoomsae  jsontext.Value
 	ConflictExternal jsontext.Value
 	Conflicted       bool
 	ConflictAt       *time.Time
@@ -363,7 +363,7 @@ type ExternalFieldStateParams struct {
 	MappingID        int64
 	ClaimToken       string
 	Baseline         jsontext.Value
-	ConflictKata     jsontext.Value
+	ConflictPoomsae  jsontext.Value
 	ConflictExternal jsontext.Value
 	Conflicted       bool
 	At               time.Time
@@ -561,7 +561,7 @@ type ExternalRootAuditPayload struct {
 	Active            bool   `json:"active"`
 	Enabled           bool   `json:"enabled"`
 	PendingCommentUID string `json:"pending_comment_uid,omitempty"`
-	PoomsaeField      string `json:"kata_field,omitempty"`
+	PoomsaeField      string `json:"poomsae_field,omitempty"`
 }
 
 // MarshalExternalRootAuditPayload builds the closed bridge audit event payload.
@@ -734,16 +734,16 @@ func ValidateExternalFieldStateParams(params ExternalFieldStateParams) error {
 		return err
 	}
 	if params.Conflicted {
-		if len(params.ConflictKata) == 0 || len(params.ConflictExternal) == 0 {
+		if len(params.ConflictPoomsae) == 0 || len(params.ConflictExternal) == 0 {
 			return fmt.Errorf("%w: both conflict candidates are required", ErrExternalRootValidation)
 		}
-		if err := validateOptionalJSON("Poomsae conflict", params.ConflictKata); err != nil {
+		if err := validateOptionalJSON("Poomsae conflict", params.ConflictPoomsae); err != nil {
 			return err
 		}
 		if err := validateOptionalJSON("external conflict", params.ConflictExternal); err != nil {
 			return err
 		}
-	} else if len(params.ConflictKata) != 0 || len(params.ConflictExternal) != 0 {
+	} else if len(params.ConflictPoomsae) != 0 || len(params.ConflictExternal) != 0 {
 		return fmt.Errorf("%w: conflict candidates require conflicted state", ErrExternalRootValidation)
 	}
 	return nil
@@ -754,7 +754,7 @@ func ValidateExternalFieldStateParams(params ExternalFieldStateParams) error {
 func ValidateExternalFieldStateExport(state ExternalFieldStateExport) error {
 	if strings.TrimSpace(state.BindingUID) == "" ||
 		strings.TrimSpace(state.MappingConnectorInstance) == "" ||
-		strings.TrimSpace(state.MappingKataField) == "" ||
+		strings.TrimSpace(state.MappingPoomsaeField) == "" ||
 		strings.TrimSpace(state.MappingExternalFieldID) == "" ||
 		strings.TrimSpace(state.MappingSchemaRevision) == "" ||
 		state.MappingCreatedAt.IsZero() || state.UpdatedAt.IsZero() {
@@ -764,17 +764,17 @@ func ValidateExternalFieldStateExport(state ExternalFieldStateExport) error {
 		return err
 	}
 	if state.Conflicted {
-		if len(state.ConflictKata) == 0 || len(state.ConflictExternal) == 0 ||
+		if len(state.ConflictPoomsae) == 0 || len(state.ConflictExternal) == 0 ||
 			state.ConflictAt == nil || state.ConflictAt.IsZero() {
 			return fmt.Errorf("%w: conflict candidates and timestamp are required", ErrExternalRootValidation)
 		}
-		if err := validateOptionalJSON("Poomsae conflict", state.ConflictKata); err != nil {
+		if err := validateOptionalJSON("Poomsae conflict", state.ConflictPoomsae); err != nil {
 			return err
 		}
 		if err := validateOptionalJSON("external conflict", state.ConflictExternal); err != nil {
 			return err
 		}
-	} else if len(state.ConflictKata) != 0 || len(state.ConflictExternal) != 0 || state.ConflictAt != nil {
+	} else if len(state.ConflictPoomsae) != 0 || len(state.ConflictExternal) != 0 || state.ConflictAt != nil {
 		return fmt.Errorf("%w: conflict details require conflicted state", ErrExternalRootValidation)
 	}
 	return nil

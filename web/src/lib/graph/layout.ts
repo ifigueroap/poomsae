@@ -55,7 +55,7 @@ interface PoomsaeGraphEdgeData extends Record<string, unknown> {
   isSelectedAdjacent?: boolean | undefined
 }
 
-export interface BuildKataReachableGraphInput {
+export interface BuildPoomsaeReachableGraphInput {
   sourceUID: string
   graph: PoomsaeReachableGraphResponse | null | undefined
   contextDepth?: PoomsaeGraphContextDepth | undefined
@@ -610,7 +610,7 @@ function nodeEntriesFromGraph(
   return [...nodeTasks.entries()].sort(compareGraphNodeEntries)
 }
 
-export function buildKataReachableGraph(input: BuildKataReachableGraphInput): {
+export function buildPoomsaeReachableGraph(input: BuildPoomsaeReachableGraphInput): {
   nodes: PoomsaeGraphNode[]
   edges: PoomsaeGraphEdge[]
   layoutEdges: PoomsaeGraphEdge[]

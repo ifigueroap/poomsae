@@ -6,7 +6,7 @@ import type { ExternalFieldCandidateOut } from './externalFieldCandidateOut.ts'
 export interface ExternalFieldConflictOut {
   conflict_at?: string
   external_candidate?: ExternalFieldCandidateOut
-  kata_candidate?: ExternalFieldCandidateOut
-  kata_field: string
+  poomsae_candidate?: ExternalFieldCandidateOut
+  poomsae_field: string
   [key: string]: unknown
 }

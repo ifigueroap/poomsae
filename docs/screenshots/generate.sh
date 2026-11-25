@@ -80,7 +80,7 @@ esac
 if [[ -d "$output_dir" && "$output_dir" != "$default_output_dir" ]]; then
   if [[ -L "$output_dir/README.md" ]] ||
      [[ "$(head -n 1 "$output_dir/README.md" 2>/dev/null || true)" != "# poomsae docs assets" ]] ||
-     ! kata_docs_validate_assets "$output_dir" >/dev/null 2>&1; then
+     ! poomsae_docs_validate_assets "$output_dir" >/dev/null 2>&1; then
     printf 'refusing to replace unowned docs screenshot directory: %s\n' "$output_dir" >&2
     exit 1
   fi
@@ -149,7 +149,7 @@ cat >"$staging_dir/manifest.json" <<'EOF'
 }
 EOF
 
-kata_docs_validate_assets "$staging_dir"
+poomsae_docs_validate_assets "$staging_dir"
 
 if [[ -d "$output_dir" ]]; then
   backup_dir="$(mktemp -d "$output_parent/.poomsae-docs-screenshots-backup.XXXXXX")"

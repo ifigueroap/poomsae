@@ -107,7 +107,7 @@ func runAssign(cmd *cobra.Command, raw, owner string, unassign bool, expectedOwn
 }
 
 // printAssignMutation formats the assign/unassign response. Quiet mode prints
-// nothing; JSON mode emits the daemon body under the kata_api_version
+// nothing; JSON mode emits the daemon body under the poomsae_api_version
 // envelope; otherwise prints a single human-readable line.
 func printAssignMutation(cmd *cobra.Command, bs []byte, unassign bool, requestedProject string) error {
 	mode := currentOutputMode()

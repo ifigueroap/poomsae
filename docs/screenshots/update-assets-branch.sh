@@ -75,10 +75,10 @@ source_dir="$(cd "$source_dir" 2>/dev/null && pwd)" || {
   printf 'docs asset source does not exist: %s\n' "$source_dir" >&2
   exit 1
 }
-kata_docs_validate_assets "$source_dir"
+poomsae_docs_validate_assets "$source_dir"
 
 mkdir -p "$asset_repo"
-for asset in "${kata_docs_expected_assets[@]}"; do
+for asset in "${poomsae_docs_expected_assets[@]}"; do
   mkdir -p "$asset_repo/$(dirname "$asset")"
   cp "$source_dir/$asset" "$asset_repo/$asset"
 done

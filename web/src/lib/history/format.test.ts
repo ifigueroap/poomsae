@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest'
 
 import type { PoomsaeTaskEvent } from '../poomsae/types'
-import { describeKataEvent, type PoomsaeEventTone } from './format'
+import { describePoomsaeEvent, type PoomsaeEventTone } from './format'
 
 function makeEvent(type: string, payload?: Record<string, unknown>): PoomsaeTaskEvent {
   return {
     event_id: 1,
     event_uid: 'evt_1',
-    origin_instance_uid: 'kata_1',
+    origin_instance_uid: 'poomsae_1',
     type,
     project_id: 1,
     project_uid: 'proj_1',
@@ -18,7 +18,7 @@ function makeEvent(type: string, payload?: Record<string, unknown>): PoomsaeTask
   }
 }
 
-describe('describeKataEvent', () => {
+describe('describePoomsaeEvent', () => {
   test.each<[string, string, PoomsaeEventTone]>([
     ['issue.created', 'created the task', 'neutral'],
     ['issue.reopened', 'reopened', 'warning'],
@@ -32,7 +32,7 @@ describe('describeKataEvent', () => {
     ['issue.soft_deleted', 'deleted', 'negative'],
     ['issue.restored', 'restored', 'positive'],
   ])('payload-free event %s maps to label %s with tone %s', (type, label, tone) => {
-    const descriptor = describeKataEvent(makeEvent(type))
+    const descriptor = describePoomsaeEvent(makeEvent(type))
     expect(descriptor.label).toBe(label)
     expect(descriptor.tone).toBe(tone)
     expect(descriptor.icon).toBeDefined()
@@ -43,31 +43,31 @@ describe('describeKataEvent', () => {
     [undefined, 'closed as Done'],
     [{ reason: 'duplicate', evidence: [{ issue_ref: 'ap44' }] }, 'closed as Duplicate of ap44'],
   ])('issue.closed with %j reads as %s', (payload, label) => {
-    const descriptor = describeKataEvent(makeEvent('issue.closed', payload))
+    const descriptor = describePoomsaeEvent(makeEvent('issue.closed', payload))
     expect(descriptor.label).toBe(label)
     expect(descriptor.tone).toBe('positive')
   })
 
   test('issue.labeled formats the label value', () => {
-    expect(describeKataEvent(makeEvent('issue.labeled', { label: 'p0' })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.labeled', { label: 'p0' })).label).toBe(
       'added label p0',
     )
   })
 
   test('issue.unlabeled formats the label value', () => {
-    expect(describeKataEvent(makeEvent('issue.unlabeled', { label: 'stale' })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.unlabeled', { label: 'stale' })).label).toBe(
       'removed label stale',
     )
   })
 
   test('issue.assigned names the new owner', () => {
-    expect(describeKataEvent(makeEvent('issue.assigned', { owner: 'user-a' })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.assigned', { owner: 'user-a' })).label).toBe(
       'assigned to user-a',
     )
   })
 
   test('issue.assignment_renewed names the owner and new expiry', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.assignment_renewed', {
         owner: 'user-a',
         assignment_expires_on: '2026-09-17T21:30:00Z',
@@ -78,7 +78,7 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.assignment_expired names the previous owner and expiry', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.assignment_expired', {
         previous_owner: 'user-a',
         assignment_expires_on: '2026-09-17T21:30:00Z',
@@ -89,7 +89,7 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.scheduled_reached names the reached date', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.scheduled_reached', { field: 'scheduled_on', value: '2026-09-16' }),
     )
     expect(descriptor.label).toBe('scheduled date reached 2026-09-16')
@@ -97,13 +97,13 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.priority_set names the new priority', () => {
-    expect(describeKataEvent(makeEvent('issue.priority_set', { priority: 1 })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.priority_set', { priority: 1 })).label).toBe(
       'set priority P1',
     )
   })
 
   test('issue.metadata_updated lists changed keys from diff', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.metadata_updated', {
         diff: { due_date: { from: null, to: '2026-06-01' }, sprint: { from: 1, to: 2 } },
       }),
@@ -112,13 +112,13 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.metadata_updated falls back when diff is empty', () => {
-    expect(describeKataEvent(makeEvent('issue.metadata_updated', { diff: {} })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.metadata_updated', { diff: {} })).label).toBe(
       'updated metadata',
     )
   })
 
   test('issue.links_changed summarises daemon relationship arrays', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.links_changed', {
         blocks_added: [{ uid: 'issue-late-fee', short_id: 'late' }],
         related_removed: ['foo', 'bar'],
@@ -128,20 +128,20 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.links_changed handles parent_set and parent_cleared', () => {
-    expect(describeKataEvent(makeEvent('issue.links_changed', { parent_set: 42 })).label).toBe(
+    expect(describePoomsaeEvent(makeEvent('issue.links_changed', { parent_set: 42 })).label).toBe(
       '+parent',
     )
     expect(
-      describeKataEvent(makeEvent('issue.links_changed', { parent_cleared: true })).label,
+      describePoomsaeEvent(makeEvent('issue.links_changed', { parent_cleared: true })).label,
     ).toBe('-parent')
   })
 
   test('issue.links_changed falls back when no relationships changed', () => {
-    expect(describeKataEvent(makeEvent('issue.links_changed', {})).label).toBe('changed links')
+    expect(describePoomsaeEvent(makeEvent('issue.links_changed', {})).label).toBe('changed links')
   })
 
   test('issue.moved names the destination short id', () => {
-    const descriptor = describeKataEvent(
+    const descriptor = describePoomsaeEvent(
       makeEvent('issue.moved', {
         from_short_id: 'old-1',
         to_short_id: 'new-7',
@@ -151,11 +151,11 @@ describe('describeKataEvent', () => {
   })
 
   test('issue.moved falls back when destination missing', () => {
-    expect(describeKataEvent(makeEvent('issue.moved')).label).toBe('moved')
+    expect(describePoomsaeEvent(makeEvent('issue.moved')).label).toBe('moved')
   })
 
   test('unknown event types fall back to the stripped type as label', () => {
-    const descriptor = describeKataEvent(makeEvent('issue.mystery'))
+    const descriptor = describePoomsaeEvent(makeEvent('issue.mystery'))
     expect(descriptor.label).toBe('mystery')
     expect(descriptor.tone).toBe('neutral')
     expect(descriptor.icon).toBeDefined()
@@ -172,7 +172,7 @@ describe('describeKataEvent', () => {
       'issue.metadata_changed',
       'issue.comment_added',
     ]) {
-      const descriptor = describeKataEvent(makeEvent(legacy))
+      const descriptor = describePoomsaeEvent(makeEvent(legacy))
       expect(descriptor.label).toBe(legacy.replace(/^issue\./, ''))
     }
   })

@@ -165,7 +165,7 @@ func TestResolveActor_Precedence(t *testing.T) {
 func TestEmitJSON_AddsAPIVersion(t *testing.T) {
 	out, err := runEmitJSON(t, map[string]string{"x": "y"})
 	require.NoError(t, err)
-	assert.Contains(t, out, `"kata_api_version":1`)
+	assert.Contains(t, out, `"poomsae_api_version":1`)
 	assert.Contains(t, out, `"x":"y"`)
 	assert.True(t, strings.HasSuffix(out, "\n"))
 }
@@ -173,7 +173,7 @@ func TestEmitJSON_AddsAPIVersion(t *testing.T) {
 func TestEmitJSON_EmptyObject(t *testing.T) {
 	out, err := runEmitJSON(t, struct{}{})
 	require.NoError(t, err)
-	assert.Equal(t, "{\"kata_api_version\":1}\n", out)
+	assert.Equal(t, "{\"poomsae_api_version\":1}\n", out)
 }
 
 func TestEmitJSON_RejectsNonObject(t *testing.T) {
@@ -186,27 +186,27 @@ func TestEmitJSON_RejectsNonObject(t *testing.T) {
 }
 
 func TestEmitJSON_RejectsReservedKey(t *testing.T) {
-	_, err := runEmitJSON(t, map[string]any{"kata_api_version": "evil"})
+	_, err := runEmitJSON(t, map[string]any{"poomsae_api_version": "evil"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "kata_api_version")
+	assert.Contains(t, err.Error(), "poomsae_api_version")
 }
 
 // A payload whose key is unicode-escaped must still be rejected. JSON
 // permits "\uXXXX" escapes inside string content, so a payload like
-// {"kata_api_version":"evil"} decodes to {"kata_api_version":"evil"}
+// {"poomsae_api_version":"evil"} decodes to {"poomsae_api_version":"evil"}
 // while the raw bytes do not contain the literal reserved key. A simple
-// bytes.Contains(`"kata_api_version"`) guard would have let this slip
+// bytes.Contains(`"poomsae_api_version"`) guard would have let this slip
 // through and produced a duplicate-keyed envelope downstream.
 func TestEmitJSON_RejectsEscapedReservedKey(t *testing.T) {
 	// Build the escape sequence explicitly — backtick raw strings interpret
-	// the bytes literally, but writing `k` here avoids any rendering
+	// the bytes literally, but writing `p` here avoids any rendering
 	// ambiguity in the source file.
-	payload := jsontext.Value([]byte(`{"\u006bata_api_version":"evil"}`))
-	require.NotContains(t, string(payload), `"kata_api_version"`,
+	payload := jsontext.Value([]byte(`{"\u0070oomsae_api_version":"evil"}`))
+	require.NotContains(t, string(payload), `"poomsae_api_version"`,
 		"test fixture itself must contain the escape, not the literal key")
 	_, err := runEmitJSON(t, payload)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "kata_api_version")
+	assert.Contains(t, err.Error(), "poomsae_api_version")
 }
 
 // httpDoJSON sends a request body, returns (status, response body bytes).

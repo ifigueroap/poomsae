@@ -17,7 +17,7 @@ import (
 const projectInitHint = `run "poomsae init --project <name>" in the workspace root, or pass --project <name>`
 
 func TestErrorHintsArchivedProjectRestoreAndInit(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	env := testenv.New(t)
 	dir := t.TempDir()
@@ -40,7 +40,7 @@ func TestErrorHintsArchivedProjectRestoreAndInit(t *testing.T) {
 func TestErrorHintsCreateCommand(t *testing.T) {
 	for _, name := range []string{"team's $project", "-flag"} {
 		t.Run(name, func(t *testing.T) {
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			env := testenv.New(t)
 			dir, _ := initLocalBoundWorkspace(t, env, "bound-project")
@@ -63,7 +63,7 @@ func TestErrorHintsCreateCommand(t *testing.T) {
 }
 
 func TestErrorHintsUnboundWorkspace(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	env := testenv.New(t)
 	workspace := t.TempDir()
@@ -136,7 +136,7 @@ func TestErrorHintsAgentKeepsFollowupOnOneLine(t *testing.T) {
 }
 
 func TestErrorHintsNameCLIFlags(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	env := testenv.New(t)
 	dir, _ := initLocalBoundWorkspace(t, env, "example-project")

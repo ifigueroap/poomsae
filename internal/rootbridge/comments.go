@@ -196,7 +196,7 @@ func (r *Reconciler) resolvePendingComment(
 	claimToken string,
 	result RunResult,
 ) (RunResult, error) {
-	local, ok := pendingKataComment(snapshot)
+	local, ok := pendingPoomsaeComment(snapshot)
 	if !ok {
 		return result, ErrPendingCommentResolutionRequired
 	}
@@ -235,7 +235,7 @@ func (r *Reconciler) resolvePendingComment(
 
 func pendingExternalCommentsToWithhold(snapshot reconcileSnapshot) map[string]bool {
 	withheld := make(map[string]bool)
-	local, ok := pendingKataComment(snapshot)
+	local, ok := pendingPoomsaeComment(snapshot)
 	if !ok {
 		return withheld
 	}
@@ -263,7 +263,7 @@ func pendingExternalCommentsToWithhold(snapshot reconcileSnapshot) map[string]bo
 	return withheld
 }
 
-func pendingKataComment(snapshot reconcileSnapshot) (db.Comment, bool) {
+func pendingPoomsaeComment(snapshot reconcileSnapshot) (db.Comment, bool) {
 	for _, comment := range snapshot.poomsaeComments {
 		if comment.UID == snapshot.binding.PendingCommentUID {
 			return comment, true

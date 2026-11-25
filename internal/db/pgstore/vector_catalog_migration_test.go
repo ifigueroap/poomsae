@@ -55,6 +55,7 @@ func TestVectorCatalogMigrationPreservesVectors(t *testing.T) {
 	admin, err := sql.Open("pgx", dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
+	restoreV54Names(ctx, t, admin, "vector_upgrade")
 	_, err = admin.ExecContext(ctx, `
 		SET search_path TO vector_upgrade, public;
 		DROP TABLE issue_vector_chunks, issue_vector_stamps, issue_vector_generations, issue_vector_mirror;

@@ -140,7 +140,7 @@ func TestLocalProfileStorageInspectionRetainsUnsupportedSchema(t *testing.T) {
 
 func localProfileFixture(t *testing.T) (config.LocalProfileConfig, string) {
 	t.Helper()
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	home := t.TempDir()
 	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
@@ -582,7 +582,7 @@ func TestLocalProfileEnsureSelectsAndVerifiesCompatibleRuntime(t *testing.T) {
 }
 
 func TestActivePlainLocalDaemonKeepsLocalDiscovery(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "global-token")
 	require.NoError(t, writeRawConfig(home, `active_daemon = "local"

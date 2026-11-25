@@ -194,7 +194,7 @@ func connectorFieldsFixture() map[string]any {
 
 func connectorMappingFixture(active bool) map[string]any {
 	return map[string]any{
-		"kata_field": "scheduled_on", "external_field_id": "start-date", "external_field_name": "Start date",
+		"poomsae_field": "scheduled_on", "external_field_id": "start-date", "external_field_name": "Start date",
 		"accepted_kinds": []string{"date", "local_datetime"}, "nullable": true, "writable": true,
 		"schema_revision": "schema-v1", "active": active,
 	}
@@ -289,8 +289,8 @@ func TestConnectorEveryCommandRendersHumanJSONAndAgent(t *testing.T) {
 		{name: "list", args: []string{"connector", "list"}, humanWant: []string{"example-connector", "healthy", "generic.connector"}, agentWant: []string{"instance=example-connector", "state=healthy", "connector_id=generic.connector"}, jsonWant: []string{`"connectors"`, `"instance_id":"example-connector"`, `"account_identity":"example-account"`}},
 		{name: "status", args: []string{"connector", "status", "example-connector"}, humanWant: []string{"Generic connector", "healthy", "publish_comment"}, agentWant: []string{"instance=example-connector", "state=healthy", "connector_id=generic.connector"}, jsonWant: []string{`"instance_id":"example-connector"`, `"healthy":true`, `"account_identity":"example-account"`}},
 		{name: "field-list", args: []string{"connector", "field", "list", "example-connector"}, humanWant: []string{"Start date", "date", "local_datetime"}, agentWant: []string{"instance=example-connector", "field=start-date", "writable=true"}, jsonWant: []string{`"fields"`, `"id":"start-date"`}},
-		{name: "field-map", args: []string{"connector", "field", "map", "example-connector", "scheduled_on", "--external", "start-date"}, humanWant: []string{"scheduled_on", "Start date", "active"}, agentWant: []string{"instance=example-connector", "field=scheduled_on", "active=true"}, jsonWant: []string{`"kata_field":"scheduled_on"`, `"active":true`}},
-		{name: "field-unmap", args: []string{"connector", "field", "unmap", "example-connector", "scheduled_on"}, humanWant: []string{"scheduled_on", "inactive"}, agentWant: []string{"instance=example-connector", "field=scheduled_on", "active=false"}, jsonWant: []string{`"kata_field":"scheduled_on"`, `"active":false`}},
+		{name: "field-map", args: []string{"connector", "field", "map", "example-connector", "scheduled_on", "--external", "start-date"}, humanWant: []string{"scheduled_on", "Start date", "active"}, agentWant: []string{"instance=example-connector", "field=scheduled_on", "active=true"}, jsonWant: []string{`"poomsae_field":"scheduled_on"`, `"active":true`}},
+		{name: "field-unmap", args: []string{"connector", "field", "unmap", "example-connector", "scheduled_on"}, humanWant: []string{"scheduled_on", "inactive"}, agentWant: []string{"instance=example-connector", "field=scheduled_on", "active=false"}, jsonWant: []string{`"poomsae_field":"scheduled_on"`, `"active":false`}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -308,7 +308,7 @@ func TestConnectorEveryCommandRendersHumanJSONAndAgent(t *testing.T) {
 					assert.Contains(t, out, want)
 				}
 				if mode.flag == "--json" {
-					assert.Contains(t, out, `"kata_api_version":1`)
+					assert.Contains(t, out, `"poomsae_api_version":1`)
 				}
 			}
 		})

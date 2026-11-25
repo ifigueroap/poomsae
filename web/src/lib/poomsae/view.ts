@@ -9,7 +9,7 @@ import type {
   PoomsaeTaskViewResponse,
 } from './types'
 
-interface BuildKataTaskViewOptions {
+interface BuildPoomsaeTaskViewOptions {
   view: PoomsaeTaskViewName
   issues: PoomsaeTaskSummary[]
   projects: PoomsaeProjectSummary[]
@@ -277,7 +277,9 @@ function buildLogbook(issues: PoomsaeTaskSummary[], today: string): PoomsaeTaskG
     .sort((a, b) => b.id.localeCompare(a.id))
 }
 
-export function buildKataTaskView(options: BuildKataTaskViewOptions): PoomsaeTaskViewResponse {
+export function buildPoomsaeTaskView(
+  options: BuildPoomsaeTaskViewOptions,
+): PoomsaeTaskViewResponse {
   const today = options.today ?? localDateString()
   const projects = projectLookup(options.projects)
   let groups: PoomsaeTaskGroup[]

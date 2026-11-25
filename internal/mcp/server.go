@@ -332,13 +332,13 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 		setStringBounds("instance", 1, 128)
 	case "poomsae.connector_field_map":
 		setStringBounds("instance", 1, 128)
-		setStringBounds("kata_field", 1, 64)
+		setStringBounds("poomsae_field", 1, 64)
 		setStringBounds("external_field", 1, 256)
-		setEnum("kata_field", "scheduled_on", "deadline_on")
+		setEnum("poomsae_field", "scheduled_on", "deadline_on")
 	case "poomsae.connector_field_unmap":
 		setStringBounds("instance", 1, 128)
-		setStringBounds("kata_field", 1, 64)
-		setEnum("kata_field", "scheduled_on", "deadline_on")
+		setStringBounds("poomsae_field", 1, 64)
+		setEnum("poomsae_field", "scheduled_on", "deadline_on")
 	case "poomsae.bridge_show", "poomsae.bridge_reconcile", "poomsae.bridge_resume", "poomsae.bridge_unbind":
 		setStringBounds("ref", 1, 256)
 	case "poomsae.bridge_bind":
@@ -350,8 +350,8 @@ func inputSchemaFor[T any](toolName string) *jsonschema.Schema {
 		setStringBounds("reason", 1, 4096)
 	case "poomsae.bridge_resolve_field":
 		setStringBounds("ref", 1, 256)
-		setStringBounds("kata_field", 1, 64)
-		setEnum("kata_field", "scheduled_on", "deadline_on")
+		setStringBounds("poomsae_field", 1, 64)
+		setEnum("poomsae_field", "scheduled_on", "deadline_on")
 		setEnum("use", "poomsae", "external")
 	case "poomsae.bridge_resolve_comment":
 		setStringBounds("ref", 1, 256)

@@ -620,7 +620,7 @@ func TestPiNativeCapabilityPrecedenceAndReload(t *testing.T) {
 	}
 }
 
-func TestPiNativeRealKataTransport(t *testing.T) {
+func TestPiNativeRealPoomsaeTransport(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("Node unavailable")

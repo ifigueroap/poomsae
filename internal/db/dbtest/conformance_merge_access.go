@@ -33,7 +33,7 @@ func RunProjectMergeAccessAndArtifacts(t *testing.T, store db.Storage) {
 	require.NoError(t, err)
 	issue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: source.ID, Title: "Portable vectors", Body: "Merge keeps vectors", Author: "assistant"})
 	require.NoError(t, err)
-	identity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	artifact, err := embedding.NewArtifact(identity, embedding.EmbedText(issue.Title, issue.Body), [][]float32{{1, 0}})
 	require.NoError(t, err)
 	_, err = artifacts.RetainEmbeddingArtifact(ctx, artifact)
@@ -88,7 +88,7 @@ func RunProjectMergeDuplicateArtifact(t *testing.T, store db.Storage) {
 	require.NoError(t, err)
 	issue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: source.ID, Title: "Moved vectors", Body: "Retained twice", Author: "assistant"})
 	require.NoError(t, err)
-	identity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	input := embedding.EmbedText(issue.Title, issue.Body)
 	original, err := embedding.NewArtifact(identity, input, [][]float32{{1, 0}})
 	require.NoError(t, err)
@@ -135,7 +135,7 @@ func RunProjectMergeArtifactRetention(t *testing.T, store db.Storage, backend Ba
 	require.True(t, ok, "native portable artifact storage is required")
 	build := func(projectUID, issueUID string) embedding.EmbeddingArtifact {
 		t.Helper()
-		identity := embedding.ArtifactIdentity{ProjectUID: projectUID, IssueUID: issueUID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+		identity := embedding.ArtifactIdentity{ProjectUID: projectUID, IssueUID: issueUID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 		artifact, err := embedding.NewArtifact(identity, embedding.EmbedText("Shared vectors", "Same bytes"), [][]float32{{1, 0}})
 		require.NoError(t, err)
 		return artifact

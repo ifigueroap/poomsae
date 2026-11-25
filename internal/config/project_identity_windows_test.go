@@ -26,7 +26,7 @@ func TestDiscoverPaths_TraversesJunctionAboveRepo(t *testing.T) {
 	testfix.MkDotGit(t, repo)
 	workspace := filepath.Join(repo, "workspace")
 	require.NoError(t, os.Mkdir(workspace, 0o755)) //nolint:gosec // test fixture under TempDir.
-	testfix.WriteKataToml(t, workspace, "example-project")
+	testfix.WritePoomsaeToml(t, workspace, "example-project")
 
 	link := filepath.Join(t.TempDir(), "junction")
 	testfix.MkJunction(t, link, target)

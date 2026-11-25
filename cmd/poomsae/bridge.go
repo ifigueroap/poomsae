@@ -194,7 +194,7 @@ func newBridgeResolveFieldCmd() *cobra.Command {
 			}
 			resp, callErr := resolved.client.ResolveExternalFieldWithResponse(resolved.ctx, &generated.ResolveExternalFieldRequestOptions{
 				PathParams: &generated.ResolveExternalFieldPath{ProjectID: resolved.projectID, Ref: resolved.issue.RefForAPI},
-				Body:       &generated.ResolveExternalFieldBody{Actor: &resolved.actor, KataField: args[1], Use: use},
+				Body:       &generated.ResolveExternalFieldBody{Actor: &resolved.actor, PoomsaeField: args[1], Use: use},
 			})
 			if err := externalCLITransportError(resp, callErr); err != nil {
 				return err
@@ -380,7 +380,7 @@ func printBridgeHuman(cmd *cobra.Command, bridge generated.ExternalRootBridgeOut
 	conflicts := sortedBridgeConflicts(bridge.FieldConflicts)
 	for _, conflict := range conflicts {
 		if _, err := fmt.Fprintf(w, "Field conflict: %s\n  Poomsae: %s\n  External: %s\n",
-			textsafe.Line(conflict.KataField), externalCandidateHuman(conflict.KataCandidate),
+			textsafe.Line(conflict.PoomsaeField), externalCandidateHuman(conflict.PoomsaeCandidate),
 			externalCandidateHuman(conflict.ExternalCandidate)); err != nil {
 			return err
 		}
@@ -409,8 +409,8 @@ func printBridgeAgent(cmd *cobra.Command, bridge generated.ExternalRootBridgeOut
 		return err
 	}
 	for _, conflict := range sortedBridgeConflicts(bridge.FieldConflicts) {
-		if _, err := fmt.Fprintf(w, "field=%s %s %s\n", agentValue(conflict.KataField),
-			externalCandidateAgent("poomsae", conflict.KataCandidate),
+		if _, err := fmt.Fprintf(w, "field=%s %s %s\n", agentValue(conflict.PoomsaeField),
+			externalCandidateAgent("poomsae", conflict.PoomsaeCandidate),
 			externalCandidateAgent("external", conflict.ExternalCandidate)); err != nil {
 			return err
 		}
@@ -465,7 +465,7 @@ func externalTime(value *time.Time) string {
 
 func sortedBridgeConflicts(conflicts []generated.ExternalFieldConflictOut) []generated.ExternalFieldConflictOut {
 	out := append([]generated.ExternalFieldConflictOut(nil), conflicts...)
-	sort.Slice(out, func(i, j int) bool { return out[i].KataField < out[j].KataField })
+	sort.Slice(out, func(i, j int) bool { return out[i].PoomsaeField < out[j].PoomsaeField })
 	return out
 }
 

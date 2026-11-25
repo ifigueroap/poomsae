@@ -23,7 +23,7 @@ import (
 )
 
 func TestPrepareWebUIRequiresAssetsDuringDaemonSelection(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 	t.Setenv("POOMSAE_SERVER", "")
 	store, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))

@@ -157,7 +157,7 @@ func TestAutoCutoverPreservesArtifactsWhenRestoreFails(t *testing.T) {
 // Index-only upgrades, and the one that adds the MCP Events table, must
 // match the fresh-store catalog without exporting.
 func TestAutoCutoverAddsIndexOnlyVersionsInPlace(t *testing.T) {
-	for _, version := range []int{41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 52} {
+	for _, version := range []int{41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 52, 54} {
 		t.Run(strconv.Itoa(version), func(t *testing.T) {
 			t.Setenv("POOMSAE_HOME", t.TempDir())
 			path := indexOnlySource(t, version)
@@ -275,6 +275,11 @@ func indexOnlySource(t *testing.T, version int) string {
 				require.NoError(t, err)
 			}
 		}
+	}
+	if version < 55 {
+		_, err = source.ExecContext(t.Context(), `ALTER TABLE external_field_mappings RENAME COLUMN poomsae_field TO kata_field;
+ALTER TABLE external_field_states RENAME COLUMN conflict_poomsae TO conflict_kata`)
+		require.NoError(t, err)
 	}
 	_, err = source.ExecContext(t.Context(), `UPDATE meta SET value=? WHERE key='schema_version'`, version)
 	require.NoError(t, err)

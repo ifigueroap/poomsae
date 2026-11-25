@@ -102,7 +102,7 @@ func registerExternalRootHandlers(humaAPI huma.API, cfg ServerConfig) {
 			}{Fields: fields}}, nil
 		})
 
-	huma.Register(humaAPI, huma.Operation{OperationID: "mapConnectorField", Method: http.MethodPut, Path: "/api/v1/connectors/{instance}/fields/{kata_field}"},
+	huma.Register(humaAPI, huma.Operation{OperationID: "mapConnectorField", Method: http.MethodPut, Path: "/api/v1/connectors/{instance}/fields/{poomsae_field}"},
 		func(ctx context.Context, in *api.MapConnectorFieldRequest) (*api.ConnectorFieldMappingResponse, error) {
 			if err := ensureAttributedWriteAllowed(ctx); err != nil {
 				return nil, err
@@ -119,7 +119,7 @@ func registerExternalRootHandlers(humaAPI huma.API, cfg ServerConfig) {
 			return &api.ConnectorFieldMappingResponse{Body: api.ExternalFieldMappingFromDB(mapping)}, nil
 		})
 
-	huma.Register(humaAPI, huma.Operation{OperationID: "unmapConnectorField", Method: http.MethodDelete, Path: "/api/v1/connectors/{instance}/fields/{kata_field}"},
+	huma.Register(humaAPI, huma.Operation{OperationID: "unmapConnectorField", Method: http.MethodDelete, Path: "/api/v1/connectors/{instance}/fields/{poomsae_field}"},
 		func(ctx context.Context, in *api.UnmapConnectorFieldRequest) (*api.ConnectorFieldMappingResponse, error) {
 			if err := ensureAttributedWriteAllowed(ctx); err != nil {
 				return nil, err
@@ -473,7 +473,7 @@ func externalRootBridgeOut(ctx context.Context, store db.Storage, binding db.Ext
 		if !state.Conflicted || !active {
 			continue
 		}
-		poomsaeCandidate, err := externalFieldCandidateOut(state.ConflictKata)
+		poomsaeCandidate, err := externalFieldCandidateOut(state.ConflictPoomsae)
 		if err != nil {
 			return api.ExternalRootBridgeOut{}, err
 		}

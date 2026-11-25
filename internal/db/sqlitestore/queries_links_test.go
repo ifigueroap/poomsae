@@ -13,7 +13,7 @@ func TestCreateLink_RoundTrips(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	a := makeIssue(t, ctx, d, p.ID, "child", "tester")
 	b := makeIssue(t, ctx, d, p.ID, "parent", "tester")
 
@@ -56,7 +56,7 @@ func TestCreateLink_DuplicateIsErrLinkExists(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	a := makeIssue(t, ctx, d, p.ID, "a", "tester")
 	b := makeIssue(t, ctx, d, p.ID, "b", "tester")
 
@@ -71,7 +71,7 @@ func TestCreateLink_SecondParentIsErrParentAlreadySet(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	child := makeIssue(t, ctx, d, p.ID, "child", "tester")
 	p1 := makeIssue(t, ctx, d, p.ID, "p1", "tester")
 	p2 := makeIssue(t, ctx, d, p.ID, "p2", "tester")

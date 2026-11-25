@@ -30,7 +30,7 @@ func TestForeignOwnerHelperProcess(t *testing.T) {
 // Auto-start must not spawn a daemon that can only wait for a store owned by
 // a daemon in another PID namespace.
 func TestAutoStartRefusesStoreOwnedFromAnotherPIDNamespace(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	child := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=^TestForeignOwnerHelperProcess$") //nolint:gosec // test binary
 	child.Env = append(os.Environ(), "POOMSAE_CLIENT_PIDNS_HELPER=1")

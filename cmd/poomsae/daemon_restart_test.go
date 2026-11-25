@@ -45,7 +45,7 @@ func TestRestartLockDeadline(t *testing.T) {
 	defer cancelOrdinary()
 	_, bounded := ordinary.Deadline()
 	require.False(t, bounded)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
 	release, err := (kitdaemon.RuntimeStore{Dir: ns.DataDir}).AcquireStartLock(t.Context())
@@ -174,7 +174,7 @@ func TestDaemonArgs(t *testing.T) {
 }
 
 func TestDaemonRestartExec_ReportsExecFailureToWaitingCaller(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)

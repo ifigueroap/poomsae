@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
+import { createPoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
 import type { PoomsaeTaskDetail, PoomsaeTaskLink, PoomsaeTaskSummary } from '../lib/poomsae/types'
 import IssueLinks from './IssueLinks.svelte'
 
@@ -80,7 +80,7 @@ describe('IssueLinks', () => {
     const view = renderLinks({
       issue: selected,
       issueCatalog: [],
-      linkFilters: createKataLinkFilters('closed'),
+      linkFilters: createPoomsaeLinkFilters('closed'),
     })
 
     const closed = screen
@@ -90,7 +90,7 @@ describe('IssueLinks', () => {
     await fireEvent.click(within(closed).getByText('1 closed'))
     expect(closed.open).toBe(true)
 
-    await view.rerender({ linkFilters: createKataLinkFilters('open') })
+    await view.rerender({ linkFilters: createPoomsaeLinkFilters('open') })
     expect(screen.queryByRole('button', { name: /example-workspace#parent-1/ })).toBeNull()
   })
 
@@ -127,7 +127,7 @@ function renderLinks(overrides: Record<string, unknown> = {}) {
     props: {
       issue: selected,
       issueCatalog: peers(),
-      linkFilters: createKataLinkFilters('all'),
+      linkFilters: createPoomsaeLinkFilters('all'),
       onLinkFiltersChange: vi.fn(),
       actionsDisabled: false,
       onEditIssue: vi.fn(async () => true),

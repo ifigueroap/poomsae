@@ -90,8 +90,8 @@ func TestBuildStdin_HappyPath(t *testing.T) {
 	if truncated {
 		t.Fatal("happy path should not truncate")
 	}
-	if got["kata_hook_version"].(float64) != 1 {
-		t.Fatalf("kata_hook_version: %v", got["kata_hook_version"])
+	if got["poomsae_hook_version"].(float64) != 1 {
+		t.Fatalf("poomsae_hook_version: %v", got["poomsae_hook_version"])
 	}
 	if got["type"] != "issue.commented" {
 		t.Fatalf("type: %v", got["type"])

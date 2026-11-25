@@ -715,12 +715,12 @@ func TestBrowserSessionReadonlyIgnoresAmbientCookieButRejectsSessionHeader(t *te
 
 func TestBrowserCookie(t *testing.T) {
 	httpManager := newDeterministicSessionManager(t, "http://127.0.0.1:27123", "instance_a")
-	assert.Equal(t, "kata_session_instance_a", httpManager.CookieName())
+	assert.Equal(t, "poomsae_session_instance_a", httpManager.CookieName())
 	assert.False(t, httpManager.Cookie("").Secure)
 
 	httpsManager := newDeterministicSessionManager(t, "https://daemon.example", "instance_b")
 	cookie := httpsManager.Cookie("")
-	assert.Equal(t, "__Host-kata_session_instance_b", cookie.Name)
+	assert.Equal(t, "__Host-poomsae_session_instance_b", cookie.Name)
 	assert.True(t, cookie.Secure)
 	assert.Empty(t, cookie.Domain)
 	assert.Equal(t, "/", cookie.Path)
@@ -765,7 +765,7 @@ func TestLoginListenersPreserveOrdinaryBearerAuthority(t *testing.T) {
 				}
 				for name, headers := range map[string]map[string]string{
 					"origin":  {"Origin": manager.Origin()},
-					"cookie":  {"Cookie": "kata_session_instance_a=ambient-cookie"},
+					"cookie":  {"Cookie": "poomsae_session_instance_a=ambient-cookie"},
 					"session": {webSessionHeader: "missing-session"},
 					"csrf":    {webCSRFHeader: "missing-csrf"},
 					"fetch":   {"Sec-Fetch-Site": "cross-site"},

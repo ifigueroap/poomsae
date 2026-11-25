@@ -15,7 +15,7 @@ func TestResolveColorMode_NoColorOverridesAll(t *testing.T) {
 	}
 }
 
-func TestResolveColorMode_KataColorModeRespected(t *testing.T) {
+func TestResolveColorMode_PoomsaeColorModeRespected(t *testing.T) {
 	cases := map[string]colorMode{
 		"":      colorAuto,
 		"auto":  colorAuto,

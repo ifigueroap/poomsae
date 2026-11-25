@@ -6,34 +6,9 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"strings"
 )
 
 const nativeAgentHookDigestPrefix = "// poomsae-generated-sha256: "
-
-// legacyAgentHookDigestPrefix is the digest marker written by kata. Existing
-// generated adapters keep that marker until poomsae rewrites them.
-const legacyAgentHookDigestPrefix = "// kata-generated-sha256: "
-
-// recognizedMetadataPrefix returns the ownership prefix on line. Kata installs
-// keep the older prefix until poomsae rewrites the adapter.
-func recognizedMetadataPrefix(line []byte, current, legacy string) ([]byte, bool) {
-	for _, prefix := range []string{current, legacy} {
-		if bytes.HasPrefix(line, []byte(prefix)) {
-			return []byte(prefix), true
-		}
-	}
-	return nil, false
-}
-
-// recognizedGeneratedFormat reports whether format is the current name or the
-// kata name of the same adapter.
-func recognizedGeneratedFormat(got, current string) bool {
-	if got == current {
-		return true
-	}
-	return got == strings.Replace(current, "poomsae-", "kata-", 1)
-}
 
 // Metadata embedded in JavaScript comments and literals must escape line
 // separators. Deterministic encoding also keeps ownership records stable.
@@ -60,13 +35,8 @@ func sealNativeAgentHookCode(code []byte, companions ...[]byte) []byte {
 }
 
 func nativeAgentHookCodeUnedited(code []byte, companions ...[]byte) bool {
-	marker, prefix := -1, ""
-	for _, candidate := range []string{nativeAgentHookDigestPrefix, legacyAgentHookDigestPrefix} {
-		index := bytes.LastIndex(code, []byte("\n"+candidate))
-		if index > marker {
-			marker, prefix = index, candidate
-		}
-	}
+	prefix := nativeAgentHookDigestPrefix
+	marker := bytes.LastIndex(code, []byte("\n"+prefix))
 	if marker < 0 {
 		return false
 	}

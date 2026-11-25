@@ -44,7 +44,7 @@ export function describeResolution(event: PoomsaeTaskEvent): string {
     : label
 }
 
-export function describeKataEvent(event: PoomsaeTaskEvent): PoomsaeEventDescriptor {
+export function describePoomsaeEvent(event: PoomsaeTaskEvent): PoomsaeEventDescriptor {
   const payload = event.payload ?? {}
   switch (event.type) {
     case 'issue.created':

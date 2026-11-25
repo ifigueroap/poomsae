@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   createDevChildEnvironment,
-  developmentKataBuildArguments,
+  developmentPoomsaeBuildArguments,
   devDaemonCommand,
 } from '../src/lib/dev-environment'
 
@@ -50,7 +50,11 @@ const childEnvironment = createDevChildEnvironment(process.env, {
   database: join(home, 'poomsae.db'),
 })
 
-await runChecked(['go', ...developmentKataBuildArguments(binary)], repositoryRoot, childEnvironment)
+await runChecked(
+  ['go', ...developmentPoomsaeBuildArguments(binary)],
+  repositoryRoot,
+  childEnvironment,
+)
 
 const daemon = Bun.spawn({
   cmd: devDaemonCommand(binary, backendPort),

@@ -86,7 +86,7 @@ func TestFederationMixedBackendMatrix(t *testing.T) {
 	ctx := t.Context()
 	dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
 	t.Cleanup(cleanup)
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	tests := []struct {
 		name         string

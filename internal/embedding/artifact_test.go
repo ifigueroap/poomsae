@@ -21,7 +21,7 @@ func artifactTestHash(s string) string {
 	return hex.EncodeToString(h[:])
 }
 func artifactTestIdentity() ArtifactIdentity {
-	return ArtifactIdentity{ProjectUID: "00000000000000000000000001", IssueUID: "00000000000000000000000002", ProducerInstanceUID: "00000000000000000000000003", Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "l2", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	return ArtifactIdentity{ProjectUID: "00000000000000000000000001", IssueUID: "00000000000000000000000002", ProducerInstanceUID: "00000000000000000000000003", Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "l2", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 }
 
 // R7/A12: retain every actual recipe2 chunk and original float32 bits. A
@@ -223,7 +223,7 @@ func TestEmbeddingArtifactClientIdentity(t *testing.T) {
 	require.Equal(t, 3, first.Dimensions)
 	require.Equal(t, "none", first.InputType)
 	require.Equal(t, "l2", first.Normalization)
-	require.Equal(t, "kata.issue/v2", first.Preprocessing)
+	require.Equal(t, "poomsae.issue/v2", first.Preprocessing)
 	require.Equal(t, 2, first.RecipeVersion)
 	require.Equal(t, 2000, first.SplitMaxRunes)
 	require.Equal(t, 200, first.SplitOverlap)

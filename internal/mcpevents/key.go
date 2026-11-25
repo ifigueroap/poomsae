@@ -42,8 +42,7 @@ func NewFileKeyProvider(path string) KeyProvider { return fileKeyProvider{path: 
 // revealing it.
 func KeyCheck(key []byte) string {
 	m := hmac.New(sha256.New, key)
-	// The label stays the kata string so a database copied from kata still matches.
-	_, _ = m.Write([]byte("kata-mcp-events-key-check"))
+	_, _ = m.Write([]byte("poomsae-mcp-events-key-check"))
 	return hex.EncodeToString(m.Sum(nil))
 }
 

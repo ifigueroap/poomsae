@@ -10,11 +10,11 @@ user(pi);project(pi);
 await emit('session_start',{reason:'startup'});
 const event={systemPromptOptions:{sections:{}}};await emit('before_agent_start',event);
 assert.equal(calls.filter(c=>c.args[0]==='agent-hook').length,1);assert.equal(calls.filter(c=>c.args[0]==='agent-contract-hook').length,1);
-assert.equal(event.systemPromptOptions.sections.kata_contract,mode==='contract'?'project-poomsae':'user-poomsae');
+assert.equal(event.systemPromptOptions.sections.poomsae_contract,mode==='contract'?'project-poomsae':'user-poomsae');
 assert.equal(calls.find(c=>c.args[0]==='agent-hook').executable,mode==='attention'?'project-poomsae':'user-poomsae');
 // A removed project adapter does not survive native resource reload.
 await emit('session_shutdown',{reason:'reload'});user(pi);await emit('session_start',{reason:'reload'});
-const next={systemPromptOptions:{sections:{}}};await emit('before_agent_start',next);assert.equal(next.systemPromptOptions.sections.kata_contract,'user-poomsae');
+const next={systemPromptOptions:{sections:{}}};await emit('before_agent_start',next);assert.equal(next.systemPromptOptions.sections.poomsae_contract,'user-poomsae');
 await emit('session_shutdown',{reason:'quit'});
 const reloadedEnd=calls.filter(c=>c.args[0]==='agent-hook').at(-1);
 assert.equal(reloadedEnd.args[3],'end');

@@ -46,7 +46,7 @@ func (f *fakeUpdateClient) Install(_ context.Context, info *selfupdate.Info, opt
 
 func stubUpdateClient(t *testing.T, client updateClient) {
 	t.Helper()
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	orig := newSelfUpdateClient
 	newSelfUpdateClient = func(string) (updateClient, error) {
 		return client, nil
@@ -230,7 +230,7 @@ func TestUpdateCheck_JSONOutput(t *testing.T) {
 
 	require.NoError(t, err)
 	var got struct {
-		PoomsaeAPIVersion    int    `json:"kata_api_version"`
+		PoomsaeAPIVersion    int    `json:"poomsae_api_version"`
 		CurrentVersion       string `json:"current_version"`
 		LatestVersion        string `json:"latest_version"`
 		UpdateAvailable      bool   `json:"update_available"`
@@ -428,7 +428,7 @@ func TestUpdateInstall_JSONOutputAfterConfirmation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stderr, "Install poomsae update v0.4.0 -> v0.5.0?")
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		CurrentVersion    string `json:"current_version"`
 		LatestVersion     string `json:"latest_version"`
 		UpdateAvailable   bool   `json:"update_available"`

@@ -171,7 +171,6 @@ func newRootCmd() *cobra.Command {
 		newUICmd(),
 		newTUICmd(),
 		newUpdateCmd(),
-		newMigrateFromKataCmd(),
 		newVersionCmd(),
 		newWebAssetsCheckCmd(),
 	}
@@ -209,7 +208,6 @@ func main() {
 	// escalates to a hard kill (e.g. if a deferred cleanup hangs).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	maybeMigrateFromKata(ctx, os.Stderr)
 	go func() {
 		<-ctx.Done()
 		stop()

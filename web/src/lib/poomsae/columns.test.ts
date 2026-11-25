@@ -4,17 +4,17 @@ import {
   POOMSAE_OPTIONAL_TASK_COLUMNS,
   POOMSAE_TASK_COLUMNS_STORAGE_KEY,
   POOMSAE_TASK_COLUMN_WIDTHS_STORAGE_KEY,
-  defaultKataTaskColumnVisibility,
-  loadKataTaskColumnVisibility,
-  loadKataTaskColumnWidths,
-  persistKataTaskColumnVisibility,
-  persistKataTaskColumnWidths,
+  defaultPoomsaeTaskColumnVisibility,
+  loadPoomsaeTaskColumnVisibility,
+  loadPoomsaeTaskColumnWidths,
+  persistPoomsaeTaskColumnVisibility,
+  persistPoomsaeTaskColumnWidths,
   summarizeBlockedBy,
 } from './columns'
 
 describe('Poomsae task column visibility', () => {
   it('shows Project and hides ID and Blocked by by default', () => {
-    expect(defaultKataTaskColumnVisibility()).toEqual({
+    expect(defaultPoomsaeTaskColumnVisibility()).toEqual({
       id: false,
       project: true,
       updated: true,
@@ -32,7 +32,7 @@ describe('Poomsae task column visibility', () => {
       setItem: vi.fn(),
     }
 
-    expect(loadKataTaskColumnVisibility(storage)).toEqual({
+    expect(loadPoomsaeTaskColumnVisibility(storage)).toEqual({
       id: true,
       project: true,
       updated: true,
@@ -48,7 +48,7 @@ describe('Poomsae task column visibility', () => {
     'falls back for malformed storage: %s',
     (raw) => {
       const storage = { getItem: vi.fn(() => raw), setItem: vi.fn() }
-      expect(loadKataTaskColumnVisibility(storage)).toEqual(defaultKataTaskColumnVisibility())
+      expect(loadPoomsaeTaskColumnVisibility(storage)).toEqual(defaultPoomsaeTaskColumnVisibility())
     },
   )
 
@@ -59,7 +59,7 @@ describe('Poomsae task column visibility', () => {
       ),
       setItem: vi.fn(),
     }
-    expect(loadKataTaskColumnVisibility(storage)).toMatchObject({
+    expect(loadPoomsaeTaskColumnVisibility(storage)).toMatchObject({
       id: false,
       updated: true,
       owner: true,
@@ -77,12 +77,12 @@ describe('Poomsae task column visibility', () => {
       setItem: vi.fn(),
     }
 
-    expect(loadKataTaskColumnVisibility(storage)).toEqual(defaultKataTaskColumnVisibility())
+    expect(loadPoomsaeTaskColumnVisibility(storage)).toEqual(defaultPoomsaeTaskColumnVisibility())
   })
 
   it('persists visible keys and tolerates write failures', () => {
     const setItem = vi.fn()
-    persistKataTaskColumnVisibility(
+    persistPoomsaeTaskColumnVisibility(
       {
         id: true,
         project: false,
@@ -101,7 +101,7 @@ describe('Poomsae task column visibility', () => {
     )
 
     expect(() =>
-      persistKataTaskColumnVisibility(defaultKataTaskColumnVisibility(), {
+      persistPoomsaeTaskColumnVisibility(defaultPoomsaeTaskColumnVisibility(), {
         getItem: vi.fn(),
         setItem: vi.fn(() => {
           throw new Error('quota')
@@ -127,18 +127,18 @@ describe('Poomsae task column visibility', () => {
       ),
       setItem: vi.fn(),
     }
-    expect(loadKataTaskColumnWidths(storage)).toEqual({ id: 48, project: 480, due: 72 })
+    expect(loadPoomsaeTaskColumnWidths(storage)).toEqual({ id: 48, project: 480, due: 72 })
   })
 
   it('persists column widths and tolerates storage failures', () => {
     const setItem = vi.fn()
-    persistKataTaskColumnWidths({ id: 72, project: 120, due: 64 }, { getItem: vi.fn(), setItem })
+    persistPoomsaeTaskColumnWidths({ id: 72, project: 120, due: 64 }, { getItem: vi.fn(), setItem })
     expect(setItem).toHaveBeenCalledWith(
       POOMSAE_TASK_COLUMN_WIDTHS_STORAGE_KEY,
       JSON.stringify({ id: 72, project: 120, due: 64 }),
     )
     expect(() =>
-      persistKataTaskColumnWidths(
+      persistPoomsaeTaskColumnWidths(
         { due: 80 },
         {
           getItem: vi.fn(),

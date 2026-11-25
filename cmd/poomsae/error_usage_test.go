@@ -9,7 +9,7 @@ import (
 )
 
 func TestErrorUsageCloseReasons(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	for _, tc := range []struct {
 		name    string

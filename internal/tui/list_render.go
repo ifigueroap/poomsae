@@ -306,7 +306,7 @@ func renderListInfoLine(width int, chrome viewChrome, lm listModel, dataBudget i
 		} else if n > 0 {
 			position = footerPositionIndicator(lm.cursor, n)
 		}
-		body = padLeftRightInside(cronTabs(cronKata), position, titleBarInnerWidth(width))
+		body = padLeftRightInside(cronTabs(cronPoomsae), position, titleBarInnerWidth(width))
 	}
 	return statsLineStyle.Render(padToWidth(body, titleBarInnerWidth(width)))
 }

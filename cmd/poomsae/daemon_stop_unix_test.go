@@ -17,7 +17,7 @@ import (
 
 func TestDaemonStop_UnreapedChild(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
 	child := exec.CommandContext(context.WithoutCancel(t.Context()), os.Args[0], "-test.run=TestDaemonCommandSleepHelperProcess", "--") //nolint:gosec // test helper starts this test binary
 	child.Env = append(os.Environ(), "POOMSAE_DAEMON_CMD_SLEEP_HELPER=1", "POOMSAE_DAEMON_CMD_REMOVE_RECORD=1")

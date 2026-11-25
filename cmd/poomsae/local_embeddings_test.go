@@ -39,7 +39,7 @@ func TestApplySharedEmbeddingChoice(t *testing.T) {
 func TestLocalEmbeddingsSetup(t *testing.T) {
 	t.Run("recorded", func(t *testing.T) {
 		clearLocalEmbeddingsEnv(t)
-		home := setupKataEnv(t)
+		home := setupPoomsaeEnv(t)
 		t.Setenv("POOMSAE_HOME", home)
 		t.Setenv("POOMSAE_DB", filepath.Join(home, "poomsae.db"))
 		t.Setenv("POOMSAE_SERVER", "")
@@ -71,7 +71,7 @@ func TestLocalEmbeddingsSetup(t *testing.T) {
 		require.True(t, chosen)
 	})
 	t.Run("marker write failure", func(t *testing.T) {
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		home := clearLocalEmbeddingsEnv(t)
 		t.Setenv("POOMSAE_SERVER", "")
 		stubLocalEmbeddingsInstall(t)
@@ -103,7 +103,7 @@ func TestLocalEmbeddingsSetupRefusesBeforeInstall(t *testing.T) {
 	clearLocalEmbeddingsEnv(t)
 	for _, scenario := range []string{"environment override", "dangling symlink"} {
 		t.Run(scenario, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			t.Setenv("POOMSAE_SEARCH_EMBEDDINGS_BASE_URL", "")
 			oldEndpoint, oldInstall := localEmbeddingsEndpoint, localEmbeddingsInstall
@@ -147,7 +147,7 @@ func TestLocalEmbeddingsSetupRefusesBeforeInstall(t *testing.T) {
 
 func TestLocalEmbeddingsFreshOllama(t *testing.T) {
 	clearLocalEmbeddingsEnv(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	oldEndpoint, oldInstall := localEmbeddingsEndpoint, localEmbeddingsInstall
 	t.Cleanup(func() { localEmbeddingsEndpoint, localEmbeddingsInstall = oldEndpoint, oldInstall })
@@ -190,7 +190,7 @@ func TestLocalEmbeddingsSetupRefusesChangedConfig(t *testing.T) {
 		{name: "created empty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			path := filepath.Join(home, "config.toml")
 			if tc.exists {
@@ -233,7 +233,7 @@ func TestLocalEmbeddingsDaemonDownloadConsent(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clearLocalEmbeddingsEnv(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			if tc.chosen {
 				require.NoError(t, embedlocal.RecordChoice())
 			}
@@ -279,7 +279,7 @@ func TestLocalEmbeddingsSwitchRecipe(t *testing.T) {
 		{name: "symlink", recipe: "model='nomic-embed-text'\ndims=768\n", index: "kept", symlink: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			stubLocalEmbeddingsInstall(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			path := filepath.Join(home, "config.toml")
@@ -320,7 +320,7 @@ func TestLocalEmbeddingsRebuildRefusal(t *testing.T) {
 	stubIsTTY(t, false)
 	for _, installed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("installed=%t", installed), func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			path := filepath.Join(home, "config.toml")
 			original := []byte("[search.embeddings]\nbase_url = 'http://127.0.0.1:11434/v1'\nmodel = 'mxbai-embed-large'\n")
@@ -359,7 +359,7 @@ func TestLocalEmbeddingsRestartRollback(t *testing.T) {
 	clearLocalEmbeddingsEnv(t)
 	for _, scenario := range []string{"existing symlink", "new", "concurrent edit", "unsupported daemon"} {
 		t.Run(scenario, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			stubLocalEmbeddingsInstall(t)
 			t.Setenv("POOMSAE_SERVER", "")
 			path := filepath.Join(home, "config.toml")

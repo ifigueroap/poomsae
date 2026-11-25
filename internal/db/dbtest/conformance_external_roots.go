@@ -357,7 +357,7 @@ func checkExternalRootBindings(t *testing.T, store db.Storage, backend Backend) 
 	conflicted, event, err := store.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: mappingTwo.ID, ClaimToken: fieldClaimToken,
 		Baseline:         jsontext.Value(`"2026-08-20"`),
-		ConflictKata:     jsontext.Value(`"2026-08-21"`),
+		ConflictPoomsae:  jsontext.Value(`"2026-08-21"`),
 		ConflictExternal: jsontext.Value(`"2026-08-22"`),
 		Conflicted:       true, At: conflictAt, Actor: "tester",
 	})

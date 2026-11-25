@@ -1,4 +1,4 @@
-//go:build kata_browser_fixture
+//go:build poomsae_browser_fixture
 
 package main
 

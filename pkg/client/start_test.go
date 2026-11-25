@@ -26,15 +26,15 @@ import (
 
 func TestMain(m *testing.M) {
 	if argsFile := os.Getenv("FAKE_POOMSAE_ARGS_FILE"); argsFile != "" {
-		os.Exit(fakeKata(argsFile))
+		os.Exit(fakePoomsae(argsFile))
 	}
 	os.Exit(m.Run())
 }
 
-// fakeKata stands in for the poomsae executable StartWith names. It records its
+// fakePoomsae stands in for the poomsae executable StartWith names. It records its
 // arguments, then either fails with FAKE_POOMSAE_OUTPUT on stderr, or "starts" a
 // daemon by publishing the runtime record of a server the test already runs.
-func fakeKata(argsFile string) int {
+func fakePoomsae(argsFile string) int {
 	if err := os.WriteFile(argsFile, []byte(strings.Join(os.Args[1:], "\n")), 0o600); err != nil { //nolint:gosec // G703: the parent test chose this temporary path.
 		fmt.Fprintln(os.Stderr, err)
 		return 2
@@ -55,12 +55,12 @@ func fakeKata(argsFile string) int {
 	return 0
 }
 
-// fakeKataStarts makes the test binary a poomsae executable whose start command
+// fakePoomsaeStarts makes the test binary a poomsae executable whose start command
 // publishes address in namespace. Like poomsae, it creates the runtime directory
 // itself: a directory made beforehand lacks the private permissions Windows
 // discovery requires. It returns the executable and a function reporting the
 // arguments it was run with, or nil when it never ran.
-func fakeKataStarts(t *testing.T, namespace *daemonruntime.Namespace, address string) (string, func() []string) {
+func fakePoomsaeStarts(t *testing.T, namespace *daemonruntime.Namespace, address string) (string, func() []string) {
 	t.Helper()
 	argsFile := filepath.Join(t.TempDir(), "args")
 	t.Setenv("FAKE_POOMSAE_ARGS_FILE", argsFile)
@@ -79,13 +79,13 @@ func fakeKataStarts(t *testing.T, namespace *daemonruntime.Namespace, address st
 }
 
 func TestDiscoverStartsStoppedNamedLocalDaemon(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	local := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, local.Client(t), "spoke-project")
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"personal\"\nlocal = true\n")
 	namespace, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
-	poomsae, ranWith := fakeKataStarts(t, namespace, local.Endpoint)
+	poomsae, ranWith := fakePoomsaeStarts(t, namespace, local.Endpoint)
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "personal", StartWith: poomsae})
 	require.NoError(t, err)
@@ -97,10 +97,10 @@ func TestDiscoverStartsStoppedNamedLocalDaemon(t *testing.T) {
 }
 
 func TestDiscoverRecoversStoppedNamedProfile(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
-	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	poomsae, ranWith := fakePoomsaeStarts(t, pinnedProfile(t, home, work), work.Endpoint)
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: poomsae})
 	require.NoError(t, err)
@@ -113,10 +113,10 @@ func TestDiscoverRecoversStoppedNamedProfile(t *testing.T) {
 }
 
 func TestDiscoverRecoversStoppedWorkspaceProfile(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
-	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	poomsae, ranWith := fakePoomsaeStarts(t, pinnedProfile(t, home, work), work.Endpoint)
 	workspace := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".poomsae.toml"), []byte(
 		"version = 1\n\n[project]\nidentity = \"example.test/work-project\"\nname = \"work-project\"\n",
@@ -134,10 +134,10 @@ func TestDiscoverRecoversStoppedWorkspaceProfile(t *testing.T) {
 	assert.Equal(t, "work-project", projects[0].Name)
 }
 
-func TestDiscoverReportsKataStartFailure(t *testing.T) {
-	home := isolateKataHome(t)
+func TestDiscoverReportsPoomsaeStartFailure(t *testing.T) {
+	home := isolatePoomsaeHome(t)
 	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
-	poomsae, ranWith := fakeKataStarts(t, pinnedProfile(t, home, work), work.Endpoint)
+	poomsae, ranWith := fakePoomsaeStarts(t, pinnedProfile(t, home, work), work.Endpoint)
 	t.Setenv("FAKE_POOMSAE_OUTPUT", "poomsae: missing_profile_storage: profile storage is missing")
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "work", StartWith: poomsae})
@@ -148,11 +148,11 @@ func TestDiscoverReportsKataStartFailure(t *testing.T) {
 }
 
 func TestDiscoverNeverStartsRemote(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"hub\"\nurl = \"http://127.0.0.1:1\"\n")
 	namespace, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
-	poomsae, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
+	poomsae, ranWith := fakePoomsaeStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "hub", StartWith: poomsae})
 	require.NoError(t, err)
@@ -164,11 +164,11 @@ func TestDiscoverNeverStartsRemote(t *testing.T) {
 
 func TestDiscoverStartWithRespectsDisabledAutostart(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		home := isolateKataHome(t)
+		home := isolatePoomsaeHome(t)
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n"), 0o600))
 		namespace, err := daemonruntime.NewNamespace()
 		require.NoError(t, err)
-		poomsae, ranWith := fakeKataStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
+		poomsae, ranWith := fakePoomsaeStarts(t, namespace, "unix://"+filepath.Join(home, "unused.sock"))
 		t.Setenv("FAKE_POOMSAE_OUTPUT", "unexpected start")
 		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
@@ -188,7 +188,7 @@ func TestDiscoverStartWithRespectsDisabledAutostart(t *testing.T) {
 func TestDiscoverStartWithUsesExistingSupervisedDaemon(t *testing.T) {
 	for _, profile := range []bool{false, true} {
 		t.Run(fmt.Sprintf("profile=%t", profile), func(t *testing.T) {
-			home := isolateKataHome(t)
+			home := isolatePoomsaeHome(t)
 			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
 			uid := "01HZZZZZZZZZZZZZZZZZZZZZ01"
 			var pings atomic.Int32

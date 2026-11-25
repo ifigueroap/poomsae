@@ -42,7 +42,7 @@ func TestMetaGetUsesMetadataEndpoint(t *testing.T) {
 		"--json", "--project", "example-project", "meta", "get", "abc4")
 	require.NoError(t, err, stderr)
 	assert.JSONEq(t,
-		`{"kata_api_version":1,"ref":"abc4","revision":4,"metadata":{"custom":{"nested":[1,true,"x"]}}}`,
+		`{"poomsae_api_version":1,"ref":"abc4","revision":4,"metadata":{"custom":{"nested":[1,true,"x"]}}}`,
 		stdout)
 	assert.Equal(t, int64(1), metadataCalls.Load())
 	assert.Equal(t, int64(0), showCalls.Load())
@@ -93,7 +93,7 @@ func TestMetaSetJSONValueObjectRoundTrips(t *testing.T) {
 
 	out := runCLI(t, env, dir, "meta", "get", "--json", ref, "work.state")
 	assert.JSONEq(t, fmt.Sprintf(
-		`{"kata_api_version":1,"ref":%q,"revision":2,"key":"work.state","value":{"attention":"ok","count":2}}`,
+		`{"poomsae_api_version":1,"ref":%q,"revision":2,"key":"work.state","value":{"attention":"ok","count":2}}`,
 		ref), out)
 }
 
@@ -160,7 +160,7 @@ func TestMetaGetEmptyAndMissingKey(t *testing.T) {
 			case "agent":
 				assert.Equal(t, fmt.Sprintf("OK meta get %s count=0 revision=rev-1\n", ref), stdout)
 			case "json":
-				assert.JSONEq(t, fmt.Sprintf(`{"kata_api_version":1,"ref":%q,"revision":1,"key":"work.missing","value":null}`, ref), stdout)
+				assert.JSONEq(t, fmt.Sprintf(`{"poomsae_api_version":1,"ref":%q,"revision":1,"key":"work.missing","value":null}`, ref), stdout)
 			}
 		})
 	}
@@ -396,7 +396,7 @@ func TestMetaSetAndGetJSONOutput(t *testing.T) {
 
 	getOut := runCLI(t, env, dir, "--json", "meta", "get", ref)
 	assert.JSONEq(t, fmt.Sprintf(
-		`{"kata_api_version":1,"ref":%q,"revision":2,"metadata":{"work.attention":"ok"}}`,
+		`{"poomsae_api_version":1,"ref":%q,"revision":2,"metadata":{"work.attention":"ok"}}`,
 		ref), getOut)
 }
 

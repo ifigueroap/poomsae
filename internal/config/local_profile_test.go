@@ -42,7 +42,7 @@ instance_uid = "01HZZZZZZZZZZZZZZZZZZZZZ01"
 
 func TestLocalConfigRejectsURLAndDaemon(t *testing.T) {
 	root := t.TempDir()
-	writeKataLocal(t, root, `version = 1
+	writePoomsaeLocal(t, root, `version = 1
 [server]
 url = "http://127.0.0.1:7780"
 daemon = "work"

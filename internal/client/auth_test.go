@@ -249,7 +249,7 @@ token = "project-token"
 	assert.Empty(t, got)
 }
 
-func TestNewHTTPClientKataServerIgnoresInvalidActiveDaemon(t *testing.T) {
+func TestNewHTTPClientPoomsaeServerIgnoresInvalidActiveDaemon(t *testing.T) {
 	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got = r.Header.Get("Authorization")
@@ -392,7 +392,7 @@ url = "`+srv.URL+`"
 	assert.Equal(t, "Bearer global-token", got)
 }
 
-func TestNewHTTPClientKataServerDoesNotSuppressExplicitActiveDaemonAuth(t *testing.T) {
+func TestNewHTTPClientPoomsaeServerDoesNotSuppressExplicitActiveDaemonAuth(t *testing.T) {
 	var got string
 	active := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got = r.Header.Get("Authorization")

@@ -65,7 +65,7 @@ func TestExternalRootRestorePausesBindingAndExcludesRuntimeSecrets(t *testing.T)
 	assert.Equal(t, mappings[0].ID, states[0].MappingID)
 	assert.True(t, states[0].Conflicted)
 	assert.JSONEq(t, `"2026-08-20"`, string(states[0].Baseline))
-	assert.JSONEq(t, `"2026-08-21"`, string(states[0].ConflictKata))
+	assert.JSONEq(t, `"2026-08-21"`, string(states[0].ConflictPoomsae))
 	assert.JSONEq(t, `"2026-08-22"`, string(states[0].ConflictExternal))
 }
 
@@ -259,7 +259,7 @@ func seedExternalRootFixture(
 	_, _, err = source.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: mapping.ID, ClaimToken: claimToken,
 		Baseline:         jsontext.Value(`"2026-08-20"`),
-		ConflictKata:     jsontext.Value(`"2026-08-21"`),
+		ConflictPoomsae:  jsontext.Value(`"2026-08-21"`),
 		ConflictExternal: jsontext.Value(`"2026-08-22"`),
 		Conflicted:       true, At: conflictAt, Actor: "fixture-author",
 	})

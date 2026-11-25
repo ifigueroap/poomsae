@@ -62,7 +62,7 @@ func TestTokenIdentity_RemoteCLIUsesUserTokenActor(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	addr, serverHome, stop := startIdentityDaemon(t, bin)
 	defer stop()
 
@@ -97,7 +97,7 @@ func TestTokenIdentity_BootstrapCanResolveButCannotWrite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	addr, serverHome, stop := startIdentityDaemon(t, bin)
 	defer stop()
 
@@ -146,7 +146,7 @@ func TestTokenIdentity_FederationPersonalTokenBridgeConnectAndPush(t *testing.T)
 	const projectName = "identity-federation-e2e"
 	const pushedTitle = "spoke issue from token-bound federation"
 
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	hubAddr, hubHome, stopHub := startIdentityDaemon(t, bin)
 	defer stopHub()
 	hubDB, err := sqlitestore.Open(ctx, filepath.Join(hubHome, "poomsae.db"))

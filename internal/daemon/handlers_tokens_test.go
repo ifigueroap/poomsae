@@ -35,7 +35,7 @@ func TestCreateTokenEndpoint_BootstrapCreatesToken(t *testing.T) {
 	assert.Equal(t, "wesm", out.Token.Actor)
 	require.NotNil(t, out.Token.Name)
 	assert.Equal(t, "laptop", *out.Token.Name)
-	assert.True(t, strings.HasPrefix(out.Plaintext, "kata_"))
+	assert.True(t, strings.HasPrefix(out.Plaintext, "poomsae_"))
 	assert.Equal(t, 1, strings.Count(string(bs), out.Plaintext))
 
 	resolved, err := env.DB.ResolveAPIToken(t.Context(), out.Plaintext)

@@ -19,9 +19,9 @@ import (
 	"github.com/ifigueroap/poomsae/pkg/poomsaetest"
 )
 
-// isolateKataHome points discovery at an empty Poomsae home and a workspace with
+// isolatePoomsaeHome points discovery at an empty Poomsae home and a workspace with
 // no .poomsae.local.toml, so the host's daemons and remote config are invisible.
-func isolateKataHome(t *testing.T) string {
+func isolatePoomsaeHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
@@ -70,7 +70,7 @@ func initProject(t *testing.T, api *client.Client, name string) {
 }
 
 func TestDiscoverUsesRunningLocalDaemonWithGlobalToken(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	server := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("local-token"))
 	initProject(t, server.Client(t), "spoke-project")
 	publishLocalRuntime(t, home, server.Endpoint)
@@ -88,7 +88,7 @@ func TestDiscoverUsesRunningLocalDaemonWithGlobalToken(t *testing.T) {
 }
 
 func TestDiscoverReportsNoDaemonWithoutStartingOne(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{})
 	require.ErrorIs(t, err, client.ErrDaemonUnavailable)
@@ -101,7 +101,7 @@ func TestDiscoverReportsNoDaemonWithoutStartingOne(t *testing.T) {
 }
 
 func TestDiscoverReportsUnreachableLocalDaemonAsUnavailable(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	publishLocalRuntime(t, home, "unix://"+filepath.Join(home, "missing.sock"))
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{})
@@ -109,8 +109,8 @@ func TestDiscoverReportsUnreachableLocalDaemonAsUnavailable(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing.sock")
 }
 
-func TestDiscoverPrefersKataServerOverLocalDaemon(t *testing.T) {
-	home := isolateKataHome(t)
+func TestDiscoverPrefersPoomsaeServerOverLocalDaemon(t *testing.T) {
+	home := isolatePoomsaeHome(t)
 	local := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, local.Client(t), "local-project")
 	publishLocalRuntime(t, home, local.Endpoint)
@@ -131,7 +131,7 @@ func TestDiscoverPrefersKataServerOverLocalDaemon(t *testing.T) {
 }
 
 func TestDiscoverReadsLocalConfigFromWorkspace(t *testing.T) {
-	isolateKataHome(t)
+	isolatePoomsaeHome(t)
 	remote := poomsaetest.New(t)
 	initProject(t, remote.Client(t), "hub-project")
 	workspace := t.TempDir()
@@ -159,7 +159,7 @@ func TestDiscoveredIsAbsentForExplicitEndpointClient(t *testing.T) {
 }
 
 func TestDiscoverNamedRemoteIgnoresOtherSourcesAndUsesEntryToken(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	other := poomsaetest.New(t)
 	initProject(t, other.Client(t), "other-project")
 	t.Setenv("POOMSAE_SERVER", other.Endpoint)
@@ -184,7 +184,7 @@ token_env = "EXAMPLE_HUB_TOKEN"
 }
 
 func TestDiscoverNamedLocalOverridesActiveDaemon(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	local := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("local-token"))
 	initProject(t, local.Client(t), "spoke-project")
 	publishLocalRuntime(t, home, local.Endpoint)
@@ -232,7 +232,7 @@ func pinnedProfile(t *testing.T, home string, server *poomsaetest.Server) *daemo
 }
 
 func TestDiscoverNamedPinnedLocalProfile(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	work := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	initProject(t, work.Client(t), "work-project")
 	publishRuntime(t, pinnedProfile(t, home, work), work.Endpoint, nil)
@@ -249,7 +249,7 @@ func TestDiscoverNamedPinnedLocalProfile(t *testing.T) {
 }
 
 func TestDiscoverNamedStoppedLocalIsUnavailableWithoutStartingOne(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"personal\"\nlocal = true\n")
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "personal"})
@@ -263,7 +263,7 @@ func TestDiscoverNamedStoppedLocalIsUnavailableWithoutStartingOne(t *testing.T) 
 }
 
 func TestDiscoverNamedRemoteIsNotProbed(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"hub\"\nurl = \"http://127.0.0.1:1\"\n")
 
 	api, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "hub"})
@@ -277,7 +277,7 @@ func TestDiscoverNamedRemoteIsNotProbed(t *testing.T) {
 }
 
 func TestDiscoverNamedRejectsUnknownName(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	writeDaemonCatalog(t, home, "[[daemon]]\nname = \"hub\"\nurl = \"https://daemon.example\"\n")
 
 	_, err := client.Discover(t.Context(), client.DiscoverOptions{Daemon: "example-workspace"})
@@ -286,7 +286,7 @@ func TestDiscoverNamedRejectsUnknownName(t *testing.T) {
 }
 
 func TestDiscoverNamedRemoteRequiresTokenEnvValue(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	hub := poomsaetest.New(t, poomsaetest.WithToken("hub-token"))
 	t.Setenv("EXAMPLE_HUB_TOKEN", "")
 	writeDaemonCatalog(t, home, `[[daemon]]

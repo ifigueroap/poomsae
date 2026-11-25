@@ -11,7 +11,7 @@ import (
 
 func TestDaemonReload_NoRunningDaemon_ExitUsage(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, _, err := executeRootCapture(t, t.Context(), "daemon", "reload")
 	require.Error(t, err)

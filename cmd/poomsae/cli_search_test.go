@@ -88,7 +88,7 @@ func TestCLISearchOffline(t *testing.T) {
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
 	var response struct {
-		Version int    `json:"kata_api_version"`
+		Version int    `json:"poomsae_api_version"`
 		Query   string `json:"query"`
 		Results []struct {
 			Command string `json:"command"`
@@ -141,7 +141,7 @@ func TestCLISearchEmptyResults(t *testing.T) {
 	out, stderr, err := executeRootCapture(t, t.Context(), "cli", "search", "zxqvnonexistent", "--json")
 	require.NoError(t, err, stderr)
 	require.Empty(t, stderr)
-	require.JSONEq(t, `{"kata_api_version":1,"query":"zxqvnonexistent","results":[]}`, out)
+	require.JSONEq(t, `{"poomsae_api_version":1,"query":"zxqvnonexistent","results":[]}`, out)
 	out, stderr, err = executeRootCapture(t, t.Context(), "cli", "search", "zxqvnonexistent")
 	require.NoError(t, err, stderr)
 	require.Equal(t, "Run 'poomsae --help' for flags and examples.\n", out)

@@ -526,13 +526,13 @@ func (r *Reconciler) reconcileField(
 	}
 	if _, err := validateLiveFieldDescriptor(codec, mapping, liveFields); err != nil {
 		poomsae := baseline
-		if current, readErr := readCanonicalKataField(codec, snapshot.issue, mapping); readErr == nil {
+		if current, readErr := readCanonicalPoomsaeField(codec, snapshot.issue, mapping); readErr == nil {
 			poomsae = current
 		}
 		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, baseline, claimToken, result)
 	}
 
-	poomsae, err := readCanonicalKataField(codec, snapshot.issue, mapping)
+	poomsae, err := readCanonicalPoomsaeField(codec, snapshot.issue, mapping)
 	if err != nil {
 		external := baseline
 		if current, readErr := readMappedExternalField(ctx, snapshot, mapping); readErr == nil {
@@ -565,7 +565,7 @@ func (r *Reconciler) reconcileField(
 	switch decision.Action {
 	case MergeConflict:
 		return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
-	case MergeWriteKata:
+	case MergeWritePoomsae:
 		patch, patchErr := codec.PoomsaePatch(snapshot.issue, decision.Baseline)
 		if patchErr != nil {
 			return r.storeFieldConflict(ctx, snapshot, mapping, state, hasBaseline, poomsae, external, claimToken, result)
@@ -582,7 +582,7 @@ func (r *Reconciler) reconcileField(
 			result.retainEvents(*event)
 		}
 		snapshot.issue = projected
-		readback, readErr := readCanonicalKataField(codec, snapshot.issue, mapping)
+		readback, readErr := readCanonicalPoomsaeField(codec, snapshot.issue, mapping)
 		if readErr != nil || !fieldValuesEqual(readback, decision.Baseline) {
 			if readErr != nil {
 				readback = poomsae
@@ -660,7 +660,7 @@ func (r *Reconciler) storeFieldConflict(
 	}
 	_, event, err := r.store.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: snapshot.binding.ID, MappingID: mapping.ID, ClaimToken: claimToken,
-		Baseline: baselineJSON, ConflictKata: poomsaeJSON, ConflictExternal: externalJSON,
+		Baseline: baselineJSON, ConflictPoomsae: poomsaeJSON, ConflictExternal: externalJSON,
 		Conflicted: true, At: r.timestamp(), Actor: integrationActor(snapshot.binding),
 	})
 	if err != nil {
@@ -673,12 +673,12 @@ func (r *Reconciler) storeFieldConflict(
 	return result, nil
 }
 
-func readCanonicalKataField(
+func readCanonicalPoomsaeField(
 	codec FieldCodec,
 	issue db.Issue,
 	mapping db.ExternalFieldMapping,
 ) (connector.FieldValue, error) {
-	value, err := codec.ReadKata(issue)
+	value, err := codec.ReadPoomsae(issue)
 	if err != nil {
 		return connector.FieldValue{}, err
 	}

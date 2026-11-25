@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./lib/poomsae/projection', async (importOriginal) => {
   const original = await importOriginal<typeof import('./lib/poomsae/projection')>()
-  return { ...original, normalizeKataUISnapshot: vi.fn(original.normalizeKataUISnapshot) }
+  return { ...original, normalizePoomsaeUISnapshot: vi.fn(original.normalizePoomsaeUISnapshot) }
 })
 
 import App from './App.svelte'
-import { normalizeKataUISnapshot } from './lib/poomsae/projection'
+import { normalizePoomsaeUISnapshot } from './lib/poomsae/projection'
 import { preferencesStorageKey } from './lib/state/preferences'
 
 describe('App', () => {
@@ -430,7 +430,7 @@ describe('App', () => {
     await screen.findByRole('button', { name: /Example issue/ })
     await waitFor(() => expect(referencesRequested).toBe(true))
     await tick()
-    const normalizations = vi.mocked(normalizeKataUISnapshot).mock.calls.length
+    const normalizations = vi.mocked(normalizePoomsaeUISnapshot).mock.calls.length
     expect(normalizations).toBeGreaterThan(0)
     await fireEvent(window, new Event('focus'))
     await waitFor(() => expect(requests).toHaveLength(2))
@@ -440,7 +440,7 @@ describe('App', () => {
       ).not.toBe('true'),
     )
     await tick()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations)
   })
 
   it('keeps the normalized project list when the revalidation after a project click returns unchanged', async () => {
@@ -483,7 +483,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'example-project' })).not.toBeNull()
     await waitFor(() => expect(revalidations).toHaveLength(1))
     await tick()
-    const normalizations = vi.mocked(normalizeKataUISnapshot).mock.calls.length
+    const normalizations = vi.mocked(normalizePoomsaeUISnapshot).mock.calls.length
 
     releaseRevalidation!()
     await revalidated
@@ -492,7 +492,7 @@ describe('App', () => {
     await tick()
 
     expect(screen.getByRole('heading', { name: 'example-project' })).not.toBeNull()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations)
   })
 
   it.each([
@@ -4027,7 +4027,7 @@ describe('App', () => {
       }),
     )
 
-    const normalizations = vi.mocked(normalizeKataUISnapshot).mock.calls.length
+    const normalizations = vi.mocked(normalizePoomsaeUISnapshot).mock.calls.length
     render(App)
 
     await waitFor(() => expect(snapshotRequests).toHaveLength(2))
@@ -4037,7 +4037,7 @@ describe('App', () => {
       ).toBeNull(),
     )
     await tick()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations + 1)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations + 1)
     await fireEvent.click(screen.getByRole('button', { name: /Example issue/ }))
 
     await waitFor(() => expect(snapshotRequests).toHaveLength(4))
@@ -4052,7 +4052,7 @@ describe('App', () => {
       ).toBeNull(),
     )
     await tick()
-    expect(normalizeKataUISnapshot).toHaveBeenCalledTimes(normalizations + 2)
+    expect(normalizePoomsaeUISnapshot).toHaveBeenCalledTimes(normalizations + 2)
   })
 
   it('refreshes membership after an SSE reconnect opens', async () => {

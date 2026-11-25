@@ -1,7 +1,7 @@
 ---
 title: Configuration
 description: Reference Poomsae environment variables, workspace files, daemon settings, authentication, and integrations.
-last_edited: 2026-11-21
+last_edited: 2026-11-25
 ---
 
 # Configuration
@@ -310,12 +310,12 @@ with a separate DML-only role:
 
 ```toml
 [storage]
-dsn = "postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
+dsn = "postgres://poomsae_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
 
 [storage.postgres]
 schema = "poomsae"
 mode = "validate"
-schema_owner = "kata_schema_owner"
+schema_owner = "poomsae_schema_owner"
 # Dangerous lab-only escape hatch for remote plaintext or unverified TLS:
 # allow_insecure = true
 ```

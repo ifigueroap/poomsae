@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func writeKataLocal(t *testing.T, dir, body string) {
+func writePoomsaeLocal(t *testing.T, dir, body string) {
 	t.Helper()
 	path := filepath.Join(dir, ".poomsae.local.toml")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600)) //nolint:gosec
@@ -25,7 +25,7 @@ func TestReadLocalConfig_Missing(t *testing.T) {
 
 func TestReadLocalConfig_ServerOnly(t *testing.T) {
 	dir := t.TempDir()
-	writeKataLocal(t, dir, `version = 1
+	writePoomsaeLocal(t, dir, `version = 1
 
 [server]
 url = "http://100.64.0.5:7777"
@@ -38,7 +38,7 @@ url = "http://100.64.0.5:7777"
 
 func TestReadLocalConfig_RejectsBadVersion(t *testing.T) {
 	dir := t.TempDir()
-	writeKataLocal(t, dir, `version = 2
+	writePoomsaeLocal(t, dir, `version = 2
 
 [server]
 url = "http://x"
@@ -50,7 +50,7 @@ url = "http://x"
 
 func TestReadLocalConfig_EmptyServerURLIsZeroValue(t *testing.T) {
 	dir := t.TempDir()
-	writeKataLocal(t, dir, `version = 1
+	writePoomsaeLocal(t, dir, `version = 1
 
 [server]
 url = ""
@@ -62,7 +62,7 @@ url = ""
 
 func TestReadLocalConfig_Malformed(t *testing.T) {
 	dir := t.TempDir()
-	writeKataLocal(t, dir, `version = 1
+	writePoomsaeLocal(t, dir, `version = 1
 [server
 url = "http://x"
 `)

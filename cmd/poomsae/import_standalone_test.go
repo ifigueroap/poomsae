@@ -15,9 +15,9 @@ import (
 )
 
 func TestImportAsStandaloneDetachesCopyOnSQLiteAndPostgres(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx := t.Context()
-	source := openKataTestDB(t, filepath.Join(home, "source.db"))
+	source := openPoomsaeTestDB(t, filepath.Join(home, "source.db"))
 	t.Cleanup(func() { require.NoError(t, source.Close()) })
 	project, err := source.CreateProject(ctx, "hub-project")
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestImportAsStandaloneDetachesCopyOnSQLiteAndPostgres(t *testing.T) {
 }
 
 func TestImportAsStandaloneRejectsReplacementAndMerge(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	for _, incompatible := range []string{"--force", "--merge"} {
 		t.Run(incompatible, func(t *testing.T) {
 			_, err := runCmdOutput(t, nil, "import", "--as-standalone", incompatible,

@@ -94,7 +94,7 @@ func (f historicalBridgeFixture) fieldConflict(t *testing.T, binding db.External
 	claimed, ok, err := f.store.ClaimExternalRootBindingForManualReconcile(t.Context(), binding.ID, "field-seed", now, now.Add(-time.Minute))
 	require.NoError(t, err)
 	require.True(t, ok)
-	_, _, err = f.store.UpsertExternalFieldState(t.Context(), db.ExternalFieldStateParams{BindingID: binding.ID, MappingID: mapping.ID, ClaimToken: claimed.ClaimToken, Baseline: jsontext.Value(`{"kind":"date","value":"2026-08-20"}`), ConflictKata: jsontext.Value(`{"kind":"date","value":"2026-08-21"}`), ConflictExternal: jsontext.Value(`{"kind":"date","value":"2026-08-22"}`), Conflicted: true, At: now, Actor: "connector:example-connector"})
+	_, _, err = f.store.UpsertExternalFieldState(t.Context(), db.ExternalFieldStateParams{BindingID: binding.ID, MappingID: mapping.ID, ClaimToken: claimed.ClaimToken, Baseline: jsontext.Value(`{"kind":"date","value":"2026-08-20"}`), ConflictPoomsae: jsontext.Value(`{"kind":"date","value":"2026-08-21"}`), ConflictExternal: jsontext.Value(`{"kind":"date","value":"2026-08-22"}`), Conflicted: true, At: now, Actor: "connector:example-connector"})
 	require.NoError(t, err)
 	_, err = f.store.ReleaseExternalRootClaim(t.Context(), binding.ID, claimed.ClaimToken)
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestExternalRootHistoricalRouteActions(t *testing.T) {
 				require.NoError(t, err)
 			case "resolve-field":
 				f.fieldConflict(t, binding)
-				body["kata_field"] = "scheduled_on"
+				body["poomsae_field"] = "scheduled_on"
 				body["use"] = "poomsae"
 			case "resolve-comment":
 				f.pendingComment(t, binding)

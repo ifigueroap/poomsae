@@ -28,7 +28,7 @@ func TestPortEnvBind_ServesAndShutsDownCleanly(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	port := freeTCPPort(t)
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
@@ -40,7 +40,7 @@ func TestPortEnvBind_ServesAndShutsDownCleanly(t *testing.T) {
 
 	stderr := &safeBuffer{}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
-	//nolint:gosec // G204: bin is buildKataBinary's output
+	//nolint:gosec // G204: bin is buildPoomsaeBinary's output
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground")
 	cmd.Env = append(os.Environ(),
 		"POOMSAE_HOME="+home,
@@ -124,7 +124,7 @@ func TestPortEnvBind_AutostartMarkerSuppresses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	port := freeTCPPort(t)
 	home := t.TempDir()

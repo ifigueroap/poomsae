@@ -17,7 +17,7 @@ func TestDecideFieldMerge(t *testing.T) {
 	}{
 		{"unchanged", date("2026-08-20"), date("2026-08-20"), date("2026-08-20"), MergeAccept},
 		{"poomsae only", date("2026-08-20"), date("2026-08-21"), date("2026-08-20"), MergeWriteExternal},
-		{"external only", date("2026-08-20"), date("2026-08-20"), date("2026-08-22"), MergeWriteKata},
+		{"external only", date("2026-08-20"), date("2026-08-20"), date("2026-08-22"), MergeWritePoomsae},
 		{"same change", date("2026-08-20"), date("2026-08-22"), date("2026-08-22"), MergeAccept},
 		{"divergent", date("2026-08-20"), date("2026-08-21"), date("2026-08-22"), MergeConflict},
 		{"clear versus change", date("2026-08-20"), nullValue(), date("2026-08-22"), MergeConflict},
@@ -38,7 +38,7 @@ func TestDecideInitialFieldMerge(t *testing.T) {
 		{"both empty", connector.FieldValue{}, nullValue(), MergeAccept},
 		{"same date", date("2026-08-20"), date("2026-08-20"), MergeAccept},
 		{"poomsae only", date("2026-08-20"), nullValue(), MergeWriteExternal},
-		{"external only", nullValue(), date("2026-08-20"), MergeWriteKata},
+		{"external only", nullValue(), date("2026-08-20"), MergeWritePoomsae},
 		{"different non-empty", date("2026-08-20"), date("2026-08-21"), MergeConflict},
 	}
 	for _, tc := range cases {

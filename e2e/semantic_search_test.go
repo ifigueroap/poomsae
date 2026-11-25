@@ -64,7 +64,7 @@ func TestE2E_SemanticSearch_HybridAndDegraded(t *testing.T) {
 	dirs := newE2EDirs(t)
 	writeEmbeddingsConfig(t, dirs.home, embedder.URL(), fixtureModelV1)
 
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	env := dirs.env()
 
 	daemonStderr := startDaemon(t, bin, env)
@@ -176,13 +176,13 @@ func TestE2E_SemanticSearch_HybridAndDegraded(t *testing.T) {
 		"Flashing new firmware onto the zorblatt widget reports success but doesn't apply.")
 	addLabelE2E(t, client, baseURL, pid, labeledShort, filterLabel)
 
-	withLabel := runKataSearchCLI(t, bin, dirs.repoDir, env, labelToken, "--label", filterLabel)
+	withLabel := runPoomsaeSearchCLI(t, bin, dirs.repoDir, env, labelToken, "--label", filterLabel)
 	require.Containsf(t, withLabel, "issue="+labeledShort,
 		"--label %s must include the labeled issue: %s", filterLabel, withLabel)
 	require.NotContainsf(t, withLabel, "issue="+unlabeledShort,
 		"--label %s must exclude the unlabeled issue: %s", filterLabel, withLabel)
 
-	withoutLabel := runKataSearchCLI(t, bin, dirs.repoDir, env, labelToken, "--no-label", filterLabel)
+	withoutLabel := runPoomsaeSearchCLI(t, bin, dirs.repoDir, env, labelToken, "--no-label", filterLabel)
 	require.Containsf(t, withoutLabel, "issue="+unlabeledShort,
 		"--no-label %s must include the unlabeled issue: %s", filterLabel, withoutLabel)
 	require.NotContainsf(t, withoutLabel, "issue="+labeledShort,
@@ -213,7 +213,7 @@ func TestE2E_SemanticSearch_ModelChangeCutover(t *testing.T) {
 	dirs := newE2EDirs(t)
 	writeEmbeddingsConfig(t, dirs.home, embedder.URL(), fixtureModelV1)
 
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	env := dirs.env()
 
 	cmd, stderr := startDaemonCmd(t, bin, env)
@@ -491,7 +491,7 @@ func addLabelE2E(t *testing.T, client *http.Client, baseURL string, pid int64, r
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "add label: %s", raw)
 }
 
-// runKataSearchCLI runs `poomsae search <query> --lexical --agent --workspace
+// runPoomsaeSearchCLI runs `poomsae search <query> --lexical --agent --workspace
 // <repoDir>` plus extraArgs as a real subprocess against the daemon this
 // test already booted (discovered via the same POOMSAE_HOME runtime files
 // connectDaemon polls) and requires success. This is the one assertion in
@@ -500,10 +500,10 @@ func addLabelE2E(t *testing.T, client *http.Client, baseURL string, pid int64, r
 // talking to the daemon directly over HTTP like the rest of this test.
 // --lexical pins the search mode so the assertion doesn't depend on
 // embedder liveness (the embedder is already closed by step 5 above).
-func runKataSearchCLI(t *testing.T, bin, repoDir string, env []string, query string, extraArgs ...string) string {
+func runPoomsaeSearchCLI(t *testing.T, bin, repoDir string, env []string, query string, extraArgs ...string) string {
 	t.Helper()
 	args := append([]string{"search", query, "--lexical", "--agent", "--workspace", repoDir}, extraArgs...)
-	//nolint:gosec // G204: bin is buildKataBinary's output
+	//nolint:gosec // G204: bin is buildPoomsaeBinary's output
 	cmd := exec.CommandContext(t.Context(), bin, args...)
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
@@ -600,7 +600,7 @@ func startDaemonCmd(t *testing.T, bin string, env []string) (*exec.Cmd, *safeBuf
 	t.Helper()
 	stderr := &safeBuffer{}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
-	//nolint:gosec // G204: bin is buildKataBinary's output
+	//nolint:gosec // G204: bin is buildPoomsaeBinary's output
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground")
 	cmd.Env = env
 	cmd.Stderr = stderr
@@ -643,7 +643,7 @@ func TestE2E_EmbeddingCredentialDiagnosticsAndFileReload(t *testing.T) {
 	dirs := newE2EDirs(t)
 	body := fmt.Sprintf("[search.embeddings]\nbase_url=%q\nmodel=\"m\"\ndims=2\napi_key_env=\"EXAMPLE_EMBEDDING_KEY\"\n", provider.URL)
 	require.NoError(t, os.WriteFile(filepath.Join(dirs.home, "config.toml"), []byte(body), 0600))
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	env := append(dirs.env(), "EXAMPLE_EMBEDDING_KEY=")
 	stderr := startDaemon(t, bin, env)
 	baseURL, client := connectDaemon(t, dirs, stderr)
@@ -665,7 +665,7 @@ func TestE2E_EmbeddingCredentialDiagnosticsAndFileReload(t *testing.T) {
 		require.Contains(t, string(raw), `"code":"validation"`)
 		require.Contains(t, string(raw), "EXAMPLE_EMBEDDING_KEY")
 	}
-	cmd := exec.CommandContext(t.Context(), bin, "--workspace", dirs.repoDir, "--format", "human", "search", "credential") //nolint:gosec // G204: bin is buildKataBinary's test-owned output.
+	cmd := exec.CommandContext(t.Context(), bin, "--workspace", dirs.repoDir, "--format", "human", "search", "credential") //nolint:gosec // G204: bin is buildPoomsaeBinary's test-owned output.
 	cmd.Env = env
 	var out, warning bytes.Buffer
 	cmd.Stdout = &out
@@ -680,7 +680,7 @@ func TestE2E_EmbeddingCredentialDiagnosticsAndFileReload(t *testing.T) {
 	require.NoError(t, os.WriteFile(keyFile, []byte("example-key\n"), 0600))
 	body += fmt.Sprintf("api_key_file=%q\n", keyFile)
 	require.NoError(t, os.WriteFile(filepath.Join(dirs.home, "config.toml"), []byte(body), 0600))
-	reload := exec.CommandContext(t.Context(), bin, "daemon", "reload") //nolint:gosec // G204: bin is buildKataBinary's test-owned output.
+	reload := exec.CommandContext(t.Context(), bin, "daemon", "reload") //nolint:gosec // G204: bin is buildPoomsaeBinary's test-owned output.
 	reload.Env = env
 	reloadOutput, err := reload.CombinedOutput()
 	require.NoError(t, err, string(reloadOutput))

@@ -20,15 +20,15 @@ import (
 	"github.com/ifigueroap/poomsae/pkg/client"
 )
 
-// TestDiscoverStartWithRealKata runs pkg/client's StartWith commands through
+// TestDiscoverStartWithRealPoomsae runs pkg/client's StartWith commands through
 // the real poomsae CLI: a plain local entry starts, a pinned profile is recovered
 // after its identity check, and a profile whose home has no storage is refused
 // without creating any.
-func TestDiscoverStartWithRealKata(t *testing.T) {
+func TestDiscoverStartWithRealPoomsae(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts real daemons")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	isolateEnvironment(t, "PATH", "HOME", "USER", "TMPDIR")
 	home, workHome, lostHome := t.TempDir(), t.TempDir(), t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
@@ -47,7 +47,7 @@ func TestDiscoverStartWithRealKata(t *testing.T) {
 	for _, daemonHome := range []string{home, workHome} {
 		t.Cleanup(func() {
 			// t.Context() is already canceled when cleanup runs.
-			stop := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "stop") //nolint:gosec // G204: bin is buildKataBinary's output
+			stop := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "stop") //nolint:gosec // G204: bin is buildPoomsaeBinary's output
 			stop.Env = append(os.Environ(), "POOMSAE_HOME="+daemonHome)
 			_ = stop.Run()
 		})

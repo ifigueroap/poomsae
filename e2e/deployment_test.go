@@ -26,7 +26,7 @@ func TestVanillaDeploymentEnvironmentOnly(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs isolated daemon binaries")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	home, workspace := t.TempDir(), t.TempDir()
 	port := freeTCPPort(t)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)

@@ -602,17 +602,17 @@ export type unmapConnectorFieldResponse =
 
 export const getUnmapConnectorFieldUrl = ({
   instance,
-  kataField,
+  poomsaeField,
 }: UnmapConnectorFieldPathParameters) => {
-  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(kataField))}`
+  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(poomsaeField))}`
 }
 
 export const unmapConnectorField = async (
-  { instance, kataField }: UnmapConnectorFieldPathParameters,
+  { instance, poomsaeField }: UnmapConnectorFieldPathParameters,
   options?: Parameters<typeof orvalFetch>[1],
 ): Promise<unmapConnectorFieldResponse> => {
   return orvalFetch<unmapConnectorFieldResponse>(
-    getUnmapConnectorFieldUrl({ instance, kataField }),
+    getUnmapConnectorFieldUrl({ instance, poomsaeField }),
     {
       ...options,
       method: 'DELETE',
@@ -643,13 +643,13 @@ export type mapConnectorFieldResponse =
 
 export const getMapConnectorFieldUrl = ({
   instance,
-  kataField,
+  poomsaeField,
 }: MapConnectorFieldPathParameters) => {
-  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(kataField))}`
+  return `/api/v1/connectors/${encodeURIComponent(String(instance))}/fields/${encodeURIComponent(String(poomsaeField))}`
 }
 
 export const mapConnectorField = async (
-  { instance, kataField }: MapConnectorFieldPathParameters,
+  { instance, poomsaeField }: MapConnectorFieldPathParameters,
   mapConnectorFieldRequestBody: MapConnectorFieldRequestBody,
   options?: Parameters<typeof orvalFetch>[1],
 ): Promise<mapConnectorFieldResponse> => {
@@ -661,12 +661,15 @@ export const mapConnectorField = async (
     if (Array.isArray(h)) return Object.fromEntries(h)
     return h
   }
-  return orvalFetch<mapConnectorFieldResponse>(getMapConnectorFieldUrl({ instance, kataField }), {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(mapConnectorFieldRequestBody),
-  })
+  return orvalFetch<mapConnectorFieldResponse>(
+    getMapConnectorFieldUrl({ instance, poomsaeField }),
+    {
+      ...options,
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+      body: JSON.stringify(mapConnectorFieldRequestBody),
+    },
+  )
 }
 
 export type digestGlobalResponse200 = {

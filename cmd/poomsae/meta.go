@@ -167,7 +167,7 @@ type metaPatchResponse struct {
 }
 
 // metaGetWholeJSON is the CLI-composed --json envelope for `poomsae meta get
-// <ref>` (no key given). It mirrors the daemon's kata_api_version envelope
+// <ref>` (no key given). It mirrors the daemon's poomsae_api_version envelope
 // convention (see helpers.go: emitJSON) even though this payload is
 // assembled client-side rather than re-emitted from a daemon response body.
 type metaGetWholeJSON struct {

@@ -49,7 +49,7 @@ func TestConfigValidatePostgresIdentifiers(t *testing.T) {
 		})
 	}
 
-	for _, schema := range []string{"poomsae", "kata_2", "example_schema"} {
+	for _, schema := range []string{"poomsae", "poomsae_2", "example_schema"} {
 		t.Run(schema, func(t *testing.T) {
 			t.Parallel()
 			err := (pgstore.Config{Schema: schema, SchemaMode: pgstore.SchemaModeBootstrap}).Validate()
@@ -235,6 +235,7 @@ func TestIssueScopedTokensMigrationUpgradesVersion27(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, store.Close())
 	dropExpiringAssignmentsSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "issue_token_upgrade")
 	_, err = admin.ExecContext(ctx, `
 ALTER TABLE issue_token_upgrade.api_tokens DROP CONSTRAINT api_tokens_scope_shape;
 ALTER TABLE issue_token_upgrade.api_tokens DROP COLUMN expires_at;
@@ -287,6 +288,7 @@ func TestExpiringAssignmentsMigrationUpgradesVersion28(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, store.Close())
 	dropIssueStatusSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "assignment_expiry_upgrade")
 	_, err = admin.ExecContext(ctx, `
 DROP INDEX assignment_expiry_upgrade.idx_issues_assignment_expires_on;
 ALTER TABLE assignment_expiry_upgrade.issues
@@ -382,6 +384,7 @@ func setExternalRootMigrationSource(
 ) {
 	t.Helper()
 	dropExpiringAssignmentsSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, schema)
 	_, err := admin.ExecContext(ctx, fmt.Sprintf(`
 ALTER TABLE %s.api_tokens DROP CONSTRAINT api_tokens_scope_shape;
 ALTER TABLE %s.api_tokens DROP COLUMN expires_at;
@@ -404,6 +407,7 @@ func setCommentTeammateMigrationSource(
 ) {
 	t.Helper()
 	dropExpiringAssignmentsSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, schema)
 	_, err := admin.ExecContext(ctx, fmt.Sprintf(`
 ALTER TABLE %s.api_tokens DROP CONSTRAINT api_tokens_scope_shape,
   DROP COLUMN expires_at, DROP COLUMN scope_root_issue_uid,
@@ -1047,7 +1051,7 @@ func TestValidationRejectsIncompleteCanonicalSchema(t *testing.T) {
 		{name: "function", mutation: `DROP FUNCTION %s.rebuild_issue_search(BIGINT) CASCADE`, want: `function "rebuild_issue_search(bigint)"`},
 		{name: "function_definition", mutation: `CREATE OR REPLACE FUNCTION %s.enforce_uid_immutable() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$`, want: `function definitions do not match`},
 		{name: "function_attribute", mutation: `ALTER FUNCTION %s.rewrite_project_uid_for_adoption(BIGINT, TEXT) SECURITY INVOKER`, want: `function definitions do not match`},
-		{name: "text_search_definition", mutation: `ALTER TEXT SEARCH CONFIGURATION %s.kata_simple_unaccent ALTER MAPPING FOR word WITH pg_catalog.simple`, want: `text search definitions do not match`},
+		{name: "text_search_definition", mutation: `ALTER TEXT SEARCH CONFIGURATION %s.poomsae_simple_unaccent ALTER MAPPING FOR word WITH pg_catalog.simple`, want: `text search definitions do not match`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			schema := "manifest_" + test.name

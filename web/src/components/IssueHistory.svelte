@@ -5,7 +5,7 @@
 
   import { closingAttachments } from '../lib/history/attachments'
 
-  import { describeKataEvent } from '../lib/history/format'
+  import { describePoomsaeEvent } from '../lib/history/format'
 
   interface Props {
     events: readonly PoomsaeTaskEvent[]
@@ -83,7 +83,7 @@
   {:else}
     <ul class="events">
       {#each events as event (event.event_uid)}
-        {@const descriptor = describeKataEvent(event)}
+        {@const descriptor = describePoomsaeEvent(event)}
         {@const EventIcon = descriptor.icon}
         {@const time = eventTime(event.created_at)}
         {@const session = closingSession(event)}

@@ -9,7 +9,7 @@ import (
 
 func TestPreflightDaemonSQLiteBusyTimeout(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SQLITE_BUSY_TIMEOUT", "2s")
 	startup, err := preflightDaemonStartup(t.Context(), "", false, false)
 	require.NoError(t, err)

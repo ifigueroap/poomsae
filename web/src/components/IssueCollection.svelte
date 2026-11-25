@@ -11,8 +11,8 @@
   import type { PoomsaeCurrentView } from '../lib/poomsae/authority'
   import {
     DEFAULT_POOMSAE_TASK_SORT,
-    sortKataTasks,
-    toggleKataTaskSort,
+    sortPoomsaeTasks,
+    togglePoomsaeTaskSort,
     type PoomsaeTaskSort,
     type PoomsaeTaskSortKey,
   } from '../lib/poomsae/sort'
@@ -30,10 +30,10 @@
   import {
     POOMSAE_OPTIONAL_TASK_COLUMNS,
     clampColumnWidth,
-    loadKataTaskColumnVisibility,
-    loadKataTaskColumnWidths,
-    persistKataTaskColumnVisibility,
-    persistKataTaskColumnWidths,
+    loadPoomsaeTaskColumnVisibility,
+    loadPoomsaeTaskColumnWidths,
+    persistPoomsaeTaskColumnVisibility,
+    persistPoomsaeTaskColumnWidths,
     summarizeBlockedBy,
     type PoomsaeOptionalTaskColumn,
     type PoomsaeTaskColumnVisibility,
@@ -105,8 +105,8 @@
   }: Props = $props()
 
   const SORT_STORAGE_KEY = 'poomsae:issue-sort/v1'
-  const restoredColumnVisibility = loadKataTaskColumnVisibility()
-  const restoredColumnWidths = loadKataTaskColumnWidths()
+  const restoredColumnVisibility = loadPoomsaeTaskColumnVisibility()
+  const restoredColumnWidths = loadPoomsaeTaskColumnWidths()
   const restoredSort = loadSort()
   const initialSort =
     restoredSort.key === 'id' ||
@@ -509,7 +509,7 @@
   }
 
   function handleSortClick(key: PoomsaeTaskSortKey) {
-    sort = toggleKataTaskSort(sort, key)
+    sort = togglePoomsaeTaskSort(sort, key)
     persistSort(sort)
   }
 
@@ -540,7 +540,7 @@
       persistSort(sort)
     }
     columnVisibility = next
-    persistKataTaskColumnVisibility(next)
+    persistPoomsaeTaskColumnVisibility(next)
   }
 
   let resizeStartWidths: Partial<Record<PoomsaeOptionalTaskColumn | 'date' | 'closed', number>> = {}
@@ -590,7 +590,7 @@
     event: SplitResizeEvent,
   ): void {
     updateColumnWidth(column, event)
-    persistKataTaskColumnWidths(columnWidths)
+    persistPoomsaeTaskColumnWidths(columnWidths)
   }
 
   function copyTaskID(issue: PoomsaeTaskSummary): void {
@@ -614,7 +614,7 @@
   }
 
   function sortIssues(issues: readonly PoomsaeTaskSummary[]): PoomsaeTaskSummary[] {
-    return sortKataTasks(
+    return sortPoomsaeTasks(
       issues,
       effectiveSort,
       unsortedVisibleChildren,

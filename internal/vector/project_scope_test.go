@@ -159,7 +159,7 @@ func TestEmbeddingArtifactImportSemanticRetrieval(t *testing.T) {
 			content, err := store.ListIssueContent(ctx, 0, 10)
 			require.NoError(t, err)
 			require.Len(t, content, 1)
-			identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: "00000000000000000000000002", Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "l2", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+			identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: "00000000000000000000000002", Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "l2", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 			artifact, err := embedding.NewArtifact(identity, embedding.EmbedText(issue.Title, issue.Body), [][]float32{{1, 0}, {0, 1}})
 			require.NoError(t, err)
 			require.Len(t, artifact.Chunks, 2)

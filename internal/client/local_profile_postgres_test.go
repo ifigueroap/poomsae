@@ -74,7 +74,7 @@ func TestEnsureRunningKeepsDaemonWhenPostgresValidateModeCannotOpenSchema(t *tes
 			require.NoError(t, err)
 
 			t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "")
-			tmp := setupKataEnv(t)
+			tmp := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", dsn)
 			t.Setenv("POOMSAE_POSTGRES_SCHEMA", "ensure_meta")
 			t.Setenv("POOMSAE_POSTGRES_SCHEMA_MODE", tt.mode)

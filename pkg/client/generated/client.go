@@ -971,7 +971,7 @@ func (c *Client) ListConnectorFields(ctx context.Context, options *ListConnector
 func (c *Client) UnmapConnectorField(ctx context.Context, options *UnmapConnectorFieldRequestOptions, reqEditors ...runtime.RequestEditorFn) (*UnmapConnectorFieldResponse, error) {
 	var err error
 	reqParams := runtime.RequestOptionsParameters{
-		RequestURL: c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{kata_field}",
+		RequestURL: c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{poomsae_field}",
 		Method:     "DELETE",
 		Options:    options,
 	}
@@ -1023,7 +1023,7 @@ func (c *Client) UnmapConnectorField(ctx context.Context, options *UnmapConnecto
 		return target, nil
 	}
 
-	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{kata_field}")
+	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{poomsae_field}")
 	if err != nil {
 		return nil, fmt.Errorf("error executing request: %w", err)
 	}
@@ -1033,7 +1033,7 @@ func (c *Client) UnmapConnectorField(ctx context.Context, options *UnmapConnecto
 func (c *Client) MapConnectorField(ctx context.Context, options *MapConnectorFieldRequestOptions, reqEditors ...runtime.RequestEditorFn) (*MapConnectorFieldResponse, error) {
 	var err error
 	reqParams := runtime.RequestOptionsParameters{
-		RequestURL:  c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{kata_field}",
+		RequestURL:  c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{poomsae_field}",
 		Method:      "PUT",
 		Options:     options,
 		ContentType: "application/json",
@@ -1086,7 +1086,7 @@ func (c *Client) MapConnectorField(ctx context.Context, options *MapConnectorFie
 		return target, nil
 	}
 
-	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{kata_field}")
+	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{poomsae_field}")
 	if err != nil {
 		return nil, fmt.Errorf("error executing request: %w", err)
 	}

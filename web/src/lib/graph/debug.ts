@@ -101,22 +101,22 @@ function cloneSnapshot(): PoomsaeGraphDebugSnapshot {
   }
 }
 
-function installKataGraphDebugHook(): void {
+function installPoomsaeGraphDebugHook(): void {
   if (typeof window === 'undefined') return
-  ;(window as Window & { __kata_graph_debug?: PoomsaeGraphDebugAPI }).__kata_graph_debug =
+  ;(window as Window & { __poomsae_graph_debug?: PoomsaeGraphDebugAPI }).__poomsae_graph_debug =
     poomsaeGraphDebug
 }
 
-export function recordKataGraphDebugEvent(
+export function recordPoomsaeGraphDebugEvent(
   kind: PoomsaeGraphDebugEventKind,
   detail?: Record<string, unknown>,
 ): void {
-  installKataGraphDebugHook()
+  installPoomsaeGraphDebugHook()
   events = [...events, { id: nextEventID++, at: now(), kind, detail }].slice(-maxEvents)
 }
 
-export function setKataGraphDebugGraph(snapshot: PoomsaeGraphDebugGraphSnapshot): void {
-  installKataGraphDebugHook()
+export function setPoomsaeGraphDebugGraph(snapshot: PoomsaeGraphDebugGraphSnapshot): void {
+  installPoomsaeGraphDebugHook()
   latestGraph = {
     ...snapshot,
     nodeIds: [...snapshot.nodeIds],
@@ -128,18 +128,18 @@ export function setKataGraphDebugGraph(snapshot: PoomsaeGraphDebugGraphSnapshot)
   }
 }
 
-export function setKataGraphDebugStore(snapshot: PoomsaeGraphDebugStoreSnapshot): void {
-  installKataGraphDebugHook()
+export function setPoomsaeGraphDebugStore(snapshot: PoomsaeGraphDebugStoreSnapshot): void {
+  installPoomsaeGraphDebugHook()
   store = { ...snapshot, queueKeys: [...snapshot.queueKeys] }
 }
 
-export function getKataGraphDebugSnapshot(): PoomsaeGraphDebugSnapshot {
-  installKataGraphDebugHook()
+export function getPoomsaeGraphDebugSnapshot(): PoomsaeGraphDebugSnapshot {
+  installPoomsaeGraphDebugHook()
   return cloneSnapshot()
 }
 
-export function resetKataGraphDebug(): void {
-  installKataGraphDebugHook()
+export function resetPoomsaeGraphDebug(): void {
+  installPoomsaeGraphDebugHook()
   nextEventID = 1
   events = []
   latestGraph = undefined
@@ -147,8 +147,8 @@ export function resetKataGraphDebug(): void {
 }
 
 export const poomsaeGraphDebug: PoomsaeGraphDebugAPI = {
-  snapshot: getKataGraphDebugSnapshot,
-  reset: resetKataGraphDebug,
+  snapshot: getPoomsaeGraphDebugSnapshot,
+  reset: resetPoomsaeGraphDebug,
 }
 
-installKataGraphDebugHook()
+installPoomsaeGraphDebugHook()

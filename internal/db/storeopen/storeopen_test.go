@@ -280,10 +280,10 @@ func TestOpenReadOnly_OnCurrentDBSucceeds(t *testing.T) {
 	assert.Equal(t, db.CurrentSchemaVersion(), v)
 }
 
-// TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError proves POOMSAE_DSN
+// TestOpenResolvedFromPoomsaeDSNEnvKeepsPasswordOutOfError proves POOMSAE_DSN
 // plumbing reaches storeopen.Open end-to-end and that a connection failure
 // never echoes the password embedded in the DSN.
-func TestOpenResolvedFromKataDSNEnvKeepsPasswordOutOfError(t *testing.T) {
+func TestOpenResolvedFromPoomsaeDSNEnvKeepsPasswordOutOfError(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "postgres://user:SECRET@127.0.0.1:1/poomsae?connect_timeout=1&sslmode=disable") //nolint:gosec // fixture
 	t.Setenv("POOMSAE_DB", "")

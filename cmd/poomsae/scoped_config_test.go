@@ -15,7 +15,7 @@ import (
 const untrustedWebConfig = "[web]\npublic_origin = \"http://daemon.example\"\n"
 
 func TestDaemonStartRejectsInvalidServerConfig(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(untrustedWebConfig), 0600))
 	_, err := preflightDaemonStartup(t.Context(), "", false, false)
@@ -25,7 +25,7 @@ func TestDaemonStartRejectsInvalidServerConfig(t *testing.T) {
 func TestFederationSpokeAuthIgnoresInvalidServerConfig(t *testing.T) {
 	for _, named := range []bool{false, true} {
 		t.Run(fmt.Sprintf("named=%v", named), func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			resetFlags(t)
 			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 			t.Setenv("POOMSAE_SERVER", "")

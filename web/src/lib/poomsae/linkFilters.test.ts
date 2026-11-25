@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { PoomsaeTaskLink, PoomsaeTaskSummary } from './types'
 import {
-  applyKataLinkStatusScope,
-  createKataLinkFilters,
+  applyPoomsaeLinkStatusScope,
+  createPoomsaeLinkFilters,
   poomsaeLinkCouldAffectVisibleResults,
   poomsaeLinkMatchesFilters,
-  relationForKataLink,
+  relationForPoomsaeLink,
 } from './linkFilters'
 
 const selectedUID = 'issue-selected'
@@ -53,13 +53,13 @@ describe('poomsae link filters', () => {
     ['closed', { open: false, closed: true }],
     ['all', { open: true, closed: true }],
   ] as const)('defaults task states from the %s scope', (scope, statuses) => {
-    expect(createKataLinkFilters(scope).statuses).toEqual(statuses)
+    expect(createPoomsaeLinkFilters(scope).statuses).toEqual(statuses)
   })
 
   it('classifies relationship direction from the selected task', () => {
-    expect(relationForKataLink(link({ type: 'parent' }), selectedUID)).toBe('parent')
+    expect(relationForPoomsaeLink(link({ type: 'parent' }), selectedUID)).toBe('parent')
     expect(
-      relationForKataLink(
+      relationForPoomsaeLink(
         link({
           type: 'parent',
           from: {
@@ -78,9 +78,9 @@ describe('poomsae link filters', () => {
         selectedUID,
       ),
     ).toBe('child')
-    expect(relationForKataLink(link({ type: 'blocks' }), selectedUID)).toBe('blocks')
+    expect(relationForPoomsaeLink(link({ type: 'blocks' }), selectedUID)).toBe('blocks')
     expect(
-      relationForKataLink(
+      relationForPoomsaeLink(
         link({
           type: 'blocks',
           from: {
@@ -102,18 +102,18 @@ describe('poomsae link filters', () => {
   })
 
   it('resets task states without changing relationship choices', () => {
-    const current = createKataLinkFilters('all')
+    const current = createPoomsaeLinkFilters('all')
     current.relations.related = false
 
-    expect(applyKataLinkStatusScope(current, 'closed')).toEqual({
+    expect(applyPoomsaeLinkStatusScope(current, 'closed')).toEqual({
       statuses: { open: false, closed: true },
       relations: { ...current.relations, related: false },
     })
   })
 
   it('matches resolved, pending, and failed peers without silently hiding failures', () => {
-    const openOnly = createKataLinkFilters('open')
-    const mixed = createKataLinkFilters('all')
+    const openOnly = createPoomsaeLinkFilters('open')
+    const mixed = createPoomsaeLinkFilters('all')
 
     expect(
       poomsaeLinkMatchesFilters(
@@ -139,7 +139,7 @@ describe('poomsae link filters', () => {
   })
 
   it('ignores pending work that disabled filters cannot reveal', () => {
-    const filters = createKataLinkFilters('open')
+    const filters = createPoomsaeLinkFilters('open')
     filters.relations.related = false
     expect(poomsaeLinkCouldAffectVisibleResults(link(), selectedUID, filters)).toBe(false)
 

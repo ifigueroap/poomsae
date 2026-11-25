@@ -26,7 +26,7 @@ func TestDaemonStartsConfiguredFederationIngress(t *testing.T) {
 	for _, secret := range []string{strings.Repeat("k", 64), ""} {
 		t.Run(fmt.Sprintf("key available %t", secret != ""), func(t *testing.T) {
 			resetFlags(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("PORT", "")
 			t.Setenv("TEST_DAEMON_SIGNING_KEY", secret)
 			require.NoError(t, federationsigning.InitializeReplayState(filepath.Join(home, "federation-signing-replay.state")))
@@ -97,7 +97,7 @@ enabled = true
 
 func TestDaemonStartRejectsKeysSharingOneSecretFile(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	secret := strings.Repeat("k", 64)
 	keyFile := filepath.Join(home, "signing.key")

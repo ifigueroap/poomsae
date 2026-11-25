@@ -265,7 +265,7 @@ func forbiddenPath(value any, path, method string) (string, bool) {
 
 func forbiddenSemanticKey(key string) bool {
 	normalized := normalizeSemanticKey(key)
-	if normalized == "poomsae" || normalized == "kata" || strings.HasPrefix(normalized, "poomsae_") || strings.HasPrefix(normalized, "kata_") {
+	if normalized == "poomsae" || strings.HasPrefix(normalized, "poomsae_") {
 		return true
 	}
 	switch normalized {

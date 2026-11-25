@@ -26,6 +26,7 @@ func TestIssueCreatedOrderIndexMigrationUpgradesVersion41(t *testing.T) {
 	t.Cleanup(func() { _ = admin.Close() })
 	dropIssueCreatedAndEventIndexes(ctx, t, admin, schema)
 	dropMCPEventSubscriptionsSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "issue_created_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE issue_created_upgrade.meta SET value='41' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	upgraded, err := pgstore.OpenWithConfig(ctx, dsn, pgstore.Config{Schema: schema, SchemaMode: pgstore.SchemaModeBootstrap})

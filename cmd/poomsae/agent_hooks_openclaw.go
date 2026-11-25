@@ -134,7 +134,7 @@ func planOpenClawAgentHooks(opts nativeAgentHookOptions, remove bool) (nativeAge
 	owned := plan.Changes[0].OriginalExists
 	if owned {
 		line, _, ok := bytes.Cut(plan.Changes[0].Original, []byte("\n"))
-		prefix, prefixed := recognizedMetadataPrefix(line, openClawManagedPrefix, "// kata-openclaw-managed: ")
+		prefix, prefixed := []byte(openClawManagedPrefix), bytes.HasPrefix(line, []byte(openClawManagedPrefix))
 		if !ok || !prefixed {
 			return plan, fmt.Errorf("OpenClaw package %q is authored or unsupported; preserve it and choose another native package", root)
 		}
@@ -143,8 +143,7 @@ func planOpenClawAgentHooks(opts nativeAgentHookOptions, remove bool) (nativeAge
 		if err := json.Unmarshal(metadata, &fields); err != nil || fields == nil {
 			return plan, fmt.Errorf("OpenClaw package %q has invalid ownership metadata; preserve it and choose another native package", root)
 		}
-		legacyID := strings.Replace(id, "poomsae-hooks-", "kata-hooks-", 1)
-		if json.Unmarshal(metadata, &old) != nil || old.Version != 1 || (old.ID != id && old.ID != legacyID) || old.Workspace != workspace {
+		if json.Unmarshal(metadata, &old) != nil || old.Version != 1 || old.ID != id || old.Workspace != workspace {
 			return plan, fmt.Errorf("OpenClaw package %q is authored or unsupported; preserve it and choose another native package", root)
 		}
 		_, old.ShareInboxRecorded = fields["shareInbox"]

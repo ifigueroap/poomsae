@@ -87,7 +87,7 @@ func TestTokensCreateCommand_WritesScopedTokenToOwnerOnlyFile(t *testing.T) {
 	secret, err := os.ReadFile(tokenFile) //nolint:gosec // tokenFile is a test-owned temporary path.
 	require.NoError(t, err)
 	plaintext := strings.TrimSpace(string(secret))
-	require.True(t, strings.HasPrefix(plaintext, "kata_"))
+	require.True(t, strings.HasPrefix(plaintext, "poomsae_"))
 	assert.NotContains(t, out, plaintext)
 	assert.NotContains(t, out, "plaintext")
 	assert.Contains(t, out, "actor=worker-a")
@@ -327,7 +327,7 @@ func TestTokensCreateCommand_RejectsUnsupportedServerBeforeMinting(t *testing.T)
 }
 
 func TestTokensCreateCommand_RevokesMismatchedScopedResponseWithoutWritingSecret(t *testing.T) {
-	const secret = "kata_mismatched-secret"
+	const secret = "poomsae_mismatched-secret" // #nosec G101 -- synthetic token fixture, not a credential.
 	revoked := false
 	server := scopedTokenTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -437,7 +437,7 @@ func TestTokensCommands_JSONAndAgentOutput(t *testing.T) {
 
 	jsonOut := requireCmdOutput(t, env, "--json", "tokens", "create", "--actor", "wesm")
 	var created struct {
-		APIVersion int `json:"kata_api_version"`
+		APIVersion int `json:"poomsae_api_version"`
 		Token      struct {
 			ID    int64  `json:"id"`
 			Actor string `json:"actor"`
@@ -447,7 +447,7 @@ func TestTokensCommands_JSONAndAgentOutput(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(jsonOut), &created))
 	assert.Equal(t, 1, created.APIVersion)
 	assert.Equal(t, "wesm", created.Token.Actor)
-	assert.True(t, strings.HasPrefix(created.Plaintext, "kata_"))
+	assert.True(t, strings.HasPrefix(created.Plaintext, "poomsae_"))
 	assert.Equal(t, 1, strings.Count(jsonOut, created.Plaintext))
 	assert.NotContains(t, jsonOut, "token_hash")
 
@@ -463,7 +463,7 @@ func extractTokenPlaintext(t *testing.T, out string) string {
 	for line := range strings.SplitSeq(out, "\n") {
 		if token, ok := strings.CutPrefix(line, "token="); ok {
 			require.NotEmpty(t, token)
-			require.True(t, strings.HasPrefix(token, "kata_"), "plaintext line %q", line)
+			require.True(t, strings.HasPrefix(token, "poomsae_"), "plaintext line %q", line)
 			return token
 		}
 	}

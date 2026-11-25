@@ -29,7 +29,7 @@ esac
 # shellcheck source=assets.sh
 . "$script_dir/assets.sh"
 
-if [[ "$force" == false && -z "$pinned_commit" ]] && kata_docs_validate_assets "$target" >/dev/null 2>&1; then
+if [[ "$force" == false && -z "$pinned_commit" ]] && poomsae_docs_validate_assets "$target" >/dev/null 2>&1; then
   exit 0
 fi
 
@@ -81,7 +81,7 @@ mkdir -p "$staged"
 # consumer close into a producer EPIPE under pipefail.
 git -C "$repo_root" archive "$asset_ref" > "$archive"
 tar -xf "$archive" -C "$staged"
-if ! kata_docs_validate_assets "$staged"; then
+if ! poomsae_docs_validate_assets "$staged"; then
   printf 'docs screenshots not hydrated: %s failed the expected asset contract\n' "$assets_branch" >&2
   exit 1
 fi

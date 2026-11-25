@@ -106,7 +106,7 @@ func New(cfg Config) (*Client, error) {
 	generation := kitvec.Generation{Model: cfg.Model, Dimensions: dims, Params: params}
 	space := embedmodel.Descriptor{
 		Model: parts.Model, Roles: parts.Roles, Deployment: parts.Deployment,
-		Input:  embedconfig.InputLimits{Recipe: "kata.issue/v" + strconv.Itoa(RecipeVersion)},
+		Input:  embedconfig.InputLimits{Recipe: "poomsae.issue/v" + strconv.Itoa(RecipeVersion)},
 		Legacy: []string{generation.Fingerprint()},
 	}
 	if err := space.Validate(); err != nil {

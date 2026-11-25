@@ -39,6 +39,7 @@ func TestReadyIndexMigrationUpgrades(t *testing.T) {
 				require.NoError(t, err)
 				dropMCPEventSubscriptionsSchema(ctx, t, admin, schema)
 			}
+			restoreV54Names(ctx, t, admin, "ready_priority_upgrade")
 			_, err = admin.ExecContext(ctx, `UPDATE ready_priority_upgrade.meta SET value=$1 WHERE key='schema_version'`, fmt.Sprint(sourceVersion))
 			require.NoError(t, err)
 			upgraded, err := pgstore.OpenWithConfig(ctx, dsn, pgstore.Config{Schema: schema, SchemaMode: pgstore.SchemaModeBootstrap})

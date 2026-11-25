@@ -14,9 +14,9 @@ import (
 )
 
 func TestExportRejectsConfiguredRemoteBeforeReadingLocalStorage(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	project, err := d.CreateProject(t.Context(), "local-project")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -44,9 +44,9 @@ func TestExportRejectsConfiguredRemoteBeforeReadingLocalStorage(t *testing.T) {
 }
 
 func TestExportRejectsExplicitDaemonSelection(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	project, err := d.CreateProject(t.Context(), "local-project")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -56,7 +56,7 @@ func TestExportRejectsExplicitDaemonSelection(t *testing.T) {
 	require.NoError(t, d.Close())
 
 	profileHome := t.TempDir()
-	profileDB := openKataTestDB(t, filepath.Join(profileHome, "poomsae.db"))
+	profileDB := openPoomsaeTestDB(t, filepath.Join(profileHome, "poomsae.db"))
 	profileUID := profileDB.InstanceUID()
 	require.NoError(t, profileDB.Close())
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf(`[[daemon]]
@@ -79,9 +79,9 @@ instance_uid = %q
 }
 
 func TestExportWritesJSONLToOutput(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	p, err := d.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -104,9 +104,9 @@ func TestExportWritesJSONLToOutput(t *testing.T) {
 }
 
 func TestExportReadsDatabaseWithoutWritePermission(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	p, err := d.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -130,10 +130,10 @@ func TestExportReadsDatabaseWithoutWritePermission(t *testing.T) {
 }
 
 func TestExportDoesNotReplaceExistingOutputOnFailure(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
 	ctx := t.Context()
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	p, err := d.CreateProject(ctx, "poomsae")
 	require.NoError(t, err)
 	issue, _, err := d.CreateIssue(ctx, db.CreateIssueParams{
@@ -164,8 +164,8 @@ func TestExportDoesNotReplaceExistingOutputOnFailure(t *testing.T) {
 }
 
 func TestExportReplacesExistingOutput(t *testing.T) {
-	home := setupKataEnv(t)
-	d := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	home := setupPoomsaeEnv(t)
+	d := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	p, err := d.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -186,8 +186,8 @@ func TestExportReplacesExistingOutput(t *testing.T) {
 }
 
 func TestExportRefusesSymlinkedOutput(t *testing.T) {
-	home := setupKataEnv(t)
-	d := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	home := setupPoomsaeEnv(t)
+	d := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	_, err := d.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -211,9 +211,9 @@ func TestExportRefusesSymlinkedOutput(t *testing.T) {
 }
 
 func TestExportAgentOutput(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	p, err := d.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	_, _, err = d.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -234,10 +234,10 @@ func TestExportAgentOutput(t *testing.T) {
 }
 
 func TestExportScopesByProjectName(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
 	ctx := t.Context()
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	alpha, err := d.CreateProject(ctx, "alpha")
 	require.NoError(t, err)
 	beta, err := d.CreateProject(ctx, "beta")
@@ -258,9 +258,9 @@ func TestExportScopesByProjectName(t *testing.T) {
 }
 
 func TestExportProjectNameNotFound(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	_, err := d.CreateProject(t.Context(), "alpha")
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -271,9 +271,9 @@ func TestExportProjectNameNotFound(t *testing.T) {
 }
 
 func TestExportProjectFlagConflict(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	alpha, err := d.CreateProject(t.Context(), "alpha")
 	require.NoError(t, err)
 	beta, err := d.CreateProject(t.Context(), "beta")
@@ -290,9 +290,9 @@ func TestExportProjectFlagConflict(t *testing.T) {
 }
 
 func TestExportRefusesRunningDaemonUnlessAllowed(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	require.NoError(t, d.Close())
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)

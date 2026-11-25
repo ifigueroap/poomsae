@@ -105,18 +105,18 @@ func TestRecordedExternalSurfaceRejectsEmbeddedLongUIDsOnly(t *testing.T) {
 	}
 }
 
-func TestRecordedExternalSurfaceRejectsForbiddenKataKeysInsideFieldValues(t *testing.T) {
+func TestRecordedExternalSurfaceRejectsForbiddenPoomsaeKeysInsideFieldValues(t *testing.T) {
 	for _, key := range []string{
-		"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
-		"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
-		"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
-		"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
-		"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
+		"poomsae_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+		"poomsae_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+		"poomsae_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+		"poomsae_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+		"poomsae_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 	} {
 		params, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
 			"fields": map[string]any{
-				"kata_uid": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
+				"poomsae_uid": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
 			},
 		})
 		require.NoError(t, err)
@@ -246,7 +246,7 @@ func testE2ERestartInboundCompletion(t *testing.T, executable string, backend e2
 	state = h.readState(t)
 	assert.Equal(t, "complete", state.Roots[0].Root.State, "verified Poomsae close re-completes an externally reopened root")
 	assert.Len(t, state.Roots, 1)
-	assertExternalCallsContainNoKataOrChildIdentity(
+	assertExternalCallsContainNoPoomsaeOrChildIdentity(
 		t, state,
 		[]string{h.issue.UID, child.UID},
 		[]string{h.issue.ShortID, child.ShortID},
@@ -813,7 +813,7 @@ func callCount(current fakeconnector.State, method string) int {
 	return count
 }
 
-func assertExternalCallsContainNoKataOrChildIdentity(
+func assertExternalCallsContainNoPoomsaeOrChildIdentity(
 	t *testing.T,
 	current fakeconnector.State,
 	longUIDs []string,

@@ -30,7 +30,7 @@ func TestImportForceDoesNotReplaceNewlyAppearedDestination(t *testing.T) {
 	//nolint:gosec // FIFO is an owned temporary fixture, not an external path.
 	writer, err := os.OpenFile(fifo, os.O_WRONLY, 0600)
 	require.NoError(t, err)
-	concurrent := openKataTestDB(t, path)
+	concurrent := openPoomsaeTestDB(t, path)
 	project, err := concurrent.CreateProject(t.Context(), "newly-created-project")
 	require.NoError(t, err)
 	expectedUID := concurrent.InstanceUID()
@@ -44,7 +44,7 @@ func TestImportForceDoesNotReplaceNewlyAppearedDestination(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("import did not finish")
 	}
-	retained := openKataTestDB(t, path)
+	retained := openPoomsaeTestDB(t, path)
 	defer func() { _ = retained.Close() }()
 	require.Equal(t, expectedUID, retained.InstanceUID())
 	_, err = retained.ProjectByUID(t.Context(), project.UID)

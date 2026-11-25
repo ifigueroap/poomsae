@@ -233,15 +233,15 @@ func TestSchema_BaselineMatchesExpectedSurface(t *testing.T) {
 		   AND tablename = 'comments'
 		   AND indexname = 'idx_comments_search'`).Scan(&commentGinIndex)
 	require.NoError(t, err)
-	assert.Contains(t, commentGinIndex, "USING gin (to_tsvector('kata_simple_unaccent'::regconfig, body))")
+	assert.Contains(t, commentGinIndex, "USING gin (to_tsvector('poomsae_simple_unaccent'::regconfig, body))")
 
 	// --- text search config ---
 	var textSearchConfig string
 	err = s.QueryRowContext(ctx, `
 		SELECT cfgname FROM pg_ts_config
-		 WHERE cfgname = 'kata_simple_unaccent'`).Scan(&textSearchConfig)
+		 WHERE cfgname = 'poomsae_simple_unaccent'`).Scan(&textSearchConfig)
 	require.NoError(t, err)
-	assert.Equal(t, "kata_simple_unaccent", textSearchConfig)
+	assert.Equal(t, "poomsae_simple_unaccent", textSearchConfig)
 
 	// --- per-table FK counts ---
 	for table, want := range expectedFKCounts {

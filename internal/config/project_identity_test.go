@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDiscoverPaths_FindsKataTomlAndGit(t *testing.T) {
+func TestDiscoverPaths_FindsPoomsaeTomlAndGit(t *testing.T) {
 	root := t.TempDir()
 	testfix.MkDotGit(t, root)
-	testfix.WriteKataToml(t, root, "x")
+	testfix.WritePoomsaeToml(t, root, "x")
 	sub := filepath.Join(root, "a", "b")
 	require.NoError(t, os.MkdirAll(sub, 0o755)) //nolint:gosec // test fixture under TempDir.
 
@@ -25,12 +25,12 @@ func TestDiscoverPaths_FindsKataTomlAndGit(t *testing.T) {
 	assert.Equal(t, root, d.GitRoot)
 }
 
-func TestDiscoverPaths_KataTomlInSubdirOfGit(t *testing.T) {
+func TestDiscoverPaths_PoomsaeTomlInSubdirOfGit(t *testing.T) {
 	root := t.TempDir()
 	testfix.MkDotGit(t, root)
 	sub := filepath.Join(root, "subproject")
 	require.NoError(t, os.MkdirAll(sub, 0o755)) //nolint:gosec // test fixture under TempDir.
-	testfix.WriteKataToml(t, sub, "x")
+	testfix.WritePoomsaeToml(t, sub, "x")
 
 	d, err := config.DiscoverPaths(sub)
 	require.NoError(t, err)
@@ -38,9 +38,9 @@ func TestDiscoverPaths_KataTomlInSubdirOfGit(t *testing.T) {
 	assert.Equal(t, root, d.GitRoot)
 }
 
-func TestDiscoverPaths_KataTomlAboveGitRoot(t *testing.T) {
+func TestDiscoverPaths_PoomsaeTomlAboveGitRoot(t *testing.T) {
 	outer := t.TempDir()
-	testfix.WriteKataToml(t, outer, "example-project")
+	testfix.WritePoomsaeToml(t, outer, "example-project")
 
 	repo := filepath.Join(outer, "repo-a")
 	require.NoError(t, os.MkdirAll(repo, 0o755)) //nolint:gosec // test fixture under TempDir.
@@ -60,7 +60,7 @@ func TestDiscoverPaths_SymlinkIntoGitIgnoresLexicalAncestorConfig(t *testing.T) 
 	require.NoError(t, os.Mkdir(nested, 0o755)) //nolint:gosec // test fixture under TempDir.
 
 	outer := t.TempDir()
-	testfix.WriteKataToml(t, outer, "example-project")
+	testfix.WritePoomsaeToml(t, outer, "example-project")
 	link := filepath.Join(outer, "linked-workspace")
 	require.NoError(t, os.Symlink(nested, link))
 
@@ -78,7 +78,7 @@ func TestDiscoverPaths_SymlinkWithinGitKeepsNestedLexicalWorkspace(t *testing.T)
 	testfix.MkDotGit(t, repo)
 	workspace := filepath.Join(repo, "workspace")
 	require.NoError(t, os.Mkdir(workspace, 0o755)) //nolint:gosec // test fixture under TempDir.
-	testfix.WriteKataToml(t, workspace, "example-project")
+	testfix.WritePoomsaeToml(t, workspace, "example-project")
 	target := filepath.Join(repo, "target")
 	require.NoError(t, os.Mkdir(target, 0o755)) //nolint:gosec // test fixture under TempDir.
 	link := filepath.Join(workspace, "link")
@@ -93,7 +93,7 @@ func TestDiscoverPaths_SymlinkWithinGitKeepsNestedLexicalWorkspace(t *testing.T)
 
 func TestDiscoverPaths_SymlinkOutOfGitIgnoresLexicalAncestorConfig(t *testing.T) {
 	outer := t.TempDir()
-	testfix.WriteKataToml(t, outer, "example-project")
+	testfix.WritePoomsaeToml(t, outer, "example-project")
 	repo := filepath.Join(outer, "repo")
 	require.NoError(t, os.Mkdir(repo, 0o755)) //nolint:gosec // test fixture under TempDir.
 	testfix.MkDotGit(t, repo)
@@ -111,11 +111,11 @@ func TestDiscoverPaths_SymlinkOutOfGitIgnoresLexicalAncestorConfig(t *testing.T)
 func TestDiscoverPaths_SymlinkFromNestedGitUsesPhysicalRepository(t *testing.T) {
 	parentRepo := t.TempDir()
 	testfix.MkDotGit(t, parentRepo)
-	testfix.WriteKataToml(t, parentRepo, "parent-project")
+	testfix.WritePoomsaeToml(t, parentRepo, "parent-project")
 	nestedRepo := filepath.Join(parentRepo, "nested")
 	require.NoError(t, os.Mkdir(nestedRepo, 0o755)) //nolint:gosec // test fixture under TempDir.
 	testfix.MkDotGit(t, nestedRepo)
-	testfix.WriteKataToml(t, nestedRepo, "nested-project")
+	testfix.WritePoomsaeToml(t, nestedRepo, "nested-project")
 	target := filepath.Join(parentRepo, "target")
 	require.NoError(t, os.Mkdir(target, 0o755)) //nolint:gosec // test fixture under TempDir.
 	link := filepath.Join(nestedRepo, "parent-workspace")
@@ -132,7 +132,7 @@ func TestDiscoverPaths_SymlinkFromNestedGitUsesPhysicalRepository(t *testing.T) 
 
 func TestDiscoverPaths_SymlinkedNonGitWorkspaceKeepsLexicalAncestorConfig(t *testing.T) {
 	outer := t.TempDir()
-	testfix.WriteKataToml(t, outer, "example-project")
+	testfix.WritePoomsaeToml(t, outer, "example-project")
 	target := t.TempDir()
 	link := filepath.Join(outer, "linked-workspace")
 	require.NoError(t, os.Symlink(target, link))
@@ -160,7 +160,7 @@ func TestDiscoverPaths_StartPathMissingErrors(t *testing.T) {
 func TestDiscoverPaths_StartPathIsFileWalksFromParent(t *testing.T) {
 	root := t.TempDir()
 	testfix.MkDotGit(t, root)
-	testfix.WriteKataToml(t, root, "x")
+	testfix.WritePoomsaeToml(t, root, "x")
 	filePath := filepath.Join(root, "README.md")
 	require.NoError(t, os.WriteFile(filePath, []byte("hi"), 0o644)) //nolint:gosec // test fixture
 
@@ -258,7 +258,7 @@ func TestValidateIdentity(t *testing.T) {
 	}
 }
 
-func TestPickInitName_KataTomlOnly(t *testing.T) {
+func TestPickInitName_PoomsaeTomlOnly(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = "poomsae"
 
@@ -267,7 +267,7 @@ func TestPickInitName_KataTomlOnly(t *testing.T) {
 	assert.Equal(t, "poomsae", got.Name)
 }
 
-func TestPickInitName_KataTomlMatchingInputName(t *testing.T) {
+func TestPickInitName_PoomsaeTomlMatchingInputName(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = "poomsae"
 
@@ -276,7 +276,7 @@ func TestPickInitName_KataTomlMatchingInputName(t *testing.T) {
 	assert.Equal(t, "poomsae", got.Name)
 }
 
-func TestPickInitName_KataTomlConflictWithoutReplace(t *testing.T) {
+func TestPickInitName_PoomsaeTomlConflictWithoutReplace(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = "poomsae"
 
@@ -285,7 +285,7 @@ func TestPickInitName_KataTomlConflictWithoutReplace(t *testing.T) {
 	assert.ErrorIs(t, err, config.ErrNameConflict)
 }
 
-func TestPickInitName_KataTomlConflictWithReplace(t *testing.T) {
+func TestPickInitName_PoomsaeTomlConflictWithReplace(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = "poomsae"
 
@@ -323,7 +323,7 @@ func TestPickInitName_NoSource(t *testing.T) {
 	assert.ErrorIs(t, err, config.ErrNoNameSource)
 }
 
-func TestPickInitName_KataTomlEmptyNameFallsBackToSource(t *testing.T) {
+func TestPickInitName_PoomsaeTomlEmptyNameFallsBackToSource(t *testing.T) {
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Name = ""
 	dir := testfix.InitGitRepo(t)

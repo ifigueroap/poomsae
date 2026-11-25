@@ -648,7 +648,7 @@ func (s *Service) ResolveFieldConflict(
 	if err != nil {
 		return resolved, events, err
 	}
-	poomsaeValue, err := readCanonicalKataField(codec, issue, mapping)
+	poomsaeValue, err := readCanonicalPoomsaeField(codec, issue, mapping)
 	if err != nil {
 		return resolved, events, ErrFieldConflictChanged
 	}
@@ -660,19 +660,19 @@ func (s *Service) ResolveFieldConflict(
 		}
 		return resolved, events, err
 	}
-	storedKata, hasKata, err := decodeCanonicalStoredFieldValue(conflicted.ConflictKata, mapping)
-	if err != nil || !hasKata {
+	storedPoomsae, hasPoomsae, err := decodeCanonicalStoredFieldValue(conflicted.ConflictPoomsae, mapping)
+	if err != nil || !hasPoomsae {
 		return resolved, events, ErrFieldConflictChanged
 	}
 	storedExternal, hasExternal, err := decodeCanonicalStoredFieldValue(conflicted.ConflictExternal, mapping)
 	if err != nil || !hasExternal {
 		return resolved, events, ErrFieldConflictChanged
 	}
-	selected := storedKata
+	selected := storedPoomsae
 	if use == "external" {
 		selected = storedExternal
 	}
-	poomsaeCandidateStable := fieldValuesEqual(poomsaeValue, storedKata)
+	poomsaeCandidateStable := fieldValuesEqual(poomsaeValue, storedPoomsae)
 	if use == "external" && !poomsaeCandidateStable {
 		poomsaeCandidateStable = fieldValuesEqual(poomsaeValue, selected)
 	}
@@ -722,7 +722,7 @@ func (s *Service) ResolveFieldConflict(
 	if err != nil {
 		return resolved, events, err
 	}
-	poomsaeReadback, err := readCanonicalKataField(codec, projected, mapping)
+	poomsaeReadback, err := readCanonicalPoomsaeField(codec, projected, mapping)
 	if err != nil {
 		return resolved, events, ErrFieldConflictChanged
 	}

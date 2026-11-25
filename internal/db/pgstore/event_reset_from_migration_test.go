@@ -25,6 +25,7 @@ func TestEventResetFromIndexMigrationUpgradesVersion43(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropLaterReadyAndEventIndexes(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "event_reset_upgrade")
 	_, err = admin.ExecContext(ctx, `DROP INDEX IF EXISTS event_reset_upgrade.idx_events_reset_from;
 DROP INDEX IF EXISTS event_reset_upgrade.idx_issues_uid_prefix;
 DROP INDEX IF EXISTS event_reset_upgrade.idx_issues_project_uid_prefix;

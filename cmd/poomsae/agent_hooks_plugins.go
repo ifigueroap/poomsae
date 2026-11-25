@@ -404,7 +404,7 @@ func planAmpAgentHookScopeIndex(opts nativeAgentHookOptions, meta pluginAgentHoo
 		}
 		encoded, _ := json.Marshal(index, nativeAgentHookOwnedJSONOptions, jsontext.WithIndent("  "))
 		encoded = append(encoded, '\n')
-		if !recognizedGeneratedFormat(index.Format, "poomsae-amp-scopes") || index.Version != 1 || !bytes.Equal(original, encoded) {
+		if index.Format != "poomsae-amp-scopes" || index.Version != 1 || !bytes.Equal(original, encoded) {
 			return nil, "", fmt.Errorf("preserving edited or unrecognized Amp scope index %q", indexPath)
 		}
 	}
@@ -507,25 +507,18 @@ func generatePluginAgentHookPackage(meta pluginAgentHookMetadata) ([]byte, error
 func parsePluginAgentHookPackage(data []byte) (pluginAgentHookMetadata, error) {
 	var value struct {
 		Current pluginAgentHookMetadata `json:"poomsaeNativeAgentHooks"`
-		Legacy  pluginAgentHookMetadata `json:"kataNativeAgentHooks"`
 	}
 	if err := json.Unmarshal(data, &value); err != nil {
 		return value.Current, err
 	}
 	meta := value.Current
-	if meta.Format == "" {
-		meta = value.Legacy
-	}
 	digestPrefix := []byte("{\n  \"poomsaeNativeAgentHooksSHA256\": \"")
-	if bytes.Contains(data, []byte("\"kataNativeAgentHooksSHA256\"")) {
-		digestPrefix = []byte("{\n  \"kataNativeAgentHooksSHA256\": \"")
-	}
 	unsigned, ok := bytes.CutPrefix(data, digestPrefix)
 	digest, remainder, found := bytes.Cut(unsigned, []byte("\",\n"))
 	if !ok || !found || string(digest) != nativeAgentHookDigest(append([]byte("{\n"), remainder...)) {
 		return meta, fmt.Errorf("generated plugin package was edited or has no ownership digest")
 	}
-	if !recognizedGeneratedFormat(meta.Format, "poomsae-plugin") || meta.Version != 1 || meta.Agent != "opencode" || meta.API != "v2" || meta.Executable == "" || (meta.Scope != "user" && meta.Scope != "project") {
+	if meta.Format != "poomsae-plugin" || meta.Version != 1 || meta.Agent != "opencode" || meta.API != "v2" || meta.Executable == "" || (meta.Scope != "user" && meta.Scope != "project") {
 		return meta, fmt.Errorf("authored or unrecognized plugin package metadata")
 	}
 	return meta, nil
@@ -534,14 +527,14 @@ func parsePluginAgentHookPackage(data []byte) (pluginAgentHookMetadata, error) {
 func parsePluginAgentHookMetadata(data []byte) (pluginAgentHookMetadata, error) {
 	var meta pluginAgentHookMetadata
 	first, _, ok := bytes.Cut(data, []byte("\n"))
-	prefix, ok := recognizedMetadataPrefix(first, pluginAgentHookMetadataPrefix, "// kata-native-plugin ")
+	prefix, ok := []byte(pluginAgentHookMetadataPrefix), bytes.HasPrefix(first, []byte(pluginAgentHookMetadataPrefix))
 	if !ok {
 		return meta, fmt.Errorf("authored or unrecognized plugin; move it aside before installing")
 	}
 	if err := json.Unmarshal(bytes.TrimPrefix(first, prefix), &meta, json.RejectUnknownMembers(true)); err != nil {
 		return meta, err
 	}
-	if !recognizedGeneratedFormat(meta.Format, "poomsae-plugin") || meta.Version != 1 || meta.Executable == "" || (meta.Scope != "user" && meta.Scope != "project") || (meta.Agent != "amp" && meta.Agent != "opencode") || (meta.Agent == "amp" && meta.API != "amp") || (meta.Agent == "opencode" && meta.API != "v1" && meta.API != "v2") {
+	if meta.Format != "poomsae-plugin" || meta.Version != 1 || meta.Executable == "" || (meta.Scope != "user" && meta.Scope != "project") || (meta.Agent != "amp" && meta.Agent != "opencode") || (meta.Agent == "amp" && meta.API != "amp") || (meta.Agent == "opencode" && meta.API != "v1" && meta.API != "v2") {
 		return meta, fmt.Errorf("unrecognized plugin metadata")
 	}
 	if !nativeAgentHookCodeUnedited(data) {
@@ -934,8 +927,8 @@ async function readContext(cwd, includeContract, onContractLoaded) {
   }
   // Amp messages remain in thread history. Explicit replacement makes cleared
   // or failed current requests authoritative over earlier message snapshots.
-  return (contract ? "<kata_contract>\n" + contract + "\n</kata_contract>\n\n" : "") +
-    "<kata_inbox>\nCurrent Poomsae inbox snapshot replaces earlier snapshots.\n" + inbox + "\n</kata_inbox>";
+  return (contract ? "<poomsae_contract>\n" + contract + "\n</poomsae_contract>\n\n" : "") +
+    "<poomsae_inbox>\nCurrent Poomsae inbox snapshot replaces earlier snapshots.\n" + inbox + "\n</poomsae_inbox>";
 }
 function appendContext(system, text, structured) {
   const old = registry.context.get(system);

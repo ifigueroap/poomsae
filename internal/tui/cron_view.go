@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	cronKata = iota
+	cronPoomsae = iota
 	cronJobs
 	cronRuns
 	cronWorkflows
@@ -180,7 +180,7 @@ func (m Model) leaveCron() Model {
 func (m Model) switchCronTab(key string) Model {
 	tab := int(key[0] - '1')
 	if m.view != viewCron {
-		if tab == cronKata {
+		if tab == cronPoomsae {
 			return m
 		}
 		m.prevView = m.view
@@ -189,7 +189,7 @@ func (m Model) switchCronTab(key string) Model {
 		}
 		m.view = viewCron
 	}
-	if tab == cronKata {
+	if tab == cronPoomsae {
 		return m.leaveCron()
 	}
 	m.cron.tab, m.cron.stack, m.cron.filtering = tab, nil, false

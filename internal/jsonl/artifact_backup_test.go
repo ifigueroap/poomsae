@@ -46,7 +46,7 @@ func seedArtifactBackupProject(t *testing.T, store db.Storage) {
 	issue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: project.ID, Title: "Portable vectors", Body: strings.Repeat("界", 2100), Author: "assistant"})
 	require.NoError(t, err)
 	input := embedding.EmbedText(issue.Title, issue.Body)
-	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	ordinary, err := embedding.NewArtifact(identity, input, [][]float32{{1, 0}, {0, 1}})
 	require.NoError(t, err)
 	identity.Dimensions = 4001

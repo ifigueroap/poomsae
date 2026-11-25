@@ -73,7 +73,7 @@ func TestRenameProject_UpdatesNameOnly(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	alias := attachAlias(ctx, t, d, p.ID, "github.com/wesm/poomsae", "/tmp/poomsae")
 
 	renamed, err := d.RenameProject(ctx, p.ID, "Poomsae Tracker")
@@ -101,7 +101,7 @@ func TestAttachAlias_AndLookup(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 
 	a, err := d.AttachAlias(ctx, p.ID, "github.com/wesm/poomsae", "git")
 	require.NoError(t, err)

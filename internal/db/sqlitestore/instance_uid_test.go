@@ -68,7 +68,7 @@ func TestInstanceUIDCachedAcrossDirectSQLMutation(t *testing.T) {
 	assert.Equal(t, original, d.InstanceUID(),
 		"cached InstanceUID must not move when meta.instance_uid is mutated mid-run")
 
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	_, evt := createTesterIssue(ctx, t, d, p.ID, "post-mutation")
 	assert.Equal(t, original, evt.OriginInstanceUID,
 		"insert path must stamp the cached origin, not the freshly-mutated row value")
@@ -81,7 +81,7 @@ func TestEventInsertCarriesUIDAndOrigin(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	d := openTestDB(t)
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	_, evt := createTesterIssue(ctx, t, d, p.ID, "uid-stamping")
 	assert.True(t, uid.Valid(evt.UID), "event UID %q invalid", evt.UID)
 	assert.Equal(t, d.InstanceUID(), evt.OriginInstanceUID)
@@ -93,7 +93,7 @@ func TestPurgeInsertCarriesUIDAndOrigin(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	d := openTestDB(t)
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	issue, _ := createTesterIssue(ctx, t, d, p.ID, "purge me")
 	pl, err := d.PurgeIssue(ctx, issue.ID, "tester", nil)
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestEventUIDNotNullRejected(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	d := openTestDB(t)
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 
 	// uid omitted entirely.
 	_, err := d.ExecContext(ctx, `

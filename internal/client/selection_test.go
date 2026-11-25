@@ -14,7 +14,7 @@ import (
 // every other catalog entry does: by daemon and variable, so the user knows
 // what to export.
 func TestActiveLocalCatalogTokenEnvErrorNamesVariable(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("EXAMPLE_LOCAL_TOKEN", "")
@@ -39,7 +39,7 @@ token_env = "EXAMPLE_LOCAL_TOKEN"
 // token_env variable is unset or empty. POOMSAE_AUTH_TOKEN replaces only a remote
 // entry's credential.
 func TestCatalogCredentialIsReportedByResolutionNotSelection(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("EXAMPLE_HUB_TOKEN", "")

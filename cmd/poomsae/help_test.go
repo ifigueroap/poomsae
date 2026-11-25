@@ -77,7 +77,7 @@ func TestHelpTopLevelCommandsHaveGroups(t *testing.T) {
 	}
 }
 
-func TestKataGlobalFlags(t *testing.T) {
+func TestPoomsaeGlobalFlags(t *testing.T) {
 	root := &cobra.Command{Use: "poomsae"}
 	root.PersistentFlags().Bool("agent", false, "")
 	root.PersistentFlags().BoolP("quiet", "q", false, "")

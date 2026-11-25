@@ -59,11 +59,11 @@ func buildStdinJSON(
 
 func baseEnvelope(evt db.Event) map[string]any {
 	return map[string]any{
-		"kata_hook_version": 1,
-		"event_id":          evt.ID,
-		"type":              evt.Type,
-		"actor":             evt.Actor,
-		"created_at":        evt.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"poomsae_hook_version": 1,
+		"event_id":             evt.ID,
+		"type":                 evt.Type,
+		"actor":                evt.Actor,
+		"created_at":           evt.CreatedAt.UTC().Format(time.RFC3339Nano),
 	}
 }
 

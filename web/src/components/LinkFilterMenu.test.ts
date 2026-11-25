@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
+import { createPoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
 import LinkFilterMenu from './LinkFilterMenu.svelte'
 
 describe('LinkFilterMenu', () => {
   afterEach(cleanup)
 
   it('emits independent task-state and relationship changes', async () => {
-    const filters = createKataLinkFilters('open')
+    const filters = createPoomsaeLinkFilters('open')
     const onChange = vi.fn()
     render(LinkFilterMenu, { props: { filters, onChange } })
 
@@ -27,7 +27,7 @@ describe('LinkFilterMenu', () => {
 
   it('closes on Escape and returns focus to the trigger', async () => {
     render(LinkFilterMenu, {
-      props: { filters: createKataLinkFilters('all'), onChange: vi.fn() },
+      props: { filters: createPoomsaeLinkFilters('all'), onChange: vi.fn() },
     })
 
     const trigger = screen.getByRole('button', { name: 'Filter links' })

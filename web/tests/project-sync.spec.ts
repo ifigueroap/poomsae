@@ -23,7 +23,7 @@ async function enableSync(page: Page, poomsae: PoomsaeFixture, actor: string): P
 
 test('keeps the sync panel aligned when the task count grows', async ({
   page,
-  diagnosticKata: poomsae,
+  diagnosticPoomsae: poomsae,
 }) => {
   await poomsae.prepareSyncDiagnostic()
   const credentials = await poomsae.launch(page, `/poomsae?scope=${poomsae.projectUID}`)
@@ -49,7 +49,7 @@ test('keeps the sync panel aligned when the task count grows', async ({
 
 test('project readers see sync diagnostics with bounded embedding summaries at narrow widths', async ({
   page,
-  diagnosticKata: poomsae,
+  diagnosticPoomsae: poomsae,
 }, testInfo) => {
   await poomsae.prepareSyncDiagnostic()
   const statusPath = `/api/v1/projects/${poomsae.projectID}/federation/status`

@@ -13,7 +13,7 @@ func TestResolveTUIActorUsesUserEnvBeforeAnonymous(t *testing.T) {
 	assert.Equal(t, "operator", resolveTUIActor())
 }
 
-func TestResolveTUIActorPrefersKataAuthor(t *testing.T) {
+func TestResolveTUIActorPrefersPoomsaeAuthor(t *testing.T) {
 	t.Setenv("POOMSAE_AUTHOR", "configured-agent")
 	t.Setenv("USER", "operator")
 

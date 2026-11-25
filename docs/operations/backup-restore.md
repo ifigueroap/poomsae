@@ -1,7 +1,7 @@
 ---
 title: Backup and restore
 description: Back up, restore, and move Poomsae data safely with JSONL export and import workflows.
-last_edited: 2026-11-20
+last_edited: 2026-11-25
 ---
 
 # Backup and restore
@@ -260,7 +260,7 @@ To restore into Postgres, pass a DSN as the target:
 
 ```sh
 poomsae import --input backups/poomsae-20260531.jsonl \
-  --target 'postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+  --target 'postgres://poomsae_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 ```
 
 If the `poomsae` schema is missing, Poomsae installs it before replaying the
@@ -303,14 +303,14 @@ example, in Bash, replace the export path below with its absolute path:
 ```sh
 bash -euo pipefail <<'EOF'
 umask 077
-kata_binary=$(command -v poomsae)
+poomsae_binary=$(command -v poomsae)
 source_export=/absolute/path/to/hub-export.jsonl
 copy_home=$(mktemp -d)
 printf 'Copy home: %s\n' "$copy_home"
 cd "$copy_home"
 env -i PATH="$PATH" HOME="$HOME" POOMSAE_HOME="$copy_home" \
   POOMSAE_DB="$copy_home/poomsae.db" \
-  "$kata_binary" import --as-standalone \
+  "$poomsae_binary" import --as-standalone \
   --input "$source_export" --target "$copy_home/poomsae.db"
 EOF
 ```

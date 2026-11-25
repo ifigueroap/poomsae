@@ -384,7 +384,7 @@ func (a *cronReadTestAPI) ListCronRuns(_ context.Context, id int64) ([]generated
 	return slices.Clone(a.data.runs), a.data.runsErr
 }
 
-func TestCronReturnToKata(t *testing.T) {
+func TestCronReturnToPoomsae(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		detail       bool

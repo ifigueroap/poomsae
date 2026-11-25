@@ -26,7 +26,7 @@ func RunEmbeddingArtifactStorage(t *testing.T, store db.Storage) {
 	issue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: project.ID, Title: "Portable vectors", Body: strings.Repeat("界", 2100), Author: "assistant"})
 	require.NoError(t, err)
 	input := embedding.EmbedText(issue.Title, issue.Body)
-	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", ModelRevision: "revision-1", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	artifact, err := embedding.NewArtifact(identity, input, [][]float32{{1, 0}, {0, 1}})
 	require.NoError(t, err)
 	_, err = artifacts.StoredEmbeddingArtifact(ctx, project.UID, artifact.Digest)
@@ -86,7 +86,7 @@ func RunEmbeddingArtifactStorage(t *testing.T, store db.Storage) {
 	require.NoError(t, err)
 	mergeIssue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: source.ID, Title: "Before merge", Author: "member"})
 	require.NoError(t, err)
-	mergeIdentity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: mergeIssue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("b", 64)}
+	mergeIdentity := embedding.ArtifactIdentity{ProjectUID: source.UID, IssueUID: mergeIssue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("b", 64)}
 	stale, err := embedding.NewArtifact(mergeIdentity, embedding.EmbedText(mergeIssue.Title, mergeIssue.Body), [][]float32{{0.25, 0.75}})
 	require.NoError(t, err)
 	durable, err = artifacts.RetainEmbeddingArtifact(ctx, stale)
@@ -121,7 +121,7 @@ func RunArtifactIssuePurgeAfterMove(t *testing.T, store db.Storage) {
 	require.NoError(t, err)
 	movingIssue, _, err := store.CreateIssue(ctx, db.CreateIssueParams{ProjectID: moveSource.ID, Title: "Portable vectors to purge", Author: "member"})
 	require.NoError(t, err)
-	moveIdentity := embedding.ArtifactIdentity{ProjectUID: moveSource.UID, IssueUID: movingIssue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("c", 64)}
+	moveIdentity := embedding.ArtifactIdentity{ProjectUID: moveSource.UID, IssueUID: movingIssue.UID, ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("c", 64)}
 	movedArtifact, err := embedding.NewArtifact(moveIdentity, embedding.EmbedText(movingIssue.Title, movingIssue.Body), [][]float32{{0.5, 0.5}})
 	require.NoError(t, err)
 	durable, err := artifacts.RetainEmbeddingArtifact(ctx, movedArtifact)
@@ -164,7 +164,7 @@ func RunArtifactIssueMovePreservesPortableBytes(t *testing.T, store db.Storage) 
 	identity := embedding.ArtifactIdentity{
 		ProjectUID: source.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(),
 		Provider: "openai-compatible", Model: "example-model", Dimensions: 2,
-		InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2",
+		InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2",
 		RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200,
 		RecipeFingerprint: strings.Repeat("d", 64),
 	}
@@ -213,7 +213,7 @@ func RunArtifactStagingExpiryRetry(t *testing.T, store db.Storage, restart func(
 	project, err := store.CreateProject(ctx, "staging-project")
 	require.NoError(t, err)
 	input := embedding.EmbedText("Future task", "Portable content")
-	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: "00000000000000000000000050", ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: "00000000000000000000000050", ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	artifact, err := embedding.NewArtifact(identity, input, [][]float32{{1, 0}})
 	require.NoError(t, err)
 	durable, err := artifacts.RetainEmbeddingArtifact(ctx, artifact)
@@ -268,7 +268,7 @@ func RunArtifactStagingByteBudget(t *testing.T, store db.Storage) {
 	artifacts := store.(db.EmbeddingArtifactStorage)
 	project, err := store.CreateProject(ctx, "byte-budget-project")
 	require.NoError(t, err)
-	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: "00000000000000000000000050", ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 32768, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+	identity := embedding.ArtifactIdentity{ProjectUID: project.UID, IssueUID: "00000000000000000000000050", ProducerInstanceUID: store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 32768, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 	input := strings.Repeat("x", 2000+127*1800)
 	values := make([]float32, identity.Dimensions)
 	vectors := make([][]float32, 128)

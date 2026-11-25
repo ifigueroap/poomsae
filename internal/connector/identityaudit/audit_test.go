@@ -10,18 +10,18 @@ import (
 func TestValidateRejectsForbiddenKeyVariantsInsideFieldValues(t *testing.T) {
 	for _, collection := range []string{"fields", "expected"} {
 		for _, key := range []string{
-			"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
-			"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
-			"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
-			"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
-			"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
+			"poomsae_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+			"poomsae_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+			"poomsae_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+			"poomsae_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+			"poomsae_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 		} {
 			params := map[string]any{
 				"root_key": "root-example",
-				"fields":   map[string]any{"kata_uid": map[string]any{"kind": "null"}},
-				"expected": map[string]any{"kata_uid": map[string]any{"kind": "null"}},
+				"fields":   map[string]any{"poomsae_uid": map[string]any{"kind": "null"}},
+				"expected": map[string]any{"poomsae_uid": map[string]any{"kind": "null"}},
 			}
-			params[collection].(map[string]any)["kata_uid"] = map[string]any{
+			params[collection].(map[string]any)["poomsae_uid"] = map[string]any{
 				"kind": "date", "value": "2026-08-20", key: "neutral-forbidden",
 			}
 			raw, err := json.Marshal(params)
@@ -38,13 +38,13 @@ func TestValidateRejectsForbiddenKeyVariantsInsideFieldValues(t *testing.T) {
 }
 
 func TestValidateAllowsOpaqueFieldIDs(t *testing.T) {
-	raw := jsontext.Value(`{"root_key":"root-example","fields":{"kata_uid":{"kind":"date","value":"2026-08-20"},"poomsaekana_start":{"kind":"null"}},"expected":{"kata_uid":{"kind":"null"},"poomsaekana_start":{"kind":"date","value":"2026-08-19"}}}`)
+	raw := jsontext.Value(`{"root_key":"root-example","fields":{"poomsae_uid":{"kind":"date","value":"2026-08-20"},"poomsaekana_start":{"kind":"null"}},"expected":{"poomsae_uid":{"kind":"null"},"poomsaekana_start":{"kind":"date","value":"2026-08-19"}}}`)
 	if err := Validate("write_fields", raw, Options{ExternalRootKey: "root-example"}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestValidateRejectsArbitraryStructuralKataKeys(t *testing.T) {
+func TestValidateRejectsArbitraryStructuralPoomsaeKeys(t *testing.T) {
 	for _, key := range []string{"poomsaeOwnerId", "poomsae-owner-ref", "poomsae.project.token", "poomsae"} {
 		raw, err := json.Marshal(map[string]any{
 			"root_key": "root-example",

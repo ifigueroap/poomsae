@@ -81,7 +81,7 @@ func appendHookLogAsync(path string, delay time.Duration, entries ...map[string]
 // the db hash used to derive hooksDir.
 func setupHooksDir(t *testing.T) (home, hooksDir, dbHash string) {
 	t.Helper()
-	home = setupKataEnv(t)
+	home = setupPoomsaeEnv(t)
 	if err := os.WriteFile(filepath.Join(home, "poomsae.db"), []byte{0}, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func setupHooksDir(t *testing.T) (home, hooksDir, dbHash string) {
 }
 
 func TestHookRunsRootSeparatesPostgresSchemas(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "postgres://user@db.example/poomsae?sslmode=verify-full")
 	t.Setenv("POOMSAE_POSTGRES_SCHEMA", "alpha")
 	alpha, err := hookRunsRoot()

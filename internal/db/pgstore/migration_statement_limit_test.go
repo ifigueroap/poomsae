@@ -32,6 +32,7 @@ func TestSchemaUpgradeOutlastsOrdinaryStatementLimit(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropLaterReadyAndEventIndexes(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "slow_upgrade")
 	_, err = admin.ExecContext(ctx, `DROP INDEX slow_upgrade.idx_issues_uid_prefix;
 DROP INDEX slow_upgrade.idx_issues_project_uid_prefix;
 UPDATE slow_upgrade.meta SET value='44' WHERE key='schema_version'`)

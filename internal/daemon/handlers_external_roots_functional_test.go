@@ -332,7 +332,7 @@ func TestExternalRootHandlersFullLifecycleAndDelivery(t *testing.T) {
 	_, _, err = database.db.UpsertExternalFieldState(t.Context(), db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: activeMapping.ID, ClaimToken: claimed.ClaimToken,
 		Baseline:         jsontext.Value(`{"kind":"date","value":"2026-08-20"}`),
-		ConflictKata:     jsontext.Value(`{"kind":"date","value":"2026-08-21"}`),
+		ConflictPoomsae:  jsontext.Value(`{"kind":"date","value":"2026-08-21"}`),
 		ConflictExternal: jsontext.Value(`{"kind":"date","value":"2026-08-22"}`),
 		Conflicted:       true, At: now, Actor: "connector:example-connector",
 	})
@@ -341,7 +341,7 @@ func TestExternalRootHandlersFullLifecycleAndDelivery(t *testing.T) {
 	require.NoError(t, err)
 	status, body = requestExternalRootJSON(t, ts.URL, http.MethodGet, bridgePath, nil)
 	require.Equal(t, http.StatusOK, status, string(body))
-	assert.Contains(t, string(body), `"kata_candidate":{"kind":"date","value":"2026-08-21"}`)
+	assert.Contains(t, string(body), `"poomsae_candidate":{"kind":"date","value":"2026-08-21"}`)
 	assert.Contains(t, string(body), `"external_candidate":{"kind":"date","value":"2026-08-22"}`)
 	status, body = requestExternalRootJSON(t, ts.URL, http.MethodDelete, "/api/v1/connectors/example-connector/fields/scheduled_on", nil)
 	require.Equal(t, http.StatusOK, status, string(body))
@@ -362,7 +362,7 @@ func TestExternalRootHandlersFullLifecycleAndDelivery(t *testing.T) {
 	_, _, err = database.db.UpsertExternalFieldState(t.Context(), db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: activeMapping.ID, ClaimToken: claimed.ClaimToken,
 		Baseline:         jsontext.Value(`{"kind":"date","value":"2026-08-20"}`),
-		ConflictKata:     jsontext.Value(`{"kind":"date","value":"2026-08-21"}`),
+		ConflictPoomsae:  jsontext.Value(`{"kind":"date","value":"2026-08-21"}`),
 		ConflictExternal: jsontext.Value(`{"kind":"date","value":"2026-08-22"}`),
 		Conflicted:       true, At: now, Actor: "connector:example-connector",
 	})
@@ -370,7 +370,7 @@ func TestExternalRootHandlersFullLifecycleAndDelivery(t *testing.T) {
 	_, err = database.db.ReleaseExternalRootClaim(t.Context(), binding.ID, claimed.ClaimToken)
 	require.NoError(t, err)
 	status, body = requestExternalRootJSON(t, ts.URL, http.MethodPost, bridgePath+"/actions/resolve-field", map[string]any{
-		"kata_field": "scheduled_on", "use": "poomsae", "actor": "operator",
+		"poomsae_field": "scheduled_on", "use": "poomsae", "actor": "operator",
 	})
 	require.Equal(t, http.StatusOK, status, string(body))
 	assert.Equal(t, "2026-08-21", client.fieldValues["start-date"].Value)
@@ -577,7 +577,7 @@ func TestExternalRootHandlersClassifyConnectorAndInternalFailures(t *testing.T) 
 			name: "malformed persisted field candidate",
 			states: []db.ExternalFieldState{{
 				BindingID: 1, MappingID: 1, Conflicted: true,
-				ConflictKata: jsontext.Value(`{"kind":`),
+				ConflictPoomsae: jsontext.Value(`{"kind":`),
 			}},
 			private: `{"kind":`,
 		},

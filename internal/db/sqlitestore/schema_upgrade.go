@@ -8,30 +8,41 @@ import (
 	"github.com/ifigueroap/poomsae/internal/db"
 )
 
-// inPlaceUpgrades drop retired indexes, then add canonical tables and canonical
-// indexes. A table is added only when it starts empty, so no existing row
-// needs converting. An index that a later step drops is no longer canonical,
-// so an upgrade that runs both steps never creates it.
+// inPlaceUpgrades drop retired indexes, rename columns, clear derived tables,
+// then add canonical tables and canonical indexes. A table is added only when
+// it starts empty, so no existing row needs converting. SQLite rewrites
+// constraints and indexes that name a renamed column. An index that a later
+// step drops is no longer canonical, so an upgrade that runs both steps never
+// creates it.
 var inPlaceUpgrades = []struct {
-	From, To    int
-	Tables      []string
-	Indexes     []string
-	DropIndexes []string
+	From, To      int
+	Tables        []string
+	Indexes       []string
+	DropIndexes   []string
+	RenameColumns []columnRename
+	ClearTables   []string
 }{
-	{41, 42, nil, []string{"idx_issues_project_created", "idx_issues_created"}, nil},
-	{42, 43, nil, []string{"idx_events_resolved_issue_uid"}, nil},
-	{43, 44, nil, []string{"idx_events_reset_from"}, nil},
-	{44, 45, nil, []string{"idx_issues_uid_prefix", "idx_issues_project_uid_prefix"}, nil},
-	{45, 46, nil, []string{"idx_issues_project_ready_priority", "idx_issues_ready_priority"}, nil},
-	{46, 47, nil, []string{"idx_issues_ready_updated"}, nil},
-	{47, 48, nil, []string{"idx_events_moved_from_id"}, nil},
-	{48, 49, nil, []string{"idx_events_cron_run_uid"}, nil},
-	{49, 50, []string{"mcp_event_subscriptions"}, []string{"idx_mcp_event_subscriptions_due", "idx_mcp_event_subscriptions_principal_callback", "idx_mcp_event_subscriptions_ended"}, nil},
-	{50, 51, nil, []string{"idx_events_issue_uid_id"}, []string{"idx_events_resolved_issue_uid"}},
-	{51, 52, nil, nil, nil},
-	{52, 53, nil, []string{"idx_events_project_moves"}, nil},
-	{53, 54, nil, nil, nil},
+	{41, 42, nil, []string{"idx_issues_project_created", "idx_issues_created"}, nil, nil, nil},
+	{42, 43, nil, []string{"idx_events_resolved_issue_uid"}, nil, nil, nil},
+	{43, 44, nil, []string{"idx_events_reset_from"}, nil, nil, nil},
+	{44, 45, nil, []string{"idx_issues_uid_prefix", "idx_issues_project_uid_prefix"}, nil, nil, nil},
+	{45, 46, nil, []string{"idx_issues_project_ready_priority", "idx_issues_ready_priority"}, nil, nil, nil},
+	{46, 47, nil, []string{"idx_issues_ready_updated"}, nil, nil, nil},
+	{47, 48, nil, []string{"idx_events_moved_from_id"}, nil, nil, nil},
+	{48, 49, nil, []string{"idx_events_cron_run_uid"}, nil, nil, nil},
+	{49, 50, []string{"mcp_event_subscriptions"}, []string{"idx_mcp_event_subscriptions_due", "idx_mcp_event_subscriptions_principal_callback", "idx_mcp_event_subscriptions_ended"}, nil, nil, nil},
+	{50, 51, nil, []string{"idx_events_issue_uid_id"}, []string{"idx_events_resolved_issue_uid"}, nil, nil},
+	{51, 52, nil, nil, nil, nil, nil},
+	{52, 53, nil, []string{"idx_events_project_moves"}, nil, nil, nil},
+	{53, 54, nil, nil, nil, nil, nil},
+	// Embedding artifacts all predate the poomsae digest and recipe names.
+	{54, 55, nil, nil, nil, []columnRename{
+		{"external_field_mappings", "kata_field", "poomsae_field"},
+		{"external_field_states", "conflict_kata", "conflict_poomsae"},
+	}, []string{"federation_embedding_artifacts"}},
 }
+
+type columnRename struct{ Table, From, To string }
 
 // UpgradesInPlace reports whether in-place steps reach the current schema.
 func UpgradesInPlace(version int) bool {
@@ -102,6 +113,16 @@ func UpgradeInPlace(ctx context.Context, path string) error {
 				}
 				if _, err := tx.ExecContext(ctx, `DROP INDEX `+name); err != nil {
 					return fmt.Errorf("drop index %s: %w", name, err)
+				}
+			}
+			for _, rename := range step.RenameColumns {
+				if _, err := tx.ExecContext(ctx, `ALTER TABLE `+rename.Table+` RENAME COLUMN `+rename.From+` TO `+rename.To); err != nil {
+					return fmt.Errorf("rename column %s.%s: %w", rename.Table, rename.From, err)
+				}
+			}
+			for _, name := range step.ClearTables {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM `+name); err != nil { // #nosec G202 -- name comes from the fixed inPlaceUpgrades table.
+					return fmt.Errorf("clear table %s: %w", name, err)
 				}
 			}
 			for _, name := range step.Tables {

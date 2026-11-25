@@ -79,7 +79,7 @@ func daemonLifecycle(t *testing.T) func(*testing.T, string) *daemonLifecycleFixt
 	binaries := map[string]string{
 		"v0.1.0":  poomsaeTestBinary(t, "v0.1.0"),
 		"v0.2.0":  testBinary(t, "poomsae-v0.2.0-future-setting", "-buildvcs=false", "-overlay="+overlayPath, "-ldflags", "-X github.com/ifigueroap/poomsae/internal/version.Version=v0.2.0", "github.com/ifigueroap/poomsae/cmd/poomsae"),
-		"browser": testBinary(t, "poomsae-browser-fixture", "-buildvcs=false", "-tags=kata_browser_fixture", "github.com/ifigueroap/poomsae/cmd/poomsae"),
+		"browser": testBinary(t, "poomsae-browser-fixture", "-buildvcs=false", "-tags=poomsae_browser_fixture", "github.com/ifigueroap/poomsae/cmd/poomsae"),
 	}
 	childEnv := daemonLifecycleEnvironment(t)
 	workspace := t.TempDir()
@@ -199,7 +199,7 @@ func TestDaemonLifecycle(t *testing.T) {
 	t.Run("update", func(t *testing.T) { testUpdateInstallDaemonLifecycle(t, fixture) })
 	t.Run("restart", func(t *testing.T) { testDaemonRestartLifecycle(t, fixture) })
 	t.Run("settings helper exit", func(t *testing.T) {
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		f := fixture(t, "settings helper exit")
 		path := filepath.Join(f.home, "config.toml")
 		cfg := []byte("[search.embeddings]\nbase_url = 'http://127.0.0.1:1/v1'\nmodel = 'nomic-embed-text'\ndims = 768\n")
@@ -225,7 +225,7 @@ func TestDaemonLifecycle(t *testing.T) {
 		}, 10*time.Second, 20*time.Millisecond)
 	})
 	t.Run("restart selected generation", func(t *testing.T) {
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		f := fixture(t, "selected generation")
 		before := f.record()
 		stale := before
@@ -239,7 +239,7 @@ func TestDaemonLifecycle(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("holds an HTTP request over a Unix socket")
 		}
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		f := fixture(t, "stop waits for held request")
 		before := f.record()
 		socket := strings.TrimPrefix(before.Address, "unix://")
@@ -453,7 +453,7 @@ func testDaemonRestartLifecycle(t *testing.T, fixture func(*testing.T, string) *
 			if strings.Contains(scenario, "during drain") && runtime.GOOS != "linux" {
 				t.Skip("holds drain with a shell hook and observes the start lock through inotify")
 			}
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			f := fixture(t, scenario)
 			before := f.record()
 			if scenario != "older daemon" && scenario != "replacement fails after exec" && runtime.GOOS != "windows" {
@@ -620,7 +620,7 @@ func TestWaitForDaemonReplacement(t *testing.T) {
 	identity, ok := kitdaemon.ReadProcessIdentity(os.Getpid())
 	require.True(t, ok)
 	t.Run("readiness after drain and startup", func(t *testing.T) {
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		t.Setenv("POOMSAE_DSN", "")
 		store := kitdaemon.RuntimeStore{Dir: t.TempDir()}
 		readyAfter := 40 * time.Second

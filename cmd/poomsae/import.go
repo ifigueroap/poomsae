@@ -36,7 +36,7 @@ func newImportCmd() *cobra.Command {
 			}
 			switch strings.TrimSpace(format) {
 			case "", "poomsae":
-				return runKataJSONLImport(cmd, input, target, force, newInstance, merge, asStandalone)
+				return runPoomsaeJSONLImport(cmd, input, target, force, newInstance, merge, asStandalone)
 			case "beads":
 				if err := validateBeadsImportFlags(cmd); err != nil {
 					return err
@@ -112,7 +112,7 @@ func validateBeadsImportFlags(cmd *cobra.Command) error {
 	return nil
 }
 
-func runKataJSONLImport(cmd *cobra.Command, input, target string, force, newInstance, merge, asStandalone bool) error {
+func runPoomsaeJSONLImport(cmd *cobra.Command, input, target string, force, newInstance, merge, asStandalone bool) error {
 	if asStandalone && force {
 		return &cliError{Message: "--as-standalone cannot be combined with --force", Kind: kindValidation, ExitCode: ExitValidation}
 	}

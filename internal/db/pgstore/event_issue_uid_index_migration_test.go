@@ -84,6 +84,7 @@ func TestEventIssueUIDIndexMigrationUpgradesVersion50(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	restoreSchema50EventIndex(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "issue_uid_index_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE issue_uid_index_upgrade.meta SET value='50' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	require.Contains(t, eventIssueIndexes(ctx, t, admin, schema), "idx_events_resolved_issue_uid")

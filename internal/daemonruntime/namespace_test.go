@@ -23,7 +23,7 @@ func setupMockEnv(t *testing.T) string {
 	return tmp
 }
 
-func TestNamespace_DataDirIsKataHomeRuntime(t *testing.T) {
+func TestNamespace_DataDirIsPoomsaeHomeRuntime(t *testing.T) {
 	tmp := setupMockEnv(t)
 
 	ns, err := daemonruntime.NewNamespace()

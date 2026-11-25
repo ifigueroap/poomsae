@@ -26,7 +26,7 @@ func TestLocalProfileTwoHomeRecovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("real-process profile recovery")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	hub := func() (*httptest.Server, db.Project) {
 		store, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "poomsae.db"))
 		require.NoError(t, err)

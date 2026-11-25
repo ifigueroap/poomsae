@@ -24,7 +24,7 @@ import (
 )
 
 func TestImportBeadsRejectsInputAndTargetFlags(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, err := runCmdOutput(t, nil, "import", "--source-format", "beads", "--input", "beads.jsonl")
 	ce := requireCLIError(t, err, ExitValidation)
@@ -36,7 +36,7 @@ func TestImportBeadsRejectsInputAndTargetFlags(t *testing.T) {
 }
 
 func TestImportRejectsUnsupportedSourceFormat(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, err := runCmdOutput(t, nil, "import", "--source-format", "bogus")
 	ce := requireCLIError(t, err, ExitValidation)
@@ -44,7 +44,7 @@ func TestImportRejectsUnsupportedSourceFormat(t *testing.T) {
 }
 
 func TestImportLegacyFormatBeadsStillSelectsSource(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, err := runCmdOutput(t, nil, "import", "--format", "beads", "--input", "beads.jsonl")
 	ce := requireCLIError(t, err, ExitValidation)
@@ -552,7 +552,7 @@ func TestParseBeadsExportAndBuildImportRequest(t *testing.T) {
 	assert.Equal(t, mustParseTime(t, "2026-05-01T11:45:00Z"), blocked.Comments[0].CreatedAt)
 }
 
-func TestNormalizeKataLabel(t *testing.T) {
+func TestNormalizePoomsaeLabel(t *testing.T) {
 	assert.Equal(t, "needs-review", importlabels.Normalize("Needs Review!"))
 	assert.Equal(t, "imported", importlabels.Normalize("!!!"))
 	assert.Equal(t, "source:beads", importlabels.Normalize("source:beads"))

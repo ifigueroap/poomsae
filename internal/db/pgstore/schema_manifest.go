@@ -11,15 +11,15 @@ import (
 )
 
 const (
-	canonicalColumnFingerprint     = "2c573a26533e056618e458d7addc7836bf7d95e98b0ad258b6b7c2a50725186d"
-	canonicalConstraintFingerprint = "21a6429d8b06093928339598c69f71d48d65330c78e3274cbe8bcabc9fd5ed14"
-	canonicalIndexFingerprint      = "0042f73b77279fa84d7fcfa7fd7631adba1832b2b346afff50840ff6f0728050"
+	canonicalColumnFingerprint     = "a49b48bcf046ac685f302435741e5998c079d67d84b2293e831db4c4859181f6"
+	canonicalConstraintFingerprint = "733b4375731d2d8848063ea944fdc0a0fe23f71e9cdcea7ab573cc8ef3789327"
+	canonicalIndexFingerprint      = "428fd89b95e8fa33016c3415e12a5eda6046f71f1062f078591dd4128ebd62b3"
 	vectorColumnFingerprint        = "fee1ce70eef6dbbf6bb0bb4bc609d03ddbdedde3b7450b34968a146ff1a58502"
 	vectorConstraintFingerprint    = "f6b16cccad4298a1b9c6ee173c3795c08b2c1f9d92a6ede2f51da4ea53318bd7"
 	vectorIndexFingerprint         = "5c1dfd69d86bac3e4936fdf3ac3197ba3107684a2dff560649110c9b6df47f67"
 	canonicalTriggerFingerprint    = "d027a602b31936d09dee01e5182c092c9245faf34edb2c0445ac36795a4a3b46"
-	canonicalFunctionFingerprint   = "be74ea17e4c0192144ab7f75740b168dc1eb7cc45de15a34aaf3a69c1ffdb7f8"
-	canonicalTextSearchFingerprint = "1206eb613d5e4cf9c00c447998c337ece326819f8b3261668f7a8c685571db06"
+	canonicalFunctionFingerprint   = "71d44ed05122b2df706b705d83f7ede3af507843949c3425f460c9282cfb1444"
+	canonicalTextSearchFingerprint = "82eef2347252def7f55526841edb3f75b871004f127bcb91458d3a44c080b1ce"
 )
 
 //nolint:gosec // This manifest lists canonical schema columns, including credential column names, not secret values.
@@ -42,8 +42,8 @@ var canonicalTableColumns = map[string]string{
 	"api_tokens":                     "id,token_hash,actor,name,scope_kind,scope_project_uid,scope_root_issue_uid,expires_at,created_at,last_used_at,revoked_at",
 	"comments":                       "id,uid,issue_id,author,body,created_at,teammate,reply_to_uid,reply_kind,edited_at",
 	"events":                         "id,uid,origin_instance_uid,project_id,project_name,issue_id,issue_uid,related_issue_id,related_issue_uid,type,actor,payload,hlc_physical_ms,hlc_counter,content_hash,created_at",
-	"external_field_mappings":        "id,connector_instance,kata_field,external_field_id,external_field_name,accepted_kinds_json,nullable,writable,schema_revision,active,created_at,updated_at",
-	"external_field_states":          "binding_id,mapping_id,baseline_json,conflicted,conflict_kata,conflict_external,conflict_at,updated_at",
+	"external_field_mappings":        "id,connector_instance,poomsae_field,external_field_id,external_field_name,accepted_kinds_json,nullable,writable,schema_revision,active,created_at,updated_at",
+	"external_field_states":          "binding_id,mapping_id,baseline_json,conflicted,conflict_poomsae,conflict_external,conflict_at,updated_at",
 	"external_root_bindings":         "id,uid,project_id,issue_id,root_mapping_id,connector_instance,external_root_key,external_account_key,active,enabled,paused_reason,receive_comments,receive_comments_after,publish_comments,publish_comments_after,complete_external,claim_token,claim_started_at,last_external_state,last_external_revision,pending_comment_uid,pending_comment_started_at,last_attempt_at,last_success_at,last_error_at,last_error,consecutive_failures,next_attempt_at,created_at,updated_at,unbound_at",
 	"federation_bindings":            "project_id,role,hub_url,hub_project_id,hub_project_uid,replay_horizon_event_id,pull_cursor_event_id,push_enabled,push_cursor_event_id,bound_actor,allow_insecure,enabled,created_at,updated_at,last_sync_at,relay_config",
 	"federation_enrollments":         "id,token_hash,spoke_instance_uid,project_id,capabilities,bound_actor,allow_adoption_snapshot_authors,adoption_baseline_open,adoption_baseline_next_source_event_id,adoption_baseline_end_source_event_id,created_at,updated_at,revoked_at,relay_binding_uid,relay_protocol_version,parent_token_id,relay_reset_epoch,relay_serve_downstream",
@@ -479,7 +479,7 @@ func (s *Store) validateCanonicalTextSearch(ctx context.Context) error {
 		    ON token.tokid = mapping.maptokentype
 		  JOIN pg_catalog.pg_ts_dict dictionary ON dictionary.oid = mapping.mapdict
 		  JOIN pg_catalog.pg_namespace dictionary_ns ON dictionary_ns.oid = dictionary.dictnamespace
-		 WHERE config_ns.nspname = $1 AND c.cfgname = 'kata_simple_unaccent'`, s.schema)
+		 WHERE config_ns.nspname = $1 AND c.cfgname = 'poomsae_simple_unaccent'`, s.schema)
 	if err != nil {
 		return fmt.Errorf("inspect postgres schema %q text search definitions: %w", s.schema, err)
 	}

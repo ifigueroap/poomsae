@@ -64,7 +64,7 @@ func TestE2E_Hooks_IssueCreatedTriggersHook(t *testing.T) {
 	dirs := newE2EDirs(t)
 	writeHookScript(t, dirs)
 
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 	env := dirs.env()
 
 	daemonStderr := startDaemon(t, bin, env)
@@ -165,9 +165,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// buildKataBinary lazily compiles cmd/poomsae once for this test process.
+// buildPoomsaeBinary lazily compiles cmd/poomsae once for this test process.
 // TestMain removes the build directory after all test cleanups finish.
-func buildKataBinary(t interface {
+func buildPoomsaeBinary(t interface {
 	Helper()
 	require.TestingT
 }) string {
@@ -198,7 +198,7 @@ func startDaemon(t *testing.T, bin string, env []string) *safeBuffer {
 	t.Helper()
 	stderr := &safeBuffer{}
 	// t.Cleanup owns this process; t.Context() would kill it before that runs.
-	//nolint:gosec // G204: bin is buildKataBinary's output
+	//nolint:gosec // G204: bin is buildPoomsaeBinary's output
 	cmd := exec.CommandContext(context.WithoutCancel(t.Context()), bin, "daemon", "start", "--foreground")
 	cmd.Env = env
 	cmd.Stderr = stderr

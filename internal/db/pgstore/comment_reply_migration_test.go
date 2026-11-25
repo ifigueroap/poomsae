@@ -43,6 +43,7 @@ func TestCommentReplyMigrationUpgradesVersion31(t *testing.T) {
 	dropMCPEventSubscriptionsSchema(ctx, t, admin, schema)
 	dropProjectAccessSchema(ctx, t, admin, schema)
 	dropCommentReplySchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "reply_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE reply_upgrade.meta SET value='31' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	var owner string
@@ -98,6 +99,7 @@ func TestCommentReplyIndexMigrationUpgradesVersion33(t *testing.T) {
 	t.Cleanup(func() { _ = admin.Close() })
 	dropEventMoveHistoryIndex(ctx, t, admin, schema)
 	dropLaterMigrationIndexes(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "reply_index_upgrade")
 	_, err = admin.ExecContext(ctx, `DROP INDEX reply_index_upgrade.idx_comments_reply_to;
 		UPDATE reply_index_upgrade.meta SET value='33' WHERE key='schema_version'`)
 	require.NoError(t, err)

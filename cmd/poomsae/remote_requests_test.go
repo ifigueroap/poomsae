@@ -27,7 +27,7 @@ func TestRemoteMutationsWithoutPreflight(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			env := testenv.New(t, testenv.WithAuthToken("fixture-token"))
 			workspace := t.TempDir()
-			testfix.WriteKataToml(t, workspace, "example-project")
+			testfix.WritePoomsaeToml(t, workspace, "example-project")
 			t.Chdir(workspace)
 			t.Setenv("POOMSAE_SERVER", "")
 			project, err := env.DB.CreateProject(t.Context(), "example-project")

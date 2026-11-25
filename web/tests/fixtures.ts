@@ -70,7 +70,7 @@ interface RunningFixture {
 
 const daemonStderr = new WeakMap<ChildProcess, string>()
 
-export const test = base.extend<{ poomsae: PoomsaeFixture; diagnosticKata: PoomsaeFixture }>({
+export const test = base.extend<{ poomsae: PoomsaeFixture; diagnosticPoomsae: PoomsaeFixture }>({
   poomsae: [
     async ({ browserName, page }, use) => {
       void browserName
@@ -89,7 +89,7 @@ export const test = base.extend<{ poomsae: PoomsaeFixture; diagnosticKata: Pooms
     // Each test needs fresh tasks, projects, and daemon settings, even on the same worker.
     { scope: 'test', timeout: 120_000 },
   ],
-  diagnosticKata: async ({ browserName }, use) => {
+  diagnosticPoomsae: async ({ browserName }, use) => {
     void browserName
     const running = await startProductionFixture()
     try {

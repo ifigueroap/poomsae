@@ -3,8 +3,8 @@ import { describe, expect, test } from 'vitest'
 import type { PoomsaeTaskSummary } from './types'
 import {
   DEFAULT_POOMSAE_TASK_SORT,
-  sortKataTasks,
-  toggleKataTaskSort,
+  sortPoomsaeTasks,
+  togglePoomsaeTaskSort,
   type PoomsaeTaskSort,
 } from './sort'
 
@@ -36,12 +36,12 @@ describe('poomsae task sorting', () => {
     const empty = task({ uid: 'empty' })
     const children = (item: PoomsaeTaskSummary) => (item.uid === 'parent' ? [child] : [])
     expect(
-      sortKataTasks([empty, middle, parent], { key: 'due', direction: 'asc' }, children).map(
+      sortPoomsaeTasks([empty, middle, parent], { key: 'due', direction: 'asc' }, children).map(
         (item) => item.uid,
       ),
     ).toEqual(['parent', 'middle', 'empty'])
     expect(
-      sortKataTasks([empty, middle, parent], { key: 'due', direction: 'desc' }, children).map(
+      sortPoomsaeTasks([empty, middle, parent], { key: 'due', direction: 'desc' }, children).map(
         (item) => item.uid,
       ),
     ).toEqual(['middle', 'parent', 'empty'])
@@ -52,22 +52,20 @@ describe('poomsae task sorting', () => {
       task({ uid: 'later', deadline_on_date: '2026-05-20' }),
       task({ uid: 'early', metadata: { deadline_on: '2026-05-01' } }),
     ]
-    expect(sortKataTasks(tasks, { key: 'due', direction: 'asc' }).map((item) => item.uid)).toEqual([
-      'early',
-      'later',
-      'none',
-    ])
-    expect(sortKataTasks(tasks, { key: 'due', direction: 'desc' }).map((item) => item.uid)).toEqual(
-      ['later', 'early', 'none'],
-    )
+    expect(
+      sortPoomsaeTasks(tasks, { key: 'due', direction: 'asc' }).map((item) => item.uid),
+    ).toEqual(['early', 'later', 'none'])
+    expect(
+      sortPoomsaeTasks(tasks, { key: 'due', direction: 'desc' }).map((item) => item.uid),
+    ).toEqual(['later', 'early', 'none'])
   })
   test('defaults to recently updated first and toggles the active key', () => {
     expect(DEFAULT_POOMSAE_TASK_SORT).toEqual({ key: 'updated', direction: 'desc' })
-    expect(toggleKataTaskSort(DEFAULT_POOMSAE_TASK_SORT, 'updated')).toEqual({
+    expect(togglePoomsaeTaskSort(DEFAULT_POOMSAE_TASK_SORT, 'updated')).toEqual({
       key: 'updated',
       direction: 'asc',
     })
-    expect(toggleKataTaskSort(DEFAULT_POOMSAE_TASK_SORT, 'priority')).toEqual({
+    expect(togglePoomsaeTaskSort(DEFAULT_POOMSAE_TASK_SORT, 'priority')).toEqual({
       key: 'priority',
       direction: 'asc',
     })
@@ -79,19 +77,21 @@ describe('poomsae task sorting', () => {
     const ownedHigh = task({ uid: 'owned-high', priority: 0, owner: 'ada' })
 
     expect(
-      sortKataTasks([unassigned, ownedLow, ownedHigh], { key: 'priority', direction: 'asc' }).map(
-        (issue) => issue.uid,
-      ),
+      sortPoomsaeTasks([unassigned, ownedLow, ownedHigh], {
+        key: 'priority',
+        direction: 'asc',
+      }).map((issue) => issue.uid),
     ).toEqual(['owned-high', 'owned-low', 'unassigned'])
     expect(
-      sortKataTasks([unassigned, ownedLow, ownedHigh], { key: 'priority', direction: 'desc' }).map(
-        (issue) => issue.uid,
-      ),
+      sortPoomsaeTasks([unassigned, ownedLow, ownedHigh], {
+        key: 'priority',
+        direction: 'desc',
+      }).map((issue) => issue.uid),
     ).toEqual(['owned-low', 'owned-high', 'unassigned'])
 
     const ownerSort: PoomsaeTaskSort = { key: 'owner', direction: 'desc' }
     expect(
-      sortKataTasks([unassigned, ownedLow, ownedHigh], ownerSort).map((issue) => issue.uid),
+      sortPoomsaeTasks([unassigned, ownedLow, ownedHigh], ownerSort).map((issue) => issue.uid),
     ).toEqual(['owned-low', 'owned-high', 'unassigned'])
   })
 
@@ -101,9 +101,10 @@ describe('poomsae task sorting', () => {
     const newest = task({ uid: 'c', updated_at: '2026-05-03T09:00:00Z' })
 
     expect(
-      sortKataTasks([oldUTC, newest, sameInstantOffset], { key: 'updated', direction: 'desc' }).map(
-        (issue) => issue.uid,
-      ),
+      sortPoomsaeTasks([oldUTC, newest, sameInstantOffset], {
+        key: 'updated',
+        direction: 'desc',
+      }).map((issue) => issue.uid),
     ).toEqual(['c', 'a', 'b'])
   })
 
@@ -113,7 +114,7 @@ describe('poomsae task sorting', () => {
     const alpha = task({ uid: 'alpha', title: 'Alpha', updated_at: '2026-05-02T00:00:00Z' })
 
     expect(
-      sortKataTasks([older, alpha, newer], { key: 'title', direction: 'asc' }).map(
+      sortPoomsaeTasks([older, alpha, newer], { key: 'title', direction: 'asc' }).map(
         (issue) => issue.uid,
       ),
     ).toEqual(['alpha', 'newer', 'older'])

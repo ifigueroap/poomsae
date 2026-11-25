@@ -450,7 +450,7 @@ func TestPrepareProjectMergeRecordsPreservesExternalRootRecords(t *testing.T) {
 		},
 		&ExternalFieldStateExport{
 			BindingUID: bindingUID, MappingConnectorInstance: "connector-one",
-			MappingKataField: "scheduled_on", MappingExternalFieldID: "schedule-one",
+			MappingPoomsaeField: "scheduled_on", MappingExternalFieldID: "schedule-one",
 			MappingSchemaRevision: "schema-one", MappingCreatedAt: createdAt,
 			Baseline: jsontext.Value(`"2026-08-20"`), UpdatedAt: createdAt,
 		},

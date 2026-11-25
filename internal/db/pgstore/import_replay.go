@@ -393,7 +393,7 @@ func pgReplayExternalFieldMapping(
 		active = false
 	}
 	_, err = (externalRootTxQueryer{tx}).ExecContext(ctx, `INSERT INTO external_field_mappings(
-		connector_instance, kata_field, external_field_id, external_field_name,
+		connector_instance, poomsae_field, external_field_id, external_field_name,
 		accepted_kinds_json, nullable, writable, schema_revision, active,
 		created_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -465,7 +465,7 @@ func pgReplayExternalFieldMappingByIdentity(
 	rows, err := queryer.QueryContext(ctx, `SELECT id, external_field_name, accepted_kinds_json,
 		       nullable, writable, created_at, updated_at
 		FROM external_field_mappings
-		WHERE connector_instance = $1 AND kata_field = $2 AND external_field_id = $3
+		WHERE connector_instance = $1 AND poomsae_field = $2 AND external_field_id = $3
 		  AND schema_revision = $4`,
 		connectorInstance, poomsaeField, externalFieldID, schemaRevision,
 	)
@@ -651,7 +651,7 @@ func pgReplayExternalFieldState(ctx context.Context, tx *sql.Tx, state *db.Exter
 		))
 	}
 	mapping, found, err := pgReplayExternalFieldMappingByIdentity(ctx, queryer,
-		state.MappingConnectorInstance, state.MappingKataField,
+		state.MappingConnectorInstance, state.MappingPoomsaeField,
 		state.MappingExternalFieldID, state.MappingSchemaRevision,
 		formatExternalObservationTime(state.MappingCreatedAt),
 	)
@@ -662,11 +662,11 @@ func pgReplayExternalFieldState(ctx context.Context, tx *sql.Tx, state *db.Exter
 		return pgReplayError(db.ImportKindExternalFieldState, sql.ErrNoRows)
 	}
 	_, err = queryer.ExecContext(ctx, `INSERT INTO external_field_states(
-		binding_id, mapping_id, baseline_json, conflicted, conflict_kata,
+		binding_id, mapping_id, baseline_json, conflicted, conflict_poomsae,
 		conflict_external, conflict_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
 		bindingID, mapping.id, pgNullableRawJSON(state.Baseline), boolInt(state.Conflicted),
-		pgNullableRawJSON(state.ConflictKata), pgNullableRawJSON(state.ConflictExternal),
+		pgNullableRawJSON(state.ConflictPoomsae), pgNullableRawJSON(state.ConflictExternal),
 		storedNullTime{Time: state.ConflictAt}, storedTime(state.UpdatedAt))
 	return pgReplayError(db.ImportKindExternalFieldState, err)
 }

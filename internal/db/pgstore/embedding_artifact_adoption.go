@@ -14,7 +14,7 @@ import (
 // table before replacing the parent, then restore one bounded artifact at a time.
 // No persisted staging table or schema change is needed; rollback restores both.
 func stageArtifactAdoptionTx(ctx context.Context, tx *sql.Tx, projectID int64) error {
-	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE _kata_artifact_adoption ON COMMIT DROP AS SELECT a.* FROM federation_embedding_artifacts a JOIN projects p ON p.uid=a.project_uid WHERE p.id=$1`, projectID); err != nil {
+	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE _poomsae_artifact_adoption ON COMMIT DROP AS SELECT a.* FROM federation_embedding_artifacts a JOIN projects p ON p.uid=a.project_uid WHERE p.id=$1`, projectID); err != nil {
 		return err
 	}
 	_, err := tx.ExecContext(ctx, `DELETE FROM federation_embedding_artifacts WHERE project_uid=(SELECT uid FROM projects WHERE id=$1)`, projectID)
@@ -26,7 +26,7 @@ func restoreArtifactAdoptionTx(ctx context.Context, tx *sql.Tx, projectUID strin
 	for {
 		var oldUID, digest, raw string
 		var expiry sql.NullString
-		err := tx.QueryRowContext(ctx, `SELECT project_uid,digest,artifact,staging_expires_at FROM pg_temp._kata_artifact_adoption WHERE digest>$1 ORDER BY digest LIMIT 1`, after).Scan(&oldUID, &digest, &raw, &expiry)
+		err := tx.QueryRowContext(ctx, `SELECT project_uid,digest,artifact,staging_expires_at FROM pg_temp._poomsae_artifact_adoption WHERE digest>$1 ORDER BY digest LIMIT 1`, after).Scan(&oldUID, &digest, &raw, &expiry)
 		if errors.Is(err, sql.ErrNoRows) {
 			break
 		}
@@ -59,6 +59,6 @@ func restoreArtifactAdoptionTx(ctx context.Context, tx *sql.Tx, projectUID strin
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, `DROP TABLE pg_temp._kata_artifact_adoption`)
+	_, err := tx.ExecContext(ctx, `DROP TABLE pg_temp._poomsae_artifact_adoption`)
 	return err
 }
