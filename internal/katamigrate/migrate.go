@@ -16,7 +16,7 @@ import (
 
 	"github.com/ifigueroap/poomsae/internal/config"
 	"github.com/ifigueroap/poomsae/internal/daemonruntime"
-	"github.com/ifigueroap/poomsae/internal/db/sqlitestore"
+	"github.com/ifigueroap/poomsae/internal/db/storeopen"
 )
 
 const legacyDBName = "kata.db"
@@ -399,8 +399,10 @@ func rewriteCopiedConfig(source, dest string) error {
 	return os.WriteFile(path, []byte(text), 0o600)
 }
 
+// migrateSchema opens the copy through storeopen, as the daemon does, so an
+// older kata schema gets its JSONL cutover here rather than at first start.
 func migrateSchema(ctx context.Context, path string) (int, error) {
-	store, err := sqlitestore.Open(ctx, path)
+	store, err := storeopen.Open(ctx, path)
 	if err != nil {
 		return 0, fmt.Errorf("migrate %s: %w", path, err)
 	}

@@ -73,6 +73,26 @@ func TestMigrateCopiesDataAndLeavesOriginal(t *testing.T) {
 	assert.Equal(t, "attachment-bytes", mustRead(t, filepath.Join(src, "attachments", "note.txt")))
 }
 
+// A kata install whose schema predates this binary must come out at the
+// current schema, as the daemon would open it, instead of failing with
+// "schema cutover required" after the copy.
+func TestMigrateCutsOverOlderKataSchema(t *testing.T) {
+	src := t.TempDir()
+	dst := filepath.Join(t.TempDir(), "poomsae-home")
+	t.Setenv("POOMSAE_HOME", dst)
+	store, err := sqlitestore.Open(t.Context(), filepath.Join(src, "kata.db"))
+	require.NoError(t, err)
+	_, err = store.ExecContext(t.Context(), `UPDATE meta SET value='40' WHERE key='schema_version'`)
+	require.NoError(t, err)
+	require.NoError(t, store.Close())
+
+	result, err := Migrate(t.Context(), Options{Destination: dst, Sources: []string{src}})
+	require.NoError(t, err)
+	assert.True(t, result.Copied)
+	assert.Equal(t, db.CurrentSchemaVersion(), result.Schema)
+	assert.Equal(t, filepath.Join(dst, "poomsae.db"), result.Database)
+}
+
 func TestPromoteDatabaseCopiesSidecars(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "kata.db"), []byte("db-bytes"), 0o600))
