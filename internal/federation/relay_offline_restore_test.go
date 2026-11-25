@@ -25,7 +25,7 @@ func TestRelayOfflineRestoreArtifactDelivery(t *testing.T) {
 				}
 				issue, _, err := sender.store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: sender.project.ID, Title: "Offline restored vector", Author: sender.account})
 				require.NoError(t, err)
-				identity := embedding.ArtifactIdentity{ProjectUID: root.project.UID, IssueUID: issue.UID, ProducerInstanceUID: sender.store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
+				identity := embedding.ArtifactIdentity{ProjectUID: root.project.UID, IssueUID: issue.UID, ProducerInstanceUID: sender.store.InstanceUID(), Provider: "openai-compatible", Model: "example-model", Dimensions: 2, InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2", RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200, RecipeFingerprint: strings.Repeat("a", 64)}
 				artifact, err := embedding.NewArtifact(identity, embedding.EmbedText(issue.Title, issue.Body), [][]float32{{1, 0}})
 				require.NoError(t, err)
 				durable, err := sender.store.(db.EmbeddingArtifactStorage).RetainEmbeddingArtifact(t.Context(), artifact)

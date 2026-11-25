@@ -292,7 +292,7 @@ func TestBindCommitsReservedClaimBeforeImmediateReconcile(t *testing.T) {
 	require.NotNil(t, binding.ClaimStartedAt)
 }
 
-func TestBindCompleteRootDelegatesLaterReviewWithoutClosingKata(t *testing.T) {
+func TestBindCompleteRootDelegatesLaterReviewWithoutClosingPoomsae(t *testing.T) {
 	h := newServiceHarness(t)
 	h.client.resolved.State = "complete"
 	h.service.immediateClaimedReconcile = func(ctx context.Context, _ int64, _ string) ([]db.Event, error) {
@@ -799,7 +799,7 @@ func TestResolveFieldConflictWritesOnlyTheSelectedSideAndClearsCandidates(t *tes
 			)
 			require.NoError(t, err)
 			assert.False(t, state.Conflicted)
-			assert.Empty(t, state.ConflictKata)
+			assert.Empty(t, state.ConflictPoomsae)
 			assert.Empty(t, state.ConflictExternal)
 			want := date("2026-08-21")
 			if use == "external" {
@@ -814,7 +814,7 @@ func TestResolveFieldConflictWritesOnlyTheSelectedSideAndClearsCandidates(t *tes
 			assert.Equal(t, want, h.client.fieldValues["start-date"])
 			issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 			require.NoError(t, readErr)
-			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 			require.NoError(t, readErr)
 			assert.Equal(t, want, poomsaeValue)
 			resolved := requireEventType(t, events, "issue.external_field_resolved")
@@ -991,7 +991,7 @@ func TestResolveFieldConflictRejectsProviderDriftDuringWrite(t *testing.T) {
 	assert.Equal(t, date("2026-08-24"), h.client.fieldValues["start-date"])
 	state := h.fieldState(t, "scheduled_on")
 	assert.True(t, state.Conflicted)
-	assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictKata))
+	assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictPoomsae))
 	assert.Equal(t, date("2026-08-22"), decodeStoredFieldValue(t, state.ConflictExternal))
 	binding, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
 	require.NoError(t, readErr)
@@ -1004,7 +1004,7 @@ func TestResolveFieldConflictRejectsDriftWithoutMutation(t *testing.T) {
 		mutate func(*testing.T, *reconcileHarness)
 	}{
 		{name: "Poomsae candidate changed", mutate: func(t *testing.T, h *reconcileHarness) {
-			h.setKataField(t, "scheduled_on", date("2026-08-23"))
+			h.setPoomsaeField(t, "scheduled_on", date("2026-08-23"))
 		}},
 		{name: "external candidate changed", mutate: func(_ *testing.T, h *reconcileHarness) {
 			h.client.fieldValues["start-date"] = date("2026-08-24")
@@ -1034,7 +1034,7 @@ func TestResolveFieldConflictRejectsDriftWithoutMutation(t *testing.T) {
 			assert.Equal(t, beforeIssue.Revision, afterIssue.Revision)
 			state := h.fieldState(t, "scheduled_on")
 			assert.True(t, state.Conflicted)
-			assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictKata))
+			assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictPoomsae))
 			assert.Equal(t, date("2026-08-22"), decodeStoredFieldValue(t, state.ConflictExternal))
 			binding, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
 			require.NoError(t, readErr)
@@ -1046,13 +1046,13 @@ func TestResolveFieldConflictRejectsDriftWithoutMutation(t *testing.T) {
 func TestResolveFieldConflictRechecksStoredCandidatesAfterClaim(t *testing.T) {
 	h, service := prepareFieldConflict(t)
 	state := h.fieldState(t, "scheduled_on")
-	refreshedKata, err := marshalCanonicalFieldValue(date("2026-08-23"))
+	refreshedPoomsae, err := marshalCanonicalFieldValue(date("2026-08-23"))
 	require.NoError(t, err)
 	refreshedExternal, err := marshalCanonicalFieldValue(date("2026-08-24"))
 	require.NoError(t, err)
 	service.store = &refreshConflictAfterClaimStorage{
 		Storage: h.store, mappingID: state.MappingID, baseline: state.Baseline,
-		poomsae: refreshedKata, external: refreshedExternal,
+		poomsae: refreshedPoomsae, external: refreshedExternal,
 	}
 	beforeIssue, err := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, err)
@@ -1070,7 +1070,7 @@ func TestResolveFieldConflictRechecksStoredCandidatesAfterClaim(t *testing.T) {
 	assert.Equal(t, beforeIssue.Revision, afterIssue.Revision)
 	refreshed := h.fieldState(t, "scheduled_on")
 	assert.True(t, refreshed.Conflicted)
-	assert.Equal(t, date("2026-08-23"), decodeStoredFieldValue(t, refreshed.ConflictKata))
+	assert.Equal(t, date("2026-08-23"), decodeStoredFieldValue(t, refreshed.ConflictPoomsae))
 	assert.Equal(t, date("2026-08-24"), decodeStoredFieldValue(t, refreshed.ConflictExternal))
 	binding, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
 	require.NoError(t, readErr)
@@ -1132,7 +1132,7 @@ func TestResolveFieldConflictUsingExternalValueDoesNotDependOnProviderWrite(t *t
 	assert.Equal(t, date("2026-08-22"), decodeStoredFieldValue(t, state.Baseline))
 	issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, readErr)
-	value, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+	value, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, readErr)
 	assert.Equal(t, date("2026-08-22"), value)
 	binding, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
@@ -1206,7 +1206,7 @@ func (s *refreshConflictAfterClaimStorage) ClaimExternalRootBindingForManualReco
 	}
 	_, _, err = s.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 		BindingID: binding.ID, MappingID: s.mappingID, ClaimToken: token,
-		Baseline: s.baseline, ConflictKata: s.poomsae, ConflictExternal: s.external,
+		Baseline: s.baseline, ConflictPoomsae: s.poomsae, ConflictExternal: s.external,
 		Conflicted: true, At: now, Actor: "connector:notes",
 	})
 	return binding, acquired, err
@@ -1237,7 +1237,7 @@ func prepareFieldConflict(t *testing.T) (*reconcileHarness, *Service) {
 	h := newReconcileHarness(t)
 	h.mapField(t, "scheduled_on", "start-date")
 	h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
-	h.setKataField(t, "scheduled_on", date("2026-08-21"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 	h.client.fieldValues["start-date"] = date("2026-08-22")
 	result, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
 	require.NoError(t, err)

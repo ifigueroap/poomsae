@@ -113,7 +113,7 @@ func NewWebSessionManager(cfg WebSessionManagerConfig) (*WebSessionManager, erro
 	if updates == "" {
 		updates = "poll"
 	}
-	cookieName := "kata_session_" + cfg.InstanceID
+	cookieName := "poomsae_session_" + cfg.InstanceID
 	secure := origin.Scheme == "https"
 	if secure {
 		cookieName = "__Host-" + cookieName

@@ -27,7 +27,7 @@ const (
 // FieldCodec translates one Poomsae planning field to and from connector values.
 type FieldCodec interface {
 	PoomsaeField() string
-	ReadKata(db.Issue) (connector.FieldValue, error)
+	ReadPoomsae(db.Issue) (connector.FieldValue, error)
 	PoomsaePatch(db.Issue, connector.FieldValue) (map[string]jsontext.Value, error)
 	ValidateExternalDescriptor(connector.FieldDescriptor) error
 }
@@ -54,7 +54,7 @@ func (c scheduleCodec) PoomsaeField() string {
 	return c.key
 }
 
-func (c scheduleCodec) ReadKata(issue db.Issue) (connector.FieldValue, error) {
+func (c scheduleCodec) ReadPoomsae(issue db.Issue) (connector.FieldValue, error) {
 	values, err := metadataObject(issue.Metadata)
 	if err != nil {
 		return connector.FieldValue{}, err

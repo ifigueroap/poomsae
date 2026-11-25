@@ -7,8 +7,8 @@ export interface ExternalFieldMappingOut {
   active: boolean
   external_field_id: string
   external_field_name: string
-  kata_field: string
   nullable: boolean
+  poomsae_field: string
   schema_revision: string
   writable: boolean
   [key: string]: unknown

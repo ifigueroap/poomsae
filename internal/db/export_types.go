@@ -248,7 +248,7 @@ type ExternalRootBindingExport struct {
 // descriptor revisions remain distinct without exporting local integer IDs.
 type ExternalFieldMappingExport struct {
 	ConnectorInstance string    `json:"connector_instance"`
-	PoomsaeField      string    `json:"kata_field"`
+	PoomsaeField      string    `json:"poomsae_field"`
 	ExternalFieldID   string    `json:"external_field_id"`
 	ExternalFieldName string    `json:"external_field_name"`
 	AcceptedKinds     []string  `json:"accepted_kinds"`
@@ -265,12 +265,12 @@ type ExternalFieldMappingExport struct {
 type ExternalFieldStateExport struct {
 	BindingUID               string         `json:"binding_uid"`
 	MappingConnectorInstance string         `json:"mapping_connector_instance"`
-	MappingKataField         string         `json:"mapping_kata_field"`
+	MappingPoomsaeField      string         `json:"mapping_poomsae_field"`
 	MappingExternalFieldID   string         `json:"mapping_external_field_id"`
 	MappingSchemaRevision    string         `json:"mapping_schema_revision"`
 	MappingCreatedAt         time.Time      `json:"mapping_created_at"`
 	Baseline                 jsontext.Value `json:"baseline,omitempty"`
-	ConflictKata             jsontext.Value `json:"conflict_kata,omitempty"`
+	ConflictPoomsae          jsontext.Value `json:"conflict_poomsae,omitempty"`
 	ConflictExternal         jsontext.Value `json:"conflict_external,omitempty"`
 	Conflicted               bool           `json:"conflicted"`
 	ConflictAt               *time.Time     `json:"conflict_at,omitempty"`

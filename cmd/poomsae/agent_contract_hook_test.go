@@ -61,8 +61,8 @@ func TestAgentContractHookBare(t *testing.T) {
 	assertCodexPrompt(t, stdout, agentContractText)
 }
 
-func TestAgentContractHookOnlyInKataWorkspaces(t *testing.T) {
-	workspace := writeKataWorkspace(t, t.TempDir())
+func TestAgentContractHookOnlyInPoomsaeWorkspaces(t *testing.T) {
+	workspace := writePoomsaeWorkspace(t, t.TempDir())
 	outside := t.TempDir()
 	// A Git checkout nested in a poomsae workspace is its own unbound repository.
 	nestedCheckout := filepath.Join(workspace, "vendor", "lib")
@@ -93,7 +93,7 @@ func TestAgentContractHookOnlyInKataWorkspaces(t *testing.T) {
 }
 
 func TestAgentContractHookCustomSource(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	for _, tc := range []struct {
 		name, path, text string
 		exists           bool
@@ -124,7 +124,7 @@ func TestAgentContractHookCustomSource(t *testing.T) {
 }
 
 func TestAgentContractHooksLegacyMarkerKeepsBuiltInContract(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	for _, content := range []string{"authored replacement", ""} {
 		require.NoError(t, os.WriteFile("poomsae-agent-contract-hook", []byte(content), 0o600))
 		out, stderr, err := executeRootCapture(t, t.Context(), "agent-contract-hook", "--source", "poomsae-agent-contract-hook")
@@ -214,7 +214,7 @@ func TestAgentContractHookUsage(t *testing.T) {
 }
 
 func TestAgentHooksContractCustomSource(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	require.NoError(t, os.WriteFile("custom.txt", []byte("replacement"), 0o600))
 	out, stderr, err := executeAgentHook(t, strings.NewReader(contractHookPayload(agenthook.AgentCodex)), "agent-hook", "contract", "codex", "--source", "custom.txt")
 	require.NoError(t, err, stderr)
@@ -222,7 +222,7 @@ func TestAgentHooksContractCustomSource(t *testing.T) {
 }
 
 func TestAgentHooksOwnershipMarkerDoesNotSelectContractSource(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	t.Setenv("POOMSAE_REF", "")
 	require.NoError(t, os.WriteFile(legacyAgentContractHookSource, []byte("custom source"), 0o600))
 	marker := agentSetupHookOwnershipMarker(contractHook, "0123456789abcdef")
@@ -240,7 +240,7 @@ func TestAgentHooksOwnershipMarkerDoesNotSelectContractSource(t *testing.T) {
 }
 
 func TestAgentHooksContractSourceAllHarnesses(t *testing.T) {
-	t.Chdir(writeKataWorkspace(t, t.TempDir()))
+	t.Chdir(writePoomsaeWorkspace(t, t.TempDir()))
 	prompt := "custom \"prompt\"\nUnicode 世界\n"
 	require.NoError(t, os.WriteFile("prompt.txt", []byte(prompt), 0o600))
 	require.NoError(t, os.WriteFile("empty.txt", nil, 0o600))

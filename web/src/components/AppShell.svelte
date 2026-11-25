@@ -19,12 +19,12 @@
   import type { WebDaemonInfo } from '../lib/daemons/client'
   import type { PoomsaeRoute, SettingsSection, ShareableFilters, SystemView } from '../lib/router'
   import {
-    deriveKataAreas,
-    defaultKataTaskSearchFilters,
-    projectKataWorkspaceView,
+    derivePoomsaeAreas,
+    defaultPoomsaeTaskSearchFilters,
+    projectPoomsaeWorkspaceView,
   } from '../lib/poomsae/authority'
-  import { createKataLinkFilters } from '../lib/poomsae/linkFilters'
-  import { normalizeKataUISnapshot, withPendingSelection } from '../lib/poomsae/projection'
+  import { createPoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
+  import { normalizePoomsaeUISnapshot, withPendingSelection } from '../lib/poomsae/projection'
   import { localDateString } from '../lib/poomsae/dates'
   import type {
     PoomsaeTaskMutationResponse,
@@ -197,7 +197,7 @@
     onDeleteRecurrence,
   }: Props = $props()
 
-  let acceptedProjection = $derived(normalizeKataUISnapshot(snapshot))
+  let acceptedProjection = $derived(normalizePoomsaeUISnapshot(snapshot))
   // A click on another task in the loaded list shows that task at once, from the
   // list's copy of it, while App loads the snapshot that carries its comments,
   // links, and history. Any other route change waits for its snapshot.
@@ -276,7 +276,7 @@
   let detailBeside = $state(false)
   let creationIntent = $state<'project' | 'task' | null>(null)
   const mediumScreen = new MediaQuery(MEDIA.medium)
-  let linkFilters = $state(createKataLinkFilters('all'))
+  let linkFilters = $state(createPoomsaeLinkFilters('all'))
   let navigationGeneration = $state(0)
   let daemonRoute = $derived(route.view === 'credentials' || route.view === 'settings')
   let settingsHost = $derived.by(() => {
@@ -317,7 +317,7 @@
   )
   let inputFilters = $derived(searchFiltersForRoute(filterRoute, viewName))
   let currentView = $derived(
-    projectKataWorkspaceView({
+    projectPoomsaeWorkspaceView({
       view: viewName,
       filters: searchFilters,
       snapshot: projection,
@@ -343,7 +343,7 @@
     }
     pendingQuery = ''
   })
-  let areas = $derived(deriveKataAreas(projection.projects))
+  let areas = $derived(derivePoomsaeAreas(projection.projects))
   let selectedProject = $derived.by(() => {
     const scope = searchFilters.scope
     return scope.kind === 'project'
@@ -593,7 +593,7 @@
     current: AppRoute,
     currentView: PoomsaeTaskViewName,
   ): PoomsaeTaskSearchFilters {
-    const defaults = defaultKataTaskSearchFilters(currentView)
+    const defaults = defaultPoomsaeTaskSearchFilters(currentView)
     return {
       scope: current.projectUID
         ? { kind: 'project', project_uid: current.projectUID }
@@ -622,7 +622,7 @@
     currentView: PoomsaeTaskViewName,
     changed: keyof PoomsaeTaskSearchFilters,
   ): ShareableFilters {
-    const defaultStatus = defaultKataTaskSearchFilters(currentView).status
+    const defaultStatus = defaultPoomsaeTaskSearchFilters(currentView).status
     const result: ShareableFilters = {
       status:
         changed === 'status'

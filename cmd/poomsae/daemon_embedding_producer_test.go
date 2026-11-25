@@ -21,10 +21,10 @@ import (
 // R7/runtime: daemon startup publishes its root producer assignment through the
 // same broadcaster as ordinary committed project metadata changes.
 func TestStartEmbeddingReconcilerPublishesProducerSelection(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(ctx, "root-producer-project")
 	require.NoError(t, err)

@@ -15,16 +15,16 @@
 
   import type { PoomsaeReachableGraphResponse, PoomsaeTaskSummary } from '../lib/poomsae/types'
   import {
-    recordKataGraphDebugEvent,
-    resetKataGraphDebug,
-    setKataGraphDebugGraph,
+    recordPoomsaeGraphDebugEvent,
+    resetPoomsaeGraphDebug,
+    setPoomsaeGraphDebugGraph,
   } from '../lib/graph/debug'
   import { filterSnapshotGraph } from '../lib/graph/snapshot'
   import GraphIssueNode from './GraphIssueNode.svelte'
   import GraphAutoFit from './GraphAutoFit.svelte'
   import GraphMiniMap from './GraphMiniMap.svelte'
   import {
-    buildKataReachableGraph,
+    buildPoomsaeReachableGraph,
     type PoomsaeGraphContextDepth,
     type PoomsaeGraphDepthLimit,
     type PoomsaeGraphEdge,
@@ -93,7 +93,7 @@
     filterSnapshotGraph(snapshotGraph, sourceIssue.uid, depthLimit, hideDone),
   )
   let graph = $derived(
-    buildKataReachableGraph({
+    buildPoomsaeReachableGraph({
       sourceUID: sourceIssue.uid,
       graph: graphResponse,
       contextDepth,
@@ -473,7 +473,7 @@
       return
     }
 
-    recordKataGraphDebugEvent('graph-layout-start', {
+    recordPoomsaeGraphDebugEvent('graph-layout-start', {
       layoutMode: mode,
       layoutDirection: direction,
       nodeCount: nodes.length,
@@ -485,7 +485,7 @@
         if (run !== layoutRun) return
         layoutedPositions = elkPositions(layoutedGraph)
         layoutedKey = key
-        recordKataGraphDebugEvent('graph-layout-complete', {
+        recordPoomsaeGraphDebugEvent('graph-layout-complete', {
           layoutMode: mode,
           layoutDirection: direction,
           nodeCount: nodes.length,
@@ -496,7 +496,7 @@
         if (run !== layoutRun) return
         layoutedPositions = new Map()
         layoutedKey = key
-        recordKataGraphDebugEvent('graph-layout-error', {
+        recordPoomsaeGraphDebugEvent('graph-layout-error', {
           layoutMode: mode,
           layoutDirection: direction,
           message: error instanceof Error ? error.message : String(error),
@@ -533,12 +533,12 @@
       layoutEdgeCount: graph.layoutEdges.length,
       layoutBounds: layoutBounds(flowNodes),
     }
-    setKataGraphDebugGraph(snapshot)
-    recordKataGraphDebugEvent('graph-render', snapshot)
+    setPoomsaeGraphDebugGraph(snapshot)
+    recordPoomsaeGraphDebugEvent('graph-render', snapshot)
   })
 
   $effect(() => {
-    return () => resetKataGraphDebug()
+    return () => resetPoomsaeGraphDebug()
   })
 </script>
 

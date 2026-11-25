@@ -146,7 +146,7 @@ func TestDaemonDiagnoseRefusesWrongProjectRecovery(t *testing.T) {
 func TestDaemonDiagnoseNeverAcceptsAnUnverifiedProjectAssertion(t *testing.T) {
 	for _, remote := range []bool{false, true} {
 		t.Run(fmt.Sprint(remote), func(t *testing.T) {
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			t.Chdir(t.TempDir())
 			t.Setenv("POOMSAE_SERVER", "")
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -254,7 +254,7 @@ func TestDaemonStatusKeepsCurrentHomeListWhenSelectionIsInvalid(t *testing.T) {
 }
 
 func TestDaemonDiagnoseBoundsCurrentHomeStorageProbe(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Chdir(t.TempDir())
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Setenv("POOMSAE_HTTP_TIMEOUT", "50ms")
@@ -701,7 +701,7 @@ func TestLocalProfileLocateRetainsConfiguredSource(t *testing.T) {
 func TestDaemonLocateDoesNotRequireCurrentHomeStorage(t *testing.T) {
 	for _, contents := range []string{"missing project", "unreadable storage"} {
 		t.Run(contents, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("POOMSAE_SERVER", "")
 			workspace := t.TempDir()
@@ -727,7 +727,7 @@ func TestDaemonLocateDoesNotRequireCurrentHomeStorage(t *testing.T) {
 }
 
 func TestDaemonDefaultVersionDifferenceIsInformational(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Chdir(t.TempDir())
 	t.Setenv("POOMSAE_DSN", "")
 	t.Setenv("POOMSAE_SERVER", "")
@@ -926,7 +926,7 @@ func TestDaemonDiagnoseSecondPing(t *testing.T) {
 			if tc.profile {
 				home, _, uid, _ = stoppedProfileCLI(t)
 			} else {
-				home = setupKataEnv(t)
+				home = setupPoomsaeEnv(t)
 			}
 			t.Setenv("POOMSAE_SERVER", "")
 			t.Setenv("POOMSAE_DSN", "")
@@ -1096,7 +1096,7 @@ func TestDaemonDiagnoseUpgradeBeginsDuringDiscovery(t *testing.T) {
 			if tc.profile {
 				home, _, uid, _ = stoppedProfileCLI(t)
 			} else {
-				home = setupKataEnv(t)
+				home = setupPoomsaeEnv(t)
 				t.Setenv("POOMSAE_DSN", "")
 				t.Setenv("POOMSAE_SERVER", "")
 				t.Chdir(t.TempDir())

@@ -120,7 +120,7 @@ func newPlaintextToken() (string, error) {
 	if _, err := rand.Read(raw[:]); err != nil {
 		return "", fmt.Errorf("generate token: %w", err)
 	}
-	return "kata_" + base64.RawURLEncoding.EncodeToString(raw[:]), nil
+	return "poomsae_" + base64.RawURLEncoding.EncodeToString(raw[:]), nil
 }
 
 func tokenOut(tok db.APIToken, observedAt time.Time) api.TokenOut {

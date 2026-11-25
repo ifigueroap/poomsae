@@ -171,8 +171,8 @@ func TestFormatInitOutputJSONPreservesDaemonObject(t *testing.T) {
 			require.NoError(t, err)
 			var result map[string]json.RawMessage
 			require.NoError(t, json.Unmarshal([]byte(output), &result))
-			require.JSONEq(t, "1", string(result["kata_api_version"]))
-			delete(result, "kata_api_version")
+			require.JSONEq(t, "1", string(result["poomsae_api_version"]))
+			delete(result, "poomsae_api_version")
 			if withHooks {
 				var got []agentHookMutation
 				require.NoError(t, json.Unmarshal(result["agent_hooks"], &got))

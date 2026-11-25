@@ -34,7 +34,7 @@ func TestManagedExternallyDoesNotAutostart(t *testing.T) {
 				if defaultLimit {
 					deadline, waited = 0, 30*time.Second
 				}
-				home := setupKataEnv(t)
+				home := setupPoomsaeEnv(t)
 				require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n[auth]\ntoken_env = 'SUPERVISOR_ONLY_TOKEN'\n"), 0600))
 				state := patchEnsureHooks(t, "v0.2.0", "http://spawned")
 				ctx := t.Context()
@@ -69,7 +69,7 @@ func TestManagedExternallyUnreachableDetail(t *testing.T) {
 		})
 	})
 	t.Run("caller cancels while probing", func(t *testing.T) {
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		_, err := waitForSupervisedDaemon(ctx, "/example/config.toml", func(context.Context) bool { return false }, func(ctx context.Context) (ensureDiscovery, error) {
@@ -160,7 +160,7 @@ func TestDaemonRecoveryAdvice(t *testing.T) {
 }
 
 func TestDiscoveryDeadlineAfterEarlierUnreachableRuntime(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	child, _ := startLongLivedTestProcess(t)
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
@@ -215,7 +215,7 @@ func TestManagedExternallyProfileDoesNotAutostart(t *testing.T) {
 }
 
 func TestManagedExternallyDoesNotWaitForStartLock(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n"), 0600))
 	server, pings := restartGapDaemon(t, "", "")
 	require.NoError(t, writeRuntimeRecord(t, home, strings.TrimPrefix(server.URL, "http://")))
@@ -236,7 +236,7 @@ func TestManagedExternallyDoesNotWaitForStartLock(t *testing.T) {
 // repaired by ordinary discovery, as it is when autostart is enabled.
 func TestManagedExternallyRepairsCurrentHomeRuntimeDirectory(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		home := setupKataEnv(t)
+		home := setupPoomsaeEnv(t)
 		require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n"), 0600))
 		ns, err := daemonruntime.NewNamespace()
 		require.NoError(t, err)
@@ -350,7 +350,7 @@ func TestReadOnlyStartWithRespectsDisabledAutostart(t *testing.T) {
 				fixture, root = localProfileFixture(t)
 				require.NoError(t, os.WriteFile(filepath.Join(fixture.Home, "config.toml"), []byte("autostart = false\n"), 0600))
 			} else {
-				home := setupKataEnv(t)
+				home := setupPoomsaeEnv(t)
 				require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("autostart = false\n"), 0600))
 			}
 			synctest.Test(t, func(t *testing.T) {
@@ -382,7 +382,7 @@ func TestManagedExternallyReportsMigrationInProgress(t *testing.T) {
 				storeHome = fixture.Home
 				wait = func(ctx context.Context) error { _, err := ensureLocalProfile(ctx, selection); return err }
 			} else {
-				storeHome = setupKataEnv(t)
+				storeHome = setupPoomsaeEnv(t)
 				t.Setenv("POOMSAE_DSN", "")
 				require.NoError(t, os.WriteFile(filepath.Join(storeHome, "config.toml"), []byte("autostart = false\n"), 0600))
 				wait = func(ctx context.Context) error { _, err := ensureLocalRunningTarget(ctx); return err }

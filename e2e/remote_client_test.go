@@ -36,7 +36,7 @@ func TestRemoteClient_DaemonOnTCPClientViaPOOMSAE_SERVER(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	// Pre-allocate a free port. We can't use --listen 127.0.0.1:0
 	// because the runtime file is written before the daemon actually
@@ -125,7 +125,7 @@ func TestRemoteInit_PathFreeWireShape(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	port := freeTCPPort(t)
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
@@ -210,7 +210,7 @@ func TestRemoteResolve_PathFreeWireShape(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	port := freeTCPPort(t)
 	addr := fmt.Sprintf("127.0.0.1:%d", port)

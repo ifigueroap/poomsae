@@ -78,9 +78,9 @@ func (s *Store) searchFTS(ctx context.Context, request searchFTSRequest) ([]db.S
 	if !request.any {
 		commentHits = fmt.Sprintf(`
  UNION ALL
- SELECT i.id, terms.word, ts_rank_cd(to_tsvector('kata_simple_unaccent', c.body), terms.q), true
+ SELECT i.id, terms.word, ts_rank_cd(to_tsvector('poomsae_simple_unaccent', c.body), terms.q), true
  FROM terms CROSS JOIN comments c JOIN issues i ON i.id = c.issue_id
- WHERE to_tsvector('kata_simple_unaccent', c.body) @@ terms.q AND %s`, rowFilter.String())
+ WHERE to_tsvector('poomsae_simple_unaccent', c.body) @@ terms.q AND %s`, rowFilter.String())
 	}
 
 	order := "candidates.score DESC, i.id DESC"
@@ -92,7 +92,7 @@ func (s *Store) searchFTS(ctx context.Context, request searchFTSRequest) ([]db.S
 	// Quote normalized lexemes directly so punctuation and URLs survive without
 	// a second parse through the text-search dictionary.
 	query := fmt.Sprintf(`WITH words AS (
- SELECT DISTINCT unnest(tsvector_to_array(to_tsvector('kata_simple_unaccent', value))) AS word
+ SELECT DISTINCT unnest(tsvector_to_array(to_tsvector('poomsae_simple_unaccent', value))) AS word
  FROM jsonb_array_elements_text($1::jsonb)
 ), terms AS (
  SELECT word, quote_literal(word)::tsquery AS q FROM words
@@ -111,8 +111,8 @@ func (s *Store) searchFTS(ctx context.Context, request searchFTSRequest) ([]db.S
 )
 SELECT `+issueColumns+`,
        candidates.score,
-       EXISTS (SELECT 1 FROM terms WHERE to_tsvector('kata_simple_unaccent', i.title) @@ terms.q) AS in_title,
-       EXISTS (SELECT 1 FROM terms WHERE to_tsvector('kata_simple_unaccent', i.body) @@ terms.q) AS in_body,
+       EXISTS (SELECT 1 FROM terms WHERE to_tsvector('poomsae_simple_unaccent', i.title) @@ terms.q) AS in_title,
+       EXISTS (SELECT 1 FROM terms WHERE to_tsvector('poomsae_simple_unaccent', i.body) @@ terms.q) AS in_body,
        candidates.in_comments
  FROM page AS candidates
  JOIN issues i ON i.id = candidates.doc_key

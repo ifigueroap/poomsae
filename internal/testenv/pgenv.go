@@ -117,7 +117,7 @@ func postgresServerDSN(ctx context.Context, t testing.TB, image, baseDSN string)
 
 // postgresTemplatePrefix names template databases so any test process can
 // find templates that a finished or crashed process left behind.
-const postgresTemplatePrefix = "kata_template_"
+const postgresTemplatePrefix = "poomsae_template_"
 
 // PostgresTemplate gives each test a clone of a database that prepare set up
 // once per server, so tests skip repeating expensive setup such as installing
@@ -263,7 +263,7 @@ func sharedPostgresContainer(ctx context.Context, image string) sharedPostgresSe
 func startPostgresContainer(ctx context.Context, image string) sharedPostgresServer {
 	container, err := postgres.Run(ctx,
 		image,
-		postgres.WithDatabase("kata_test"),
+		postgres.WithDatabase("poomsae_test"),
 		postgres.WithUsername("poomsae"),
 		postgres.WithPassword("poomsae"),
 		testcontainers.WithTmpfs(map[string]string{"/pgdata": "rw"}),
@@ -311,7 +311,7 @@ func skipAutomaticPostgresContainer(goos, autostart string) bool {
 // database.
 func newIsolatedPostgresDatabase(ctx context.Context, t testing.TB, baseDSN, template string) (string, func()) {
 	t.Helper()
-	databaseName := fmt.Sprintf("kata_test_%d_%d", os.Getpid(), postgresDatabaseCounter.Add(1))
+	databaseName := fmt.Sprintf("poomsae_test_%d_%d", os.Getpid(), postgresDatabaseCounter.Add(1))
 	u, err := postgresDatabaseDSN(baseDSN, databaseName)
 	if err != nil {
 		t.Fatalf("%v", err)

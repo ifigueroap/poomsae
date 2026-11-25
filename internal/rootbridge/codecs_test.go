@@ -18,7 +18,7 @@ func TestScheduleCodecsAreRegistered(t *testing.T) {
 	}
 }
 
-func TestScheduleCodecReadKataCanonicalizesValues(t *testing.T) {
+func TestScheduleCodecReadPoomsaeCanonicalizesValues(t *testing.T) {
 	codec := fieldCodecs["scheduled_on"]
 	cases := []struct {
 		name string
@@ -34,30 +34,30 @@ func TestScheduleCodecReadKataCanonicalizesValues(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := codec.ReadKata(db.Issue{Metadata: db.JSONBlob(tc.meta)})
+			got, err := codec.ReadPoomsae(db.Issue{Metadata: db.JSONBlob(tc.meta)})
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
-func TestScheduleCodecReadKataRejectsInvalidTimezone(t *testing.T) {
-	_, err := fieldCodecs["scheduled_on"].ReadKata(db.Issue{Metadata: db.JSONBlob(`{"scheduled_on":"2026-08-20T09:30","timezone":"Invalid/Zone"}`)})
+func TestScheduleCodecReadPoomsaeRejectsInvalidTimezone(t *testing.T) {
+	_, err := fieldCodecs["scheduled_on"].ReadPoomsae(db.Issue{Metadata: db.JSONBlob(`{"scheduled_on":"2026-08-20T09:30","timezone":"Invalid/Zone"}`)})
 	require.Error(t, err)
 }
 
-func TestScheduleCodecReadKataUsesConfiguredAndUTCFallbacks(t *testing.T) {
+func TestScheduleCodecReadPoomsaeUsesConfiguredAndUTCFallbacks(t *testing.T) {
 	issue := db.Issue{Metadata: db.JSONBlob(`{"scheduled_on":"2026-08-20T09:30"}`)}
 
 	configured, err := (scheduleCodec{
 		key: "scheduled_on", defaultTimezone: "America/Chicago",
-	}).ReadKata(issue)
+	}).ReadPoomsae(issue)
 	require.NoError(t, err)
 	assert.Equal(t, connector.FieldValue{
 		Kind: "local_datetime", Value: "2026-08-20T09:30", Timezone: "America/Chicago",
 	}, configured)
 
-	utc, err := fieldCodecs["scheduled_on"].ReadKata(issue)
+	utc, err := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, err)
 	assert.Equal(t, "UTC", utc.Timezone)
 }
@@ -67,15 +67,15 @@ func TestBridgeConstructorsCarryConfiguredTimezoneToCodecs(t *testing.T) {
 	reconciler := NewReconciler(nil, nil, ReconcilerConfig{DefaultTimezone: "Europe/Paris"})
 	service := NewServiceWithEventSinkAndDefaultTimezone(nil, nil, nil, nil, "Europe/Paris")
 
-	reconciled, err := reconciler.fieldCodecs["scheduled_on"].ReadKata(issue)
+	reconciled, err := reconciler.fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, err)
-	resolved, err := service.fieldCodecs["scheduled_on"].ReadKata(issue)
+	resolved, err := service.fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, err)
 	assert.Equal(t, "Europe/Paris", reconciled.Timezone)
 	assert.Equal(t, "Europe/Paris", resolved.Timezone)
 }
 
-func TestScheduleCodecKataPatchPreservesCivilTimesAcrossDST(t *testing.T) {
+func TestScheduleCodecPoomsaePatchPreservesCivilTimesAcrossDST(t *testing.T) {
 	codec := fieldCodecs["scheduled_on"]
 	for _, value := range []connector.FieldValue{
 		{Kind: "local_datetime", Value: "2026-03-08T02:30", Timezone: "America/New_York"},
@@ -88,7 +88,7 @@ func TestScheduleCodecKataPatchPreservesCivilTimesAcrossDST(t *testing.T) {
 	}
 }
 
-func TestScheduleCodecKataPatchCanonicalizesAndClears(t *testing.T) {
+func TestScheduleCodecPoomsaePatchCanonicalizesAndClears(t *testing.T) {
 	codec := fieldCodecs["deadline_on"]
 	cases := []struct {
 		name  string

@@ -61,8 +61,8 @@ func TestLoadedConfig_FieldsExist(t *testing.T) {
 	}
 }
 
-// setupKataHome creates a temp directory and points $POOMSAE_HOME at it.
-func setupKataHome(t *testing.T) string {
+// setupPoomsaeHome creates a temp directory and points $POOMSAE_HOME at it.
+func setupPoomsaeHome(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("POOMSAE_HOME", dir)
@@ -71,7 +71,7 @@ func setupKataHome(t *testing.T) string {
 
 func writeTOML(t *testing.T, body string) string {
 	t.Helper()
-	dir := setupKataHome(t)
+	dir := setupPoomsaeHome(t)
 	path := filepath.Join(dir, "hooks.toml")
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func defaultTestConfig() Config {
 }
 
 func TestLoadStartup_FileMissing_EmptySnapshotDefaults(t *testing.T) {
-	dir := setupKataHome(t)
+	dir := setupPoomsaeHome(t)
 	lc, err := LoadStartup(filepath.Join(dir, "hooks.toml"))
 	if err != nil {
 		t.Fatalf("missing file should not be an error: %v", err)
@@ -138,7 +138,7 @@ func TestLoadReload_Malformed_ReturnsError(t *testing.T) {
 }
 
 func TestLoadReload_Missing_EmptySnapshotNoError(t *testing.T) {
-	dir := setupKataHome(t)
+	dir := setupPoomsaeHome(t)
 	lc, err := LoadReload(filepath.Join(dir, "hooks.toml"), defaultTestConfig())
 	if err != nil {
 		t.Fatalf("missing file on reload: %v", err)
@@ -238,7 +238,7 @@ working_dir = "relative/path"
 `, "relative working_dir must be rejected")
 }
 
-func TestLoad_KataPrefixedEnv_Error(t *testing.T) {
+func TestLoad_PoomsaePrefixedEnv_Error(t *testing.T) {
 	assertLoadError(t, `
 [[hook]]
 event   = "issue.created"
@@ -290,8 +290,8 @@ MID   = "m"
 	}
 }
 
-func TestLoad_DefaultWorkingDir_IsKataHome(t *testing.T) {
-	dir := setupKataHome(t)
+func TestLoad_DefaultWorkingDir_IsPoomsaeHome(t *testing.T) {
+	dir := setupPoomsaeHome(t)
 	path := filepath.Join(dir, "hooks.toml")
 	if err := os.WriteFile(path, []byte("[[hook]]\nevent = \"issue.created\"\ncommand = \"true\"\n"), 0o600); err != nil {
 		t.Fatal(err)

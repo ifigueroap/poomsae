@@ -24,7 +24,7 @@ func TestWhoami_FormatJSONAliasAffectsSuccessfulOutput(t *testing.T) {
 	out := string(executeRoot(t, newRootCmd(), "--format", "json", "whoami", "--as", "tester"))
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Actor             string `json:"actor"`
 		Source            string `json:"source"`
 	}

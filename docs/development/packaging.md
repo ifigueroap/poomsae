@@ -118,10 +118,10 @@ with the tap repository's short-lived `GITHUB_TOKEN`.
 The release repository and tap updater share this exact archive-name contract:
 
 ```text
-kata_<version>_homebrew_darwin_amd64.tar.gz
-kata_<version>_homebrew_darwin_arm64.tar.gz
-kata_<version>_homebrew_linux_amd64.tar.gz
-kata_<version>_homebrew_linux_arm64.tar.gz
+poomsae_<version>_homebrew_darwin_amd64.tar.gz
+poomsae_<version>_homebrew_darwin_arm64.tar.gz
+poomsae_<version>_homebrew_linux_amd64.tar.gz
+poomsae_<version>_homebrew_linux_arm64.tar.gz
 ```
 
 Renaming any of these archives requires a coordinated tap updater change before

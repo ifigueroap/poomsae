@@ -1161,8 +1161,8 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 		fixture := newExternalRootSafetyFixture(t, store, "field-conflict")
 		_, _, err = store.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 			BindingID: fixture.binding.ID, MappingID: mapping.ID, ClaimToken: fixture.token,
-			Baseline:     jsontext.Value(`"2026-08-20"`),
-			ConflictKata: jsontext.Value(`"2026-08-21"`), ConflictExternal: jsontext.Value(`"2026-08-22"`),
+			Baseline:        jsontext.Value(`"2026-08-20"`),
+			ConflictPoomsae: jsontext.Value(`"2026-08-21"`), ConflictExternal: jsontext.Value(`"2026-08-22"`),
 			Conflicted: true, At: fixture.now.Add(time.Minute), Actor: "tester",
 		})
 		require.NoError(t, err)
@@ -1700,8 +1700,8 @@ func checkExternalRootSafetyInvariants(t *testing.T, store db.Storage, backend B
 
 		_, auditEvent, err := store.UpsertExternalFieldState(ctx, db.ExternalFieldStateParams{
 			BindingID: binding.ID, MappingID: mapping.ID, ClaimToken: binding.ClaimToken,
-			Baseline:     jsontext.Value(`"2026-08-23"`),
-			ConflictKata: jsontext.Value(`"2026-08-24"`), ConflictExternal: jsontext.Value(`"2026-08-25"`),
+			Baseline:        jsontext.Value(`"2026-08-23"`),
+			ConflictPoomsae: jsontext.Value(`"2026-08-24"`), ConflictExternal: jsontext.Value(`"2026-08-25"`),
 			Conflicted: true, At: observedAt.Add(time.Minute), Actor: integrationActor,
 		})
 		require.NoError(t, err)

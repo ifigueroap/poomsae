@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-kata_docs_expected_assets=(
+poomsae_docs_expected_assets=(
   "README.md"
   "manifest.json"
   "tui/hero.svg"
@@ -15,16 +15,16 @@ kata_docs_expected_assets=(
   "web-ui/daemon-switcher.png"
 )
 
-kata_docs_is_expected_asset() {
+poomsae_docs_is_expected_asset() {
   local candidate="$1"
   local asset
-  for asset in "${kata_docs_expected_assets[@]}"; do
+  for asset in "${poomsae_docs_expected_assets[@]}"; do
     [[ "$asset" == "$candidate" ]] && return 0
   done
   return 1
 }
 
-kata_docs_validate_assets() {
+poomsae_docs_validate_assets() {
   local source_dir="$1"
   local asset path rel
 
@@ -33,7 +33,7 @@ kata_docs_validate_assets() {
     return 1
   fi
 
-  for asset in "${kata_docs_expected_assets[@]}"; do
+  for asset in "${poomsae_docs_expected_assets[@]}"; do
     path="$source_dir/$asset"
     if [[ -L "$path" ]]; then
       printf 'docs asset source must not be a symlink: %s\n' "$asset" >&2
@@ -56,7 +56,7 @@ kata_docs_validate_assets() {
         continue
         ;;
     esac
-    if ! kata_docs_is_expected_asset "$rel"; then
+    if ! poomsae_docs_is_expected_asset "$rel"; then
       printf 'docs asset source has unexpected file: %s\n' "$rel" >&2
       return 1
     fi

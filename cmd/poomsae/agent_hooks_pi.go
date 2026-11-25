@@ -139,14 +139,14 @@ func planPiAgentHooks(opts nativeAgentHookOptions, remove bool) (nativeAgentHook
 func parsePiAgentHookMetadata(data []byte) (piAgentHookMetadata, error) {
 	var meta piAgentHookMetadata
 	first, _, ok := bytes.Cut(data, []byte("\n"))
-	prefix, ok := recognizedMetadataPrefix(first, piAgentHookMetadataPrefix, "// kata-native-pi ")
+	prefix, ok := []byte(piAgentHookMetadataPrefix), bytes.HasPrefix(first, []byte(piAgentHookMetadataPrefix))
 	if !ok {
 		return meta, fmt.Errorf("authored or unrecognized adapter; move it aside before installing; if PI_CODING_AGENT_DIR is shared by pi and omp, unset it for one harness")
 	}
 	if err := json.Unmarshal(bytes.TrimPrefix(first, prefix), &meta, json.RejectUnknownMembers(true)); err != nil {
 		return meta, fmt.Errorf("invalid ownership metadata: %w", err)
 	}
-	if !recognizedGeneratedFormat(meta.Format, "poomsae-pi") || meta.Version != 1 || (meta.Scope != "user" && meta.Scope != "project") || meta.Executable == "" {
+	if meta.Format != "poomsae-pi" || meta.Version != 1 || (meta.Scope != "user" && meta.Scope != "project") || meta.Executable == "" {
 		return meta, fmt.Errorf("unrecognized generated adapter version or options")
 	}
 	if !nativeAgentHookCodeUnedited(data) {
@@ -308,14 +308,14 @@ export default function poomsaeHooks(pi) {
     }, sourceCwd);
     const recipient = process.env.POOMSAE_INBOX_USER;
     const inbox = recipient ? await read(["inbox", "--context", "--for", recipient], "inbox", stdout => stdout) : "";
-    target.sections.kata_contract = contract;
-    target.sections.kata_inbox = inbox;
+    target.sections.poomsae_contract = contract;
+    target.sections.poomsae_inbox = inbox;
     // Pi's forced prompt is opaque. Append to an earlier authored override,
     // while leaving a later authored override's native precedence intact.
     if (target.forceSystemPrompt !== undefined) {
       const previous = promptState.get(target);
       const base = previous && previous.result === target.forceSystemPrompt ? previous.base : target.forceSystemPrompt;
-      const managed = [["kata_contract", contract], ["kata_inbox", inbox]].filter(([, text]) => text)
+      const managed = [["poomsae_contract", contract], ["poomsae_inbox", inbox]].filter(([, text]) => text)
         .map(([name, text]) => "<" + name + ">\n" + text + "\n</" + name + ">").join("\n\n");
       target.forceSystemPrompt = base + (managed ? "\n\n" + managed : "");
       promptState.set(target, { base, result: target.forceSystemPrompt });

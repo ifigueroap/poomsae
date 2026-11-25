@@ -1,4 +1,4 @@
--- Canonical kata SQLite schema at db.CurrentSchemaVersion(). Older databases
+-- Canonical poomsae SQLite schema at db.CurrentSchemaVersion(). Older databases
 -- reach this shape via JSONL cutover (internal/jsonl/cutover.go); fresh
 -- databases start here when sqlitestore.Open bootstraps schema.sql inside a
 -- transaction.
@@ -658,7 +658,7 @@ CREATE INDEX idx_external_root_bindings_due
 CREATE TABLE external_field_mappings (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
   connector_instance TEXT NOT NULL,
-  kata_field          TEXT NOT NULL CHECK(kata_field IN ('scheduled_on','deadline_on')),
+  poomsae_field          TEXT NOT NULL CHECK(poomsae_field IN ('scheduled_on','deadline_on')),
   external_field_id   TEXT NOT NULL,
   external_field_name TEXT NOT NULL,
   accepted_kinds_json TEXT NOT NULL CHECK(json_valid(accepted_kinds_json)),
@@ -670,14 +670,14 @@ CREATE TABLE external_field_mappings (
   updated_at          DATETIME NOT NULL
 );
 CREATE UNIQUE INDEX idx_external_field_mappings_active
-  ON external_field_mappings(connector_instance, kata_field) WHERE active = 1;
+  ON external_field_mappings(connector_instance, poomsae_field) WHERE active = 1;
 
 CREATE TABLE external_field_states (
   binding_id        INTEGER NOT NULL REFERENCES external_root_bindings(id) ON DELETE CASCADE,
   mapping_id        INTEGER NOT NULL REFERENCES external_field_mappings(id),
   baseline_json     TEXT CHECK(baseline_json IS NULL OR json_valid(baseline_json)),
   conflicted        INTEGER NOT NULL DEFAULT 0 CHECK(conflicted IN (0,1)),
-  conflict_kata     TEXT CHECK(conflict_kata IS NULL OR json_valid(conflict_kata)),
+  conflict_poomsae     TEXT CHECK(conflict_poomsae IS NULL OR json_valid(conflict_poomsae)),
   conflict_external TEXT CHECK(conflict_external IS NULL OR json_valid(conflict_external)),
   conflict_at       DATETIME,
   updated_at        DATETIME NOT NULL,

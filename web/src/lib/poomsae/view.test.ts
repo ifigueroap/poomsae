@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { buildKataTaskView, httpURL } from './view'
+import { buildPoomsaeTaskView, httpURL } from './view'
 import type { PoomsaeProjectSummary, PoomsaeTaskSummary } from './types'
 
 const today = '2026-05-15'
@@ -67,7 +67,7 @@ test.each([
 
 describe('poomsae task view builder', () => {
   test('builds Today from due scheduled dates and overdue unscheduled deadlines', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'today',
       issues: [
         issue('issue-1', 'Deadline slipped', 'project-health', { deadline_on: '2026-05-10' }),
@@ -121,7 +121,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('sorts visible issues by priority before title', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'today',
       issues: [
         {
@@ -147,7 +147,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('builds Scheduled from start dates and deadlines, one row per issue', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'scheduled',
       issues: [
         issue('issue-1', 'Pay rent', 'project-workspace', { deadline_on: '2026-05-10' }),
@@ -188,7 +188,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('orders Overdue and Today by deadline so the most urgent work leads', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'scheduled',
       issues: [
         issue('issue-1', 'A due yesterday', 'project-workspace', { deadline_on: '2026-05-14' }),
@@ -212,7 +212,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('builds Delegated from open teammate issues grouped by author and teammate', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'delegated',
       issues: [
         {
@@ -263,7 +263,7 @@ describe('poomsae task view builder', () => {
       ...issue(uid, title, 'project-health', { teammate: 'reviewer-7' }),
       author,
     })
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'delegated',
       issues: [
         delegated('issue-1', 'Laptop task', laptop),
@@ -312,7 +312,7 @@ describe('poomsae task view builder', () => {
       scheduled_on_date: '2026-09-01',
     }
 
-    const todayView = buildKataTaskView({
+    const todayView = buildPoomsaeTaskView({
       view: 'today',
       issues: [previousBrowserDay, nextBrowserDay],
       projects,
@@ -323,7 +323,7 @@ describe('poomsae task view builder', () => {
       'Previous browser day',
     ])
 
-    const scheduledView = buildKataTaskView({
+    const scheduledView = buildPoomsaeTaskView({
       view: 'scheduled',
       issues: [previousBrowserDay, nextBrowserDay],
       projects,
@@ -350,7 +350,7 @@ describe('poomsae task view builder', () => {
       deadline_on_date: '2026-09-01',
     }
 
-    const todayView = buildKataTaskView({
+    const todayView = buildPoomsaeTaskView({
       view: 'today',
       issues: [previousBrowserDay, nextBrowserDay],
       projects,
@@ -361,7 +361,7 @@ describe('poomsae task view builder', () => {
       'Previous browser deadline',
     ])
 
-    const scheduledView = buildKataTaskView({
+    const scheduledView = buildPoomsaeTaskView({
       view: 'scheduled',
       issues: [previousBrowserDay, nextBrowserDay],
       projects,
@@ -375,7 +375,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('builds Inbox from open issues across projects, holding future start dates', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'inbox',
       issues: [
         issue('issue-1', 'Inbox capture', 'project-inbox'),
@@ -403,7 +403,7 @@ describe('poomsae task view builder', () => {
   })
 
   test('builds All Open from every open issue grouped by project', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'all',
       issues: [
         issue('issue-1', 'Free work', 'project-workspace'),
@@ -430,7 +430,7 @@ describe('poomsae task view builder', () => {
     const originalTimezone = process.env.TZ
     process.env.TZ = 'America/Los_Angeles'
     try {
-      const view = buildKataTaskView({
+      const view = buildPoomsaeTaskView({
         view: 'logbook',
         issues: [
           issue(
@@ -468,7 +468,7 @@ describe('poomsae task view builder', () => {
     }
   })
   test('includes the year in date groups outside the current year', () => {
-    const view = buildKataTaskView({
+    const view = buildPoomsaeTaskView({
       view: 'logbook',
       issues: [
         issue(

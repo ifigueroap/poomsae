@@ -60,7 +60,7 @@ func TestFederationPollWakeStaysWithinItsSchema(t *testing.T) {
 		dsn, cleanup := pgstoretest.NewDatabase(t, ctx)
 		t.Cleanup(cleanup)
 		poomsae := openPollWakeStore(t, ctx, dsn, pgstore.DefaultSchema)
-		other := openPollWakeStore(t, ctx, dsn, "kata_other")
+		other := openPollWakeStore(t, ctx, dsn, "poomsae_other")
 		// An import into the second schema can copy the first installation's
 		// identity; the schemas must stay apart even then.
 		_, err := other.ExecContext(ctx, `UPDATE meta SET value=$1 WHERE key='instance_uid'`, poomsae.InstanceUID())

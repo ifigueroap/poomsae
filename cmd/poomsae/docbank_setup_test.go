@@ -18,7 +18,7 @@ import (
 
 func setupDocbankEnv(t *testing.T) string {
 	t.Helper()
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	for _, key := range []string{"POOMSAE_DOCBANK_URL", "POOMSAE_DOCBANK_API_KEY_FILE", "POOMSAE_DOCBANK_FOLDER", "POOMSAE_DOCBANK_TRUST_PRIVATE_NETWORK"} {
 		t.Setenv(key, "")
@@ -107,7 +107,7 @@ func TestDocbankSetupRerunChangesNothing(t *testing.T) {
 	out, stderr, err := executeRootCapture(t, t.Context(), "docbank", "setup", "--url", fake.Server.URL, "--key-file", keyFile, "--json")
 	require.NoError(t, err, stderr)
 
-	require.JSONEq(t, `{"kata_api_version":1,"local":false,"url":"`+fake.Server.URL+`","folder":"/poomsae","key_file":`+strconv.Quote(keyFile)+`,"changed":false}`, out)
+	require.JSONEq(t, `{"poomsae_api_version":1,"local":false,"url":"`+fake.Server.URL+`","folder":"/poomsae","key_file":`+strconv.Quote(keyFile)+`,"changed":false}`, out)
 	second, err := os.ReadFile(path) // #nosec G304 -- test-owned configuration
 	require.NoError(t, err)
 	require.Equal(t, string(first), string(second))

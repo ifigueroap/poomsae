@@ -19,11 +19,11 @@ await emit('session_start',{reason:'startup'});
 assert.equal(calls.filter(c=>c.args[0]==='agent-hook').length,1);
 const event={systemPromptOptions:{customPrompt:'base',sections:{other:'preserved'}}};
 await emit('before_agent_start',event);
-assert.equal(event.systemPromptOptions.sections.kata_contract,'contract current');assert.equal(event.systemPromptOptions.sections.kata_inbox,'request A');assert.equal(event.systemPromptOptions.sections.other,'preserved');assert.equal(event.systemPromptOptions.customPrompt,'base');
+assert.equal(event.systemPromptOptions.sections.poomsae_contract,'contract current');assert.equal(event.systemPromptOptions.sections.poomsae_inbox,'request A');assert.equal(event.systemPromptOptions.sections.other,'preserved');assert.equal(event.systemPromptOptions.customPrompt,'base');
 assert.equal(calls.filter(c=>c.args[0]==='agent-contract-hook').length,1);assert.deepEqual(calls.find(c=>c.args[0]==='agent-contract-hook').args,['agent-contract-hook','--source',"contract '$;`.txt",'--workspace',cwd]);
 assert.equal(calls[0].exe,"/example path/poomsae '$;`");
 inbox='stale request';failInbox=true;failContract=true;
-const failed={systemPromptOptions:{sections:{}}};await emit('before_agent_start',failed);assert(!JSON.stringify(failed.systemPromptOptions.sections).includes('stale request'));assert(!failed.systemPromptOptions.sections.kata_contract.includes('contract current'));assert(notifications.length>=2);
+const failed={systemPromptOptions:{sections:{}}};await emit('before_agent_start',failed);assert(!JSON.stringify(failed.systemPromptOptions.sections).includes('stale request'));assert(!failed.systemPromptOptions.sections.poomsae_contract.includes('contract current'));assert(notifications.length>=2);
 let attentionCalls=calls.filter(c=>c.args[0]==='agent-hook').length;
 await emit('session_shutdown',{reason:'reload'});project(pi);user(pi);await emit('session_start',{reason:'reload'});await emit('agent_end',{});assert.equal(calls.filter(c=>c.args[0]==='agent-hook').length,attentionCalls);
 for(const reason of ['new','resume','fork']){await emit('session_shutdown',{reason});session=`native-${reason}`;project(pi);user(pi);await emit('session_start',{reason});}

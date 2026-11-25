@@ -31,7 +31,7 @@ import (
 func TestDetachedStartSurvivesReadinessTimeout(t *testing.T) {
 	for _, mode := range []string{"readiness-timeout", "caller-cancel", "foreign-runtime"} {
 		t.Run(mode, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("POOMSAE_STARTUP_FIXTURE", "1")
 			t.Setenv("POOMSAE_STARTUP_FIXTURE_MODE", mode)
@@ -123,7 +123,7 @@ func TestDetachedStartSurvivesReadinessTimeout(t *testing.T) {
 // A replaced daemon can hold the store owner lock through its shutdown drain,
 // longer than the ordinary readiness budget. Detached start must keep waiting.
 func TestDetachedStartWaitsForStoreOwner(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	for _, key := range []string{"POOMSAE_SERVER", "POOMSAE_AUTH_TOKEN", "POOMSAE_AUTH_TOKEN_FILE", "PORT"} {
 		t.Setenv(key, "")
@@ -154,7 +154,7 @@ func copyStartupFixtureExecutable(t *testing.T) string {
 }
 
 func TestDetachedStartRetryJoinsConcurrentCutoverOwner(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	dbPath := filepath.Join(home, "poomsae.db")
 	source, err := sqlitestore.Open(t.Context(), dbPath)

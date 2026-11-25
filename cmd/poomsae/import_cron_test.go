@@ -13,21 +13,21 @@ import (
 )
 
 func TestInstallPreparedSQLiteImportKeepsOpenWriterAndExactContent(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx := t.Context()
 	path := filepath.Join(home, "target.db")
-	target := openKataTestDB(t, path)
+	target := openPoomsaeTestDB(t, path)
 	_, err := target.CreateProject(ctx, "old-project")
 	require.NoError(t, err)
 	_, err = target.ExecContext(ctx, `INSERT INTO meta(key,value) VALUES('example-obsolete','old')`)
 	require.NoError(t, err)
 	require.NoError(t, target.Close())
-	observer := openKataTestDB(t, path)
+	observer := openPoomsaeTestDB(t, path)
 	defer func() { _ = observer.Close() }()
 	beforeFile, err := os.Stat(path)
 	require.NoError(t, err)
 	preparedPath := filepath.Join(home, "prepared.db")
-	prepared := openKataTestDB(t, preparedPath)
+	prepared := openPoomsaeTestDB(t, preparedPath)
 	project, err := prepared.CreateProject(ctx, "restored-project")
 	require.NoError(t, err)
 	definition, err := cron.ParseJob([]byte(`{"version":1,"kind":"job","trigger":{"kind":"manual"},"action":{"kind":"execute","prompt":"Review"},"issue":{"kind":"per-run","title":"Review"},"overlap":"forbid","catchup":"skip"}`))
@@ -46,7 +46,7 @@ func TestInstallPreparedSQLiteImportKeepsOpenWriterAndExactContent(t *testing.T)
 	require.Equal(t, expected, actual, "prepared identity and content must not be transformed twice")
 	_, err = observer.ExecContext(ctx, `UPDATE projects SET name='writer-after-restore' WHERE uid=$1`, project.UID)
 	require.NoError(t, err)
-	reopened := openKataTestDB(t, path)
+	reopened := openPoomsaeTestDB(t, path)
 	defer func() { _ = reopened.Close() }()
 	got, err := reopened.ProjectByUID(ctx, project.UID)
 	require.NoError(t, err)
@@ -57,10 +57,10 @@ func TestImportForceSafeInstanceIdentity(t *testing.T) {
 	for _, newInstance := range []bool{false, true} {
 		t.Run(map[bool]string{false: "default", true: "new instance"}[newInstance], func(t *testing.T) {
 			home, input, path := setupImportTest(t)
-			source := openKataTestDB(t, filepath.Join(home, "source.db"))
+			source := openPoomsaeTestDB(t, filepath.Join(home, "source.db"))
 			sourceUID := source.InstanceUID()
 			require.NoError(t, source.Close())
-			target := openKataTestDB(t, path)
+			target := openPoomsaeTestDB(t, path)
 			oldUID := target.InstanceUID()
 			require.NoError(t, target.Close())
 			args := []string{"import", "--force", "--input", input, "--target", path}
@@ -69,7 +69,7 @@ func TestImportForceSafeInstanceIdentity(t *testing.T) {
 			}
 			_, err := runCmdOutput(t, nil, args...)
 			require.NoError(t, err)
-			restored := openKataTestDB(t, path)
+			restored := openPoomsaeTestDB(t, path)
 			defer func() { _ = restored.Close() }()
 			if newInstance {
 				require.NotEqual(t, sourceUID, restored.InstanceUID())
@@ -84,9 +84,9 @@ func TestImportForceSafeInstanceIdentity(t *testing.T) {
 func TestInstallPreparedSQLiteImportInspectsTargetWithoutUpgrading(t *testing.T) {
 	for _, version := range []string{"30", strconv.Itoa(db.CurrentSchemaVersion() + 1)} {
 		t.Run(version, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			targetPath := filepath.Join(home, "target.db")
-			target := openKataTestDB(t, targetPath)
+			target := openPoomsaeTestDB(t, targetPath)
 			_, err := target.ExecContext(t.Context(), `UPDATE meta SET value=$1 WHERE key='schema_version'`, version)
 			require.NoError(t, err)
 			require.NoError(t, target.Close())
@@ -94,7 +94,7 @@ func TestInstallPreparedSQLiteImportInspectsTargetWithoutUpgrading(t *testing.T)
 			before, err := os.ReadFile(targetPath)
 			require.NoError(t, err)
 			preparedPath := filepath.Join(home, "prepared.db")
-			prepared := openKataTestDB(t, preparedPath)
+			prepared := openPoomsaeTestDB(t, preparedPath)
 			require.NoError(t, prepared.Close())
 			require.Error(t, installPreparedSQLiteImport(t.Context(), preparedPath, targetPath, true), "unknown schema with native tables must fail closed")
 			//nolint:gosec // Read only the owned test replacement target.
@@ -111,7 +111,7 @@ func TestImportForceRefusesPreCronAndUnknownTargets(t *testing.T) {
 			_, input, path := setupImportTest(t)
 			marker := path
 			if kind == "legacy" {
-				target := openKataTestDB(t, path)
+				target := openPoomsaeTestDB(t, path)
 				for _, table := range []string{"cron_runs", "cron_jobs", "cron_workflows"} {
 					_, err := target.ExecContext(t.Context(), "DROP TABLE "+table)
 					require.NoError(t, err)
@@ -146,29 +146,29 @@ func TestImportForceCreatesMissingTarget(t *testing.T) {
 	_, input, path := setupImportTest(t)
 	_, err := runCmdOutput(t, nil, "import", "--force", "--input", input, "--target", path)
 	require.NoError(t, err)
-	restored := openKataTestDB(t, path)
+	restored := openPoomsaeTestDB(t, path)
 	defer func() { _ = restored.Close() }()
 	_, err = restored.ProjectByName(t.Context(), "poomsae")
 	require.NoError(t, err)
 }
 
 func TestInstallPreparedSQLiteImportPreservesMissingCreationTime(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	path := filepath.Join(home, "target.db")
-	target := openKataTestDB(t, path)
+	target := openPoomsaeTestDB(t, path)
 	identity := target.InstanceUID()
 	_, err := target.ExecContext(t.Context(), `INSERT INTO meta(key,value) VALUES('instance_created_at','2026-10-03T00:00:00Z') ON CONFLICT(key) DO UPDATE SET value=excluded.value`)
 	require.NoError(t, err)
 	require.NoError(t, target.Close())
 	preparedPath := filepath.Join(home, "prepared.db")
-	prepared := openKataTestDB(t, preparedPath)
+	prepared := openPoomsaeTestDB(t, preparedPath)
 	_, err = prepared.ExecContext(t.Context(), `UPDATE meta SET value=$1 WHERE key='instance_uid'`, identity)
 	require.NoError(t, err)
 	_, err = prepared.ExecContext(t.Context(), `DELETE FROM meta WHERE key='instance_created_at'`)
 	require.NoError(t, err)
 	require.NoError(t, prepared.Close())
 	require.NoError(t, installPreparedSQLiteImport(t.Context(), preparedPath, path, true))
-	restored := openKataTestDB(t, path)
+	restored := openPoomsaeTestDB(t, path)
 	defer func() { _ = restored.Close() }()
 	var count int
 	require.NoError(t, restored.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM meta WHERE key='instance_created_at'`).Scan(&count))

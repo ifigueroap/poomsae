@@ -696,24 +696,24 @@ func TestRunAllowsDateOnlyFieldsFixture(t *testing.T) {
 }
 
 func TestMutationAuditTreatsFieldIDsAsOpaque(t *testing.T) {
-	raw := jsontext.Value(`{"root_key":"root-example","fields":{"issueId":{"kind":"date","value":"2026-08-26"},"poomsaekana_start":{"kind":"null"},"kata_uid":{"kind":"null"}},"expected":{"issueId":{"kind":"null"},"poomsaekana_start":{"kind":"null"},"kata_uid":{"kind":"null"}}}`)
+	raw := jsontext.Value(`{"root_key":"root-example","fields":{"issueId":{"kind":"date","value":"2026-08-26"},"poomsaekana_start":{"kind":"null"},"poomsae_uid":{"kind":"null"}},"expected":{"issueId":{"kind":"null"},"poomsaekana_start":{"kind":"null"},"poomsae_uid":{"kind":"null"}}}`)
 	if err := auditMutationParams("write_fields", raw, "root-example"); err != nil {
 		t.Fatalf("opaque external field IDs were treated as structural identity channels: %v", err)
 	}
 }
 
-func TestMutationAuditRejectsForbiddenKataKeysInsideFieldValues(t *testing.T) {
+func TestMutationAuditRejectsForbiddenPoomsaeKeysInsideFieldValues(t *testing.T) {
 	for _, key := range []string{
-		"kata_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
-		"kata_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
-		"kata_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
-		"kata_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
-		"kata_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
+		"poomsae_uid", "poomsaeUid", "poomsae-uid", "poomsae.uid",
+		"poomsae_ref", "poomsaeRef", "poomsae-ref", "poomsae.ref",
+		"poomsae_project_id", "poomsaeProjectId", "poomsae-project-id", "poomsae.project.id",
+		"poomsae_binding_id", "poomsaeBindingId", "poomsae-binding-id", "poomsae.binding.id",
+		"poomsae_work_branch", "poomsaeWorkBranch", "poomsae-work-branch", "poomsae.work.branch",
 	} {
 		raw, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
 			"fields": map[string]any{
-				"kata_uid": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
+				"poomsae_uid": map[string]any{"kind": "date", "value": "2026-08-20", key: "neutral-forbidden"},
 			},
 		})
 		if err != nil {
@@ -725,7 +725,7 @@ func TestMutationAuditRejectsForbiddenKataKeysInsideFieldValues(t *testing.T) {
 	}
 }
 
-func TestMutationAuditRejectsWrongTypesAndArbitraryKataChannels(t *testing.T) {
+func TestMutationAuditRejectsWrongTypesAndArbitraryPoomsaeChannels(t *testing.T) {
 	for _, raw := range []jsontext.Value{
 		jsontext.Value(`{"root_key":"root-example","body":{}}`),
 		jsontext.Value(`{"root_key":"root-example","fields":"field-example"}`),
@@ -1153,7 +1153,7 @@ func (f *memoryFixture) WriteFields(_ context.Context, params connector.WriteFie
 		encoded, err := json.Marshal(map[string]any{
 			"root_key": "root-example",
 			"fields": map[string]any{
-				"kata_uid": map[string]any{"kind": "date", "value": "2026-08-20", f.forbiddenFieldValueKey: "neutral-forbidden"},
+				"poomsae_uid": map[string]any{"kind": "date", "value": "2026-08-20", f.forbiddenFieldValueKey: "neutral-forbidden"},
 			},
 		})
 		if err != nil {

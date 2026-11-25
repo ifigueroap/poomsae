@@ -52,6 +52,7 @@ func TestIssueStatusMigrationUpgradesVersion29(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropIssueStatusSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "status_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE status_upgrade.meta SET value='29' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	require.Equal(t, "f46458bfdd656755b4921c995d8785dcd43033626ef0dc5bee6e7e4d5c1d12cf", columnFingerprint(ctx, t, admin, schema))

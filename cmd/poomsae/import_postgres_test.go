@@ -22,9 +22,9 @@ func TestImportPostgresMergeAfterPurgeAddsOneProjectWithoutChangingExistingProje
 	if testing.Short() {
 		t.Skip("requires postgres testcontainer")
 	}
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx := t.Context()
-	source := openKataTestDB(t, filepath.Join(home, "source-merge.db"))
+	source := openPoomsaeTestDB(t, filepath.Join(home, "source-merge.db"))
 	importedProject, err := source.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
 	importedIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
@@ -134,7 +134,7 @@ func TestImportPostgresTargetCreatesThenAtomicallyReplacesSnapshot(t *testing.T)
 	if testing.Short() {
 		t.Skip("requires postgres testcontainer")
 	}
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	input := writeExportFixture(t, home)
 	ctx := t.Context()
 	dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
@@ -209,7 +209,7 @@ func TestImportPostgresFailureRemovesFreshTargetSchema(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires postgres testcontainer")
 	}
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	input := filepath.Join(home, "invalid.jsonl")
 	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
 	ctx := t.Context()
@@ -235,7 +235,7 @@ func TestImportPostgresFailurePreservesPreexistingEmptySchema(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires postgres testcontainer")
 	}
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	input := filepath.Join(home, "invalid.jsonl")
 	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
 	ctx := t.Context()
@@ -261,7 +261,7 @@ func TestFreshPostgresCleanupSurvivesCanceledImportContext(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires postgres testcontainer")
 	}
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	ctx := t.Context()
 	dsn, cleanup := testenv.NewPostgresContainer(t, ctx)
 	t.Cleanup(cleanup)

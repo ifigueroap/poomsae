@@ -19,14 +19,14 @@ INSERT INTO issues(id) VALUES (1);
 INSERT INTO external_root_bindings(id, uid, issue_id, project_id, connector_instance)
 VALUES (1, 'binding-uid', 1, 1, 'notes');
 INSERT INTO external_field_mappings(
-    id, connector_instance, kata_field, external_field_id, external_field_name,
+    id, connector_instance, poomsae_field, external_field_id, external_field_name,
     accepted_kinds_json, nullable, writable, schema_revision, active, created_at, updated_at
 ) VALUES (
     1, 'notes', 'scheduled_on', 'due', 'Due', '["date"]', 1, 1,
     'v1', 1, '2026-08-20T06:00:00Z', '2026-08-20T06:00:00Z'
 );
 INSERT INTO external_field_states(
-    binding_id, mapping_id, baseline_json, conflict_kata, conflict_external,
+    binding_id, mapping_id, baseline_json, conflict_poomsae, conflict_external,
     conflicted, conflict_at, updated_at
 ) VALUES (1, 1, '"2026-08-21"', NULL, NULL, 0, NULL, '2026-08-20T06:01:00Z');
 `)
@@ -47,7 +47,7 @@ INSERT INTO issues(id) VALUES (1);
 INSERT INTO external_root_bindings(id, uid, issue_id, project_id, connector_instance)
 VALUES (1, 'binding-uid', 1, 7, 'notes');
 INSERT INTO external_field_mappings(
-    id, connector_instance, kata_field, external_field_id, external_field_name,
+    id, connector_instance, poomsae_field, external_field_id, external_field_name,
     accepted_kinds_json, nullable, writable, schema_revision, active, created_at, updated_at
 ) VALUES
     (1, 'notes', 'scheduled_on', 'due-v1', 'Due', '["date"]', 1, 1,
@@ -57,7 +57,7 @@ INSERT INTO external_field_mappings(
     (3, 'unbound', 'scheduled_on', 'other', 'Other', '["date"]', 1, 1,
      'v1', 1, '2026-08-20T06:02:00Z', '2026-08-20T06:02:00Z');
 INSERT INTO external_field_states(
-    binding_id, mapping_id, baseline_json, conflict_kata, conflict_external,
+    binding_id, mapping_id, baseline_json, conflict_poomsae, conflict_external,
     conflicted, conflict_at, updated_at
 ) VALUES (1, 1, '"2026-08-21"', NULL, NULL, 0, NULL, '2026-08-20T06:03:00Z');
 `)
@@ -87,14 +87,14 @@ CREATE TABLE external_root_bindings (
 );
 CREATE TABLE external_field_mappings (
     id INTEGER PRIMARY KEY, connector_instance TEXT NOT NULL,
-    kata_field TEXT NOT NULL, external_field_id TEXT NOT NULL, external_field_name TEXT NOT NULL,
+    poomsae_field TEXT NOT NULL, external_field_id TEXT NOT NULL, external_field_name TEXT NOT NULL,
     accepted_kinds_json TEXT NOT NULL, nullable INTEGER NOT NULL, writable INTEGER NOT NULL,
     schema_revision TEXT NOT NULL, active INTEGER NOT NULL,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 CREATE TABLE external_field_states (
     binding_id INTEGER NOT NULL, mapping_id INTEGER NOT NULL,
-    baseline_json TEXT, conflict_kata TEXT, conflict_external TEXT,
+    baseline_json TEXT, conflict_poomsae TEXT, conflict_external TEXT,
     conflicted INTEGER NOT NULL, conflict_at TEXT, updated_at TEXT NOT NULL
 );
 `)

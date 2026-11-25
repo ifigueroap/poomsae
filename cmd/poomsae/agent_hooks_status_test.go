@@ -37,8 +37,8 @@ func TestAgentHooksStatusSchemaAndExecutable(t *testing.T) {
 	before, err := os.ReadFile(userConfig) //nolint:gosec // G304: isolated user/workspace config fixture under TempDir.
 	require.NoError(t, err)
 	report := agentHooksStatusJSON(t, "codex", "--config", userConfig, "--workspace", workspace)
-	require.ElementsMatch(t, []string{"kata_api_version", "harnesses", "workspace", "warnings"}, agentHookStatusKeys(report))
-	require.Equal(t, float64(1), report["kata_api_version"])
+	require.ElementsMatch(t, []string{"poomsae_api_version", "harnesses", "workspace", "warnings"}, agentHookStatusKeys(report))
+	require.Equal(t, float64(1), report["poomsae_api_version"])
 	harnesses := report["harnesses"].([]any)
 	require.Len(t, harnesses, 1)
 	harness := harnesses[0].(map[string]any)

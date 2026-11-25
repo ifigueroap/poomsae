@@ -78,7 +78,7 @@ func planeRuntimePost(ctx context.Context, id int64, action string, body io.Read
 func TestDaemonPlaneScheduledProgress(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	store := newRuntimeNotionRecordingStore(openKataTestDB(t, filepath.Join(t.TempDir(), "runtime.db")), make(chan db.IssueSyncStatus, 1))
+	store := newRuntimeNotionRecordingStore(openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "runtime.db")), make(chan db.IssueSyncStatus, 1))
 	defer func() { require.NoError(t, store.Close()) }()
 	p, err := store.CreateProject(ctx, "example-project")
 	require.NoError(t, err)

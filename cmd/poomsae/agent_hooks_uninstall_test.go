@@ -104,7 +104,7 @@ func TestAgentHooksUninstallPreflightAndModes(t *testing.T) {
 	require.Empty(t, out)
 	out, stderr, err = executeAgentHook(t, unreadableHookInput{}, "agent-hook", "uninstall", "claude", "--quiet", "--json")
 	require.NoError(t, err, stderr)
-	require.Contains(t, out, `"kata_api_version":1`)
+	require.Contains(t, out, `"poomsae_api_version":1`)
 	for _, args := range [][]string{{}, {"claude", "--all"}, {"claude", "unknown"}, {"--all", "--config", "example"}, {"codex", "--config="}} {
 		out, stderr, err = executeAgentHook(t, unreadableHookInput{}, append([]string{"agent-hook", "uninstall"}, args...)...)
 		require.Error(t, err)

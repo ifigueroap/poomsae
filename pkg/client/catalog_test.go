@@ -17,7 +17,7 @@ func writeDaemonCatalog(t *testing.T, home, catalog string) {
 }
 
 func TestDaemonCatalogIsEmptyWithoutConfig(t *testing.T) {
-	isolateKataHome(t)
+	isolatePoomsaeHome(t)
 
 	daemons, err := client.DaemonCatalog()
 	require.NoError(t, err)
@@ -25,7 +25,7 @@ func TestDaemonCatalogIsEmptyWithoutConfig(t *testing.T) {
 }
 
 func TestDaemonCatalogListsEntriesInFileOrderWithoutCredentials(t *testing.T) {
-	home := isolateKataHome(t)
+	home := isolatePoomsaeHome(t)
 	writeDaemonCatalog(t, home, `active_daemon = "hub"
 
 [[daemon]]

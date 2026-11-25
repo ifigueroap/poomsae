@@ -75,7 +75,7 @@ func TestExternalRootInputSchemasBoundEnumsAndCommentModes(t *testing.T) {
 	}
 
 	mapProperties := schemaObject(t, byName["poomsae.connector_field_map"].InputSchema)["properties"].(map[string]any)
-	require.ElementsMatch(t, []any{"scheduled_on", "deadline_on"}, mapProperties["kata_field"].(map[string]any)["enum"])
+	require.ElementsMatch(t, []any{"scheduled_on", "deadline_on"}, mapProperties["poomsae_field"].(map[string]any)["enum"])
 	require.EqualValues(t, 256, mapProperties["external_field"].(map[string]any)["maxLength"])
 	resolveProperties := schemaObject(t, byName["poomsae.bridge_resolve_field"].InputSchema)["properties"].(map[string]any)
 	require.ElementsMatch(t, []any{"poomsae", "external"}, resolveProperties["use"].(map[string]any)["enum"])
@@ -141,11 +141,11 @@ func TestConnectorToolsUseTypedDaemonRoutes(t *testing.T) {
 	require.Equal(t, "example-connector", fields["instance"])
 	require.Len(t, fields["fields"], 1)
 	mapped := callWorkflowTool(t, session, "poomsae.connector_field_map", map[string]any{
-		"instance": "example-connector", "kata_field": "scheduled_on", "external_field": "start-date",
+		"instance": "example-connector", "poomsae_field": "scheduled_on", "external_field": "start-date",
 	})
 	require.Equal(t, "example-connector", mapped["instance"])
 	unmapped := callWorkflowTool(t, session, "poomsae.connector_field_unmap", map[string]any{
-		"instance": "example-connector", "kata_field": "scheduled_on",
+		"instance": "example-connector", "poomsae_field": "scheduled_on",
 	})
 	require.Equal(t, "example-connector", unmapped["instance"])
 
@@ -200,7 +200,7 @@ func TestBridgeToolsUseScopedIssueRoutesAndServerActor(t *testing.T) {
 		{name: "poomsae.bridge_reconcile", args: map[string]any{"ref": "abc4"}},
 		{name: "poomsae.bridge_pause", args: map[string]any{"ref": "abc4", "reason": "operator pause"}},
 		{name: "poomsae.bridge_resume", args: map[string]any{"ref": "abc4"}},
-		{name: "poomsae.bridge_resolve_field", args: map[string]any{"ref": "abc4", "kata_field": "scheduled_on", "use": "external"}},
+		{name: "poomsae.bridge_resolve_field", args: map[string]any{"ref": "abc4", "poomsae_field": "scheduled_on", "use": "external"}},
 		{name: "poomsae.bridge_resolve_comment", args: map[string]any{"ref": "abc4", "action": "adopt", "external_comment_id": "opaque ID/with spaces:%25"}},
 		{name: "poomsae.bridge_unbind", args: map[string]any{"ref": "abc4"}},
 	} {
@@ -214,7 +214,7 @@ func TestBridgeToolsUseScopedIssueRoutesAndServerActor(t *testing.T) {
 		{Method: http.MethodPost, Path: path + "/actions/reconcile", Body: map[string]any{"actor": "example-agent"}},
 		{Method: http.MethodPost, Path: path + "/actions/pause", Body: map[string]any{"actor": "example-agent", "reason": "operator pause"}},
 		{Method: http.MethodPost, Path: path + "/actions/resume", Body: map[string]any{"actor": "example-agent"}},
-		{Method: http.MethodPost, Path: path + "/actions/resolve-field", Body: map[string]any{"actor": "example-agent", "kata_field": "scheduled_on", "use": "external"}},
+		{Method: http.MethodPost, Path: path + "/actions/resolve-field", Body: map[string]any{"actor": "example-agent", "poomsae_field": "scheduled_on", "use": "external"}},
 		{Method: http.MethodPost, Path: path + "/actions/resolve-comment", Body: map[string]any{"action": "adopt", "actor": "example-agent", "external_comment_id": "opaque ID/with spaces:%25"}},
 		{Method: http.MethodDelete, Path: path, Query: "actor=example-agent"},
 	}, requests)
@@ -463,7 +463,7 @@ func externalConnectorFixture() map[string]any {
 
 func externalMappingFixture(active bool) map[string]any {
 	return map[string]any{
-		"kata_field": "scheduled_on", "external_field_id": "start-date", "external_field_name": "Start date",
+		"poomsae_field": "scheduled_on", "external_field_id": "start-date", "external_field_name": "Start date",
 		"accepted_kinds": []string{"date", "local_datetime"}, "nullable": true, "writable": true,
 		"schema_revision": "schema-v1", "active": active,
 	}

@@ -19,7 +19,7 @@ const projectMergeHLCSafeBoundary = int64(math.MaxInt64 / 2)
 
 func setupImportTest(t *testing.T) (home, input, target string) {
 	t.Helper()
-	home = setupKataEnv(t)
+	home = setupPoomsaeEnv(t)
 	input = writeExportFixture(t, home)
 	target = filepath.Join(home, "target.db")
 	return home, input, target
@@ -31,7 +31,7 @@ func TestImportCreatesTargetDB(t *testing.T) {
 	out, err := runCmdOutput(t, nil, "import", "--input", input, "--target", target)
 	require.NoError(t, err)
 
-	d := openKataTestDB(t, target)
+	d := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = d.Close() })
 	got, err := d.ProjectByName(t.Context(), "poomsae")
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestImportFormatAgentSelectsOutputMode(t *testing.T) {
 	out, err := runCmdOutput(t, nil, "import", "--format", "agent", "--source-format", "poomsae", "--input", input, "--target", target)
 	require.NoError(t, err)
 
-	d := openKataTestDB(t, target)
+	d := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = d.Close() })
 	got, err := d.ProjectByName(t.Context(), "poomsae")
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestImportFormatAgentSelectsOutputMode(t *testing.T) {
 }
 
 func TestImportLegacyFormatConflictsWithSourceFormat(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, err := runCmdOutput(t, nil, "import", "--format", "beads", "--source-format", "poomsae")
 	ce := requireCLIError(t, err, ExitUsage)
@@ -65,7 +65,7 @@ func TestImportLegacyFormatConflictsWithSourceFormat(t *testing.T) {
 func TestImportLegacyFormatBeadsAllowsAgentOutputMode(t *testing.T) {
 	resetRunEEntered(t)
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, stderr, err := executeRootCapture(t, t.Context(),
 		"import", "--format", "beads", "--agent", "--input", "beads.jsonl")
@@ -78,7 +78,7 @@ func TestImportLegacyFormatBeadsAllowsAgentOutputMode(t *testing.T) {
 func TestImportLegacyFormatBeadsParseErrorPreservesAgentMode(t *testing.T) {
 	resetRunEEntered(t)
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, stderr, err := executeRootCapture(t, t.Context(),
 		"import", "--format", "beads", "--agent", "--bogus")
@@ -90,7 +90,7 @@ func TestImportLegacyFormatBeadsParseErrorPreservesAgentMode(t *testing.T) {
 func TestImportLegacyFormatBeadsParseErrorPreservesJSONMode(t *testing.T) {
 	resetRunEEntered(t)
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	_, stderr, err := executeRootCapture(t, t.Context(),
 		"import", "--format", "beads", "--json", "--bogus")
@@ -102,7 +102,7 @@ func TestImportLegacyFormatBeadsParseErrorPreservesJSONMode(t *testing.T) {
 
 func TestImportRejectsExistingTargetWithoutForce(t *testing.T) {
 	_, input, target := setupImportTest(t)
-	d := openKataTestDB(t, target)
+	d := openPoomsaeTestDB(t, target)
 	_, err := d.CreateProject(t.Context(), "existing")
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -113,7 +113,7 @@ func TestImportRejectsExistingTargetWithoutForce(t *testing.T) {
 }
 
 func TestImportMergeRejectsReplacementFlags(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	for _, incompatible := range []string{"--force", "--new-instance"} {
 		t.Run(incompatible, func(t *testing.T) {
 			_, err := runCmdOutput(t, nil,
@@ -135,9 +135,9 @@ func TestImportMergeRejectsUninitializedSQLiteTargetsWithoutMutation(t *testing.
 		{name: "orphan SHM sidecar", targetSuffix: "-shm", wantErrorText: "merge target does not exist"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			ctx := t.Context()
-			source := openKataTestDB(t, filepath.Join(home, "source.db"))
+			source := openPoomsaeTestDB(t, filepath.Join(home, "source.db"))
 			project, err := source.CreateProject(ctx, "spoke-project")
 			require.NoError(t, err)
 			var snapshot bytes.Buffer
@@ -166,11 +166,11 @@ func TestImportMergeRejectsUninitializedSQLiteTargetsWithoutMutation(t *testing.
 }
 
 func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx := t.Context()
 
 	sourcePath := filepath.Join(home, "source.db")
-	source := openKataTestDB(t, sourcePath)
+	source := openPoomsaeTestDB(t, sourcePath)
 	importedProject, err := source.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
 	importedIssue, _, err := source.CreateIssue(ctx, db.CreateIssueParams{
@@ -206,7 +206,7 @@ func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *te
 	require.NoError(t, os.WriteFile(input, snapshot.Bytes(), 0o600))
 
 	target := filepath.Join(home, "target.db")
-	targetStore := openKataTestDB(t, target)
+	targetStore := openPoomsaeTestDB(t, target)
 	existingProject, err := targetStore.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
 	existingIssue, _, err := targetStore.CreateIssue(ctx, db.CreateIssueParams{
@@ -236,7 +236,7 @@ func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *te
 	require.NoError(t, err)
 	assert.Contains(t, out, target)
 
-	merged := openKataTestDB(t, target)
+	merged := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = merged.Close() })
 	gotExisting, err := merged.ProjectByUID(ctx, existingProject.UID)
 	require.NoError(t, err)
@@ -302,7 +302,7 @@ func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *te
 	assert.Contains(t, err.Error(), "project UID")
 	assert.Contains(t, err.Error(), "already exists")
 
-	unchanged := openKataTestDB(t, target)
+	unchanged := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = unchanged.Close() })
 	_, err = unchanged.IssueByUID(ctx, existingIssue.UID, db.IncludeDeletedNo)
 	require.NoError(t, err)
@@ -311,7 +311,7 @@ func TestImportMergeAfterPurgeAddsOneProjectWithoutChangingExistingProject(t *te
 func TestImportMergeRefusesMultiProjectSnapshotWithoutMutation(t *testing.T) {
 	_, input, target := setupImportTest(t)
 	ctx := t.Context()
-	targetStore := openKataTestDB(t, target)
+	targetStore := openPoomsaeTestDB(t, target)
 	existing, err := targetStore.CreateProject(ctx, "existing-project")
 	require.NoError(t, err)
 	require.NoError(t, targetStore.Close())
@@ -321,7 +321,7 @@ func TestImportMergeRefusesMultiProjectSnapshotWithoutMutation(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "project merge requires one non-system project")
 
-	unchanged := openKataTestDB(t, target)
+	unchanged := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = unchanged.Close() })
 	got, err := unchanged.ProjectByUID(ctx, existing.UID)
 	require.NoError(t, err)
@@ -340,9 +340,9 @@ func TestImportMergeCreatesCrossProjectLink(t *testing.T) {
 // the local IDs of the imported issue and its peer.
 func mergeCrossProjectLinkFixture(t *testing.T) (db.Storage, int64, int64) {
 	t.Helper()
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	ctx := t.Context()
-	source := openKataTestDB(t, filepath.Join(home, "source-links.db"))
+	source := openPoomsaeTestDB(t, filepath.Join(home, "source-links.db"))
 	importedProject, err := source.CreateProject(ctx, "spoke-project")
 	require.NoError(t, err)
 	peerProject, err := source.CreateProject(ctx, "hub-project")
@@ -370,7 +370,7 @@ func mergeCrossProjectLinkFixture(t *testing.T) (db.Storage, int64, int64) {
 	require.NoError(t, source.Close())
 
 	target := filepath.Join(home, "target-links.db")
-	targetStore := openKataTestDB(t, target)
+	targetStore := openPoomsaeTestDB(t, target)
 	require.NoError(t, jsonl.ImportWithOptions(ctx, bytes.NewReader(peerSnapshot.Bytes()), targetStore,
 		jsonl.ImportOptions{RequireFreshTarget: true}))
 	require.NoError(t, targetStore.Close())
@@ -380,7 +380,7 @@ func mergeCrossProjectLinkFixture(t *testing.T) (db.Storage, int64, int64) {
 	_, err = runCmdOutput(t, nil, "import", "--merge", "--input", input, "--target", target)
 	require.NoError(t, err)
 
-	merged := openKataTestDB(t, target)
+	merged := openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = merged.Close() })
 	gotImported, err := merged.IssueByUID(ctx, importedIssue.UID, db.IncludeDeletedNo)
 	require.NoError(t, err)
@@ -430,12 +430,12 @@ func TestInstallImportedTargetMovesTempSidecars(t *testing.T) {
 }
 
 func TestImportForcePreservesExistingTargetOnFailure(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	input := filepath.Join(home, "bad.jsonl")
 	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
 	target := filepath.Join(home, "target.db")
 	ctx := t.Context()
-	d := openKataTestDB(t, target)
+	d := openPoomsaeTestDB(t, target)
 	_, err := d.CreateProject(ctx, "existing")
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
@@ -443,14 +443,14 @@ func TestImportForcePreservesExistingTargetOnFailure(t *testing.T) {
 	_, err = runCmdOutput(t, nil, "import", "--force", "--input", input, "--target", target)
 	require.Error(t, err)
 
-	d = openKataTestDB(t, target)
+	d = openPoomsaeTestDB(t, target)
 	t.Cleanup(func() { _ = d.Close() })
 	_, err = d.ProjectByName(ctx, "existing")
 	require.NoError(t, err)
 }
 
 func TestImportFailureRemovesNewPartialTarget(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	input := filepath.Join(home, "bad.jsonl")
 	require.NoError(t, os.WriteFile(input, []byte(`{"kind":"issue","data":{}}`+"\n"), 0o600))
 	target := filepath.Join(home, "target.db")
@@ -488,7 +488,7 @@ func TestMoveSQLiteFileSetRollsBackAlreadyMovedSidecarOnError(t *testing.T) {
 func TestImportRefusesDaemon(t *testing.T) {
 	home, input, target := setupImportTest(t)
 	dbPath := filepath.Join(home, "poomsae.db")
-	d := openKataTestDB(t, dbPath)
+	d := openPoomsaeTestDB(t, dbPath)
 	require.NoError(t, d.Close())
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
@@ -503,7 +503,7 @@ func TestImportRefusesDaemon(t *testing.T) {
 func writeExportFixture(t *testing.T, home string) string {
 	t.Helper()
 	srcPath := filepath.Join(home, "source.db")
-	src := openKataTestDB(t, srcPath)
+	src := openPoomsaeTestDB(t, srcPath)
 	p, err := src.CreateProject(t.Context(), "poomsae")
 	require.NoError(t, err)
 	_, _, err = src.CreateIssue(t.Context(), db.CreateIssueParams{

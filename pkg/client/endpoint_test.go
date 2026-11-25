@@ -15,7 +15,7 @@ import (
 )
 
 func TestConstructorsAcceptUnixSocketEndpoints(t *testing.T) {
-	isolateKataHome(t)
+	isolatePoomsaeHome(t)
 	open := poomsaetest.New(t, poomsaetest.WithUnixSocket())
 	secured := poomsaetest.New(t, poomsaetest.WithUnixSocket(), poomsaetest.WithToken("socket-token"))
 	t.Setenv("POOMSAE_AUTH_TOKEN", "socket-token")

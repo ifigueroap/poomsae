@@ -29,9 +29,9 @@ import (
 	gitcmd "go.kenn.io/kit/git/cmd"
 )
 
-// setupKataEnv points POOMSAE_HOME and POOMSAE_DB at a fresh temp dir so the test
+// setupPoomsaeEnv points POOMSAE_HOME and POOMSAE_DB at a fresh temp dir so the test
 // runs in isolation from any developer-local state. Returns the temp dir.
-func setupKataEnv(t *testing.T) string {
+func setupPoomsaeEnv(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("POOMSAE_HOME", tmp)
@@ -41,8 +41,8 @@ func setupKataEnv(t *testing.T) string {
 	return tmp
 }
 
-// openKataTestDB opens a SQLite store at path.
-func openKataTestDB(t *testing.T, path string) *sqlitestore.Store {
+// openPoomsaeTestDB opens a SQLite store at path.
+func openPoomsaeTestDB(t *testing.T, path string) *sqlitestore.Store {
 	t.Helper()
 	ctx := t.Context()
 	d, err := testfix.OpenSQLite(ctx, path)

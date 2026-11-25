@@ -33,8 +33,8 @@ func (l ListConnectorFieldsPath) Validate() error {
 }
 
 type UnmapConnectorFieldPath struct {
-	Instance  string `json:"instance" validate:"required"`
-	KataField string `json:"kata_field" validate:"required"`
+	Instance     string `json:"instance" validate:"required"`
+	PoomsaeField string `json:"poomsae_field" validate:"required"`
 }
 
 func (u UnmapConnectorFieldPath) Validate() error {
@@ -42,8 +42,8 @@ func (u UnmapConnectorFieldPath) Validate() error {
 }
 
 type MapConnectorFieldPath struct {
-	Instance  string `json:"instance" validate:"required"`
-	KataField string `json:"kata_field" validate:"required"`
+	Instance     string `json:"instance" validate:"required"`
+	PoomsaeField string `json:"poomsae_field" validate:"required"`
 }
 
 func (m MapConnectorFieldPath) Validate() error {

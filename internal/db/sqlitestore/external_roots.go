@@ -31,14 +31,14 @@ const externalRootBindingSelect = `SELECT
  FROM external_root_bindings b`
 
 const externalFieldMappingSelect = `SELECT
- m.id, m.connector_instance, m.kata_field, m.external_field_id,
+ m.id, m.connector_instance, m.poomsae_field, m.external_field_id,
  m.external_field_name, m.accepted_kinds_json, m.nullable, m.writable,
  m.schema_revision, m.active, m.created_at, m.updated_at
  FROM external_field_mappings m`
 
 const externalFieldStateSelect = `SELECT
  s.binding_id, s.mapping_id, s.baseline_json, s.conflicted,
- s.conflict_kata, s.conflict_external, s.conflict_at, s.updated_at
+ s.conflict_poomsae, s.conflict_external, s.conflict_at, s.updated_at
  FROM external_field_states s`
 
 func (d *Store) externalRootTimestamp() time.Time {
@@ -1435,7 +1435,7 @@ func (d *Store) nextExternalFieldMappingTimestamp(
 ) (time.Time, error) {
 	stamp := d.externalRootTimestamp()
 	rows, err := tx.QueryContext(ctx, `SELECT created_at FROM external_field_mappings
-WHERE connector_instance=? AND kata_field=?`, params.ConnectorInstance, params.PoomsaeField)
+WHERE connector_instance=? AND poomsae_field=?`, params.ConnectorInstance, params.PoomsaeField)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("read latest external field mapping identity: %w", err)
 	}
@@ -1840,7 +1840,7 @@ func (d *Store) UpsertExternalFieldMapping(
 		}
 		defer func() { _ = tx.Rollback() }()
 		existing, err := scanExternalFieldMapping(tx.QueryRowContext(ctx, externalFieldMappingSelect+`
- WHERE m.connector_instance=? AND m.kata_field=? AND m.active=1`,
+ WHERE m.connector_instance=? AND m.poomsae_field=? AND m.active=1`,
 			params.ConnectorInstance, params.PoomsaeField))
 		hasExisting := err == nil
 		if err == nil && externalFieldMappingMatches(existing, params) {
@@ -1868,7 +1868,7 @@ func (d *Store) UpsertExternalFieldMapping(
 			}
 		}
 		result, err := tx.ExecContext(ctx, `INSERT INTO external_field_mappings(
- connector_instance, kata_field, external_field_id, external_field_name,
+ connector_instance, poomsae_field, external_field_id, external_field_name,
  accepted_kinds_json, nullable, writable, schema_revision, created_at, updated_at
 ) VALUES(?,?,?,?,?,?,?,?,?,?)`, params.ConnectorInstance, params.PoomsaeField,
 			params.ExternalFieldID, params.ExternalFieldName, string(kinds), boolInt(params.Nullable),
@@ -1934,7 +1934,7 @@ func (d *Store) UnmapExternalField(
 			return db.ExternalFieldMapping{}, err
 		}
 		mapping, err := scanExternalFieldMapping(tx.QueryRowContext(ctx, externalFieldMappingSelect+`
- WHERE m.connector_instance=? AND m.kata_field=? AND m.active=1`,
+ WHERE m.connector_instance=? AND m.poomsae_field=? AND m.active=1`,
 			connectorInstance, strings.TrimSpace(poomsaeField)))
 		if err != nil {
 			return db.ExternalFieldMapping{}, err
@@ -1998,12 +1998,12 @@ func (d *Store) UpsertExternalFieldState(
 		if previousErr == nil && previous.Conflicted && !params.Conflicted {
 			return db.ExternalFieldState{}, nil, fmt.Errorf("%w: field conflict requires explicit resolution", db.ErrExternalRootValidation)
 		}
-		var baseline, conflictKata, conflictExternal any
+		var baseline, conflictPoomsae, conflictExternal any
 		if len(params.Baseline) > 0 {
 			baseline = string(params.Baseline)
 		}
-		if len(params.ConflictKata) > 0 {
-			conflictKata = string(params.ConflictKata)
+		if len(params.ConflictPoomsae) > 0 {
+			conflictPoomsae = string(params.ConflictPoomsae)
 		}
 		if len(params.ConflictExternal) > 0 {
 			conflictExternal = string(params.ConflictExternal)
@@ -2013,15 +2013,15 @@ func (d *Store) UpsertExternalFieldState(
 			conflictAt = params.At.UTC()
 		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO external_field_states(
- binding_id, mapping_id, baseline_json, conflicted, conflict_kata,
+ binding_id, mapping_id, baseline_json, conflicted, conflict_poomsae,
  conflict_external, conflict_at, updated_at
 ) VALUES(?,?,?,?,?,?,?,?)
 ON CONFLICT(binding_id, mapping_id) DO UPDATE SET
  baseline_json=excluded.baseline_json, conflicted=excluded.conflicted,
- conflict_kata=excluded.conflict_kata, conflict_external=excluded.conflict_external,
+ conflict_poomsae=excluded.conflict_poomsae, conflict_external=excluded.conflict_external,
  conflict_at=excluded.conflict_at, updated_at=excluded.updated_at`,
 			params.BindingID, params.MappingID, baseline, boolInt(params.Conflicted),
-			conflictKata, conflictExternal, conflictAt, params.At.UTC())
+			conflictPoomsae, conflictExternal, conflictAt, params.At.UTC())
 		if err != nil {
 			return db.ExternalFieldState{}, nil, fmt.Errorf("upsert external field state: %w", err)
 		}
@@ -2084,7 +2084,7 @@ func (d *Store) ResolveExternalFieldConflict(
 			baseline = string(params.Baseline)
 		}
 		_, err = tx.ExecContext(ctx, `UPDATE external_field_states
- SET baseline_json=?, conflicted=0, conflict_kata=NULL, conflict_external=NULL,
+ SET baseline_json=?, conflicted=0, conflict_poomsae=NULL, conflict_external=NULL,
  conflict_at=NULL, updated_at=? WHERE binding_id=? AND mapping_id=?`,
 			baseline, params.At.UTC(), params.BindingID, params.MappingID)
 		if err != nil {
@@ -2210,11 +2210,11 @@ func scanExternalFieldMapping(row rowScanner) (db.ExternalFieldMapping, error) {
 
 func scanExternalFieldState(row rowScanner) (db.ExternalFieldState, error) {
 	var state db.ExternalFieldState
-	var baseline, conflictKata, conflictExternal sql.NullString
+	var baseline, conflictPoomsae, conflictExternal sql.NullString
 	var conflicted int
 	var conflictAt sql.NullTime
 	err := row.Scan(&state.BindingID, &state.MappingID, &baseline, &conflicted,
-		&conflictKata, &conflictExternal, &conflictAt, &state.UpdatedAt)
+		&conflictPoomsae, &conflictExternal, &conflictAt, &state.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return db.ExternalFieldState{}, db.ErrNotFound
 	}
@@ -2224,8 +2224,8 @@ func scanExternalFieldState(row rowScanner) (db.ExternalFieldState, error) {
 	if baseline.Valid {
 		state.Baseline = jsontext.Value(baseline.String)
 	}
-	if conflictKata.Valid {
-		state.ConflictKata = jsontext.Value(conflictKata.String)
+	if conflictPoomsae.Valid {
+		state.ConflictPoomsae = jsontext.Value(conflictPoomsae.String)
 	}
 	if conflictExternal.Valid {
 		state.ConflictExternal = jsontext.Value(conflictExternal.String)

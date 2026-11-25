@@ -389,13 +389,13 @@ func extraHookArgvKind(target string, argv []string) agentHookKind {
 	if executable == "" || (strings.Contains(executable, "=") && !strings.ContainsAny(executable, "/\\")) {
 		return ""
 	}
-	if !isKataHookExecutable(executable) && !strings.ContainsAny(executable, "/\\") {
+	if !isPoomsaeHookExecutable(executable) && !strings.ContainsAny(executable, "/\\") {
 		return ""
 	}
 	rest := canonicalAgentHookArgs(argv[1:])
 	for _, kind := range []agentHookKind{contractHook, attentionStartHook, attentionEndHook} {
 		args := extraHookArguments(target, kind)
-		if isKataHookExecutable(executable) && slices.Equal(rest, args) {
+		if isPoomsaeHookExecutable(executable) && slices.Equal(rest, args) {
 			return kind
 		}
 		source := legacyAgentContractHookSource

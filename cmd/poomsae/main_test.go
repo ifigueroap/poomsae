@@ -262,10 +262,10 @@ func TestEmitError_JSONMode_ProducesParseableEnvelope(t *testing.T) {
 	assert.Equal(t, ExitNotFound, got.Error.ExitCode)
 }
 
-// TestEmitError_HumanMode_StillPrintsKataPrefix locks the legacy
+// TestEmitError_HumanMode_StillPrintsPoomsaePrefix locks the legacy
 // human path so a future refactor doesn't break scripts grepping
 // stderr for "poomsae:".
-func TestEmitError_HumanMode_StillPrintsKataPrefix(t *testing.T) {
+func TestEmitError_HumanMode_StillPrintsPoomsaePrefix(t *testing.T) {
 	cli := &cliError{
 		Message: "title must not be empty", Kind: kindValidation,
 		ExitCode: ExitValidation,
@@ -605,7 +605,7 @@ func TestHealthCommandDoesNotAutoStartDaemon(t *testing.T) {
 
 func TestHealthReportsLiveUnreachableDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	address := "unix://" + filepath.Join(home, "missing.sock")
 	require.NoError(t, writeRuntimeFor(home, address))
@@ -646,11 +646,11 @@ local = true
 		"named local health must inspect existing runtime files, not auto-start")
 }
 
-// TestHealth_HonorsKataServer ensures a configured remote URL is
+// TestHealth_HonorsPoomsaeServer ensures a configured remote URL is
 // selected by discoverDaemon. Without this, `poomsae health` ignores
 // POOMSAE_SERVER and reports either a stale local daemon or "no daemon
 // running" — both of which contradict the user's explicit selection.
-func TestHealth_HonorsKataServer(t *testing.T) {
+func TestHealth_HonorsPoomsaeServer(t *testing.T) {
 	resetFlags(t)
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 

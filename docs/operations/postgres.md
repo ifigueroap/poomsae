@@ -38,11 +38,11 @@ Connect as a database administrator and create the two roles, replacing the
 database and role names to match your setup:
 
 ```sql
-CREATE ROLE kata_schema_owner LOGIN PASSWORD 'replace-me';
-CREATE ROLE kata_runtime LOGIN PASSWORD 'replace-me';
+CREATE ROLE poomsae_schema_owner LOGIN PASSWORD 'replace-me';
+CREATE ROLE poomsae_runtime LOGIN PASSWORD 'replace-me';
 
-GRANT CONNECT ON DATABASE poomsae TO kata_schema_owner, kata_runtime;
-GRANT CREATE ON DATABASE poomsae TO kata_schema_owner;
+GRANT CONNECT ON DATABASE poomsae TO poomsae_schema_owner, poomsae_runtime;
+GRANT CREATE ON DATABASE poomsae TO poomsae_schema_owner;
 ```
 
 The schema owner needs `CREATE` on the database because initial setup creates
@@ -73,7 +73,7 @@ To keep credentials out of shell history and process listings, supply the DSN
 through the environment or a PostgreSQL password file:
 
 ```sh
-export POOMSAE_DSN='postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_DSN='postgres://poomsae_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 export POOMSAE_POSTGRES_SCHEMA='poomsae'
 poomsae storage postgres migrate
 ```
@@ -211,20 +211,20 @@ privileges for objects that future migrations create:
 
 ```sql
 REVOKE ALL ON SCHEMA poomsae FROM PUBLIC;
-GRANT USAGE ON SCHEMA poomsae TO kata_runtime;
+GRANT USAGE ON SCHEMA poomsae TO poomsae_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE
-  ON ALL TABLES IN SCHEMA poomsae TO kata_runtime;
+  ON ALL TABLES IN SCHEMA poomsae TO poomsae_runtime;
 GRANT USAGE, SELECT, UPDATE
-  ON ALL SEQUENCES IN SCHEMA poomsae TO kata_runtime;
+  ON ALL SEQUENCES IN SCHEMA poomsae TO poomsae_runtime;
 GRANT EXECUTE
   ON FUNCTION poomsae.rewrite_project_uid_for_adoption(BIGINT, TEXT)
-  TO kata_runtime;
+  TO poomsae_runtime;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA poomsae
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO kata_runtime;
-ALTER DEFAULT PRIVILEGES FOR ROLE kata_schema_owner IN SCHEMA poomsae
-  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO kata_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE poomsae_schema_owner IN SCHEMA poomsae
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO poomsae_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE poomsae_schema_owner IN SCHEMA poomsae
+  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO poomsae_runtime;
 ```
 
 If you configured a schema name other than `poomsae`, substitute its exact name
@@ -236,7 +236,7 @@ role never receives table DDL authority. Do not grant `CREATE` on the Poomsae sc
 to the runtime role or any other non-owner role. Validation-only startup
 rejects those grants because schema objects participate in PostgreSQL name
 resolution. The default privileges cover newly created tables and sequences
-only when migrations run as `kata_schema_owner`.
+only when migrations run as `poomsae_schema_owner`.
 
 ## Configure the runtime
 
@@ -245,21 +245,21 @@ startup explicitly:
 
 ```toml
 [storage]
-dsn = "postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
+dsn = "postgres://poomsae_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system"
 
 [storage.postgres]
 schema = "poomsae"
 mode = "validate"
-schema_owner = "kata_schema_owner"
+schema_owner = "poomsae_schema_owner"
 ```
 
 You can pass the same settings as environment variables:
 
 ```sh
-export POOMSAE_DSN='postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_DSN='postgres://poomsae_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 export POOMSAE_POSTGRES_SCHEMA='poomsae'
 export POOMSAE_POSTGRES_SCHEMA_MODE='validate'
-export POOMSAE_POSTGRES_SCHEMA_OWNER='kata_schema_owner'
+export POOMSAE_POSTGRES_SCHEMA_OWNER='poomsae_schema_owner'
 ```
 
 In `validate` mode, you must set `schema_owner`. Every direct storage open,
@@ -366,12 +366,12 @@ poomsae daemon stop
 poomsae export --output "backup-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
 pg_dump --format=custom --schema=poomsae --file=poomsae-before-upgrade.dump "$POOMSAE_DSN"
 
-export POOMSAE_DSN='postgres://kata_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_DSN='postgres://poomsae_schema_owner@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 poomsae storage postgres migrate
 
-export POOMSAE_DSN='postgres://kata_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
+export POOMSAE_DSN='postgres://poomsae_runtime@db.example/poomsae?sslmode=verify-full&sslrootcert=system'
 export POOMSAE_POSTGRES_SCHEMA_MODE=validate
-export POOMSAE_POSTGRES_SCHEMA_OWNER=kata_schema_owner
+export POOMSAE_POSTGRES_SCHEMA_OWNER=poomsae_schema_owner
 poomsae storage postgres status
 poomsae daemon start --foreground
 ```

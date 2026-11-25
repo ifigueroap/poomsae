@@ -72,9 +72,9 @@ func assertSchemaVersion(t *testing.T, d *sqlitestore.Store, expected int) {
 	assert.Equal(t, strconv.Itoa(expected), got)
 }
 
-// createKataProject creates the canonical "poomsae" project used by tests that
+// createPoomsaeProject creates the canonical "poomsae" project used by tests that
 // need a project to exist but don't care about its name.
-func createKataProject(ctx context.Context, t *testing.T, d *sqlitestore.Store) db.Project {
+func createPoomsaeProject(ctx context.Context, t *testing.T, d *sqlitestore.Store) db.Project {
 	t.Helper()
 	return createProject(ctx, t, d, "poomsae")
 }

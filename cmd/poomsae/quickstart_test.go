@@ -156,7 +156,7 @@ func TestQuickstart_JSON(t *testing.T) {
 	resetFlags(t)
 	out := executeRoot(t, newRootCmd(), "--json", "quickstart")
 	var got struct {
-		APIVersion int    `json:"kata_api_version"`
+		APIVersion int    `json:"poomsae_api_version"`
 		Quickstart string `json:"quickstart"`
 	}
 	require.NoError(t, json.Unmarshal(out, &got))
@@ -208,7 +208,7 @@ func TestQuickstart_ContractPrintsManagedWorkflowWithoutMarkers(t *testing.T) {
 
 // The contract is rendered into other projects' AGENTS.md files, so it must
 // describe poomsae itself rather than any single workspace's local conventions.
-func TestQuickstart_ContractOmitsNonKataConcepts(t *testing.T) {
+func TestQuickstart_ContractOmitsNonPoomsaeConcepts(t *testing.T) {
 	resetFlags(t)
 	out := string(executeRoot(t, newRootCmd(), "quickstart", "--format", "contract"))
 

@@ -1448,11 +1448,11 @@ func TestClient_ResolveProject_SendsNameAndAliasForWorkspaceConfig(t *testing.T)
 	assert.False(t, hasStartPath, "request must be path-free")
 }
 
-// TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml
+// TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutPoomsaeToml
 // covers a git workspace without .poomsae.toml: client sends alias alone.
 // Resolve must not derive a project name from the git remote (init
 // owns by-convention).
-func TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml(t *testing.T) {
+func TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutPoomsaeToml(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
 
 	var got map[string]any
@@ -1476,12 +1476,12 @@ func TestClient_ResolveProject_SendsAliasOnlyForGitWorkspaceWithoutKataToml(t *t
 	assert.False(t, hasStartPath)
 }
 
-// TestClient_ResolveProject_RewritesStaleKataToml verifies the
+// TestClient_ResolveProject_RewritesStalePoomsaeToml verifies the
 // rename-repair handoff to the client: when the daemon returns a
 // canonical name that differs from the local .poomsae.toml, the TUI
 // rewrites the file. Mirrors the CLI behavior so both clients keep
 // .poomsae.toml fresh.
-func TestClient_ResolveProject_RewritesStaleKataToml(t *testing.T) {
+func TestClient_ResolveProject_RewritesStalePoomsaeToml(t *testing.T) {
 	dir := testfix.InitGitRepo(t)
 	require.NoError(t, config.WriteProjectConfig(dir, "stale-name"))
 

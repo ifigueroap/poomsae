@@ -296,7 +296,7 @@ func TestRunner_OutputCapture_BothStreams(t *testing.T) {
 	}
 }
 
-func TestRunner_EnvKataVars(t *testing.T) {
+func TestRunner_EnvPoomsaeVars(t *testing.T) {
 	rs := newRunnerSetup(t)
 	got := rs.runProbe(func(h *ResolvedHook) { h.Args = []string{"env", "POOMSAE_EVENT_ID"} })
 	out := readRecordOut(t, got.StdoutPath)
@@ -322,7 +322,7 @@ func TestBuildEnvUsesTheConfiguredDaemonChildEnvironment(t *testing.T) {
 	}
 }
 
-func TestRunner_EnvUserOverridable_NotForKata(t *testing.T) {
+func TestRunner_EnvUserOverridable_NotForPoomsae(t *testing.T) {
 	rs := newRunnerSetup(t)
 	got := rs.runProbe(func(h *ResolvedHook) {
 		h.Args = []string{"env", "EXTRA"}

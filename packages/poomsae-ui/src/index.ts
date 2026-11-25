@@ -1,4 +1,4 @@
-export { supportsKataAPISchema } from './compatibility.js'
+export { supportsPoomsaeAPISchema } from './compatibility.js'
 export { authorName } from './authorName.js'
 export { default as CommentRelations } from './components/CommentRelations.svelte'
 export { default as CreationAttribution } from './components/CreationAttribution.svelte'

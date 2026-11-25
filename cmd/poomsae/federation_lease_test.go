@@ -242,7 +242,7 @@ func TestClaimSteal_JSONIncludesReleasedAndNewHolders(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &body))
-	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, float64(1), body["poomsae_api_version"])
 	assert.Equal(t, "alice", body["released_holder"])
 	assert.Equal(t, "bob", body["new_holder"])
 	released, ok := body["released"].(map[string]any)
@@ -385,7 +385,7 @@ func TestClaim_JSONPreservesDaemonResponse(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &body))
-	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, float64(1), body["poomsae_api_version"])
 	assert.Equal(t, true, body["granted"])
 	holder, ok := body["holder"].(map[string]any)
 	require.True(t, ok)
@@ -430,7 +430,7 @@ func TestClaim_JSONDenialPreservesDaemonResponse(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &body))
-	assert.Equal(t, float64(1), body["kata_api_version"])
+	assert.Equal(t, float64(1), body["poomsae_api_version"])
 	assert.Equal(t, false, body["granted"])
 	holder, ok := body["holder"].(map[string]any)
 	require.True(t, ok)

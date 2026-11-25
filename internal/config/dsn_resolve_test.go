@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestKataDSN_PrefersKataDSNOverKataDB(t *testing.T) {
+func TestPoomsaeDSN_PrefersPoomsaeDSNOverPoomsaeDB(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "postgres://db.example.com/poomsae")
 	t.Setenv("POOMSAE_DB", "/tmp/should-be-shadowed.db")
@@ -20,7 +20,7 @@ func TestKataDSN_PrefersKataDSNOverKataDB(t *testing.T) {
 	assert.Equal(t, "postgres://db.example.com/poomsae", got)
 }
 
-func TestKataDSN_FallsBackToKataDBWhenKataDSNUnset(t *testing.T) {
+func TestPoomsaeDSN_FallsBackToPoomsaeDBWhenPoomsaeDSNUnset(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "")
 	t.Setenv("POOMSAE_DB", "/tmp/from-env.db")
@@ -30,7 +30,7 @@ func TestKataDSN_FallsBackToKataDBWhenKataDSNUnset(t *testing.T) {
 	assert.Equal(t, "/tmp/from-env.db", got)
 }
 
-func TestKataDSN_DefaultsToHomeKataDB(t *testing.T) {
+func TestPoomsaeDSN_DefaultsToHomePoomsaeDB(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -41,7 +41,7 @@ func TestKataDSN_DefaultsToHomeKataDB(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, "poomsae.db"), got)
 }
 
-func TestKataDSN_TrimsEnvWhitespace(t *testing.T) {
+func TestPoomsaeDSN_TrimsEnvWhitespace(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "  postgres://h/db  ")
 	t.Setenv("POOMSAE_DB", "")
@@ -51,7 +51,7 @@ func TestKataDSN_TrimsEnvWhitespace(t *testing.T) {
 	assert.Equal(t, "postgres://h/db", got)
 }
 
-func TestKataDSN_RejectsUnknownScheme(t *testing.T) {
+func TestPoomsaeDSN_RejectsUnknownScheme(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "mysql://h/db")
 	t.Setenv("POOMSAE_DB", "")
@@ -62,7 +62,7 @@ func TestKataDSN_RejectsUnknownScheme(t *testing.T) {
 	assert.Contains(t, err.Error(), "mysql")
 }
 
-func TestKataDSN_RejectsPGOnlyQueryParamsOnSQLiteDSN(t *testing.T) {
+func TestPoomsaeDSN_RejectsPGOnlyQueryParamsOnSQLiteDSN(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "sqlite:///tmp/k.db?sslmode=require")
 	t.Setenv("POOMSAE_DB", "")
@@ -73,7 +73,7 @@ func TestKataDSN_RejectsPGOnlyQueryParamsOnSQLiteDSN(t *testing.T) {
 	assert.Contains(t, err.Error(), "sslmode")
 }
 
-func TestKataDSN_RejectsPGOnlyQueryParamsOnBarePath(t *testing.T) {
+func TestPoomsaeDSN_RejectsPGOnlyQueryParamsOnBarePath(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "/tmp/k.db?pool_max_conns=8")
 	t.Setenv("POOMSAE_DB", "")
@@ -83,7 +83,7 @@ func TestKataDSN_RejectsPGOnlyQueryParamsOnBarePath(t *testing.T) {
 	assert.Contains(t, err.Error(), "pool_max_conns")
 }
 
-func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNFromEnv(t *testing.T) {
+func TestPoomsaeDSN_RejectsSchemeLessLibpqKeywordDSNFromEnv(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "host=db user=poomsae password=SECRET dbname=poomsae") //nolint:gosec // fixture verifies credential-free rejection
 	t.Setenv("POOMSAE_DB", "")
@@ -95,7 +95,7 @@ func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNFromEnv(t *testing.T) {
 	assert.NotContains(t, err.Error(), "password=SECRET")
 }
 
-func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromEnv(t *testing.T) {
+func TestPoomsaeDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromEnv(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "host = db user = poomsae password = SECRET dbname = poomsae") //nolint:gosec // fixture verifies credential-free rejection
 	t.Setenv("POOMSAE_DB", "")
@@ -107,7 +107,7 @@ func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromEnv(t *test
 	assert.NotContains(t, err.Error(), "password = SECRET")
 }
 
-func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNFromConfig(t *testing.T) {
+func TestPoomsaeDSN_RejectsSchemeLessLibpqKeywordDSNFromConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -122,7 +122,7 @@ func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNFromConfig(t *testing.T) {
 	assert.NotContains(t, err.Error(), "sslpassword=SECRET")
 }
 
-func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromConfig(t *testing.T) {
+func TestPoomsaeDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -137,7 +137,7 @@ func TestKataDSN_RejectsSchemeLessLibpqKeywordDSNWithSpacedEqualsFromConfig(t *t
 	assert.NotContains(t, err.Error(), "sslpassword = SECRET")
 }
 
-func TestKataDSN_RejectsAmbiguousPostgresCredentials(t *testing.T) {
+func TestPoomsaeDSN_RejectsAmbiguousPostgresCredentials(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "postgres://user:p://w@host/db")
 	t.Setenv("POOMSAE_DB", "")
@@ -148,7 +148,7 @@ func TestKataDSN_RejectsAmbiguousPostgresCredentials(t *testing.T) {
 	assert.NotContains(t, err.Error(), "p://w")
 }
 
-func TestKataDSN_ValidationErrorOnPostgresOmitsPassword(t *testing.T) {
+func TestPoomsaeDSN_ValidationErrorOnPostgresOmitsPassword(t *testing.T) {
 	// A bad-shape postgres DSN with a password — validateDSN runs the
 	// CanonicalDSNIdentity probe which never echoes the input. Ensure the
 	// password does not leak.
@@ -161,7 +161,7 @@ func TestKataDSN_ValidationErrorOnPostgresOmitsPassword(t *testing.T) {
 	assert.NotContains(t, err.Error(), "SECRET")
 }
 
-func TestKataDSN_AcceptsPostgresDSN(t *testing.T) {
+func TestPoomsaeDSN_AcceptsPostgresDSN(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "postgres://user:pw@host:5432/poomsae?sslmode=require")
 	t.Setenv("POOMSAE_DB", "")
@@ -171,7 +171,7 @@ func TestKataDSN_AcceptsPostgresDSN(t *testing.T) {
 	assert.Equal(t, "postgres://user:pw@host:5432/poomsae?sslmode=require", got)
 }
 
-func TestKataDSN_AcceptsSQLiteDSN(t *testing.T) {
+func TestPoomsaeDSN_AcceptsSQLiteDSN(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "sqlite:///var/lib/poomsae/poomsae.db")
 	t.Setenv("POOMSAE_DB", "")
@@ -181,7 +181,7 @@ func TestKataDSN_AcceptsSQLiteDSN(t *testing.T) {
 	assert.Equal(t, "sqlite:///var/lib/poomsae/poomsae.db", got)
 }
 
-func TestKataDSN_AcceptsBarePath(t *testing.T) {
+func TestPoomsaeDSN_AcceptsBarePath(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "/var/lib/poomsae/poomsae.db")
 	t.Setenv("POOMSAE_DB", "")
@@ -191,7 +191,7 @@ func TestKataDSN_AcceptsBarePath(t *testing.T) {
 	assert.Equal(t, "/var/lib/poomsae/poomsae.db", got)
 }
 
-func TestKataDSN_ReadsStorageDSNFromConfigToml(t *testing.T) {
+func TestPoomsaeDSN_ReadsStorageDSNFromConfigToml(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -204,7 +204,7 @@ func TestKataDSN_ReadsStorageDSNFromConfigToml(t *testing.T) {
 	assert.Equal(t, "postgres://h/db", got)
 }
 
-func TestKataDSN_KataDBOverridesStorageDSN(t *testing.T) {
+func TestPoomsaeDSN_PoomsaeDBOverridesStorageDSN(t *testing.T) {
 	// User-specified precedence: POOMSAE_DSN > POOMSAE_DB > [storage].dsn > default.
 	// Env vars beat the config file so a user's existing shell (with POOMSAE_DB
 	// exported) keeps pointing at the same database after [storage].dsn is
@@ -222,7 +222,7 @@ func TestKataDSN_KataDBOverridesStorageDSN(t *testing.T) {
 	assert.Equal(t, "/tmp/from-env.db", got)
 }
 
-func TestKataDSN_StorageDSNUsedWhenKataDBUnset(t *testing.T) {
+func TestPoomsaeDSN_StorageDSNUsedWhenPoomsaeDBUnset(t *testing.T) {
 	// With env vars unset, the config file's [storage].dsn is picked up.
 	// Confirms the TOML branch is reachable in the new precedence order.
 	home := t.TempDir()
@@ -237,7 +237,7 @@ func TestKataDSN_StorageDSNUsedWhenKataDBUnset(t *testing.T) {
 	assert.Equal(t, "postgres://from-toml/poomsae", got)
 }
 
-func TestKataDSN_KataDSNOverridesStorageDSN(t *testing.T) {
+func TestPoomsaeDSN_PoomsaeDSNOverridesStorageDSN(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "postgres://from-env/poomsae")
@@ -250,7 +250,7 @@ func TestKataDSN_KataDSNOverridesStorageDSN(t *testing.T) {
 	assert.Equal(t, "postgres://from-env/poomsae", got)
 }
 
-func TestKataDSN_ValidatesStorageDSN(t *testing.T) {
+func TestPoomsaeDSN_ValidatesStorageDSN(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -264,7 +264,7 @@ func TestKataDSN_ValidatesStorageDSN(t *testing.T) {
 	assert.Contains(t, err.Error(), "mysql")
 }
 
-func TestKataDSN_EmptyStorageDSNFallsThroughToKataDB(t *testing.T) {
+func TestPoomsaeDSN_EmptyStorageDSNFallsThroughToPoomsaeDB(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -277,7 +277,7 @@ func TestKataDSN_EmptyStorageDSNFallsThroughToKataDB(t *testing.T) {
 	assert.Equal(t, "/tmp/from-env.db", got)
 }
 
-func TestKataDSN_EmptyStorageDSNFallsThroughToDefault(t *testing.T) {
+func TestPoomsaeDSN_EmptyStorageDSNFallsThroughToDefault(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -290,12 +290,12 @@ func TestKataDSN_EmptyStorageDSNFallsThroughToDefault(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, "poomsae.db"), got)
 }
 
-// TestKataDSN_TolerantOfMalformedAuthSection is the scope-narrowing invariant:
+// TestPoomsaeDSN_TolerantOfMalformedAuthSection is the scope-narrowing invariant:
 // a parse error in an unrelated section (auth, listen, close, ...) must not
 // block PoomsaeDSN from resolving its [storage].dsn. Legacy POOMSAE_DB callers
 // were never gated on the daemon config; the new TOML branch must not
 // regress that.
-func TestKataDSN_TolerantOfMalformedAuthSection(t *testing.T) {
+func TestPoomsaeDSN_TolerantOfMalformedAuthSection(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -310,7 +310,7 @@ func TestKataDSN_TolerantOfMalformedAuthSection(t *testing.T) {
 	assert.Equal(t, "postgres://h/db", got)
 }
 
-func TestKataDSN_ReadsCommentedStorageHeadingAndStopsAtCommentedPeer(t *testing.T) {
+func TestPoomsaeDSN_ReadsCommentedStorageHeadingAndStopsAtCommentedPeer(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -323,7 +323,7 @@ func TestKataDSN_ReadsCommentedStorageHeadingAndStopsAtCommentedPeer(t *testing.
 	assert.Equal(t, "postgres://h/db", got)
 }
 
-func TestKataDSN_RejectsUnknownStorageKeys(t *testing.T) {
+func TestPoomsaeDSN_RejectsUnknownStorageKeys(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		body    string
@@ -354,10 +354,10 @@ func TestKataDSN_RejectsUnknownStorageKeys(t *testing.T) {
 	}
 }
 
-// TestKataDSN_TolerantOfMissingStorageSection confirms that a config.toml
+// TestPoomsaeDSN_TolerantOfMissingStorageSection confirms that a config.toml
 // with no [storage] section at all is harmless — PoomsaeDSN falls through to
 // POOMSAE_DB / default without complaint.
-func TestKataDSN_TolerantOfMissingStorageSection(t *testing.T) {
+func TestPoomsaeDSN_TolerantOfMissingStorageSection(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")

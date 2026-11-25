@@ -163,7 +163,7 @@ func newAuthenticatedMCPHTTPTestTransport(endpoint string) *sdkmcp.StreamableCli
 }
 
 func TestMCPServeHTTPServesStreamableEndpointAndHealth(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if serveMCPTestHealth(writer, request) {
@@ -194,7 +194,7 @@ func TestMCPServeHTTPServesStreamableEndpointAndHealth(t *testing.T) {
 }
 
 func TestMCPServeHTTPBearerProtectsMCPButNotHealth(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	t.Setenv("POOMSAE_MCP_TEST_TOKEN", "test-mcp-token")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -232,7 +232,7 @@ func TestMCPServeHTTPBearerProtectsMCPButNotHealth(t *testing.T) {
 
 // Native per-request clients share the endpoint with legacy sessions.
 func TestMCPServeHTTPPerRequestProtocolListsTools(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if serveMCPTestHealth(writer, request) {
@@ -269,7 +269,7 @@ func TestMCPServeHTTPPerRequestProtocolListsTools(t *testing.T) {
 }
 
 func TestMCPServeHTTPCrossOriginBrowserMutationRejected(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if serveMCPTestHealth(writer, request) {
@@ -294,7 +294,7 @@ func TestMCPServeHTTPCrossOriginBrowserMutationRejected(t *testing.T) {
 }
 
 func TestMCPServeHTTPLocalhostProtectionRejectsForeignHost(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if serveMCPTestHealth(writer, request) {
@@ -316,7 +316,7 @@ func TestMCPServeHTTPLocalhostProtectionRejectsForeignHost(t *testing.T) {
 }
 
 func TestMCPServeHTTPRejectsLoopbackHostThatDoesNotMatchConfiguredAuthority(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if serveMCPTestHealth(writer, request) {
@@ -464,7 +464,7 @@ func TestMCPServeHTTPTokenEnvMustBeSet(t *testing.T) {
 }
 
 func TestMCPServeAllProjectsServesDaemonWideScope(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	var requests int
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -488,7 +488,7 @@ func TestMCPServeAllProjectsServesDaemonWideScope(t *testing.T) {
 }
 
 func TestMCPServeRenewsAdvertisedAutostartDaemon(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	keepalive := make(chan struct{}, 1)
 	daemonServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -560,7 +560,7 @@ func TestMCPIdleKeepaliveWaitsAFullIntervalAfterSlowFailure(t *testing.T) {
 }
 
 func TestMCPServeRejectsDaemonBeforeRelationshipPinning(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	var otherRequests int
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -587,7 +587,7 @@ func TestMCPServeRejectsDaemonBeforeRelationshipPinning(t *testing.T) {
 }
 
 func TestMCPServeDefaultRequiresWorkspaceBinding(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	t.Chdir(t.TempDir())
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -609,12 +609,12 @@ func TestMCPServeDefaultRequiresWorkspaceBinding(t *testing.T) {
 }
 
 func TestMCPStorageRootRejectsExplicitLocalProfileBeforeStorageSetup(t *testing.T) {
-	home := setupKataEnv(t)
-	currentDB := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	home := setupPoomsaeEnv(t)
+	currentDB := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	require.NoError(t, currentDB.Close())
 
 	profileHome := t.TempDir()
-	profileDB := openKataTestDB(t, filepath.Join(profileHome, "poomsae.db"))
+	profileDB := openPoomsaeTestDB(t, filepath.Join(profileHome, "poomsae.db"))
 	profileUID := profileDB.InstanceUID()
 	require.NoError(t, profileDB.Close())
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(fmt.Sprintf(`[[daemon]]
@@ -654,7 +654,7 @@ func TestParseMCPStorageTargets(t *testing.T) {
 const currentMCPProtocolVersion = "2026-07-28"
 
 func TestMCPServeSyncOutlivesHandshakeTimeout(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	t.Setenv("POOMSAE_HTTP_TIMEOUT", "500ms")
 	savedHandshake := sseHandshakeTimeout
@@ -734,7 +734,7 @@ func TestMCPServeSyncOutlivesHandshakeTimeout(t *testing.T) {
 }
 
 func TestMCPServeEventWaitOutlivesDefaultClientTimeout(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	t.Setenv("POOMSAE_HTTP_TIMEOUT", "500ms")
 	workspace := t.TempDir()
@@ -810,7 +810,7 @@ func TestMCPServeEventWaitOutlivesDefaultClientTimeout(t *testing.T) {
 }
 
 func TestMCPServeOrdinaryRequestsUseDefaultClientTimeout(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	t.Setenv("POOMSAE_HTTP_TIMEOUT", "100ms")
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -874,7 +874,7 @@ func TestMCPServeOrdinaryRequestsUseDefaultClientTimeout(t *testing.T) {
 }
 
 func TestMCPServeBindsProjectAndUsesStdoutOnlyForProtocol(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	workspace := t.TempDir()
 	var resolved bool

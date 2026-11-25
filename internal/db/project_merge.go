@@ -491,7 +491,7 @@ func cloneImportRecord(rec ImportRecord) ImportRecord {
 	case *ExternalFieldStateExport:
 		v := *rec
 		v.Baseline = append(jsontext.Value(nil), rec.Baseline...)
-		v.ConflictKata = append(jsontext.Value(nil), rec.ConflictKata...)
+		v.ConflictPoomsae = append(jsontext.Value(nil), rec.ConflictPoomsae...)
 		v.ConflictExternal = append(jsontext.Value(nil), rec.ConflictExternal...)
 		v.ConflictAt = cloneTimePtr(rec.ConflictAt)
 		return &v
@@ -557,7 +557,7 @@ func externalFieldMappingExportIdentity(mapping *ExternalFieldMappingExport) ext
 func externalFieldStateMappingIdentity(state *ExternalFieldStateExport) externalFieldMappingIdentity {
 	return externalFieldMappingIdentity{
 		connectorInstance: state.MappingConnectorInstance,
-		poomsaeField:      state.MappingKataField,
+		poomsaeField:      state.MappingPoomsaeField,
 		externalFieldID:   state.MappingExternalFieldID,
 		schemaRevision:    state.MappingSchemaRevision,
 		createdAt:         state.MappingCreatedAt,

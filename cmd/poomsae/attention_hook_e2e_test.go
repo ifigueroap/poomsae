@@ -66,7 +66,7 @@ func attnMetaValue(t *testing.T, env *testenv.Env, pid int64, ref, key string) (
 	return value, true
 }
 
-func TestE2E_AttentionHook_StartSetsOnlyAttentionFromKataRef(t *testing.T) {
+func TestE2E_AttentionHook_StartSetsOnlyAttentionFromPoomsaeRef(t *testing.T) {
 	env, dir, pid := setupCLIWorkspace(t)
 	ref := createIssue(t, env, pid, "launcher-tracked work")
 	runCLI(t, env, dir, "meta", "set", ref, attentionMsgKey, "existing context")
@@ -96,7 +96,7 @@ func TestE2E_AttentionHook_LegacySourceMarkersTrackAttention(t *testing.T) {
 	}
 }
 
-func TestE2E_AttentionHook_EndEscalatesDirectlyFromKataRefWithoutState(t *testing.T) {
+func TestE2E_AttentionHook_EndEscalatesDirectlyFromPoomsaeRefWithoutState(t *testing.T) {
 	env, dir, pid := setupCLIWorkspace(t)
 	ref := createIssue(t, env, pid, "unhanded-off work")
 	runCLI(t, env, dir, "meta", "set", ref, attentionKey, attnValueOK)

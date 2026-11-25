@@ -24,7 +24,7 @@ export const DEFAULT_POOMSAE_TASK_SORT: PoomsaeTaskSort = {
   direction: POOMSAE_TASK_NATURAL_DIRECTION.updated,
 }
 
-export function toggleKataTaskSort(
+export function togglePoomsaeTaskSort(
   current: PoomsaeTaskSort,
   key: PoomsaeTaskSortKey,
 ): PoomsaeTaskSort {
@@ -34,7 +34,7 @@ export function toggleKataTaskSort(
   return { key, direction: POOMSAE_TASK_NATURAL_DIRECTION[key] }
 }
 
-export function sortKataTasks(
+export function sortPoomsaeTasks(
   issues: readonly PoomsaeTaskSummary[],
   sort: PoomsaeTaskSort,
   childrenOf?: (issue: PoomsaeTaskSummary) => readonly PoomsaeTaskSummary[],
@@ -68,7 +68,7 @@ function dueDateLookup(
   }
 }
 
-export function compareKataTasks(
+export function comparePoomsaeTasks(
   a: PoomsaeTaskSummary,
   b: PoomsaeTaskSummary,
   sort: PoomsaeTaskSort,

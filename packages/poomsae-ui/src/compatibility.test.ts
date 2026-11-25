@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { supportsKataAPISchema } from './compatibility.js'
+import { supportsPoomsaeAPISchema } from './compatibility.js'
 
-describe('supportsKataAPISchema', () => {
+describe('supportsPoomsaeAPISchema', () => {
   it.each(['0.9.0', '0.9.8', '0.10.0', '0.10.4', '0.11.0', '0.11.3', '0.28.0', '0.28.8'])('accepts %s', (version) => {
-    expect(supportsKataAPISchema(version)).toBe(true)
+    expect(supportsPoomsaeAPISchema(version)).toBe(true)
   })
 
   it.each(['', '0.8.9', '0.12.0', '0.26.0', '0.27.0', '0.29.0', '1.0.0', 'not-semver'])('rejects %s', (version) => {
-    expect(supportsKataAPISchema(version)).toBe(false)
+    expect(supportsPoomsaeAPISchema(version)).toBe(false)
   })
 })

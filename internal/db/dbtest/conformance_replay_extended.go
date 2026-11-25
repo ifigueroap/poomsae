@@ -778,10 +778,10 @@ func extendedReplayRecords() []db.ImportRecord {
 		},
 		&db.ExternalFieldStateExport{
 			BindingUID: replayBindingUID, MappingConnectorInstance: "connector-one",
-			MappingKataField: "scheduled_on", MappingExternalFieldID: "schedule-one",
+			MappingPoomsaeField: "scheduled_on", MappingExternalFieldID: "schedule-one",
 			MappingSchemaRevision: "schema-one", MappingCreatedAt: mappingCreatedAt,
 			Baseline:         jsontext.Value(`"2026-08-20"`),
-			ConflictKata:     jsontext.Value(`"2026-08-21"`),
+			ConflictPoomsae:  jsontext.Value(`"2026-08-21"`),
 			ConflictExternal: jsontext.Value(`"2026-08-22"`),
 			Conflicted:       true, ConflictAt: &conflictAt, UpdatedAt: conflictAt,
 		},

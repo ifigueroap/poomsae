@@ -18,7 +18,7 @@ import (
 
 func TestBuildSourceArchive_TaggedReleaseUsesExactTagAndProductionAssets(t *testing.T) {
 	repo := newSourceFixture(t, "release tree\n", "production-assets")
-	out := filepath.Join(t.TempDir(), "kata_0.14.2_source.tar.gz")
+	out := filepath.Join(t.TempDir(), "poomsae_0.14.2_source.tar.gz")
 
 	meta, err := BuildSourceArchive(t.Context(), SourceArchiveOptions{
 		RepoRoot: repo, Version: "0.14.2", Tag: "v0.14.2", Output: out,

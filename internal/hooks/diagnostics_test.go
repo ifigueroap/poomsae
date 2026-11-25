@@ -38,8 +38,8 @@ func TestDoctorHookDiagnosticsUseActiveSnapshot(t *testing.T) {
 
 func TestDoctorHookHistoryCapKeepsNewestFailures(t *testing.T) {
 	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
-	old := fmt.Sprintf("{\"kata_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":0}\n", now.Add(-8*24*time.Hour).Format(time.RFC3339Nano))
-	recent := fmt.Sprintf("{\"kata_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":7}\n", now.Add(-time.Minute).Format(time.RFC3339Nano))
+	old := fmt.Sprintf("{\"poomsae_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":0}\n", now.Add(-8*24*time.Hour).Format(time.RFC3339Nano))
+	recent := fmt.Sprintf("{\"poomsae_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":7}\n", now.Add(-time.Minute).Format(time.RFC3339Nano))
 	active := filepath.Join(t.TempDir(), "runs.jsonl")
 	d := &Dispatcher{appender: &runsAppender{path: active}, deps: DispatcherDeps{Now: func() time.Time { return now }}}
 	require.NoError(t, os.WriteFile(active, []byte(strings.Repeat(old, (9<<20)/len(old))+recent), 0600))
@@ -54,7 +54,7 @@ func TestDoctorHookRetainedHistoryCountsNonzeroAndRotatedFailures(t *testing.T) 
 	d, _, path := mustNewDispatcher(t, nil, defaultConfig())
 	now := time.Now().UTC()
 	line := func(end time.Time, result string, exit int) string {
-		return fmt.Sprintf(`{"kata_hook_runs_version":1,"ended_at":%q,"result":%q,"exit_code":%d,"spawn_error":"secret-token"}`+"\n", end.Format(time.RFC3339Nano), result, exit)
+		return fmt.Sprintf(`{"poomsae_hook_runs_version":1,"ended_at":%q,"result":%q,"exit_code":%d,"spawn_error":"secret-token"}`+"\n", end.Format(time.RFC3339Nano), result, exit)
 	}
 	require.NoError(t, os.WriteFile(path, []byte(line(now, "ok", 0)+line(now, "ok", 7)), 0600))
 	require.NoError(t, os.WriteFile(path+".1", []byte(line(now, "spawn_failed", -1)+line(now.Add(-8*24*time.Hour), "timed_out", -1)), 0600))
@@ -81,7 +81,7 @@ func TestDoctorHookHistoryMissingAndCapped(t *testing.T) {
 
 func TestDoctorHookHistoryExactlyAtBudget(t *testing.T) {
 	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
-	base := fmt.Sprintf("{\"kata_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":0}", now.Format(time.RFC3339Nano))
+	base := fmt.Sprintf("{\"poomsae_hook_runs_version\":1,\"ended_at\":%q,\"result\":\"ok\",\"exit_code\":0}", now.Format(time.RFC3339Nano))
 	line := base + strings.Repeat(" ", 1023-len(base)) + "\n"
 	empty := ""
 	for _, tc := range []struct {
@@ -111,7 +111,7 @@ func TestDoctorHookHistoryExactlyAtBudget(t *testing.T) {
 
 func TestDoctorHookHistoryFileLimitOnlyMarksOmittedRecords(t *testing.T) {
 	now := time.Now().UTC()
-	line := fmt.Sprintf(`{"kata_hook_runs_version":1,"ended_at":%q,"result":"ok","exit_code":0}`+"\n", now.Format(time.RFC3339Nano))
+	line := fmt.Sprintf(`{"poomsae_hook_runs_version":1,"ended_at":%q,"result":"ok","exit_code":0}`+"\n", now.Format(time.RFC3339Nano))
 	for _, tc := range []struct {
 		name      string
 		rotated   *string

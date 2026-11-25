@@ -42,7 +42,7 @@ func TestFederationStatusJSONOutput(t *testing.T) {
 	out := requireCmdOutput(t, env, "--json", "federation", "status")
 
 	var got struct {
-		PoomsaeAPIVersion int `json:"kata_api_version"`
+		PoomsaeAPIVersion int `json:"poomsae_api_version"`
 		Statuses          []struct {
 			ProjectID                int64   `json:"project_id"`
 			ProjectName              string  `json:"project_name"`
@@ -361,7 +361,7 @@ func TestFederationQuarantineListAgentAndJSON(t *testing.T) {
 
 	jsonOut := requireCmdOutput(t, env, "--json", "federation", "quarantine", "list")
 	var got struct {
-		PoomsaeAPIVersion int `json:"kata_api_version"`
+		PoomsaeAPIVersion int `json:"poomsae_api_version"`
 		Quarantines       []struct {
 			ProjectID   int64    `json:"project_id"`
 			ProjectName string   `json:"project_name"`
@@ -775,7 +775,7 @@ token = "hub-token"
 	require.Len(t, enrollments, 1)
 }
 
-func TestFederationEnrollCLIUsesKATAServerAsSpokeForAdoption(t *testing.T) {
+func TestFederationEnrollCLIUsesPoomsaeServerAsSpokeForAdoption(t *testing.T) {
 	t.Setenv("EXAMPLE_HUB_TOKEN", "hub-token")
 	resetFlags(t)
 	hub := testenv.New(t, testenv.WithAuthToken("hub-token"))
@@ -1021,7 +1021,7 @@ token = "hub-token"
 	assert.True(t, enrollments[0].AllowAdoptionSnapshotAuthors, "the selected spoke credential should permit project adoption detection")
 }
 
-func TestFederationEnrollCLIKATAServerSpokeAuthFailureErrors(t *testing.T) {
+func TestFederationEnrollCLIPoomsaeServerSpokeAuthFailureErrors(t *testing.T) {
 	t.Setenv("EXAMPLE_HUB_TOKEN", "hub-token")
 	resetFlags(t)
 	spoke := testenv.New(t, testenv.WithAuthToken("spoke-token"))
@@ -1509,7 +1509,7 @@ func TestFederationSpokeProjectExistsDoesNotAttachHubTokenToSpokeProbe(t *testin
 	assert.Equal(t, []string{""}, seenAuth)
 }
 
-func TestFederationSpokeHTTPClientDoesNotUseKATAServerGlobalAuth(t *testing.T) {
+func TestFederationSpokeHTTPClientDoesNotUsePoomsaeServerGlobalAuth(t *testing.T) {
 	resetFlags(t)
 	t.Setenv("POOMSAE_AUTH_TOKEN", "hub-token")
 	var gotAuth string
@@ -3481,7 +3481,7 @@ func TestFederationEnrollCLISignedJoinBindsSpoke(t *testing.T) {
 	base := "https://" + external.Listener.Addr().String()
 	const keyID = "spoke'$HOME"
 	verifier, key := testenv.FederationSigning(t, base, keyID)
-	hubDB := openKataTestDB(t, filepath.Join(t.TempDir(), "hub.db"))
+	hubDB := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "hub.db"))
 	t.Cleanup(func() { require.NoError(t, hubDB.Close()) })
 	hubServer = daemon.NewServer(daemon.ServerConfig{DB: hubDB, FederationSigningRequired: true, FederationSigning: verifier, Auth: config.AuthConfig{Token: "admin-token"}})
 	t.Cleanup(func() { require.NoError(t, hubServer.Close()) })

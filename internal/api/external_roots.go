@@ -44,7 +44,7 @@ type ConnectorFieldsResponse struct {
 // MapConnectorFieldRequest maps one Poomsae planning field to an external field.
 type MapConnectorFieldRequest struct {
 	Instance     string `path:"instance"`
-	PoomsaeField string `path:"kata_field"`
+	PoomsaeField string `path:"poomsae_field"`
 	Body         struct {
 		ExternalField string `json:"external_field"`
 	}
@@ -53,7 +53,7 @@ type MapConnectorFieldRequest struct {
 // UnmapConnectorFieldRequest removes one connector field mapping.
 type UnmapConnectorFieldRequest struct {
 	Instance     string `path:"instance"`
-	PoomsaeField string `path:"kata_field"`
+	PoomsaeField string `path:"poomsae_field"`
 }
 
 // ConnectorFieldMappingResponse returns one connector field mapping.
@@ -61,7 +61,7 @@ type ConnectorFieldMappingResponse struct{ Body ExternalFieldMappingOut }
 
 // ExternalFieldMappingOut describes an active connector field mapping.
 type ExternalFieldMappingOut struct {
-	PoomsaeField      string   `json:"kata_field"`
+	PoomsaeField      string   `json:"poomsae_field"`
 	ExternalFieldID   string   `json:"external_field_id"`
 	ExternalFieldName string   `json:"external_field_name"`
 	AcceptedKinds     []string `json:"accepted_kinds"`
@@ -113,7 +113,7 @@ type ResolveExternalFieldRequest struct {
 	ProjectID int64  `path:"project_id"`
 	Ref       string `path:"ref"`
 	Body      struct {
-		PoomsaeField string `json:"kata_field"`
+		PoomsaeField string `json:"poomsae_field"`
 		Use          string `json:"use"`
 		Actor        string `json:"actor,omitempty"`
 	}
@@ -162,8 +162,8 @@ type ExternalRootBridgeOut struct {
 
 // ExternalFieldConflictOut describes unresolved canonical field candidates.
 type ExternalFieldConflictOut struct {
-	PoomsaeField      string                     `json:"kata_field"`
-	PoomsaeCandidate  *ExternalFieldCandidateOut `json:"kata_candidate,omitempty"`
+	PoomsaeField      string                     `json:"poomsae_field"`
+	PoomsaeCandidate  *ExternalFieldCandidateOut `json:"poomsae_candidate,omitempty"`
 	ExternalCandidate *ExternalFieldCandidateOut `json:"external_candidate,omitempty"`
 	ConflictAt        *time.Time                 `json:"conflict_at,omitempty"`
 }

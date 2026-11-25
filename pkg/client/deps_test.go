@@ -16,7 +16,7 @@ import (
 // Extending either list grows every client binary; prefer moving the needed
 // code into a leaf package instead.
 var (
-	allowedKataPackages = []string{
+	allowedPoomsaePackages = []string{
 		"github.com/ifigueroap/poomsae/internal/client",
 		"github.com/ifigueroap/poomsae/internal/config",
 		"github.com/ifigueroap/poomsae/internal/credentialfile",
@@ -83,7 +83,7 @@ func TestClientPackageLinksOnlyClientDependencies(t *testing.T) {
 				if pkg == "" {
 					continue
 				}
-				if module == "github.com/ifigueroap/poomsae" && !slices.Contains(allowedKataPackages, pkg) ||
+				if module == "github.com/ifigueroap/poomsae" && !slices.Contains(allowedPoomsaePackages, pkg) ||
 					!slices.Contains(allowedModules, module) {
 					unexpected = append(unexpected, pkg)
 				}

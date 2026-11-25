@@ -171,7 +171,7 @@ func TestAgentHooksCLIStatusConfiguredCapabilities(t *testing.T) {
 
 func TestAgentHooksCLIExtraNativeContract(t *testing.T) {
 	resetFlags(t)
-	payload := fmt.Sprintf(`{"session_id":"one","hook_event_name":"SessionStart","cwd":%q}`, writeKataWorkspace(t, t.TempDir()))
+	payload := fmt.Sprintf(`{"session_id":"one","hook_event_name":"SessionStart","cwd":%q}`, writePoomsaeWorkspace(t, t.TempDir()))
 	out, _, err := executeAgentHook(t, strings.NewReader(payload), "agent-hook", "contract", "droid")
 	require.NoError(t, err)
 	var result struct {

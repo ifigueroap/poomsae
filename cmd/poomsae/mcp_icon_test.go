@@ -16,7 +16,7 @@ import (
 )
 
 func TestMCPServeHTTPPublicIcon(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !serveMCPTestHealth(w, r) {

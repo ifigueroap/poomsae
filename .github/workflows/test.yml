@@ -485,7 +485,7 @@ jobs:
           --jsonfile "gotestsum/native-agent-plugins.json" --rerun-fails=2
           --rerun-fails-report "gotestsum/native-agent-plugins-reruns.txt"
           --packages ./cmd/poomsae -- -count=1 -v
-          -run '^Test(PiNative(InstalledRunner|RealKataTransport|InstalledRuntimeReplacement)|NativePlugins(Runtime|PublishedDeclarations)|OpenClawPublishedNativeLoader)$'
+          -run '^Test(PiNative(InstalledRunner|RealPoomsaeTransport|InstalledRuntimeReplacement)|NativePlugins(Runtime|PublishedDeclarations)|OpenClawPublishedNativeLoader)$'
 
       - name: Upload native plugin test results
         if: failure() || github.run_attempt > 1 || hashFiles('gotestsum/native-agent-plugins-reruns.txt') != ''
@@ -562,7 +562,7 @@ jobs:
       postgres:
         image: pgvector/pgvector:${{ matrix.postgres }}
         env:
-          POSTGRES_DB: kata_test
+          POSTGRES_DB: poomsae_test
           POSTGRES_USER: poomsae
           POSTGRES_PASSWORD: poomsae
           # Test databases are disposable, so keep the data directory in memory.
@@ -571,7 +571,7 @@ jobs:
           - 5432:5432
         options: >-
           --tmpfs /pgdata
-          --health-cmd "pg_isready -U poomsae -d kata_test"
+          --health-cmd "pg_isready -U poomsae -d poomsae_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -615,7 +615,7 @@ jobs:
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: >-
-          docker exec "$POSTGRES_CONTAINER" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U poomsae -d kata_test
+          docker exec "$POSTGRES_CONTAINER" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U poomsae -d poomsae_test
           -c "ALTER SYSTEM SET fsync = off"
           -c "ALTER SYSTEM SET synchronous_commit = off"
           -c "ALTER SYSTEM SET full_page_writes = off"
@@ -625,7 +625,7 @@ jobs:
         env: &postgres-test-env
           POSTGRES_MATRIX: ${{ matrix.postgres }}
           POOMSAE_TEST_FAST_SQLITE: "1"
-          POOMSAE_TEST_POSTGRES_DSN: postgres://poomsae:poomsae@127.0.0.1:5432/kata_test?sslmode=disable
+          POOMSAE_TEST_POSTGRES_DSN: postgres://poomsae:poomsae@127.0.0.1:5432/poomsae_test?sslmode=disable
           POOMSAE_SKIP_OPENAPI_CLIENT_CHECK: "1"
         run: >-
           env -u POOMSAE_AUTH_TOKEN

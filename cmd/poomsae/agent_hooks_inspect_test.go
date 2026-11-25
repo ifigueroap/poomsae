@@ -262,7 +262,7 @@ func TestAgentHooksInstallAllAndWorkspaceHint(t *testing.T) {
 	out, stderr, err := executeAgentHook(t, unreadableHookInput{}, "agent-hook", "install", "--all", "--executable", os.Args[0], "--json")
 	require.NoError(t, err, stderr)
 	var report struct {
-		Version int                 `json:"kata_api_version"`
+		Version int                 `json:"poomsae_api_version"`
 		Action  string              `json:"action"`
 		Results []agentHookMutation `json:"results"`
 	}

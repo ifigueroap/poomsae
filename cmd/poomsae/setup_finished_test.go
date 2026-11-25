@@ -19,7 +19,7 @@ func TestSetupFinishedDeliveryRetry(t *testing.T) {
 		t.Run(outcome, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "poomsae.db")
-				store := openKataTestDB(t, path)
+				store := openPoomsaeTestDB(t, path)
 				project, err := store.CreateProject(t.Context(), "example-project")
 				require.NoError(t, err)
 				_, _, err = store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: project.ID, Title: "First issue", Author: "tester"})
@@ -64,7 +64,7 @@ func TestSetupFinishedDeliveryRetry(t *testing.T) {
 				require.True(t, workers.Wait(t.Context()))
 				require.NoError(t, store.Close())
 				time.Sleep(2 * time.Hour)
-				store = openKataTestDB(t, path)
+				store = openPoomsaeTestDB(t, path)
 				defer func() { require.NoError(t, store.Close()) }()
 				startSetupFinished(t.Context(), newDaemonWorkerGroup(), store, telemetry.DisabledReporter())
 				second := &fakeTelemetryReporter{}
@@ -84,7 +84,7 @@ func TestSetupFinishedAfterEmptyStartup(t *testing.T) {
 	for _, restart := range []bool{false, true} {
 		t.Run(fmt.Sprint("restart=", restart), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+				store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 				defer func() { require.NoError(t, store.Close()) }()
 				project, err := store.CreateProject(t.Context(), "example-project")
 				require.NoError(t, err)

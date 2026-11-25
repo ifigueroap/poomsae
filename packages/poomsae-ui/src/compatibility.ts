@@ -1,4 +1,4 @@
-export function supportsKataAPISchema(version: string): boolean {
+export function supportsPoomsaeAPISchema(version: string): boolean {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version.trim())
   if (!match) return false
 

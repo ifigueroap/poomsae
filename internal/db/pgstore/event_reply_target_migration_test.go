@@ -48,6 +48,7 @@ func TestEventReplyTargetIndexMigrationUpgradesVersion35(t *testing.T) {
 	t.Cleanup(func() { _ = admin.Close() })
 	dropEventReplyTargetIndex(ctx, t, admin, schema)
 	dropLaterMigrationIndexes(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "reply_target_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE reply_target_upgrade.meta SET value='35' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	var owner string

@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
 import type { UISnapshot } from '../state/snapshot'
-import { normalizeKataUISnapshot } from './projection'
+import { normalizePoomsaeUISnapshot } from './projection'
 
-describe('normalizeKataUISnapshot', () => {
+describe('normalizePoomsaeUISnapshot', () => {
   test('projects the effective close independently of history', () => {
     const wire = snapshot()
     wire.selected!.history = []
@@ -22,7 +22,7 @@ describe('normalizeKataUISnapshot', () => {
       content_hash: '',
       created_at: '2026-06-01T12:00:00Z',
     }
-    const detail = normalizeKataUISnapshot(wire).selected_detail!
+    const detail = normalizePoomsaeUISnapshot(wire).selected_detail!
     expect(detail.effective_close_event).toMatchObject({
       event_uid: 'close-4',
       actor: 'user-a',
@@ -88,7 +88,7 @@ describe('normalizeKataUISnapshot', () => {
         }
         let graph
         try {
-          graph = normalizeKataUISnapshot(wire).selected_graph!
+          graph = normalizePoomsaeUISnapshot(wire).selected_graph!
         } finally {
           Array.prototype[Symbol.iterator] = iterate
         }
@@ -144,7 +144,7 @@ describe('normalizeKataUISnapshot', () => {
         }
         return true
       })
-      const actual = normalizeKataUISnapshot(wire).selected_graph!.edges.filter(
+      const actual = normalizePoomsaeUISnapshot(wire).selected_graph!.edges.filter(
         (edge) => edge.kind === 'blocks',
       )
       expect(
@@ -199,7 +199,7 @@ describe('normalizeKataUISnapshot', () => {
       Object.assign(wire.collection![0]!, attribution)
       Object.assign(wire.selected!.issue!, attribution)
       Object.assign(wire.selected!.comments![0]!, attribution)
-      const projection = normalizeKataUISnapshot(wire, '2026-08-01T12:30:00.000Z')
+      const projection = normalizePoomsaeUISnapshot(wire, '2026-08-01T12:30:00.000Z')
       expect(projection.issues[0]).toMatchObject(attribution)
       expect(projection.selected_detail?.issue).toMatchObject(attribution)
       expect(projection.selected_detail?.comments[0]).toMatchObject(attribution)
@@ -210,7 +210,7 @@ describe('normalizeKataUISnapshot', () => {
     const wire = snapshot()
     wire.selected!.issue!.content_revision = 7
 
-    expect(normalizeKataUISnapshot(wire).selected_detail?.issue.content_revision).toBe(7)
+    expect(normalizePoomsaeUISnapshot(wire).selected_detail?.issue.content_revision).toBe(7)
   })
 
   test('selects only open blockers for the collection column', () => {
@@ -220,7 +220,7 @@ describe('normalizeKataUISnapshot', () => {
       link('issue-done', 'd2', 'closed', 'issue-blocked', 'b2', 'open', 'blocks'),
       link('issue-later', 'l3', 'open', 'issue-blocked', 'b2', 'open', 'blocks'),
     ]
-    const projection = normalizeKataUISnapshot(wire, '2026-08-01T12:30:00.000Z')
+    const projection = normalizePoomsaeUISnapshot(wire, '2026-08-01T12:30:00.000Z')
     const blocked = projection.issues.find((issue) => issue.uid === 'issue-blocked')!
 
     expect(blocked.open_blocked_by).toEqual([
@@ -231,7 +231,7 @@ describe('normalizeKataUISnapshot', () => {
   })
 
   test('adapts the native snapshot to the ported immutable collection model', () => {
-    const projection = normalizeKataUISnapshot(snapshot(), '2026-08-01T12:30:00.000Z')
+    const projection = normalizePoomsaeUISnapshot(snapshot(), '2026-08-01T12:30:00.000Z')
 
     expect(projection.projects).toEqual([
       expect.objectContaining({
@@ -333,7 +333,7 @@ describe('normalizeKataUISnapshot', () => {
     const invalid = snapshot()
     invalid.collection![0]!.status = 'unknown'
 
-    expect(() => normalizeKataUISnapshot(invalid)).toThrow(
+    expect(() => normalizePoomsaeUISnapshot(invalid)).toThrow(
       'Invalid Poomsae snapshot collection issue status',
     )
   })
@@ -343,7 +343,7 @@ describe('normalizeKataUISnapshot', () => {
     source.collection![0]!.metadata = { deadline_on: '2026-09-01T00:30:00Z' }
     source.collection![0]!.deadline_on_date = '2026-08-31'
 
-    const projection = normalizeKataUISnapshot(source)
+    const projection = normalizePoomsaeUISnapshot(source)
 
     expect(projection.issues[0]).toEqual(
       expect.objectContaining({
@@ -363,7 +363,7 @@ describe('normalizeKataUISnapshot', () => {
       },
     ]
 
-    const projection = normalizeKataUISnapshot(authority)
+    const projection = normalizePoomsaeUISnapshot(authority)
 
     expect(projection.selected_detail?.links[0]?.to).toEqual({
       uid: 'issue-parent',
@@ -569,7 +569,7 @@ test('snapshot normalization preserves comment identities, links, and edit state
       edited_at: '2030-01-02T00:00:00Z',
     },
   ]
-  const normalized = normalizeKataUISnapshot(captured)
+  const normalized = normalizePoomsaeUISnapshot(captured)
   expect(normalized.selected_detail?.comments[0]).toMatchObject({
     uid: 'source-comment',
     handle: 'c:abc123',

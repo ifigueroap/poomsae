@@ -1864,10 +1864,10 @@ func federationJoinCommand(bundle federationJoinBundle) string {
 }
 
 func joinCommandWithInvokedBinary(command string) string {
-	return shellQuote(invokedKataCommand()) + strings.TrimPrefix(command, "poomsae")
+	return shellQuote(invokedPoomsaeCommand()) + strings.TrimPrefix(command, "poomsae")
 }
 
-func invokedKataCommand() string {
+func invokedPoomsaeCommand() string {
 	if len(os.Args) == 0 || strings.TrimSpace(os.Args[0]) == "" {
 		return "poomsae"
 	}

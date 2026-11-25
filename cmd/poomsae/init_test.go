@@ -634,7 +634,7 @@ name     = "poomsae"
 	assert.Equal(t, "OK init project=poomsae workspace="+agentValue(dir)+" changed=true\n", out)
 }
 
-func TestInit_AddsHeaderToHeaderlessKataToml(t *testing.T) {
+func TestInit_AddsHeaderToHeaderlessPoomsaeToml(t *testing.T) {
 	resetFlags(t)
 	flags.Mode = outputAgent
 	env := testenv.New(t)
@@ -732,7 +732,7 @@ func TestInit_MachineOutputSuppressesGitignoreWarning(t *testing.T) {
 			configure: func() {
 				flags.Mode = outputJSON
 			},
-			wantOut: `"kata_api_version":1`,
+			wantOut: `"poomsae_api_version":1`,
 		},
 	}
 	for _, tt := range tests {

@@ -16,7 +16,7 @@
   import { formatDay, localDateString } from '../lib/poomsae/dates'
   import { describeResolution } from '../lib/history/format'
   import { closingAttachments } from '../lib/history/attachments'
-  import { createKataLinkFilters, type PoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
+  import { createPoomsaeLinkFilters, type PoomsaeLinkFilters } from '../lib/poomsae/linkFilters'
   import type {
     PoomsaeCreateRecurrenceInput,
     PoomsaeProjectSummary,
@@ -117,7 +117,7 @@
     today = localDateString(new Date()),
     issueCatalog = [],
     searchReferences = async () => [],
-    linkFilters = createKataLinkFilters('all'),
+    linkFilters = createPoomsaeLinkFilters('all'),
     onLinkFiltersChange = () => {},
     projects,
     ownerOptions,

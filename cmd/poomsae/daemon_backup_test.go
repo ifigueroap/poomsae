@@ -21,7 +21,7 @@ import (
 func TestDaemonScheduledBackupRestoresAllProjectsAndDeletedIssues(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		home := deploymentHome(t)
-		store := openKataTestDB(t, filepath.Join(home, "source.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(home, "source.db"))
 		defer func() { _ = store.Close() }()
 		var originals []db.Issue
 		for _, name := range []string{"first-project", "second-project"} {
@@ -55,7 +55,7 @@ func TestDaemonScheduledBackupRestoresAllProjectsAndDeletedIssues(t *testing.T) 
 			require.NoError(t, err)
 			require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 		}
-		restored := openKataTestDB(t, filepath.Join(home, "restored.db"))
+		restored := openPoomsaeTestDB(t, filepath.Join(home, "restored.db"))
 		defer func() { _ = restored.Close() }()
 		require.NoError(t, jsonl.Import(t.Context(), file, restored))
 		projects, err := restored.ListProjects(t.Context())

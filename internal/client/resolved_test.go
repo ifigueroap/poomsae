@@ -24,7 +24,7 @@ func TestNewHTTPClientForResolvedUsesCarriedUnixSocket(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix sockets are unsupported on Windows")
 	}
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	socket := filepath.Join(t.TempDir(), "poomsae.sock")
 	ln, err := new(net.ListenConfig).Listen(t.Context(), "unix", socket)
 	require.NoError(t, err)
@@ -333,7 +333,7 @@ local = true
 	})
 
 	t.Run("local runtime", func(t *testing.T) {
-		home := setupKataEnv(t)
+		home := setupPoomsaeEnv(t)
 		t.Setenv("POOMSAE_SERVER", "")
 		t.Setenv("POOMSAE_AUTH_TOKEN", "")
 		require.NoError(t, writeAuthConfig(home, "global-token"))
@@ -439,7 +439,7 @@ func TestDiscoverResolvedPreservesScanErrors(t *testing.T) {
 	})
 
 	t.Run("context cancellation", func(t *testing.T) {
-		home := setupKataEnv(t)
+		home := setupPoomsaeEnv(t)
 		require.NoError(t, writeRuntimeRecord(t, home, "unix://"+filepath.Join(home, "missing.sock")))
 		namespace, err := daemonruntime.NewNamespace()
 		require.NoError(t, err)
@@ -452,7 +452,7 @@ func TestDiscoverResolvedPreservesScanErrors(t *testing.T) {
 	})
 
 	t.Run("unreachable local daemon", func(t *testing.T) {
-		home := setupKataEnv(t)
+		home := setupPoomsaeEnv(t)
 		address := "unix://" + filepath.Join(home, "missing.sock")
 		require.NoError(t, writeRuntimeRecord(t, home, address))
 		namespace, err := daemonruntime.NewNamespace()
@@ -466,7 +466,7 @@ func TestDiscoverResolvedPreservesScanErrors(t *testing.T) {
 }
 
 func TestDiscoverSelectedNamedLocalWithoutLiveDaemon(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "local"
@@ -480,7 +480,7 @@ local = true
 }
 
 func TestDiscoverSelectedNamedPreservesLocalRuntimeMetadata(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "local"
@@ -498,7 +498,7 @@ local = true
 }
 
 func TestDiscoverSelectedProbesNamedRemoteOnRequest(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRawConfig(home, `
 [[daemon]]
 name = "remote"

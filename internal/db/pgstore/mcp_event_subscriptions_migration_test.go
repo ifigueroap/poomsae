@@ -55,6 +55,7 @@ func TestMCPEventSubscriptionsMigrationMatchesFreshSchema(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropMCPEventSubscriptionsSchema(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "mcp_events_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE mcp_events_upgrade.meta SET value='49' WHERE key='schema_version'`)
 	require.NoError(t, err)
 

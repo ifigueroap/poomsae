@@ -16,7 +16,7 @@ import (
 )
 
 func TestAutoStartWaitsForSQLiteMigrationBeyondReadinessBudget(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestAutoStartWaitsForSQLiteMigrationBeyondReadinessBudget(t *testing.T) {
 }
 
 func TestAutoStartReportsChildExitAfterReadinessGrace(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	originalStart, originalDiscover := startDetachedDaemonForEnsure, discoverDaemonForAutoStart
 	t.Cleanup(func() { startDetachedDaemonForEnsure, discoverDaemonForAutoStart = originalStart, originalDiscover })
 	startDetachedDaemonForEnsure = func(_ context.Context, opts kitdaemon.StartDetachedOptions) error {
@@ -60,7 +60,7 @@ func TestAutoStartReportsChildExitAfterReadinessGrace(t *testing.T) {
 }
 
 func TestAutoStartWaitsForConcurrentCutoverOwnerAfterChildExits(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestAutoStartWaitsForConcurrentCutoverOwnerAfterChildExits(t *testing.T) {
 }
 
 func TestWaitForDaemonStartupBoundsExitAfterLateCutoverLockObservation(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestWaitForDaemonStartupRestartsGraceAfterCutoverLockReacquisition(t *testi
 }
 
 func TestWaitForDaemonStartupGrantsReadinessBudgetWhenCutoverEndsAtDeadline(t *testing.T) {
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	synctest.Test(t, func(t *testing.T) {
 		started := time.Now()
@@ -160,7 +160,7 @@ func TestWaitForDaemonStartupGrantsReadinessBudgetWhenCutoverEndsAtDeadline(t *t
 }
 
 func TestWaitForDaemonStartupAllowsCurrentSchemaConcurrentStarterGrace(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestWaitForDaemonStartupKeepsBudgetWhileStoreOwned(t *testing.T) {
 }
 
 func TestWaitForDaemonStartupReturnsChildExitForOldSchemaWithoutCutover(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestWaitForDaemonStartupReturnsChildExitForOldSchemaWithoutCutover(t *testi
 }
 
 func TestWaitForDaemonStartupBoundsOldSchemaWithoutChildOrCutover(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	source, err := sqlitestore.Open(t.Context(), filepath.Join(home, "poomsae.db"))
 	require.NoError(t, err)
@@ -245,7 +245,7 @@ func TestWaitForDaemonStartupBoundsOldSchemaWithoutChildOrCutover(t *testing.T) 
 }
 
 func TestWaitForDaemonStartupExtendsBudgetWhileCutoverLockHeld(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
@@ -264,7 +264,7 @@ func TestWaitForDaemonStartupExtendsBudgetWhileCutoverLockHeld(t *testing.T) {
 }
 
 func TestMigrationPendingUsesCutoverLockDuringSourceSwap(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	// The source pathname can briefly be absent while the lock owner installs
 	// its replacement. Readiness polling must neither open it nor report failure.
@@ -276,7 +276,7 @@ func TestMigrationPendingUsesCutoverLockDuringSourceSwap(t *testing.T) {
 }
 
 func TestMigrationPendingKeepsCutoverLockThroughSchemaPeek(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	path := filepath.Join(home, "poomsae.db")
 	source, err := sqlitestore.Open(t.Context(), path)
@@ -321,7 +321,7 @@ func (i *lockCheckingInspector) PeekCurrentSchema(ctx context.Context) (int, boo
 func TestAutoStartWaitsForReadinessAfterCutoverUnlock(t *testing.T) {
 	for _, unlockAfter := range []time.Duration{0, 2 * time.Second} {
 		t.Run(unlockAfter.String(), func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 			require.NoError(t, lock.Lock())
@@ -347,7 +347,7 @@ func TestAutoStartWaitsForReadinessAfterCutoverUnlock(t *testing.T) {
 }
 
 func TestAutoStartProfileIgnoresDefaultHomeCutover(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())
@@ -371,7 +371,7 @@ func TestAutoStartProfileIgnoresDefaultHomeCutover(t *testing.T) {
 }
 
 func TestAutoStartWaitsAfterOwnMigrationUnlock(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	lock := flock.New(filepath.Join(home, "poomsae.db.import.lock"))
 	require.NoError(t, lock.Lock())

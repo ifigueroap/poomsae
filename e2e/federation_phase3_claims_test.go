@@ -31,7 +31,7 @@ func TestFederationClaimsTwoSpokeLifecycle(t *testing.T) {
 	issueA := waitForFederatedIssue(t, fx.spokeA.db, fx.hubIssue.UID, fx.spokeA.stderr)
 	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
 
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
+	aliceClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice")
 	require.True(t, aliceClaim.Granted)
 	assert.False(t, aliceClaim.Pending)
@@ -39,44 +39,44 @@ func TestFederationClaimsTwoSpokeLifecycle(t *testing.T) {
 	require.NotNil(t, aliceClaim.Claim)
 	assert.Equal(t, "hard", aliceClaim.Claim.ClaimKind)
 
-	bobDenied := runKataJSONWantExit[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs, 5,
+	bobDenied := runPoomsaeJSONWantExit[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs, 5,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
 	assert.False(t, bobDenied.body.Granted)
 	require.NotNil(t, bobDenied.body.Claim)
 	assert.Equal(t, "alice", bobDenied.body.Claim.Holder)
 	assert.Contains(t, bobDenied.stderr, `"code":"claim_denied"`)
 
-	showB := runKataOK(t, fx.bin, fx.spokeB.dirs,
+	showB := runPoomsaeOK(t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "show", issueB.ShortID)
 	assert.Contains(t, showB.stdout, "lease: alice from instance ")
 	assert.Contains(t, showB.stdout, "(hard)")
 
-	runKataOK(t, fx.bin, fx.spokeA.dirs,
+	runPoomsaeOK(t, fx.bin, fx.spokeA.dirs,
 		"--project", fx.hubProject.Name, "edit", issueA.ShortID, "--title", "alice edit", "--as", "alice")
 
-	bobEdit := runKataWantExit(t, fx.bin, fx.spokeB.dirs, 5,
+	bobEdit := runPoomsaeWantExit(t, fx.bin, fx.spokeB.dirs, 5,
 		"--json", "--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "bob rejected", "--as", "bob")
 	assert.Contains(t, bobEdit.stderr, `"code":"claim_denied"`)
 
-	released := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
+	released := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "release", issueA.ShortID, "--as", "alice")
 	require.True(t, released.Granted)
 	require.NotNil(t, released.Claim)
 	require.NotNil(t, released.Claim.ReleasedAt)
 
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
+	bobClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
 	require.True(t, bobClaim.Granted)
 	assert.Equal(t, "bob", bobClaim.Holder.Holder)
 
-	runKataOK(t, fx.bin, fx.spokeB.dirs,
+	runPoomsaeOK(t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "bob edit", "--as", "bob")
 
-	bobReleased := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
+	bobReleased := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "release", issueB.ShortID, "--as", "bob")
 	require.True(t, bobReleased.Granted)
 
-	runKataOK(t, fx.bin, fx.spokeB.dirs,
+	runPoomsaeOK(t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "edit", issueB.ShortID, "--title", "charlie edit", "--as", "charlie")
 
 	waitForFoldedProjectionMatch(t, fx.hub.DB, fx.spokeA.db,
@@ -96,7 +96,7 @@ func TestFederationTimedClaimExpires(t *testing.T) {
 	issueA := waitForFederatedIssue(t, fx.spokeA.db, fx.hubIssue.UID, fx.spokeA.stderr)
 	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
 
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
+	aliceClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice", "--ttl", "60s")
 	require.True(t, aliceClaim.Granted)
 	require.NotNil(t, aliceClaim.Claim)
@@ -109,7 +109,7 @@ func TestFederationTimedClaimExpires(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
 
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
+	bobClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
 	require.True(t, bobClaim.Granted)
 	assert.Equal(t, "bob", bobClaim.Holder.Holder)
@@ -124,16 +124,16 @@ func TestFederationAdminForceReleaseAndStealCLI(t *testing.T) {
 	issueB := waitForFederatedIssue(t, fx.spokeB.db, fx.hubIssue.UID, fx.spokeB.stderr)
 	hubDirs := hubClaimCLIDirs(t, fx)
 
-	aliceClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
+	aliceClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeA.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueA.ShortID, "--as", "alice")
 	require.True(t, aliceClaim.Granted)
 
-	spokeForceRelease := runKataWantExit(t, fx.bin, fx.spokeA.dirs, 5,
+	spokeForceRelease := runPoomsaeWantExit(t, fx.bin, fx.spokeA.dirs, 5,
 		"--json", "--project", fx.hubProject.Name, "federation", "lease", "force-release", issueA.ShortID,
 		"--as", "admin", "--reason", "stale holder")
 	assert.Contains(t, spokeForceRelease.stderr, "federated_read_only")
 
-	released := runKataJSON[e2eClaimActionBody](t, fx.bin, hubDirs,
+	released := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, hubDirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "force-release", fx.hubIssue.ShortID,
 		"--as", "admin", "--reason", "stale holder")
 	require.True(t, released.Granted)
@@ -141,11 +141,11 @@ func TestFederationAdminForceReleaseAndStealCLI(t *testing.T) {
 	assert.Equal(t, "alice", released.Claim.Holder)
 	require.NotNil(t, released.Claim.ReleasedAt)
 
-	bobClaim := runKataJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
+	bobClaim := runPoomsaeJSON[e2eClaimActionBody](t, fx.bin, fx.spokeB.dirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "acquire", issueB.ShortID, "--as", "bob")
 	require.True(t, bobClaim.Granted)
 
-	stolen := runKataJSON[e2eClaimStealBody](t, fx.bin, hubDirs,
+	stolen := runPoomsaeJSON[e2eClaimStealBody](t, fx.bin, hubDirs,
 		"--project", fx.hubProject.Name, "federation", "lease", "steal", fx.hubIssue.ShortID,
 		"--as", "carol", "--reason", "operator handoff")
 	assert.Equal(t, "bob", stolen.ReleasedHolder)
@@ -179,7 +179,7 @@ func setupFederationClaimE2E(t *testing.T, name string) federationClaimFixture {
 	t.Helper()
 	ctx := t.Context()
 	hub := testenv.New(t)
-	bin := buildKataBinary(t)
+	bin := buildPoomsaeBinary(t)
 
 	spokeA := startFederationClaimSpoke(ctx, t, bin)
 	spokeB := startFederationClaimSpoke(ctx, t, bin)
@@ -296,20 +296,20 @@ func hubClaimCLIDirs(t *testing.T, fx federationClaimFixture) e2eDirs {
 	return dirs
 }
 
-func runKataJSON[T any](t *testing.T, bin string, dirs e2eDirs, args ...string) T {
+func runPoomsaeJSON[T any](t *testing.T, bin string, dirs e2eDirs, args ...string) T {
 	t.Helper()
-	res := runKataOK(t, bin, dirs, append([]string{"--json"}, args...)...)
+	res := runPoomsaeOK(t, bin, dirs, append([]string{"--json"}, args...)...)
 	var out T
 	require.NoErrorf(t, json.Unmarshal([]byte(res.stdout), &out), "stdout: %s\nstderr: %s", res.stdout, res.stderr)
 	return out
 }
 
-func runKataJSONWantExit[T any](t *testing.T, bin string, dirs e2eDirs, wantExit int, args ...string) struct {
+func runPoomsaeJSONWantExit[T any](t *testing.T, bin string, dirs e2eDirs, wantExit int, args ...string) struct {
 	body   T
 	stderr string
 } {
 	t.Helper()
-	res := runKataWantExit(t, bin, dirs, wantExit, append([]string{"--json"}, args...)...)
+	res := runPoomsaeWantExit(t, bin, dirs, wantExit, append([]string{"--json"}, args...)...)
 	var out T
 	require.NoErrorf(t, json.Unmarshal([]byte(res.stdout), &out), "stdout: %s\nstderr: %s", res.stdout, res.stderr)
 	return struct {
@@ -318,27 +318,27 @@ func runKataJSONWantExit[T any](t *testing.T, bin string, dirs e2eDirs, wantExit
 	}{body: out, stderr: res.stderr}
 }
 
-func runKataOK(t *testing.T, bin string, dirs e2eDirs, args ...string) e2eClaimRun {
+func runPoomsaeOK(t *testing.T, bin string, dirs e2eDirs, args ...string) e2eClaimRun {
 	t.Helper()
-	res, exitCode := runKataWithSQLiteBusyRetry(t, bin, dirs, args...)
+	res, exitCode := runPoomsaeWithSQLiteBusyRetry(t, bin, dirs, args...)
 	require.Equalf(t, 0, exitCode, "poomsae %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
 	return res
 }
 
-func runKataWantExit(t *testing.T, bin string, dirs e2eDirs, wantExit int, args ...string) e2eClaimRun {
+func runPoomsaeWantExit(t *testing.T, bin string, dirs e2eDirs, wantExit int, args ...string) e2eClaimRun {
 	t.Helper()
-	res, exitCode := runKata(t, bin, dirs, args...)
+	res, exitCode := runPoomsae(t, bin, dirs, args...)
 	require.Equalf(t, wantExit, exitCode, "poomsae %s\nstdout: %s\nstderr: %s", strings.Join(args, " "), res.stdout, res.stderr)
 	return res
 }
 
-func runKataWithSQLiteBusyRetry(t *testing.T, bin string, dirs e2eDirs, args ...string) (e2eClaimRun, int) {
+func runPoomsaeWithSQLiteBusyRetry(t *testing.T, bin string, dirs e2eDirs, args ...string) (e2eClaimRun, int) {
 	t.Helper()
 	var res e2eClaimRun
 	var exitCode int
 	deadline := time.Now().Add(5 * time.Second)
 	for attempt := 0; ; attempt++ {
-		res, exitCode = runKata(t, bin, dirs, args...)
+		res, exitCode = runPoomsae(t, bin, dirs, args...)
 		if exitCode == 0 || !claimE2ESQLiteBusy(res) || time.Now().After(deadline) {
 			return res, exitCode
 		}
@@ -353,7 +353,7 @@ func claimE2ESQLiteBusy(res e2eClaimRun) bool {
 	return isSQLiteBusyMessage(res.stdout + "\n" + res.stderr)
 }
 
-func runKata(t *testing.T, bin string, dirs e2eDirs, args ...string) (e2eClaimRun, int) {
+func runPoomsae(t *testing.T, bin string, dirs e2eDirs, args ...string) (e2eClaimRun, int) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()

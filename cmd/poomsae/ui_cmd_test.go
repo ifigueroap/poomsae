@@ -98,7 +98,7 @@ func TestUICommandOutputModesBeforeBrowser(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"json", []string{"--json"}, "{\"kata_api_version\":1,\"url\":\"https://daemon.example/poomsae#login=1&return_path=%2Fpoomsae\"}\n"},
+		{"json", []string{"--json"}, "{\"poomsae_api_version\":1,\"url\":\"https://daemon.example/poomsae#login=1&return_path=%2Fpoomsae\"}\n"},
 		{"agent", []string{"--agent"}, "OK ui url=https://daemon.example/poomsae#login=1&return_path=%2Fpoomsae\n"},
 		{"human", nil, "Opening https://daemon.example/poomsae#login=1&return_path=%2Fpoomsae\n"},
 		{"quiet", []string{"-q"}, "Opening https://daemon.example/poomsae#login=1&return_path=%2Fpoomsae\n"},

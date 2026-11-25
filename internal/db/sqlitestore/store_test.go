@@ -72,12 +72,73 @@ func TestOpen_IsIdempotentAfterBootstrap(t *testing.T) {
 	assert.Equal(t, uid1, d2.InstanceUID())
 }
 
+// Version 55 renames the version 54 columns in place and clears embedding
+// artifacts, which all predate the poomsae digest and recipe names.
+func TestPoomsaeNamesMigrationUpgradesVersion54(t *testing.T) {
+	ctx := t.Context()
+	path := filepath.Join(t.TempDir(), "poomsae.db")
+	d, err := sqlitestore.Open(ctx, path)
+	require.NoError(t, err)
+	project, err := d.CreateProject(ctx, "example-project")
+	require.NoError(t, err)
+	_, err = d.ExecContext(ctx, `
+ALTER TABLE external_field_mappings RENAME COLUMN poomsae_field TO kata_field;
+ALTER TABLE external_field_states RENAME COLUMN conflict_poomsae TO conflict_kata;
+INSERT INTO external_field_mappings(connector_instance, kata_field, external_field_id, external_field_name,
+  accepted_kinds_json, nullable, writable, schema_revision, created_at, updated_at)
+VALUES('example-connector', 'deadline_on', 'due', 'Due', '[]', 1, 1, 'r1', '2026-11-25T00:00:00Z', '2026-11-25T00:00:00Z');
+INSERT INTO federation_embedding_artifacts(project_uid, digest, issue_uid, input_hash, recipe_fingerprint,
+  vector_byte_size, manifest, artifact)
+VALUES(?, 'digest', 'issue', 'input', 'recipe', 0, '{}', '{}');
+UPDATE meta SET value='54' WHERE key='schema_version'`, project.UID)
+	require.NoError(t, err)
+	require.NoError(t, d.Close())
+
+	require.NoError(t, sqlitestore.UpgradeInPlace(ctx, path))
+	upgraded, err := sqlitestore.Open(ctx, path)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = upgraded.Close() })
+	version, err := upgraded.SchemaVersion(ctx)
+	require.NoError(t, err)
+	require.Equal(t, db.CurrentSchemaVersion(), version)
+
+	var field string
+	require.NoError(t, upgraded.QueryRowContext(ctx,
+		`SELECT poomsae_field FROM external_field_mappings WHERE connector_instance='example-connector'`).Scan(&field))
+	assert.Equal(t, "deadline_on", field)
+	var artifacts int
+	require.NoError(t, upgraded.QueryRowContext(ctx, `SELECT COUNT(*) FROM federation_embedding_artifacts`).Scan(&artifacts))
+	assert.Zero(t, artifacts)
+
+	fresh := openTestDB(t)
+	const catalog = `SELECT name, sql FROM sqlite_master
+WHERE tbl_name IN ('external_field_mappings', 'external_field_states') AND sql IS NOT NULL ORDER BY name`
+	assert.Equal(t, sqliteCatalogRows(t, fresh, catalog), sqliteCatalogRows(t, upgraded, catalog))
+}
+
+func sqliteCatalogRows(t *testing.T, store *sqlitestore.Store, query string) [][2]string {
+	t.Helper()
+	rows, err := store.QueryContext(t.Context(), query)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	var out [][2]string
+	for rows.Next() {
+		var row [2]string
+		require.NoError(t, rows.Scan(&row[0], &row[1]))
+		out = append(out, row)
+	}
+	require.NoError(t, rows.Err())
+	return out
+}
+
 func TestFederationCursorFenceMigrationUpgradesVersion53(t *testing.T) {
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "poomsae.db")
 	d, err := sqlitestore.Open(ctx, path)
 	require.NoError(t, err)
-	_, err = d.ExecContext(ctx, `UPDATE meta SET value='53' WHERE key='schema_version'`)
+	_, err = d.ExecContext(ctx, `ALTER TABLE external_field_mappings RENAME COLUMN poomsae_field TO kata_field;
+ALTER TABLE external_field_states RENAME COLUMN conflict_poomsae TO conflict_kata;
+UPDATE meta SET value='53' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	require.NoError(t, d.Close())
 	require.NoError(t, sqlitestore.UpgradeInPlace(ctx, path))

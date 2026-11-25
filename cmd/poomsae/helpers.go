@@ -123,12 +123,12 @@ func readGitUserName(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// emitJSON marshals v as a JSON object, splices in "kata_api_version":1 as
+// emitJSON marshals v as a JSON object, splices in "poomsae_api_version":1 as
 // the first key, and writes the result followed by a trailing newline.
 //
 // The top-level value MUST marshal to a JSON object; non-object payloads
 // (scalars, arrays, nil) are rejected. The caller must also not include a
-// "kata_api_version" key in v: this helper owns that slot, and silently
+// "poomsae_api_version" key in v: this helper owns that slot, and silently
 // merging a caller-supplied version would let a future struct field strip the
 // version stamp on the wire (spec §5.1).
 func emitJSON(w io.Writer, v any) error {
@@ -140,19 +140,19 @@ func emitJSON(w io.Writer, v any) error {
 		return fmt.Errorf("emitJSON: top-level value must be a JSON object, got %T", v)
 	}
 	// Decode keys structurally — the JSON decoder unescapes \uXXXX sequences,
-	// so "kata_api_version" is caught the same as a literal
-	// "kata_api_version". A raw bytes.Contains check would miss the escaped
+	// so "poomsae_api_version" is caught the same as a literal
+	// "poomsae_api_version". A raw bytes.Contains check would miss the escaped
 	// form and let the splice produce a duplicate key downstream.
 	var keys map[string]jsontext.Value
 	if err := json.Unmarshal(payload, &keys); err != nil {
 		return fmt.Errorf("emitJSON: payload must be a JSON object: %w", err)
 	}
-	if _, taken := keys["kata_api_version"]; taken {
-		return errors.New(`emitJSON: payload must not include "kata_api_version" key`)
+	if _, taken := keys["poomsae_api_version"]; taken {
+		return errors.New(`emitJSON: payload must not include "poomsae_api_version" key`)
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString(`{"kata_api_version":1`)
+	buf.WriteString(`{"poomsae_api_version":1`)
 	if len(payload) > 2 { // anything other than "{}"
 		buf.WriteByte(',')
 		buf.Write(payload[1 : len(payload)-1])

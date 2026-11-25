@@ -6,7 +6,7 @@ import type {
   PoomsaeTaskViewResponse,
 } from './types'
 import { localDateString } from './dates'
-import { buildKataTaskView, poomsaeViewIncludesDates } from './view'
+import { buildPoomsaeTaskView, poomsaeViewIncludesDates } from './view'
 
 export interface PoomsaeAreaSummary {
   name: string
@@ -19,7 +19,7 @@ export interface PoomsaeCurrentView {
   fetched_at?: string | undefined
 }
 
-export interface ProjectKataWorkspaceViewOptions {
+export interface ProjectPoomsaeWorkspaceViewOptions {
   view: PoomsaeTaskViewName
   filters: PoomsaeTaskSearchFilters
   snapshot: {
@@ -44,7 +44,7 @@ function statusChangesViewMembership(
   )
 }
 
-export function defaultKataTaskSearchFilters(
+export function defaultPoomsaeTaskSearchFilters(
   view: PoomsaeTaskViewName = 'all',
 ): PoomsaeTaskSearchFilters {
   return {
@@ -73,7 +73,9 @@ function compareProjectOrder(a: PoomsaeProjectSummary, b: PoomsaeProjectSummary)
   return a.name.localeCompare(b.name)
 }
 
-export function deriveKataAreas(projects: readonly PoomsaeProjectSummary[]): PoomsaeAreaSummary[] {
+export function derivePoomsaeAreas(
+  projects: readonly PoomsaeProjectSummary[],
+): PoomsaeAreaSummary[] {
   const groups = new Map<string, PoomsaeProjectSummary[]>()
   for (const project of projects) {
     const area = projectArea(project)
@@ -99,8 +101,8 @@ export function deriveKataAreas(projects: readonly PoomsaeProjectSummary[]): Poo
     }))
 }
 
-export function projectKataWorkspaceView(
-  options: ProjectKataWorkspaceViewOptions,
+export function projectPoomsaeWorkspaceView(
+  options: ProjectPoomsaeWorkspaceViewOptions,
 ): PoomsaeTaskViewResponse {
   const today = options.today ?? localDateString()
   const issues = options.issues
@@ -119,7 +121,7 @@ export function projectKataWorkspaceView(
     }
   }
 
-  return buildKataTaskView({
+  return buildPoomsaeTaskView({
     view: options.view,
     issues,
     projects: options.snapshot.projects.map((project) => ({ ...project })),

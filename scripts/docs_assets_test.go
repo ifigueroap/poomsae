@@ -320,9 +320,9 @@ func TestFederationScreenshotGeneratorConnectsToListenerAuthority(t *testing.T) 
 
 	tempDir := t.TempDir()
 	outputDir := filepath.Join(tempDir, "output")
-	fakeKata := filepath.Join(tempDir, "poomsae")
+	fakePoomsae := filepath.Join(tempDir, "poomsae")
 	//nolint:gosec // test-owned shell fixture must be executable.
-	require.NoError(t, os.WriteFile(fakeKata, []byte(`#!/usr/bin/env bash
+	require.NoError(t, os.WriteFile(fakePoomsae, []byte(`#!/usr/bin/env bash
 set -euo pipefail
 if [[ " $* " == *" daemon start --foreground "* ]]; then
   printf 'poomsae daemon: listening on 127.0.0.1:45678\n'
@@ -369,7 +369,7 @@ exit 0
 	cmd := exec.CommandContext(t.Context(), "bash", script, "--out", outputDir) //nolint:gosec // fixed repository script and TempDir output
 	cmd.Dir = filepath.Join("..", "scripts")
 	cmd.Env = append(envWithout("POOMSAE_BIN", "POOMSAE_SERVER", "POOMSAE_AUTH_TOKEN", "POOMSAE_HOME"),
-		"POOMSAE_BIN="+fakeKata,
+		"POOMSAE_BIN="+fakePoomsae,
 	)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))

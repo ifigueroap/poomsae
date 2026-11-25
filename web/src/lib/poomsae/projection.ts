@@ -40,7 +40,7 @@ export interface PoomsaeUISnapshotProjection {
   readonly selected_pending?: boolean
 }
 
-export function normalizeKataUISnapshot(
+export function normalizePoomsaeUISnapshot(
   snapshot: UISnapshot,
   fetchedAt = new Date().toISOString(),
 ): PoomsaeUISnapshotProjection {

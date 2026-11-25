@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupKataProjectDir(t *testing.T, body string) string {
+func setupPoomsaeProjectDir(t *testing.T, body string) string {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".poomsae.toml")
@@ -31,7 +31,7 @@ func writeAndReadConfig(t *testing.T, name string) *config.ProjectConfig {
 }
 
 func TestReadProjectConfig_Roundtrip(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "poomsae"
@@ -44,7 +44,7 @@ name = "poomsae"
 }
 
 func TestReadProjectConfig_IgnoresLegacyIdentity(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 identity = "github.com/example/foo"
@@ -57,7 +57,7 @@ name = "foo"
 }
 
 func TestReadProjectConfig_DerivesNameFromLegacyIdentityOnly(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 identity = "github.com/example/foo"
@@ -75,7 +75,7 @@ func TestReadProjectConfig_Missing(t *testing.T) {
 }
 
 func TestReadProjectConfig_RejectsBadVersion(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 2
+	dir := setupPoomsaeProjectDir(t, `version = 2
 
 [project]
 name = "y"
@@ -87,7 +87,7 @@ name = "y"
 }
 
 func TestReadProjectConfig_RejectsBlankName(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "   "
@@ -113,7 +113,7 @@ func TestWriteProjectConfig_WritesHeaderAndName(t *testing.T) {
 			other := ""
 			original := []byte("version = 1\n\n[project]\nname = \"notes\"\n")
 			if tc.name == "replace hard-linked binding" {
-				other = filepath.Join(setupKataProjectDir(t, string(original)), ".poomsae.toml")
+				other = filepath.Join(setupPoomsaeProjectDir(t, string(original)), ".poomsae.toml")
 				if err := os.Link(other, filepath.Join(dir, ".poomsae.toml")); err != nil {
 					t.Skipf("hard links unavailable: %v", err)
 				}
@@ -153,7 +153,7 @@ func TestEnsureProjectConfigHeader(t *testing.T) {
 		{"reworded", "# Read poomsae quickstart --format contract first.\n" + body, "# Read poomsae quickstart --format contract first.\n" + body, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := setupKataProjectDir(t, tc.content)
+			dir := setupPoomsaeProjectDir(t, tc.content)
 			changed, err := config.EnsureProjectConfigHeader(filepath.Join(dir, ".poomsae.toml"))
 			require.NoError(t, err)
 			assert.Equal(t, tc.changed, changed)
@@ -184,7 +184,7 @@ func TestEnsureProjectConfigHeader_WriteFailurePreservesBinding(t *testing.T) {
 		t.Skip("root can write to read-only directories")
 	}
 	body := "version = 1\n[project]\nname = \"spoke-project\"\n"
-	dir := setupKataProjectDir(t, body)
+	dir := setupPoomsaeProjectDir(t, body)
 	require.NoError(t, os.Chmod(dir, 0o555))       //nolint:gosec // read-only directory blocks the atomic rename
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore so TempDir cleanup can remove it
 
@@ -225,7 +225,7 @@ func TestWriteProjectConfig_WritableFileInReadOnlyDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("directory permissions don't block writes")
 	}
-	dir := setupKataProjectDir(t, "version = 1\n[project]\nname = \"old-project\"\n")
+	dir := setupPoomsaeProjectDir(t, "version = 1\n[project]\nname = \"old-project\"\n")
 	require.NoError(t, os.Chmod(dir, 0o555))       //nolint:gosec // fixture permits writes only to the existing binding
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore fixture permissions for cleanup
 
@@ -256,7 +256,7 @@ func TestProjectConfig_RejectsControlCharactersInName(t *testing.T) {
 			assert.Contains(t, err.Error(), tc.want)
 		})
 		t.Run("read", func(t *testing.T) {
-			dir := setupKataProjectDir(t, "version = 1\n\n[project]\nname = "+tc.toml+"\n")
+			dir := setupPoomsaeProjectDir(t, "version = 1\n\n[project]\nname = "+tc.toml+"\n")
 			_, err := config.ReadProjectConfig(dir)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.want)
@@ -270,7 +270,7 @@ func TestWriteProjectConfig_PreservesName(t *testing.T) {
 }
 
 func TestReadProjectConfig_AcceptsOptionalServerBlock(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "poomsae"
@@ -284,7 +284,7 @@ url = "http://127.0.0.1:7777"
 }
 
 func TestReadProjectConfig_NoServerBlockYieldsZeroValue(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "poomsae"
@@ -295,7 +295,7 @@ name = "poomsae"
 }
 
 func TestReadProjectConfig_WarnsForCommittedDaemonSelection(t *testing.T) {
-	dir := setupKataProjectDir(t, `version = 1
+	dir := setupPoomsaeProjectDir(t, `version = 1
 [project]
 name = "spoke-project"
 [server]
@@ -319,7 +319,7 @@ daemon = "work"
 }
 
 func TestFindProjectConfig_FromSubdirectory(t *testing.T) {
-	root := setupKataProjectDir(t, `version = 1
+	root := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "poomsae"
@@ -334,7 +334,7 @@ name = "poomsae"
 }
 
 func TestFindProjectConfig_FromExactDir(t *testing.T) {
-	root := setupKataProjectDir(t, `version = 1
+	root := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "poomsae"
@@ -346,7 +346,7 @@ name = "poomsae"
 }
 
 func TestFindProjectConfig_DoesNotCrossGitRoot(t *testing.T) {
-	outer := setupKataProjectDir(t, `version = 1
+	outer := setupPoomsaeProjectDir(t, `version = 1
 
 [project]
 name = "example-project"
@@ -370,7 +370,7 @@ func TestFindProjectConfig_MissingReturnsSentinel(t *testing.T) {
 }
 
 func TestFindProjectConfig_PropagatesParseError(t *testing.T) {
-	root := setupKataProjectDir(t, "this is not toml = = =")
+	root := setupPoomsaeProjectDir(t, "this is not toml = = =")
 	cfg, foundDir, err := config.FindProjectConfig(root)
 	assert.Nil(t, cfg)
 	assert.Empty(t, foundDir)

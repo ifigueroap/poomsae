@@ -162,7 +162,7 @@ func classifyAgentHookArgv(agent agenthook.Agent, argv []string) agentHookKind {
 	if executable == "" || (strings.Contains(executable, "=") && !strings.ContainsAny(executable, "/\\")) {
 		return ""
 	}
-	if !isKataHookExecutable(executable) && !strings.ContainsAny(executable, "/\\") {
+	if !isPoomsaeHookExecutable(executable) && !strings.ContainsAny(executable, "/\\") {
 		return ""
 	}
 	args := canonicalAgentHookArgs(argv[1:])
@@ -187,7 +187,7 @@ func classifyAgentHookArgv(agent agenthook.Agent, argv []string) agentHookKind {
 	default:
 		return ""
 	}
-	if len(tail) == 0 && isKataHookExecutable(executable) {
+	if len(tail) == 0 && isPoomsaeHookExecutable(executable) {
 		return kind
 	}
 	if len(tail) == 2 && isAgentHookOwnershipArg(kind, tail[0], tail[1]) {
@@ -205,7 +205,7 @@ func canonicalAgentHookArgs(args []string) []string {
 	return args
 }
 
-func isKataHookExecutable(executable string) bool {
+func isPoomsaeHookExecutable(executable string) bool {
 	// Inspect both separators regardless of the platform reading the config.
 	name := executable[strings.LastIndexAny(executable, "/\\")+1:]
 	return name == "poomsae" || name == "poomsae.exe"
@@ -255,7 +255,7 @@ func isAgentHookOwnershipArg(kind agentHookKind, flag, value string) bool {
 }
 
 func agentHookOwnershipArgs(executable string, args []string, kind agentHookKind, ownership agentHookOwnership) []string {
-	if isKataHookExecutable(executable) && !ownership.Required {
+	if isPoomsaeHookExecutable(executable) && !ownership.Required {
 		return args
 	}
 	if ownership.Token != "" {
@@ -349,7 +349,7 @@ func agentHookOwnershipMarkers(agent agenthook.Agent, configPath, executable str
 			result[kind] = agentHookOwnership{Required: true}
 			continue
 		}
-		if !collision && isKataHookExecutable(executable) && existingTokens[kind] == "" {
+		if !collision && isPoomsaeHookExecutable(executable) && existingTokens[kind] == "" {
 			continue
 		}
 		result[kind] = agentHookOwnership{Required: true}

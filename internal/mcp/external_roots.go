@@ -34,14 +34,14 @@ type ConnectorFieldsOutput struct {
 // ConnectorFieldMapInput maps one Poomsae planning field to an external field.
 type ConnectorFieldMapInput struct {
 	Instance      string `json:"instance"`
-	PoomsaeField  string `json:"kata_field"`
+	PoomsaeField  string `json:"poomsae_field"`
 	ExternalField string `json:"external_field"`
 }
 
 // ConnectorFieldUnmapInput disables one connector planning-field mapping.
 type ConnectorFieldUnmapInput struct {
 	Instance     string `json:"instance"`
-	PoomsaeField string `json:"kata_field"`
+	PoomsaeField string `json:"poomsae_field"`
 }
 
 // ConnectorFieldMappingOutput reports the connector-wide mapping state.
@@ -72,7 +72,7 @@ type BridgePauseInput struct {
 // BridgeResolveFieldInput selects the winner for one planning-field conflict.
 type BridgeResolveFieldInput struct {
 	Ref          string `json:"ref"`
-	PoomsaeField string `json:"kata_field"`
+	PoomsaeField string `json:"poomsae_field"`
 	Use          string `json:"use"`
 }
 
@@ -168,7 +168,7 @@ func (h toolHandlers) connectorFieldMap(ctx context.Context, _ *sdkmcp.CallToolR
 	}
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.MapConnectorField(ctx, &generated.MapConnectorFieldRequestOptions{
-		PathParams: &generated.MapConnectorFieldPath{Instance: instance, KataField: poomsaeField},
+		PathParams: &generated.MapConnectorFieldPath{Instance: instance, PoomsaeField: poomsaeField},
 		Body:       &generated.MapConnectorFieldBody{ExternalField: externalField},
 	})
 	if err != nil {
@@ -187,7 +187,7 @@ func (h toolHandlers) connectorFieldUnmap(ctx context.Context, _ *sdkmcp.CallToo
 	}
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.UnmapConnectorField(ctx, &generated.UnmapConnectorFieldRequestOptions{
-		PathParams: &generated.UnmapConnectorFieldPath{Instance: instance, KataField: poomsaeField},
+		PathParams: &generated.UnmapConnectorFieldPath{Instance: instance, PoomsaeField: poomsaeField},
 	})
 	if err != nil {
 		return nil, ConnectorFieldMappingOutput{}, err
@@ -195,9 +195,9 @@ func (h toolHandlers) connectorFieldUnmap(ctx context.Context, _ *sdkmcp.CallToo
 	return successResult(), ConnectorFieldMappingOutput{Instance: instance, Mapping: *response}, nil
 }
 
-func connectorMappingTarget(rawInstance, rawKataField string) (string, string, error) {
+func connectorMappingTarget(rawInstance, rawPoomsaeField string) (string, string, error) {
 	instance := strings.TrimSpace(rawInstance)
-	poomsaeField := strings.TrimSpace(rawKataField)
+	poomsaeField := strings.TrimSpace(rawPoomsaeField)
 	if instance == "" {
 		return "", "", errors.New("connector instance must not be empty")
 	}
@@ -310,7 +310,7 @@ func (h toolHandlers) bridgeResolveField(ctx context.Context, _ *sdkmcp.CallTool
 	h = h.withLongRunningClient()
 	response, err := h.options.Client.ResolveExternalField(ctx, &generated.ResolveExternalFieldRequestOptions{
 		PathParams: &generated.ResolveExternalFieldPath{ProjectID: project.ID, Ref: ref},
-		Body:       &generated.ResolveExternalFieldBody{Actor: &h.options.Actor, KataField: poomsaeField, Use: use},
+		Body:       &generated.ResolveExternalFieldBody{Actor: &h.options.Actor, PoomsaeField: poomsaeField, Use: use},
 	})
 	if err != nil {
 		return nil, BridgeOutput{}, err

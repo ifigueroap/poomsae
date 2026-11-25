@@ -77,7 +77,7 @@ wait_for_all_titles() {
   wait_for_issue_title "$spoke_b" "$spoke_b_project_id" "$issue_uid" "$title" spoke-b
 }
 
-kata_for() {
+poomsae_for() {
   local home=$1
   local server=$2
   shift 2
@@ -92,7 +92,7 @@ expect_cli_failure() {
   shift 4
   local out
   out=$(mktemp)
-  if kata_for "$home" "$server" "$@" >"$out" 2>&1; then
+  if poomsae_for "$home" "$server" "$@" >"$out" 2>&1; then
     log "$description unexpectedly succeeded"
     cat "$out" >&2
     rm -f "$out"
@@ -240,22 +240,22 @@ log "verifying baseline pull"
 wait_for_all_titles "baseline from hub"
 
 log "acquiring lease on spoke-a and checking arbitration"
-kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease acquire "$issue_short" >/dev/null
+poomsae_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease acquire "$issue_short" >/dev/null
 expect_cli_failure "spoke-b competing lease" /data/poomsae/runner-b "$spoke_b" 'lease denied|claim_denied' \
   --as agent-b federation lease acquire "$issue_short"
 expect_cli_failure "spoke-b lease-gated edit" /data/poomsae/runner-b "$spoke_b" 'lease denied|claim_denied' \
   --as agent-b edit "$issue_short" --title "blocked edit from spoke B"
 
 log "editing under spoke-a lease"
-kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a edit "$issue_short" --title "leased edit from spoke A" >/dev/null
+poomsae_for /data/poomsae/runner-a "$spoke_a" --as agent-a edit "$issue_short" --title "leased edit from spoke A" >/dev/null
 wait_for_all_titles "leased edit from spoke A"
 
 log "releasing from spoke-a and acquiring on spoke-b"
-kata_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease release "$issue_short" >/dev/null
-kata_for /data/poomsae/runner-b "$spoke_b" --as agent-b federation lease acquire "$issue_short" >/dev/null
+poomsae_for /data/poomsae/runner-a "$spoke_a" --as agent-a federation lease release "$issue_short" >/dev/null
+poomsae_for /data/poomsae/runner-b "$spoke_b" --as agent-b federation lease acquire "$issue_short" >/dev/null
 
 log "editing under spoke-b lease"
-kata_for /data/poomsae/runner-b "$spoke_b" --as agent-b edit "$issue_short" --title "leased edit from spoke B" >/dev/null
+poomsae_for /data/poomsae/runner-b "$spoke_b" --as agent-b edit "$issue_short" --title "leased edit from spoke B" >/dev/null
 wait_for_all_titles "leased edit from spoke B"
 
 log "passed"

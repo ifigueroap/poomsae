@@ -29,7 +29,7 @@ searchable. `poomsae search` still searches issues.
 By default, `poomsae cli search` returns five commands, and `--limit` accepts any
 number from 1 to 20. Text output prints one command and summary per line,
 followed by a help hint. Passing `--agent` adds an `OK search results=N` status
-line. Passing `--json` or `--format json` returns `kata_api_version`, `query`,
+line. Passing `--json` or `--format json` returns `poomsae_api_version`, `query`,
 and `results`; each result has `command`, `summary`, and `usage`. The results
 contain no scores. If nothing matches, the command still succeeds with an empty
 results
@@ -597,7 +597,7 @@ is informational, and Poomsae never removes team guidance. Hermes presence requi
 injects context.
 
 All three subcommands support human, `--agent`, and `--json` output. JSON is a
-single complete object with `kata_api_version: 1`, and diagnostics never mix
+single complete object with `poomsae_api_version: 1`, and diagnostics never mix
 with success JSON. Empty lists are `[]`. Mutation output contains `action` and
 `results`, where each result has `harness`, `config_path`, `changed`, `state`,
 `reason`, and `warnings`. States are `installed`, `unchanged`, `removed`,
@@ -611,7 +611,7 @@ Status JSON has this shape:
 
 | Object | Fields |
 | --- | --- |
-| Top level | `kata_api_version`, `harnesses`, `workspace`, `warnings` |
+| Top level | `poomsae_api_version`, `harnesses`, `workspace`, `warnings` |
 | Each harness | `harness`, `scope`, `capabilities`, `configured`, `user` (user scope) or `config` (project scope), `duplicate`, `overlap`, optional `inspection_error` |
 | Configured components | `contract`, `attention_start`, `attention_end` |
 | Capabilities | `name`, `contract`, `attention_start`, `attention_end`, `project_scope`, optional `note` |
@@ -1554,8 +1554,8 @@ change either the selected record or the empty result.
 Compact output contains either exactly one selected issue or a successful empty
 result. Human mode prints one ready-style row or `No ready issues.`, agent mode
 prints one `OK next ...` record or `OK next found=false`, and JSON returns
-`{"kata_api_version":1,"issue":<selected-issue>}` or
-`{"kata_api_version":1,"issue":null}`. Global compact results use a qualified
+`{"poomsae_api_version":1,"issue":<selected-issue>}` or
+`{"poomsae_api_version":1,"issue":null}`. Global compact results use a qualified
 `example-project#abc4` reference. To display the selected issue with the same
 detail and sections as `poomsae show`, pass `--full`. An empty `next --full` result
 uses the same successful empty output as compact mode.
@@ -1937,7 +1937,7 @@ poomsae ui 01HZNQ7VFPK1XGD8R5MABCD4EX
 ```
 
 Before launching the browser, Poomsae prints `Opening <url>` to stdout. With
-`--json`, it prints `{"kata_api_version":1,"url":"<url>"}` instead; with
+`--json`, it prints `{"poomsae_api_version":1,"url":"<url>"}` instead; with
 `--agent`, it prints `OK ui url=<url>`. Poomsae prints the URL even when you pass
 `-q`. If the browser cannot open, the command exits 0 and prints
 `Could not open a browser: <error>. Open the URL above.` to stderr. Open the
@@ -2057,7 +2057,7 @@ needing a workspace or a running daemon. It prints a single JSON object:
 
 ```json
 {
-  "kata_api_version": 1,
+  "poomsae_api_version": 1,
   "name": "poomsae",
   "version": "v0.6.0",
   "commit": "abcdef0",
@@ -2077,7 +2077,7 @@ identifier. `commit` and `built` identify the source revision and build time.
 empty string for ordinary archives and source builds, and `kenn` for official
 direct-download builds, which keep self-updating. `go`, `os`, and `arch`
 describe the build runtime and target, and `agent_format` is the version of the
-agent-readable text contract. Use `kata_api_version` to select the JSON schema
+agent-readable text contract. Use `poomsae_api_version` to select the JSON schema
 and ignore additional fields you do not recognize. Plain `poomsae version` keeps
 its human-readable output, and `poomsae --version` is an equivalent spelling of the
 same command that accepts the same output-mode flags.
@@ -2996,8 +2996,8 @@ a Docbank that runs elsewhere and reads its key from `--key-file`. Both forms
 ask once before writing and then restart running daemons; pass `--yes` to skip
 the question. Both forms reject `--daemon`.
 
-JSON output is `{"kata_api_version":1,"local":true,"folder":"/poomsae","changed":true}`
-for the local form and `{"kata_api_version":1,"local":false,"url":"https://docbank.example","folder":"/poomsae","key_file":"/abs/path","changed":true}`
+JSON output is `{"poomsae_api_version":1,"local":true,"folder":"/poomsae","changed":true}`
+for the local form and `{"poomsae_api_version":1,"local":false,"url":"https://docbank.example","folder":"/poomsae","key_file":"/abs/path","changed":true}`
 for the remote form. Agent output is `OK docbank-setup local=true folder=/poomsae changed=true`
 or `OK docbank-setup url=<url> folder=/poomsae changed=true`. See
 [Configure the daemon](../guide/attachments.md#configure-the-daemon) for what

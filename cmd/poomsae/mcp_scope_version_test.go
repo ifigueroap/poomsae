@@ -29,7 +29,7 @@ func TestMCPServeRequiresTransactionalScopeSupport(t *testing.T) {
 		{name: "all projects retains minimum", version: "0.11.0", args: []string{"--all"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_AUTHOR", "example-agent")
 			t.Chdir(t.TempDir())
 			var otherRequests atomic.Int64

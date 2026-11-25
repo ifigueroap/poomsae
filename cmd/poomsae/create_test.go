@@ -598,12 +598,12 @@ func TestResolveProjectID_SendsNameAndAliasForWorkspaceConfig(t *testing.T) {
 	assert.False(t, hasStartPath, "request must be path-free so remote daemons can resolve without stat'ing client paths")
 }
 
-// TestResolveProjectID_SendsAliasOnlyForGitWorkspaceWithoutKataToml
+// TestResolveProjectID_SendsAliasOnlyForGitWorkspaceWithoutPoomsaeToml
 // covers the case where the workspace has a git root but no
 // .poomsae.toml: the client sends alias metadata alone. The daemon must
 // not derive a project name from the git remote and create-by-
 // convention (resolve is strict; init owns that path).
-func TestResolveProjectID_SendsAliasOnlyForGitWorkspaceWithoutKataToml(t *testing.T) {
+func TestResolveProjectID_SendsAliasOnlyForGitWorkspaceWithoutPoomsaeToml(t *testing.T) {
 	resetFlags(t)
 	dir := testfix.InitGitRepo(t)
 
@@ -702,13 +702,13 @@ func TestCreate_CrossProjectLinkViaQualifiedRef(t *testing.T) {
 	assert.True(t, sawBlockedBy, "spoke issue must have a blocks link targeting it from hub")
 }
 
-// TestResolveProjectID_RewritesStaleKataToml mirrors what the daemon
-// used to do in resolveByKataToml: when the canonical project name on
+// TestResolveProjectID_RewritesStalePoomsaeToml mirrors what the daemon
+// used to do in resolveByPoomsaeToml: when the canonical project name on
 // the daemon differs from the local .poomsae.toml (project was renamed
 // daemon-side), the client rewrites the file to the canonical name.
 // In remote-client mode the daemon cannot reach the client's
 // filesystem, so this repair must happen on the client.
-func TestResolveProjectID_RewritesStaleKataToml(t *testing.T) {
+func TestResolveProjectID_RewritesStalePoomsaeToml(t *testing.T) {
 	resetFlags(t)
 	dir := testfix.InitGitRepo(t)
 	require.NoError(t, config.WriteProjectConfig(dir, "stale-name"))
@@ -746,7 +746,7 @@ func TestCreateDefaultPriorityRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			if tc.config != "" {
 				require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(tc.config), 0o600))
 			}
@@ -794,7 +794,7 @@ func TestCreateDefaultPriorityValidationBeforeNetwork(t *testing.T) {
 		{name: "config is directory", directory: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			path := filepath.Join(home, "config.toml")
 			if tc.directory {
 				require.NoError(t, os.Mkdir(path, 0o700))

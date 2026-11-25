@@ -55,7 +55,7 @@ func TestEvents_OneShotJSON(t *testing.T) {
 	require.NoError(t, f.execute("events", "--json"))
 
 	var b struct {
-		PoomsaeAPIVersion int `json:"kata_api_version"`
+		PoomsaeAPIVersion int `json:"poomsae_api_version"`
 		Events            []struct {
 			EventID     int64   `json:"event_id"`
 			Type        string  `json:"type"`

@@ -683,7 +683,7 @@ func resolveProject(ctx context.Context, store db.Storage, alias *api.AliasInput
 		return nil, api.NewError(400, "validation", err.Error(), "", nil)
 	}
 
-	if body, ok, err := resolveByKataToml(ctx, store, disc); err != nil {
+	if body, ok, err := resolveByPoomsaeToml(ctx, store, disc); err != nil {
 		return nil, err
 	} else if ok {
 		return body, nil
@@ -836,10 +836,10 @@ func resolveByName(ctx context.Context, store db.Storage, name string) (*api.Pro
 	return &api.ProjectResolveBody{Project: projectOutForCaller(ctx, project)}, nil
 }
 
-// resolveByKataToml returns (body, true, nil) when a .poomsae.toml binding
+// resolveByPoomsaeToml returns (body, true, nil) when a .poomsae.toml binding
 // exists at the workspace root and resolves to a project. Returns
 // (nil, false, nil) when there is no .poomsae.toml. Surfaces parse errors.
-func resolveByKataToml(ctx context.Context, store db.Storage, disc config.DiscoveredPaths) (*api.ProjectResolveBody, bool, error) {
+func resolveByPoomsaeToml(ctx context.Context, store db.Storage, disc config.DiscoveredPaths) (*api.ProjectResolveBody, bool, error) {
 	if disc.WorkspaceRoot == "" {
 		return nil, false, nil
 	}

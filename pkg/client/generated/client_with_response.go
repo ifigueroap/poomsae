@@ -289,7 +289,7 @@ func (c *Client) ListConnectorFieldsWithResponse(ctx context.Context, options *L
 func (c *Client) UnmapConnectorFieldWithResponse(ctx context.Context, options *UnmapConnectorFieldRequestOptions, reqEditors ...runtime.RequestEditorFn) (*UnmapConnectorFieldResp, error) {
 	var err error
 	reqParams := runtime.RequestOptionsParameters{
-		RequestURL: c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{kata_field}",
+		RequestURL: c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{poomsae_field}",
 		Method:     "DELETE",
 		Options:    options,
 	}
@@ -299,7 +299,7 @@ func (c *Client) UnmapConnectorFieldWithResponse(ctx context.Context, options *U
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{kata_field}")
+	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{poomsae_field}")
 	if err != nil {
 		return nil, fmt.Errorf("error executing request: %w", err)
 	}
@@ -344,7 +344,7 @@ func (c *Client) UnmapConnectorFieldWithResponse(ctx context.Context, options *U
 func (c *Client) MapConnectorFieldWithResponse(ctx context.Context, options *MapConnectorFieldRequestOptions, reqEditors ...runtime.RequestEditorFn) (*MapConnectorFieldResp, error) {
 	var err error
 	reqParams := runtime.RequestOptionsParameters{
-		RequestURL:  c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{kata_field}",
+		RequestURL:  c.apiClient.GetBaseURL() + "/api/v1/connectors/{instance}/fields/{poomsae_field}",
 		Method:      "PUT",
 		Options:     options,
 		ContentType: "application/json",
@@ -355,7 +355,7 @@ func (c *Client) MapConnectorFieldWithResponse(ctx context.Context, options *Map
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{kata_field}")
+	resp, err := c.apiClient.ExecuteRequest(ctx, req, "/api/v1/connectors/{instance}/fields/{poomsae_field}")
 	if err != nil {
 		return nil, fmt.Errorf("error executing request: %w", err)
 	}

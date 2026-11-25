@@ -57,7 +57,7 @@ func TestDaemonMCPIdentityStartup(t *testing.T) {
 // reused under another credential, even when both tokens name the same actor.
 func TestDaemonMCPIdentityRequests(t *testing.T) {
 	home := deploymentHome(t)
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
 	require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestDaemonMCPIdentitySessionsAndRequestsReleaseDaemonConnections(t *testing
 		t.Skip("Unix sockets are not supported on Windows")
 	}
 	home := deploymentHome(t)
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	project, err := store.CreateProject(t.Context(), "example-project")
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestDaemonMCPIdentitySessionsAndRequestsReleaseDaemonConnections(t *testing
 func TestDaemonMCPIdentityModernDrainsActivityAfterResponse(t *testing.T) {
 	t.Setenv("TELEMETRY_ENABLED", "1")
 	home := deploymentHome(t)
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	t.Cleanup(func() { require.NoError(t, store.Close()) })
 	_, _, err := store.CreateAPIToken(t.Context(), db.CreateAPITokenParams{PlaintextToken: "member-token", Actor: "example-agent", AdminActor: db.BootstrapActor})
 	require.NoError(t, err)

@@ -556,7 +556,7 @@ token_env = "POOMSAE_SHARED_TOKEN"
 }
 
 func TestNewHTTPClient_NamedLocalUsesCatalogToken(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -598,7 +598,7 @@ token = "local-token"
 }
 
 func TestNewHTTPClient_NamedLocalUsesProvidedBaseURLWithoutStarting(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {
@@ -634,7 +634,7 @@ token = "local-token"
 }
 
 func TestNewHTTPClient_NamedLocalBypassesActiveDaemonAuth(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/ping" {

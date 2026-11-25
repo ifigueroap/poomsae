@@ -103,8 +103,8 @@ func TestKeyCheckIsHexHMACOfConstant(t *testing.T) {
 	other := make([]byte, 32)
 	other[0] = 1
 	assert.NotEqual(t, got, mcpevents.KeyCheck(other))
-	// HMAC-SHA256(zero key, "kata-mcp-events-key-check"), pinned so copied databases match.
-	assert.Equal(t, "5d8dbf37f9d7e2d73d0e6949b83d091ecc795905f2895dc104e8d0b623bf973e", got)
+	// HMAC-SHA256(zero key, "poomsae-mcp-events-key-check"), pinned so copied databases match.
+	assert.Equal(t, "4642857663de166e6ca7155dd31db32be64f3e7b29d00abb07369d4e06851c6f", got)
 }
 
 // blockingKeys stands in for a key provider that hangs, as a remote secret

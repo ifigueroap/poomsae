@@ -239,7 +239,7 @@ func TestFederationRebindAllIsOrderedContinuesAndRendersEveryResult(t *testing.T
 	assert.Contains(t, err.Error(), "1 of 3 federation rebind operations failed")
 	assert.Equal(t, []int{3, 5, 9}, posted)
 	var got struct {
-		PoomsaeAPIVersion int `json:"kata_api_version"`
+		PoomsaeAPIVersion int `json:"poomsae_api_version"`
 		Results           []struct {
 			Project   string `json:"project"`
 			ProjectID int64  `json:"project_id"`

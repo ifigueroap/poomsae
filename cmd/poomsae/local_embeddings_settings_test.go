@@ -127,7 +127,7 @@ func TestLocalEmbeddingsSetupSavesUntilManualRestart(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			clearLocalEmbeddingsEnv(t)
 			resetFlags(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("PORT", "")
 			t.Setenv("POOMSAE_SERVER", "")
 			t.Setenv("POOMSAE_DSN", "")
@@ -267,7 +267,7 @@ func TestLocalEmbeddingsSetupSavesUntilManualRestart(t *testing.T) {
 
 func TestLocalEmbeddingsTurnOnPreservesProviderSavedAfterStartup(t *testing.T) {
 	clearLocalEmbeddingsEnv(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	original := []byte("[search.embeddings]\nbase_url = \"http://127.0.0.1:11434/v1\"\nmodel = \"nomic-embed-text\"\ndims = 768\n")
 	path := filepath.Join(home, "config.toml")
 	require.NoError(t, os.WriteFile(path, original, 0o600))
@@ -287,7 +287,7 @@ func TestSharedChoiceDaemonStartup(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			clearLocalEmbeddingsEnv(t)
 			resetFlags(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("PORT", "")
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("POOMSAE_AUTH_TOKEN", "")

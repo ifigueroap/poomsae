@@ -190,8 +190,8 @@ func hasBrowserEvidence(r *http.Request) bool {
 		return true
 	}
 	for _, cookie := range r.Cookies() {
-		if strings.HasPrefix(cookie.Name, "kata_session_") ||
-			strings.HasPrefix(cookie.Name, "__Host-kata_session_") {
+		if strings.HasPrefix(cookie.Name, "poomsae_session_") ||
+			strings.HasPrefix(cookie.Name, "__Host-poomsae_session_") {
 			return true
 		}
 	}

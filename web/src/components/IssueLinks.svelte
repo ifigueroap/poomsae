@@ -5,7 +5,7 @@
 
   import {
     poomsaeLinkMatchesFilters,
-    relationForKataLink,
+    relationForPoomsaeLink,
     type PoomsaeLinkFilters,
     type PoomsaeLinkPeerResolution,
     type PoomsaeLinkRelation,
@@ -127,7 +127,7 @@
   }
 
   function linkLabel(link: PoomsaeTaskLink): string {
-    return relationLabels[relationForKataLink(link, issue.issue.uid)]
+    return relationLabels[relationForPoomsaeLink(link, issue.issue.uid)]
   }
 
   async function submitRelatedLink(value: string): Promise<boolean> {
@@ -189,7 +189,7 @@
   {/snippet}
   {#each ['blocked_by', 'blocks', 'parent', 'child', 'related'] as group (group)}
     {@const grouped = visibleLinks.filter(
-      (link) => relationForKataLink(link, issue.issue.uid) === group,
+      (link) => relationForPoomsaeLink(link, issue.issue.uid) === group,
     )}
     {@const open = grouped.filter((link) => !peerClosed(link))}
     {@const closed = grouped.filter(peerClosed)}

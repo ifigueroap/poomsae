@@ -72,7 +72,7 @@ func writeForeignRuntimeRecord(t *testing.T) {
 // skip it and say why.
 func TestDaemonStopNamesForeignNamespaceSkip(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	writeForeignRuntimeRecord(t)
 
 	_, stderr, err := executeRootCapture(t, t.Context(), "--agent", "daemon", "stop")
@@ -88,7 +88,7 @@ func TestStartRefusesStoreOwnedFromAnotherPIDNamespace(t *testing.T) {
 	for _, entry := range []string{"foreground", "detached"} {
 		t.Run(entry, func(t *testing.T) {
 			resetFlags(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("PORT", "")
 			writeForeignRuntimeRecord(t)

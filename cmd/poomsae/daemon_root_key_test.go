@@ -25,7 +25,7 @@ import (
 // Only signed writes to its pinned project fail, with the recovery command.
 func TestDaemonStartsWithPinnedProjectAndMissingRootKey(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	orig := newTelemetryReporter
@@ -33,7 +33,7 @@ func TestDaemonStartsWithPinnedProjectAndMissingRootKey(t *testing.T) {
 	t.Cleanup(func() { newTelemetryReporter = orig })
 
 	ctx := t.Context()
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	hub, err := store.CreateProject(ctx, "hub-project")
 	require.NoError(t, err)
 	_, err = store.UpsertFederationBinding(ctx, db.FederationBinding{ProjectID: hub.ID, Role: db.FederationRoleHub, HubProjectID: hub.ID, HubProjectUID: hub.UID, Enabled: true})

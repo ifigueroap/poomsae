@@ -2,7 +2,7 @@
 
 Poomsae-owned Svelte presentation components for embedding read-only Poomsae issue details in trusted hosts.
 
-The package performs no networking and owns no routing or persistence state. Hosts fetch a canonical Poomsae issue-detail response, verify its API schema with `supportsKataAPISchema`, project the response with `projectIssueDetail`, and render `IssueDetail`. Optional host actions remain neutral callbacks supplied by the embedding application.
+The package performs no networking and owns no routing or persistence state. Hosts fetch a canonical Poomsae issue-detail response, verify its API schema with `supportsPoomsaeAPISchema`, project the response with `projectIssueDetail`, and render `IssueDetail`. Optional host actions remain neutral callbacks supplied by the embedding application.
 
 Pass `onOpenIssue` to let readers open parent, child, and linked issues: the
 package calls it with the peer issue UID and the host decides how to navigate.
@@ -32,7 +32,7 @@ only Poomsae wire data and host-supplied actions.
   import {
     IssueDetail,
     projectIssueDetail,
-    supportsKataAPISchema,
+    supportsPoomsaeAPISchema,
     type PoomsaeIssueDetailModel,
     type PoomsaeIssueDetailWire,
   } from '@ifigueroap/poomsae-ui'
@@ -40,7 +40,7 @@ only Poomsae wire data and host-supplied actions.
   let { apiSchemaVersion, wire }: { apiSchemaVersion?: string; wire: PoomsaeIssueDetailWire } =
     $props()
 
-  const compatible = $derived(supportsKataAPISchema(apiSchemaVersion ?? ''))
+  const compatible = $derived(supportsPoomsaeAPISchema(apiSchemaVersion ?? ''))
   const detail: PoomsaeIssueDetailModel | undefined = $derived(
     compatible ? projectIssueDetail(wire) : undefined,
   )
@@ -53,7 +53,7 @@ only Poomsae wire data and host-supplied actions.
 {/if}
 ```
 
-`supportsKataAPISchema` accepts Poomsae API schemas `>=0.9.0 <0.12.0` and `0.28.x`. A missing
+`supportsPoomsaeAPISchema` accepts Poomsae API schemas `>=0.9.0 <0.12.0` and `0.28.x`. A missing
 or empty `api_schema_version` is incompatible for an embedding host. Read the
 version from `GET /api/v1/health`; issue-detail responses do not carry it.
 The embedding host must fetch health and issue data through its authenticated

@@ -94,7 +94,7 @@ func runClaim(cmd *cobra.Command, raw string, force, ifUnowned bool, ttlSeconds 
 
 // printClaimMutation formats the claim response for the selected output mode.
 // Quiet human mode prints nothing; JSON mode emits the daemon body under the
-// kata_api_version envelope; agent mode uses the mutation contract.
+// poomsae_api_version envelope; agent mode uses the mutation contract.
 func printClaimMutation(cmd *cobra.Command, bs []byte, requestedProject string) error {
 	mode := currentOutputMode()
 	if mode == outputJSON {

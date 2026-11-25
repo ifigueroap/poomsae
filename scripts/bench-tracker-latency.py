@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Measure the tracker latencies quoted on katatracker.com.
 
-Benchmarks an isolated kata daemon (Unix-socket round trips and end-to-end
+Benchmarks an isolated poomsae daemon (Unix-socket round trips and end-to-end
 CLI invocations) and prints millisecond percentiles as JSON. Run it against a
 throwaway POOMSAE_HOME, never a live one:
 
     export POOMSAE_HOME=$(mktemp -d)/home
     mkdir -p "$POOMSAE_HOME" /tmp/bench-ws && cd /tmp/bench-ws
-    kata init --project bench
+    poomsae init --project bench
     export BENCH_WS=$PWD
-    export BENCH_SOCK=$(kata daemon status | sed -n 's/.*unix:\\/\\///p')
+    export BENCH_SOCK=$(poomsae daemon status | sed -n 's/.*unix:\\/\\///p')
     python3 scripts/bench-tracker-latency.py
 
 The hosted-tracker comparison quoted next to these numbers is a GitHub Issues
@@ -37,10 +37,10 @@ N_CLI = 30
 
 def run(args: list[str]) -> str:
     result = subprocess.run(
-        ["kata", *args], cwd=WS, capture_output=True, text=True, check=False
+        ["poomsae", *args], cwd=WS, capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
-        sys.exit(f"kata {' '.join(args)} failed: {result.stderr.strip()}")
+        sys.exit(f"poomsae {' '.join(args)} failed: {result.stderr.strip()}")
     return result.stdout
 
 
@@ -70,7 +70,7 @@ def existing_refs() -> list[str]:
 
 class UDSConnection(http.client.HTTPConnection):
     def __init__(self, path: str) -> None:
-        super().__init__("kata")
+        super().__init__("poomsae")
         self._uds_path = path
 
     def connect(self) -> None:

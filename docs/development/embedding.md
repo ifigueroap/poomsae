@@ -812,7 +812,7 @@ service, err := poomsae.New(ctx, poomsae.Config{
 	Postgres: poomsae.PostgresConfig{
 		Schema:      "poomsae",
 		SchemaMode:  poomsae.PostgresSchemaValidate,
-		SchemaOwner: "kata_schema_owner",
+		SchemaOwner: "poomsae_schema_owner",
 	},
 	Auth: poomsae.AuthConfig{Token: os.Getenv("EXAMPLE_POOMSAE_TOKEN")},
 })

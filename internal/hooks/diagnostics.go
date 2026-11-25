@@ -113,7 +113,7 @@ func (d *Dispatcher) readRecentRuns(out *diagnostics.Hooks) {
 
 func countDoctorRun(line []byte, now time.Time, out *diagnostics.Hooks) {
 	var record struct {
-		Version  int    `json:"kata_hook_runs_version"`
+		Version  int    `json:"poomsae_hook_runs_version"`
 		EndedAt  string `json:"ended_at"`
 		Result   string `json:"result"`
 		ExitCode *int   `json:"exit_code"`

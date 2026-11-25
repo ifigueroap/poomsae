@@ -44,6 +44,7 @@ func TestCommentUIDHandleIndexMigrationUpgradesVersion38(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropLaterMigrationIndexes(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "comment_handle_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE comment_handle_upgrade.meta SET value='38' WHERE key='schema_version'`)
 	require.NoError(t, err)
 	upgraded, err := pgstore.OpenWithConfig(ctx, dsn, pgstore.Config{Schema: schema, SchemaMode: pgstore.SchemaModeBootstrap})

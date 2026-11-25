@@ -131,7 +131,7 @@ func TestMCPListenerPolicyAppliesOnlyWhenMounted(t *testing.T) {
 			}
 			if tt.cookie {
 				req.AddCookie(&http.Cookie{
-					Name: "kata_session_instance_a", Value: "cookie-session",
+					Name: "poomsae_session_instance_a", Value: "cookie-session",
 					Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode,
 				})
 			}
@@ -286,7 +286,7 @@ func TestBrowserOriginPolicySharedTCPPreservesCLI(t *testing.T) {
 			name: "browser session cookie",
 			path: "/api/v1/projects", host: "spoke-b:7777",
 			cookie: &http.Cookie{
-				Name: "kata_session_instance_a", Value: "cookie-session",
+				Name: "poomsae_session_instance_a", Value: "cookie-session",
 				Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode,
 			},
 			want: http.StatusBadRequest,
@@ -474,7 +474,7 @@ func TestSharedTCPTelemetryAcceptsOrdinaryClients(t *testing.T) {
 		{
 			name: "telemetry post with session cookie", handler: shared,
 			cookie: &http.Cookie{
-				Name: "kata_session_instance_a", Value: "cookie-session",
+				Name: "poomsae_session_instance_a", Value: "cookie-session",
 				Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode,
 			},
 			want: http.StatusForbidden,

@@ -20,7 +20,7 @@ import (
 	"github.com/ifigueroap/poomsae/internal/testfix"
 )
 
-func TestResolve_FailsOutsideKataTomlAndWithoutAlias(t *testing.T) {
+func TestResolve_FailsOutsidePoomsaeTomlAndWithoutAlias(t *testing.T) {
 	ts := newTestServer(t)
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"start_path": t.TempDir(),
@@ -196,10 +196,10 @@ func TestResolveProject_IdentityModeBootstrapCanResolveWithoutMutatingAliases(t 
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "body: %s", string(bs))
 }
 
-func TestInit_FreshCloneFromExistingKataToml(t *testing.T) {
+func TestInit_FreshCloneFromExistingPoomsaeToml(t *testing.T) {
 	// Simulate "git clone, poomsae init" on a repo that already had .poomsae.toml.
 	h := newServerWithGitWorkspace(t, "")
-	testfix.WriteKataToml(t, h.dir, "system")
+	testfix.WritePoomsaeToml(t, h.dir, "system")
 
 	resp, bs := postJSON(t, h.ts.(*httptest.Server), "/api/v1/projects", map[string]any{
 		"actor":      "user-a",
@@ -353,7 +353,7 @@ func TestResolve_NotInitializedHint(t *testing.T) {
 					testfix.RunGit(t, dir, "remote", "add", "origin", "https://github.com/example/remote-project.git")
 					request["start_path"] = dir
 					if shape == "path with config" {
-						testfix.WriteKataToml(t, dir, "saved-project")
+						testfix.WritePoomsaeToml(t, dir, "saved-project")
 					}
 				}
 				if shape == "alias" || shape == "alias with name" {
@@ -399,14 +399,14 @@ func TestResolve_NotInitializedHint(t *testing.T) {
 	}
 }
 
-// TestResolve_ByStartPath_KataTomlNamesUnregisteredProject reports the
+// TestResolve_ByStartPath_PoomsaeTomlNamesUnregisteredProject reports the
 // bound project name in error.data when .poomsae.toml names a project the
 // daemon does not know.
-func TestResolve_ByStartPath_KataTomlNamesUnregisteredProject(t *testing.T) {
+func TestResolve_ByStartPath_PoomsaeTomlNamesUnregisteredProject(t *testing.T) {
 	ts := newTestServer(t)
 	dir := t.TempDir()
 	testfix.RunGit(t, dir, "init", "--quiet")
-	testfix.WriteKataToml(t, dir, "ghost-project")
+	testfix.WritePoomsaeToml(t, dir, "ghost-project")
 
 	resp, bs := postJSON(t, ts, "/api/v1/projects/resolve", map[string]any{
 		"start_path": dir,
@@ -659,7 +659,7 @@ func TestInit_AliasConflictWithoutReassign(t *testing.T) {
 	_, _ = postJSON(t, ts, "/api/v1/projects", map[string]any{"actor": "user-a", "start_path": h.dir})
 
 	// .poomsae.toml now declares a different name.
-	testfix.WriteKataToml(t, h.dir, "other")
+	testfix.WritePoomsaeToml(t, h.dir, "other")
 
 	// Re-init follows the alias, treats the config as stale, and rewrites it.
 	resp, bs := postJSON(t, ts, "/api/v1/projects", map[string]any{
@@ -1556,7 +1556,7 @@ func TestMergeProject_RestrictedSourceIntoOpenTargetReturns409(t *testing.T) {
 	assertAPIError(t, resp.StatusCode, bs, 409, "project_merge_access_policy")
 }
 
-func TestInit_MergedKataTomlNameResolvesToSurvivingProject(t *testing.T) {
+func TestInit_MergedPoomsaeTomlNameResolvesToSurvivingProject(t *testing.T) {
 	h := newServerWithGitWorkspace(t, "https://github.com/wesm/beta.git")
 	store := h.DB()
 	ctx := t.Context()
@@ -1573,7 +1573,7 @@ func TestInit_MergedKataTomlNameResolvesToSurvivingProject(t *testing.T) {
 		TargetProjectID: beta.ID,
 	})
 	require.NoError(t, err)
-	testfix.WriteKataToml(t, h.dir, "alpha")
+	testfix.WritePoomsaeToml(t, h.dir, "alpha")
 
 	resp, bs := postJSON(t, h.ts.(*httptest.Server), "/api/v1/projects", map[string]any{
 		"actor":      "user-a",

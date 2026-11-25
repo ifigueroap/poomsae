@@ -30,8 +30,8 @@ type MergeAction string
 const (
 	// MergeAccept records a shared value without writing either side.
 	MergeAccept MergeAction = "accept"
-	// MergeWriteKata applies the external value to Poomsae.
-	MergeWriteKata MergeAction = "write_kata"
+	// MergeWritePoomsae applies the external value to Poomsae.
+	MergeWritePoomsae MergeAction = "write_poomsae"
 	// MergeWriteExternal applies the Poomsae value to the external root.
 	MergeWriteExternal MergeAction = "write_external"
 	// MergeConflict records divergent changes for explicit resolution.
@@ -56,7 +56,7 @@ func DecideInitialFieldMerge(poomsae, external connector.FieldValue) MergeDecisi
 		return MergeDecision{Action: MergeAccept, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
 	if isNull(poomsae) {
-		return MergeDecision{Action: MergeWriteKata, Baseline: external, Poomsae: poomsae, External: external}
+		return MergeDecision{Action: MergeWritePoomsae, Baseline: external, Poomsae: poomsae, External: external}
 	}
 	if isNull(external) {
 		return MergeDecision{Action: MergeWriteExternal, Baseline: poomsae, Poomsae: poomsae, External: external}
@@ -73,7 +73,7 @@ func DecideFieldMerge(baseline, poomsae, external connector.FieldValue) MergeDec
 		return MergeDecision{Action: MergeAccept, Baseline: poomsae, Poomsae: poomsae, External: external}
 	}
 	if fieldValuesEqual(poomsae, baseline) {
-		return MergeDecision{Action: MergeWriteKata, Baseline: external, Poomsae: poomsae, External: external}
+		return MergeDecision{Action: MergeWritePoomsae, Baseline: external, Poomsae: poomsae, External: external}
 	}
 	if fieldValuesEqual(external, baseline) {
 		return MergeDecision{Action: MergeWriteExternal, Baseline: poomsae, Poomsae: poomsae, External: external}

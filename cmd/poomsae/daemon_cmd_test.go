@@ -53,7 +53,7 @@ import (
 
 func TestDaemonStatus_NoDaemonReportsAbsent(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	out, _, _ := executeRootCapture(t, t.Context(), "daemon", "status")
 	assert.Equal(t, "Selected daemon: local_stopped (source: local runtime)\nNo poomsae daemon is running in the current POOMSAE_HOME.\n", string(out))
@@ -69,7 +69,7 @@ func TestDaemonStatus_HumanUnreachableDoesNotRepeatError(t *testing.T) {
 		{"canceled", true, "hint: inspect the selected process and its credentials; do not switch databases"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Chdir(t.TempDir())
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("POOMSAE_SERVER", "")
@@ -119,7 +119,7 @@ func TestDaemonStatusReadinessExit(t *testing.T) {
 		for _, ready := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/ready=%t", mode, ready), func(t *testing.T) {
 				resetFlags(t)
-				setupKataEnv(t)
+				setupPoomsaeEnv(t)
 				t.Chdir(t.TempDir())
 				t.Setenv("POOMSAE_DSN", "")
 				t.Setenv("POOMSAE_SERVER", "")
@@ -165,7 +165,7 @@ func TestDaemonStatusReadinessExit(t *testing.T) {
 
 func TestDaemonStatusMalformedServerURLExitsInternal(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Chdir(t.TempDir())
 	t.Setenv("POOMSAE_SERVER", "ht!tp://daemon.example")
 
@@ -179,7 +179,7 @@ func TestDaemonStatusMalformedServerURLExitsInternal(t *testing.T) {
 
 func TestDaemonLocate_JSONReportsConfiguredRemoteWithoutSecrets(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
 	t.Setenv("POOMSAE_SERVER", "http://"+addr)
@@ -188,7 +188,7 @@ func TestDaemonLocate_JSONReportsConfiguredRemoteWithoutSecrets(t *testing.T) {
 	out := executeRoot(t, newRootCmd(), "daemon", "locate", "--json")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Source            string `json:"source"`
 		Kind              string `json:"kind"`
 		Network           string `json:"network"`
@@ -209,7 +209,7 @@ func TestDaemonLocate_JSONReportsConfiguredRemoteWithoutSecrets(t *testing.T) {
 
 func TestDaemonLocate_JSONReportsNamedRemoteWithoutCatalogToken(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
 	t.Setenv("POOMSAE_EXAMPLE_REMOTE_TOKEN", "catalog-secret-that-must-not-be-emitted")
@@ -236,7 +236,7 @@ token_env = "POOMSAE_EXAMPLE_REMOTE_TOKEN"
 
 func TestDaemonLocate_JSONReportsActiveRemoteWithoutResolvingCatalogToken(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
 	t.Setenv("POOMSAE_MISSING_REMOTE_TOKEN", "")
@@ -261,7 +261,7 @@ token_env = "POOMSAE_MISSING_REMOTE_TOKEN"
 
 func TestDaemonLocate_ErrorRedactsConfiguredURLUserInfo(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "http://fixture-user:fixture-secret@127.0.0.1:7777")
 
 	_, stderr, err := executeRootCapture(t, t.Context(), "daemon", "locate")
@@ -275,7 +275,7 @@ func TestDaemonLocate_ErrorRedactsConfiguredURLUserInfo(t *testing.T) {
 
 func TestDaemonLocate_ErrorRedactsMalformedConfiguredURLUserInfo(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "http://fixture-user:fixture-secret@127.0.0.1:bad")
 
 	_, stderr, err := executeRootCapture(t, t.Context(), "daemon", "locate")
@@ -289,7 +289,7 @@ func TestDaemonLocate_ErrorRedactsMalformedConfiguredURLUserInfo(t *testing.T) {
 
 func TestDaemonLocate_ErrorRedactsConfiguredURLPathQueryAndFragment(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "http://public.example/secret-path?token=secret-query#secret-fragment")
 
 	_, stderr, err := executeRootCapture(t, t.Context(), "daemon", "locate")
@@ -303,7 +303,7 @@ func TestDaemonLocate_ErrorRedactsConfiguredURLPathQueryAndFragment(t *testing.T
 
 func TestDaemonLocate_JSONReportsLocalTCPConfigAddress(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
@@ -326,7 +326,7 @@ func TestDaemonLocate_JSONReportsLocalUnixConfigAddress(t *testing.T) {
 		t.Skip("Unix sockets are unavailable on Windows")
 	}
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Setenv("POOMSAE_SKIP_DAEMON_VERSION_CHECK", "1")
 	// Keep the socket path below the platform limit while retaining a space.
@@ -371,7 +371,7 @@ func TestDaemonLocate_JSONReportsLocalUnixConfigAddress(t *testing.T) {
 
 func TestDaemonLocate_HumanAndAgentOutput(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
 	t.Setenv("POOMSAE_SERVER", "http://"+addr)
@@ -407,7 +407,7 @@ func TestDaemonLocate_HelpDocumentsResolutionOrder(t *testing.T) {
 
 func TestDaemonStatus_HumanReportsLifecycleDetails(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestDaemonStatus_HumanReportsLifecycleDetails(t *testing.T) {
 
 func TestDaemonStatus_HumanReportsUnreachableReason(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -459,7 +459,7 @@ func TestDaemonStatus_HumanReportsUnreachableReason(t *testing.T) {
 
 func TestDaemonStatusAutoStarted(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
@@ -509,7 +509,7 @@ func TestDaemonStatusAutoStarted(t *testing.T) {
 
 func TestDaemonStatus_JSONReportsDaemonsWithVersion(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
@@ -535,7 +535,7 @@ func TestDaemonStatus_JSONReportsDaemonsWithVersion(t *testing.T) {
 	out := []byte(stdout)
 
 	var got struct {
-		PoomsaeAPIVersion int `json:"kata_api_version"`
+		PoomsaeAPIVersion int `json:"poomsae_api_version"`
 		Daemons           []struct {
 			PID       int    `json:"pid"`
 			Version   string `json:"version"`
@@ -558,7 +558,7 @@ func TestDaemonStatus_JSONReportsDaemonsWithVersion(t *testing.T) {
 
 func TestDaemonStatus_JSONReportsDBPathFromKitRuntimeMetadata(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
@@ -595,13 +595,13 @@ func TestDaemonStatus_JSONReportsDBPathFromKitRuntimeMetadata(t *testing.T) {
 
 func TestDaemonStatus_JSONReportsEmptyDaemonList(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	stdout, _, _ := executeRootCapture(t, t.Context(), "daemon", "status", "--json")
 	out := []byte(stdout)
 
 	var got struct {
-		PoomsaeAPIVersion int            `json:"kata_api_version"`
+		PoomsaeAPIVersion int            `json:"poomsae_api_version"`
 		Daemons           jsontext.Value `json:"daemons"`
 	}
 	require.NoError(t, json.Unmarshal(out, &got))
@@ -613,7 +613,7 @@ func TestDaemonStatus_JSONDegradesOnNonPrivateRuntimeDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix permissions")
 	}
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	t.Setenv("POOMSAE_SERVER", "")
 	t.Chdir(t.TempDir())
@@ -637,7 +637,7 @@ func TestDaemonStatus_JSONDegradesOnNonPrivateRuntimeDirectory(t *testing.T) {
 
 func TestDaemonStatus_AgentReportsStopped(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	stdout, _, _ := executeRootCapture(t, t.Context(), "--agent", "daemon", "status")
 	out := []byte(stdout)
@@ -646,7 +646,7 @@ func TestDaemonStatus_AgentReportsStopped(t *testing.T) {
 
 func TestDaemonStatus_IgnoresRuntimeRecordWhosePIDWasReused(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeReusedRuntimePID(t, tmp, child.Process.Pid)
 
@@ -660,7 +660,7 @@ func TestDaemonStatus_IgnoresRuntimeRecordWhosePIDWasReused(t *testing.T) {
 // status must list it too; daemon controls still skip it.
 func TestDaemonStatus_ListsUnverifiableRecord(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeUnknownRuntimePID(t, child.Process.Pid)
 
@@ -679,7 +679,7 @@ func TestDaemonStatus_ListsUnverifiableRecord(t *testing.T) {
 
 func TestDaemonStatus_AgentReportsWebURL(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
@@ -704,7 +704,7 @@ func TestDaemonStatusReportsMCPState(t *testing.T) {
 	for _, state := range []string{"serving", "unavailable"} {
 		t.Run(state, func(t *testing.T) {
 			resetFlags(t)
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			ns, err := daemonruntime.NewNamespace()
 			require.NoError(t, err)
 			require.NoError(t, ns.EnsureDirs())
@@ -750,7 +750,7 @@ func TestDaemonServesHealthFromPostgres(t *testing.T) {
 		t.Skip("requires postgres testcontainer")
 	}
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	ctx := t.Context()
@@ -866,7 +866,7 @@ func TestDaemonStart_RuntimeRecordSerializesTCPAddressAsHostPort(t *testing.T) {
 
 func TestAutostartDaemonPublishesRuntimeThenExitsAfterIdleTimeout(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	t.Setenv("POOMSAE_AUTOSTART_IDLE_TIMEOUT", "10s")
@@ -931,7 +931,7 @@ func TestAutostartDaemonPublishesRuntimeThenExitsAfterIdleTimeout(t *testing.T) 
 
 func TestDaemonDoesNotPublishRuntimeBeforeEmbeddingInitializationCompletes(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
 [search.embeddings]
@@ -1005,7 +1005,7 @@ type daemonRuntimeRecordJSON struct {
 func readRuntimeRecordFromStartedDaemon(t *testing.T, listen string) (*daemonruntime.Namespace, daemonRuntimeRecordJSON) {
 	t.Helper()
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 
@@ -1060,7 +1060,7 @@ func TestDaemonStart_RejectsAgentOutputBeforeStartup(t *testing.T) {
 		{"--format", "agent", "daemon", "start", "--listen", "8.8.8.8:7777"},
 	} {
 		resetFlags(t)
-		setupKataEnv(t)
+		setupPoomsaeEnv(t)
 
 		stdout, stderr, err := executeRootCapture(t, t.Context(), args...)
 
@@ -1076,7 +1076,7 @@ func TestDaemonStart_RejectsAgentOutputBeforeStartup(t *testing.T) {
 
 func TestDaemonStart_DetachesByDefaultAfterStartup(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	oldStart := startDetachedDaemon
 	t.Cleanup(func() { startDetachedDaemon = oldStart })
 	var gotListen string
@@ -1162,7 +1162,7 @@ func writeRuntimeRecordFor(t *testing.T, home, addr string, pid int) {
 
 func TestDaemonStart_ReplacesIdleAutostartDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	server := writeIdleDaemonHealthServer(t, true)
 	writeRuntimeRecordFor(t, home, strings.TrimPrefix(server.URL, "http://"), child.Process.Pid)
@@ -1186,7 +1186,7 @@ func TestDaemonStart_ReplacesIdleAutostartDaemon(t *testing.T) {
 
 func TestDaemonStart_ReplacesIdleDaemonDiscoveredAfterCutover(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	server := writeIdleDaemonHealthServer(t, true)
 	address := strings.TrimPrefix(server.URL, "http://")
@@ -1216,7 +1216,7 @@ func TestDaemonStart_ReplacesIdleDaemonDiscoveredAfterCutover(t *testing.T) {
 
 func TestDaemonStart_KeepsResidentDaemonWithoutIdleShutdown(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	server := writeIdleDaemonHealthServer(t, false)
 	address := strings.TrimPrefix(server.URL, "http://")
 	writeRuntimeRecordFor(t, home, address, os.Getpid())
@@ -1237,7 +1237,7 @@ func TestDaemonStart_KeepsResidentDaemonWithoutIdleShutdown(t *testing.T) {
 
 func TestDaemonStart_ReportsReplacedDaemon(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	oldStart := startDetachedDaemon
 	t.Cleanup(func() { startDetachedDaemon = oldStart })
 	startDetachedDaemon = func(context.Context, string, bool, bool) (daemonStartOutput, error) {
@@ -1255,7 +1255,7 @@ func TestDaemonStart_ReportsReplacedDaemon(t *testing.T) {
 
 func TestDaemonStart_ListenConflictWithExistingDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRuntimeFor(home, "127.0.0.1:7777"))
 
 	out, err := defaultStartDetachedDaemon(t.Context(), "100.64.0.5:7777", false, false)
@@ -1269,7 +1269,7 @@ func TestDaemonStart_ListenConflictWithExistingDaemon(t *testing.T) {
 
 func TestDaemonStart_ListenMatchesExistingDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRuntimeFor(home, "100.64.0.5:7777"))
 
 	out, err := defaultStartDetachedDaemon(t.Context(), "100.64.0.5:7777", false, false)
@@ -1282,7 +1282,7 @@ func TestDaemonStart_ListenMatchesExistingDaemon(t *testing.T) {
 
 func TestDaemonStart_ExplicitListenMatchIgnoresMalformedConfig(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRuntimeFor(home, "100.64.0.5:7777"))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("listen =\n"), 0o600))
 
@@ -1296,7 +1296,7 @@ func TestDaemonStart_ExplicitListenMatchIgnoresMalformedConfig(t *testing.T) {
 
 func TestDaemonStart_ConfigListenConflictWithExistingDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	require.NoError(t, writeRuntimeFor(home, "127.0.0.1:7777"))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"),
 		[]byte(`listen = "100.64.0.5:7777"`+"\n"), 0o600))
@@ -1312,7 +1312,7 @@ func TestDaemonStart_ConfigListenConflictWithExistingDaemon(t *testing.T) {
 
 func TestDaemonStart_PortListenConflictWithExistingDaemon(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "8080")
 	require.NoError(t, writeRuntimeFor(home, "127.0.0.1:7777"))
 
@@ -1327,7 +1327,7 @@ func TestDaemonStart_PortListenConflictWithExistingDaemon(t *testing.T) {
 
 func TestDaemonStart_ForegroundKeepsCurrentProcess(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	oldStart := startDetachedDaemon
 	oldRun := runDaemonForeground
 	t.Cleanup(func() {
@@ -1360,7 +1360,7 @@ func TestDaemonStart_ForegroundKeepsCurrentProcess(t *testing.T) {
 
 func TestDaemonStop_AgentReportsStoppedPID(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeRuntimePID(t, tmp, child.Process.Pid)
 
@@ -1371,7 +1371,7 @@ func TestDaemonStop_AgentReportsStoppedPID(t *testing.T) {
 
 func TestDaemonStop_AgentNoDaemonReportsNoop(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	out := executeRoot(t, newRootCmd(), "--agent", "daemon", "stop")
 
@@ -1380,7 +1380,7 @@ func TestDaemonStop_AgentNoDaemonReportsNoop(t *testing.T) {
 
 func TestDaemonStop_DoesNotSignalRuntimeRecordWhosePIDWasReused(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeReusedRuntimePID(t, tmp, child.Process.Pid)
 
@@ -1392,14 +1392,14 @@ func TestDaemonStop_DoesNotSignalRuntimeRecordWhosePIDWasReused(t *testing.T) {
 
 func TestDaemonStop_JSONReportsStoppedPIDs(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeRuntimePID(t, tmp, child.Process.Pid)
 
 	out := executeRoot(t, newRootCmd(), "--json", "daemon", "stop")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Action            string `json:"action"`
 		Stopped           int    `json:"stopped"`
 		PIDs              []int  `json:"pids"`
@@ -1413,12 +1413,12 @@ func TestDaemonStop_JSONReportsStoppedPIDs(t *testing.T) {
 
 func TestDaemonStop_JSONReportsNoop(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	out := executeRoot(t, newRootCmd(), "--json", "daemon", "stop")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Action            string `json:"action"`
 		Stopped           int    `json:"stopped"`
 		PIDs              []int  `json:"pids"`
@@ -1432,7 +1432,7 @@ func TestDaemonStop_JSONReportsNoop(t *testing.T) {
 
 func TestDaemonStop_AgentReportsMultiplePIDs(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	first := startSleepProcess(t)
 	second := startSleepProcess(t)
 	writeRuntimePID(t, tmp, first.Process.Pid)
@@ -1447,7 +1447,7 @@ func TestDaemonStop_AgentReportsMultiplePIDs(t *testing.T) {
 
 func TestDaemonStop_JSONReportsMultiplePIDs(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	first := startSleepProcess(t)
 	second := startSleepProcess(t)
 	writeRuntimePID(t, tmp, first.Process.Pid)
@@ -1456,7 +1456,7 @@ func TestDaemonStop_JSONReportsMultiplePIDs(t *testing.T) {
 	out := executeRoot(t, newRootCmd(), "--json", "daemon", "stop")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Action            string `json:"action"`
 		Stopped           int    `json:"stopped"`
 		PIDs              []int  `json:"pids"`
@@ -1470,7 +1470,7 @@ func TestDaemonStop_JSONReportsMultiplePIDs(t *testing.T) {
 
 func TestDaemonRestart_StartsWhenNoDaemonIsRunning(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	orig := startDetachedDaemon
 	t.Cleanup(func() { startDetachedDaemon = orig })
@@ -1494,7 +1494,7 @@ func TestDaemonRestart_StartsWhenNoDaemonIsRunning(t *testing.T) {
 
 func TestDaemonRestart_JSONReportsStartedDaemon(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	orig := startDetachedDaemon
 	t.Cleanup(func() { startDetachedDaemon = orig })
@@ -1508,7 +1508,7 @@ func TestDaemonRestart_JSONReportsStartedDaemon(t *testing.T) {
 	out := executeRoot(t, newRootCmd(), "--json", "daemon", "restart")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Action            string `json:"action"`
 		Stopped           int    `json:"stopped"`
 		PIDs              []int  `json:"pids"`
@@ -1528,7 +1528,7 @@ func TestDaemonRestart_JSONReportsStartedDaemon(t *testing.T) {
 
 func TestDaemonRestart_AgentReportsStartedDaemon(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 
 	orig := startDetachedDaemon
 	t.Cleanup(func() { startDetachedDaemon = orig })
@@ -1547,7 +1547,7 @@ func TestDaemonRestart_AgentReportsStartedDaemon(t *testing.T) {
 
 func TestDaemonRestart_ExplainsDaemonWithoutInstalledExecutable(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	ns, err := daemonruntime.NewNamespace()
 	require.NoError(t, err)
 	require.NoError(t, ns.EnsureDirs())
@@ -1614,7 +1614,7 @@ model = "example-model"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetFlags(t)
-			tmp := setupKataEnv(t)
+			tmp := setupPoomsaeEnv(t)
 
 			tt.setup(t, tmp)
 
@@ -1877,7 +1877,7 @@ type daemonFederationHealth struct {
 func startDaemonWithFederationConfig(t *testing.T, configBody string) string {
 	t.Helper()
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	require.NoError(t, os.WriteFile(
@@ -1958,7 +1958,7 @@ actor = "user-a"
 
 func TestDaemonReload_AgentReportsReloadedPID(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeRuntimePID(t, tmp, child.Process.Pid)
 
@@ -1969,14 +1969,14 @@ func TestDaemonReload_AgentReportsReloadedPID(t *testing.T) {
 
 func TestDaemonReload_JSONReportsReloadedPID(t *testing.T) {
 	resetFlags(t)
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 	child := startSleepProcess(t)
 	writeRuntimePID(t, tmp, child.Process.Pid)
 
 	out := executeRoot(t, newRootCmd(), "--json", "daemon", "reload")
 
 	var got struct {
-		PoomsaeAPIVersion int    `json:"kata_api_version"`
+		PoomsaeAPIVersion int    `json:"poomsae_api_version"`
 		Action            string `json:"action"`
 		PID               int    `json:"pid"`
 	}
@@ -2098,15 +2098,13 @@ func TestWithoutEnvironmentKeyRemovesOnlyAutostartMarker(t *testing.T) {
 	got := withoutEnvironmentKey([]string{
 		"PATH=/example/bin",
 		daemonruntime.AutoStartMarkerEnv + "=1",
-		"kata_autostart=1",
-		"Kata_Autostart=1",
+		"poomsae_autostart=1",
+		"Poomsae_Autostart=1",
 		"POOMSAE_AUTOSTART_IDLE_TIMEOUT=15m",
 	}, daemonruntime.AutoStartMarkerEnv)
 
 	assert.Equal(t, []string{
 		"PATH=/example/bin",
-		"kata_autostart=1",
-		"Kata_Autostart=1",
 		"POOMSAE_AUTOSTART_IDLE_TIMEOUT=15m",
 	}, got)
 }
@@ -2190,7 +2188,7 @@ func TestDaemonStart_FlagWinsOverConfigFile(t *testing.T) {
 
 func TestNewDaemonTelemetryReporterUsesInstanceUID(t *testing.T) {
 	tmp := t.TempDir()
-	store := openKataTestDB(t, filepath.Join(tmp, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(tmp, "poomsae.db"))
 	defer func() { _ = store.Close() }()
 
 	var got telemetry.Options
@@ -2215,11 +2213,11 @@ func TestNewDaemonTelemetryReporterUsesInstanceUID(t *testing.T) {
 
 func TestNewDaemonTelemetryReporterSendsUnstampedInstanceWithoutAge(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "poomsae.db")
-	store := openKataTestDB(t, path)
+	store := openPoomsaeTestDB(t, path)
 	_, err := store.ExecContext(t.Context(), `DELETE FROM meta WHERE key=?`, db.MetaKeyInstanceCreatedAt)
 	require.NoError(t, err)
 	require.NoError(t, store.Close())
-	store = openKataTestDB(t, path)
+	store = openPoomsaeTestDB(t, path)
 	defer func() { _ = store.Close() }()
 
 	var got telemetry.Options
@@ -2237,7 +2235,7 @@ func TestNewDaemonTelemetryReporterSendsUnstampedInstanceWithoutAge(t *testing.T
 }
 
 func TestNewDaemonTelemetryReporterSendsWithoutAgeWhenCreationTimeUnreadable(t *testing.T) {
-	store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 	defer func() { _ = store.Close() }()
 	_, err := store.ExecContext(t.Context(), `UPDATE meta SET value='not-a-time' WHERE key=?`, db.MetaKeyInstanceCreatedAt)
 	require.NoError(t, err)
@@ -2261,7 +2259,7 @@ func TestNewDaemonTelemetryReporterSendsWithoutAgeWhenCreationTimeUnreadable(t *
 
 func TestDaemonTelemetryProducersIncludeProjectCount(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 		defer func() { _ = store.Close() }()
 		for i := range 37 {
 			_, err := store.CreateProject(t.Context(), fmt.Sprintf("example-project-%d", i))
@@ -2436,7 +2434,7 @@ func TestDaemonGitHubSyncHTTPFetcherUsesCredentialConfig(t *testing.T) {
 }
 
 func TestDaemonStartGitHubSyncHTTPFetcherUsesConfigFileCredentials(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(`
@@ -2514,7 +2512,7 @@ private_key_path = "/secure/example.pem"
 func TestDaemonStartGitHubSyncRunnerCreatesOneRunnerWithDaemonDBAndFetcher(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Setenv("POOMSAE_GITHUB_SYNC_INTERVAL_MS", "25")
-		store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 		defer func() { _ = store.Close() }()
 		fetcher := &daemonGitHubSyncFetcher{}
 		bcast := daemon.NewEventBroadcaster()
@@ -2552,7 +2550,7 @@ func TestDaemonStartGitHubSyncRunnerCreatesOneRunnerWithDaemonDBAndFetcher(t *te
 func TestDaemonStartGitHubSyncRunnerNilFetcherUsesHTTPFetcher(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Setenv("POOMSAE_GITHUB_SYNC_INTERVAL_MS", "25")
-		store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 		defer func() { _ = store.Close() }()
 		runner := &recordingGitHubSyncDaemonRunner{runCalled: make(chan struct{})}
 		var configs []githubsync.RunnerConfig
@@ -2732,7 +2730,7 @@ func TestDaemonRuntimeWebMetadata(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetFlags(t)
-			setupKataEnv(t)
+			setupPoomsaeEnv(t)
 			t.Setenv("PORT", "")
 			t.Setenv(daemonruntime.AutoStartMarkerEnv, tc.marker)
 
@@ -2818,7 +2816,7 @@ func TestDaemonRuntimeWebMetadata(t *testing.T) {
 
 func TestDaemonRuntimeWebMetadata_TokenProtectedReadonlyAllowsLoopbackSession(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "example-token")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
@@ -2965,7 +2963,7 @@ func TestEnsureDaemon_ReturnsExistingURL(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-	tmp := setupKataEnv(t)
+	tmp := setupPoomsaeEnv(t)
 
 	addr, cleanup := pipeServer(t)
 	t.Cleanup(cleanup)
@@ -3001,7 +2999,7 @@ func (r *recordingGitHubSyncDaemonRunner) wasRun() bool {
 
 func newDaemonGitHubSyncStore(t *testing.T) (*sqlitestore.Store, db.Project, db.IssueSyncBinding) {
 	t.Helper()
-	store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 	t.Cleanup(func() { _ = store.Close() })
 	ctx := t.Context()
 	project, err := store.CreateProject(ctx, "spoke-project")
@@ -3420,7 +3418,7 @@ func TestExternalRootEventWakeReconnectsAndDiscardsQueuedEventsAfterReset(t *tes
 
 func TestDaemonStartupFailureStopsExternalRootRunnerBeforeReturning(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	occupied, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -3438,7 +3436,7 @@ func TestDaemonStartupFailureStopsExternalRootRunnerBeforeReturning(t *testing.T
 
 func TestDaemonAutoStartWiresExternalRootRunnerDrainAdmission(t *testing.T) {
 	resetFlags(t)
-	setupKataEnv(t)
+	setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
 	t.Setenv("POOMSAE_AUTOSTART_IDLE_TIMEOUT", "10s")
@@ -3480,7 +3478,7 @@ func TestDaemonAutoStartWiresExternalRootRunnerDrainAdmission(t *testing.T) {
 
 func TestDaemonWithoutConnectorsStartsExternalRootRunnerForDurableBindings(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("POOMSAE_REQUIRE_TOKEN_IDENTITY", "")
@@ -3489,7 +3487,7 @@ func TestDaemonWithoutConnectorsStartsExternalRootRunnerForDurableBindings(t *te
 	t.Cleanup(func() { newTelemetryReporter = originalTelemetry })
 
 	dbPath := filepath.Join(home, "poomsae.db")
-	seed := openKataTestDB(t, dbPath)
+	seed := openPoomsaeTestDB(t, dbPath)
 	project, err := seed.CreateProject(t.Context(), "example-project")
 	require.NoError(t, err)
 	issue, _, err := seed.CreateIssue(t.Context(), db.CreateIssueParams{
@@ -3528,7 +3526,7 @@ func TestDaemonWithoutConnectorsStartsExternalRootRunnerForDurableBindings(t *te
 		return statErr == nil
 	}, 3*time.Second, 10*time.Millisecond)
 
-	inspect := openKataTestDB(t, dbPath)
+	inspect := openPoomsaeTestDB(t, dbPath)
 	t.Cleanup(func() { require.NoError(t, inspect.Close()) })
 	require.Eventually(t, func() bool {
 		stored, readErr := inspect.ExternalRootBindingByID(t.Context(), binding.ID)
@@ -3540,7 +3538,7 @@ func TestDaemonWithoutConnectorsStartsExternalRootRunnerForDurableBindings(t *te
 
 func TestDaemonStartsWithUnavailableConnectorAndServesRedactedStatus(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "")
 	t.Setenv("POOMSAE_REQUIRE_TOKEN_IDENTITY", "")
@@ -3600,7 +3598,7 @@ command = %q
 func TestDaemonGitHubSyncProgressTrackerReachesScheduledRunner(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Setenv("POOMSAE_GITHUB_SYNC_INTERVAL_MS", "25")
-		store := openKataTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "poomsae.db"))
 		defer func() { _ = store.Close() }()
 		fetcher := &daemonGitHubSyncFetcher{}
 		runner := &recordingGitHubSyncDaemonRunner{runCalled: make(chan struct{})}
@@ -3636,7 +3634,7 @@ func TestDaemonGitHubSyncProgressTrackerReachesScheduledRunner(t *testing.T) {
 func TestDaemonNotionScheduledProgress(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	store := newRuntimeNotionRecordingStore(openKataTestDB(t, filepath.Join(t.TempDir(), "runtime.db")), make(chan db.IssueSyncStatus, 1))
+	store := newRuntimeNotionRecordingStore(openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "runtime.db")), make(chan db.IssueSyncStatus, 1))
 	defer func() { require.NoError(t, store.Close()) }()
 	project, err := store.CreateProject(ctx, "example-project")
 	require.NoError(t, err)
@@ -3715,7 +3713,7 @@ func TestDaemonNotionScheduledProgress(t *testing.T) {
 	}
 }
 func TestDaemonNotionScheduledFactorySharesDependencies(t *testing.T) {
-	store := openKataTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
 	defer func() { require.NoError(t, store.Close()) }()
 	fetcher := newRuntimeNotionFetcher()
 	tracker := issuesync.NewProgressTracker()
@@ -3830,7 +3828,7 @@ func waitRuntimeNotion(t *testing.T, started <-chan struct{}) {
 func TestNotionWorkerDrainAndShutdown(t *testing.T) {
 	t.Run("admitted events fork during drain", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			store := openKataTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
+			store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
 			defer func() { require.NoError(t, store.Close()) }()
 			ctx, cancel := context.WithCancel(t.Context())
 			workers := newDaemonWorkerGroup()
@@ -3879,7 +3877,7 @@ func TestNotionWorkerDrainAndShutdown(t *testing.T) {
 		})
 	})
 	t.Run("Retry-After canceled by shutdown", func(t *testing.T) {
-		store := openKataTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
+		store := openPoomsaeTestDB(t, filepath.Join(t.TempDir(), "runtime.db"))
 		defer func() { require.NoError(t, store.Close()) }()
 		ctx, cancel := context.WithCancel(t.Context())
 		workers := newDaemonWorkerGroup()
@@ -4099,10 +4097,10 @@ func waitRuntimeNotionRecord(t *testing.T, recorded <-chan db.IssueSyncStatus) d
 
 func TestDaemonWiresSetupFinished(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("PORT", "")
 	t.Setenv(daemonruntime.AutoStartMarkerEnv, "1")
-	store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+	store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 	project, err := store.CreateProject(t.Context(), "example-project")
 	require.NoError(t, err)
 	_, _, err = store.CreateIssue(t.Context(), db.CreateIssueParams{ProjectID: project.ID, Title: "First issue", Author: "tester"})
@@ -4162,7 +4160,7 @@ func TestDaemonControlsSkipUnknownRecord(t *testing.T) {
 	for _, action := range []string{"stop", "reload", "restart", "update"} {
 		t.Run(action, func(t *testing.T) {
 			resetFlags(t)
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			unknown := startSleepProcess(t)
 			unknownPID := unknown.Process.Pid
 			path := writeUnknownRuntimePID(t, unknownPID)

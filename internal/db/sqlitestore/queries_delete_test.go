@@ -161,7 +161,7 @@ func TestPurgeIssue_RemovesAllDependentsAndAudits(t *testing.T) {
 	t.Parallel()
 	d := openTestDB(t)
 	ctx := t.Context()
-	p := createKataProject(ctx, t, d)
+	p := createPoomsaeProject(ctx, t, d)
 	target, _, err := d.CreateIssue(ctx, db.CreateIssueParams{
 		ProjectID: p.ID, Title: "delete me", Body: "body", Author: "tester",
 	})

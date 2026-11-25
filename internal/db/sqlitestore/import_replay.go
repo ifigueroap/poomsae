@@ -936,7 +936,7 @@ func importExternalFieldMapping(
 		active = false
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO external_field_mappings(
-		connector_instance, kata_field, external_field_id, external_field_name,
+		connector_instance, poomsae_field, external_field_id, external_field_name,
 		accepted_kinds_json, nullable, writable, schema_revision, active,
 		created_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -958,7 +958,7 @@ func reuseProjectMergeExternalFieldMapping(
 	err := tx.QueryRowContext(ctx, `SELECT id, external_field_name, accepted_kinds_json,
 		       nullable, writable, updated_at
 		FROM external_field_mappings
-		WHERE connector_instance = ? AND kata_field = ? AND external_field_id = ?
+		WHERE connector_instance = ? AND poomsae_field = ? AND external_field_id = ?
 		  AND schema_revision = ? AND created_at = ?`,
 		m.ConnectorInstance, m.PoomsaeField, m.ExternalFieldID, m.SchemaRevision, m.CreatedAt,
 	).Scan(&mappingID, &externalFieldName, &storedKinds, &nullable, &writable, &updatedAt)
@@ -1126,10 +1126,10 @@ func importExternalFieldState(ctx context.Context, tx *sql.Tx, s *db.ExternalFie
 	if err := tx.QueryRowContext(ctx, `SELECT b.id, m.id, b.connector_instance
 		FROM external_root_bindings b
 		JOIN external_field_mappings m
-		  ON m.connector_instance = ? AND m.kata_field = ?
+		  ON m.connector_instance = ? AND m.poomsae_field = ?
 		 AND m.external_field_id = ? AND m.schema_revision = ? AND m.created_at = ?
 		WHERE b.uid = ?`,
-		s.MappingConnectorInstance, s.MappingKataField, s.MappingExternalFieldID,
+		s.MappingConnectorInstance, s.MappingPoomsaeField, s.MappingExternalFieldID,
 		s.MappingSchemaRevision, s.MappingCreatedAt, s.BindingUID,
 	).Scan(&bindingID, &mappingID, &bindingConnector); err != nil {
 		return wrapImportErr(db.ImportKindExternalFieldState, err)
@@ -1140,11 +1140,11 @@ func importExternalFieldState(ctx context.Context, tx *sql.Tx, s *db.ExternalFie
 		))
 	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO external_field_states(
-		binding_id, mapping_id, baseline_json, conflicted, conflict_kata,
+		binding_id, mapping_id, baseline_json, conflicted, conflict_poomsae,
 		conflict_external, conflict_at, updated_at
 	) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
 		bindingID, mappingID, nullableRawJSON(s.Baseline), boolInt(s.Conflicted),
-		nullableRawJSON(s.ConflictKata), nullableRawJSON(s.ConflictExternal),
+		nullableRawJSON(s.ConflictPoomsae), nullableRawJSON(s.ConflictExternal),
 		s.ConflictAt, s.UpdatedAt)
 	return wrapImportErr(db.ImportKindExternalFieldState, err)
 }

@@ -19,7 +19,7 @@ import (
 // daemon's startup error reaches us; the cutover gate runs before any
 // sqlitestore.Open against the path.
 func TestDaemonStartUpgradesLegacyDBThroughStoreopen(t *testing.T) {
-	dbPath := filepath.Join(setupKataEnv(t), "poomsae.db")
+	dbPath := filepath.Join(setupPoomsaeEnv(t), "poomsae.db")
 	ctx := t.Context()
 	d, err := sqlitestore.Open(ctx, dbPath)
 	require.NoError(t, err)

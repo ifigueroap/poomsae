@@ -30,7 +30,7 @@ function statusesForScope(scope: PoomsaeTaskStatusFilter): PoomsaeLinkFilters['s
   }
 }
 
-export function createKataLinkFilters(scope: PoomsaeTaskStatusFilter): PoomsaeLinkFilters {
+export function createPoomsaeLinkFilters(scope: PoomsaeTaskStatusFilter): PoomsaeLinkFilters {
   return {
     statuses: statusesForScope(scope),
     relations: {
@@ -43,7 +43,7 @@ export function createKataLinkFilters(scope: PoomsaeTaskStatusFilter): PoomsaeLi
   }
 }
 
-export function applyKataLinkStatusScope(
+export function applyPoomsaeLinkStatusScope(
   current: PoomsaeLinkFilters,
   scope: PoomsaeTaskStatusFilter,
 ): PoomsaeLinkFilters {
@@ -53,7 +53,7 @@ export function applyKataLinkStatusScope(
   }
 }
 
-export function relationForKataLink(
+export function relationForPoomsaeLink(
   link: PoomsaeTaskLink,
   selectedUID: string,
 ): PoomsaeLinkRelation {
@@ -68,7 +68,7 @@ export function poomsaeLinkCouldAffectVisibleResults(
   filters: PoomsaeLinkFilters,
 ): boolean {
   return (
-    filters.relations[relationForKataLink(link, selectedUID)] &&
+    filters.relations[relationForPoomsaeLink(link, selectedUID)] &&
     (filters.statuses.open || filters.statuses.closed)
   )
 }

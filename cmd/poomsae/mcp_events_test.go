@@ -32,7 +32,7 @@ func poomsaeHomeFiles(t *testing.T, home string) []string {
 }
 
 func TestMCPServeForwardsEventsWithoutWritingState(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_AUTHOR", "example-agent")
 	var forwarded []string
 	daemon := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

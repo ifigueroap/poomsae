@@ -65,6 +65,7 @@ func TestEventProjectMovesIndexMigrationUpgradesVersion52(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
 	dropSchema53ProjectMovesIndex(ctx, t, admin, schema)
+	restoreV54Names(ctx, t, admin, "project_moves_index_upgrade")
 	_, err = admin.ExecContext(ctx, `UPDATE project_moves_index_upgrade.meta SET value='52' WHERE key='schema_version'`)
 	require.NoError(t, err)
 

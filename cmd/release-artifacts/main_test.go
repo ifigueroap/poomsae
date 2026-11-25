@@ -57,7 +57,7 @@ replace example.test/dependency => ./third_party/dependency
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "internal/web/dist/index.html"), []byte("production-assets\n"), 0o600))
 	runReleaseGit(t, repo, "add", ".")
 	runReleaseGit(t, repo, "commit", "-m", "snapshot fixture")
-	archive := filepath.Join(t.TempDir(), "kata_snapshot_source.tar.gz")
+	archive := filepath.Join(t.TempDir(), "poomsae_snapshot_source.tar.gz")
 	metadata := filepath.Join(t.TempDir(), "source-archive.json")
 	var stdout, stderr bytes.Buffer
 

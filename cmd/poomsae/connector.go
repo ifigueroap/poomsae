@@ -140,7 +140,7 @@ func newConnectorFieldMapCmd() *cobra.Command {
 				return err
 			}
 			resp, callErr := apiClient.MapConnectorFieldWithResponse(ctx, &generated.MapConnectorFieldRequestOptions{
-				PathParams: &generated.MapConnectorFieldPath{Instance: args[0], KataField: args[1]},
+				PathParams: &generated.MapConnectorFieldPath{Instance: args[0], PoomsaeField: args[1]},
 				Body:       &generated.MapConnectorFieldBody{ExternalField: external},
 			})
 			if err := externalCLITransportError(resp, callErr); err != nil {
@@ -171,7 +171,7 @@ func newConnectorFieldUnmapCmd() *cobra.Command {
 				return err
 			}
 			resp, callErr := apiClient.UnmapConnectorFieldWithResponse(ctx, &generated.UnmapConnectorFieldRequestOptions{
-				PathParams: &generated.UnmapConnectorFieldPath{Instance: args[0], KataField: args[1]},
+				PathParams: &generated.UnmapConnectorFieldPath{Instance: args[0], PoomsaeField: args[1]},
 			})
 			if err := externalCLITransportError(resp, callErr); err != nil {
 				return err
@@ -336,12 +336,12 @@ func printConnectorMapping(cmd *cobra.Command, raw []byte, instance string, mapp
 	}
 	if currentOutputMode() == outputAgent {
 		_, err := fmt.Fprintf(cmd.OutOrStdout(), "instance=%s field=%s external_field=%s external_name=%s active=%t\n",
-			agentValue(instance), agentValue(mapping.KataField), agentValue(mapping.ExternalFieldID),
+			agentValue(instance), agentValue(mapping.PoomsaeField), agentValue(mapping.ExternalFieldID),
 			agentValue(mapping.ExternalFieldName), mapping.Active)
 		return err
 	}
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s mapped to %s (%s): %s\n",
-		textsafe.Line(mapping.KataField), textsafe.Line(mapping.ExternalFieldName),
+		textsafe.Line(mapping.PoomsaeField), textsafe.Line(mapping.ExternalFieldName),
 		textsafe.Line(mapping.ExternalFieldID), state)
 	return err
 }

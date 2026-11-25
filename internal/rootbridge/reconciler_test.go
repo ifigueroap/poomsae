@@ -147,7 +147,7 @@ func TestReconcileRejectsStaleRootBeforeContentOrLifecycleProjection(t *testing.
 	assert.Equal(t, "revision-current", binding.LastExternalRevision)
 }
 
-func TestCompleteExternalClosedKataUsesNativeStateWithoutPublishingComment(t *testing.T) {
+func TestCompleteExternalClosedPoomsaeUsesNativeStateWithoutPublishingComment(t *testing.T) {
 	for _, reason := range []string{"done", "wontfix", "duplicate", "superseded", "audit-no-change"} {
 		t.Run(reason, func(t *testing.T) {
 			h := newReconcileHarness(t)
@@ -389,7 +389,7 @@ func TestCompleteExternalRejectsInvalidLiveReadback(t *testing.T) {
 	}
 }
 
-func TestCompleteExternalFailureLeavesKataClosedAndRetryable(t *testing.T) {
+func TestCompleteExternalFailureLeavesPoomsaeClosedAndRetryable(t *testing.T) {
 	h := newReconcileHarness(t)
 	_, _, _, err := h.store.CloseIssue(t.Context(), h.issue.ID, "done", "verifier", "", nil)
 	require.NoError(t, err)
@@ -438,7 +438,7 @@ func TestCompleteExternalFieldConflictContinuesButFieldTransportFailureBlocks(t 
 		h := newReconcileHarness(t)
 		h.mapField(t, "scheduled_on", "start-date")
 		h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
-		h.setKataField(t, "scheduled_on", date("2026-08-21"))
+		h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 		h.client.fieldValues["start-date"] = date("2026-08-22")
 		_, _, _, err := h.store.CloseIssue(t.Context(), h.issue.ID, "done", "verifier", "", nil)
 		require.NoError(t, err)
@@ -521,7 +521,7 @@ func TestCompleteExternalLateFailurePreservesCommittedStagesAndFinalizesClaim(t 
 			require.NoError(t, readErr)
 			assert.Equal(t, "closed", stored.Status)
 			assert.Equal(t, "Projected before completion", stored.Title)
-			field, readErr := fieldCodecs["scheduled_on"].ReadKata(stored)
+			field, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(stored)
 			require.NoError(t, readErr)
 			assert.Equal(t, date("2026-08-21"), field)
 			binding, readErr := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
@@ -710,33 +710,33 @@ func TestReconcileLifecycleTransitionSurvivesLaterFailureAndRevisionChange(t *te
 
 func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 	cases := []struct {
-		name          string
-		baseline      *connector.FieldValue
-		poomsae       connector.FieldValue
-		external      connector.FieldValue
-		want          connector.FieldValue
-		wantConflict  bool
-		wantKataWrite bool
-		wantExtWrite  bool
+		name             string
+		baseline         *connector.FieldValue
+		poomsae          connector.FieldValue
+		external         connector.FieldValue
+		want             connector.FieldValue
+		wantConflict     bool
+		wantPoomsaeWrite bool
+		wantExtWrite     bool
 	}{
 		{name: "initial same", poomsae: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
 		{name: "initial Poomsae only", poomsae: date("2026-08-20"), external: nullValue(), want: date("2026-08-20"), wantExtWrite: true},
-		{name: "initial external only", poomsae: nullValue(), external: date("2026-08-20"), want: date("2026-08-20"), wantKataWrite: true},
+		{name: "initial external only", poomsae: nullValue(), external: date("2026-08-20"), want: date("2026-08-20"), wantPoomsaeWrite: true},
 		{name: "initial divergent", poomsae: date("2026-08-20"), external: date("2026-08-21"), wantConflict: true},
 		{name: "steady unchanged", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: date("2026-08-20"), want: date("2026-08-20")},
 		{name: "steady Poomsae only", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-20"), want: date("2026-08-21"), wantExtWrite: true},
-		{name: "steady external only", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: date("2026-08-21"), want: date("2026-08-21"), wantKataWrite: true},
+		{name: "steady external only", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: date("2026-08-21"), want: date("2026-08-21"), wantPoomsaeWrite: true},
 		{name: "steady same change", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-21"), want: date("2026-08-21")},
 		{name: "steady divergent", baseline: new(date("2026-08-20")), poomsae: date("2026-08-21"), external: date("2026-08-22"), wantConflict: true},
 		{name: "Poomsae clear", baseline: new(date("2026-08-20")), poomsae: nullValue(), external: date("2026-08-20"), want: nullValue(), wantExtWrite: true},
-		{name: "external clear", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: nullValue(), want: nullValue(), wantKataWrite: true},
+		{name: "external clear", baseline: new(date("2026-08-20")), poomsae: date("2026-08-20"), external: nullValue(), want: nullValue(), wantPoomsaeWrite: true},
 		{name: "clear versus change", baseline: new(date("2026-08-20")), poomsae: nullValue(), external: date("2026-08-22"), wantConflict: true},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			h := newReconcileHarness(t)
 			h.mapField(t, "scheduled_on", "start-date")
-			h.setKataField(t, "scheduled_on", test.poomsae)
+			h.setPoomsaeField(t, "scheduled_on", test.poomsae)
 			h.client.fieldValues["start-date"] = test.external
 			if test.baseline != nil {
 				h.seedBaseline(t, "scheduled_on", *test.baseline)
@@ -748,7 +748,7 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 				assert.Equal(t, 1, result.FieldConflicts)
 				state := h.fieldState(t, "scheduled_on")
 				assert.True(t, state.Conflicted)
-				assert.Equal(t, test.poomsae, decodeStoredFieldValue(t, state.ConflictKata))
+				assert.Equal(t, test.poomsae, decodeStoredFieldValue(t, state.ConflictPoomsae))
 				assert.Equal(t, test.external, decodeStoredFieldValue(t, state.ConflictExternal))
 				return
 			}
@@ -759,7 +759,7 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 			assert.Equal(t, test.want, decodeStoredFieldValue(t, state.Baseline))
 			issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 			require.NoError(t, readErr)
-			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+			poomsaeValue, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 			require.NoError(t, readErr)
 			assert.Equal(t, test.want, poomsaeValue)
 			assert.Equal(t, test.want, h.client.fieldValues["start-date"])
@@ -767,7 +767,7 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 			if test.wantExtWrite {
 				assert.Equal(t, map[string]connector.FieldValue{"start-date": test.external}, h.client.writeFieldCalls[0].Expected)
 			}
-			assert.Equal(t, test.wantKataWrite, containsEventType(result.Events, "issue.metadata_updated"))
+			assert.Equal(t, test.wantPoomsaeWrite, containsEventType(result.Events, "issue.metadata_updated"))
 		})
 	}
 }
@@ -775,7 +775,7 @@ func TestFieldReconcileInitialAndSteadyMatrix(t *testing.T) {
 func TestFieldReconcileRejectsConcurrentLocalMetadataEdit(t *testing.T) {
 	h := newReconcileHarness(t)
 	h.mapField(t, "scheduled_on", "start-date")
-	h.setKataField(t, "scheduled_on", date("2026-08-20"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-20"))
 	h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
 	h.client.fieldValues["start-date"] = date("2026-08-21")
 	storage := &editBeforeFieldProjectionStorage{Storage: h.store, issueID: h.issue.ID}
@@ -788,7 +788,7 @@ func TestFieldReconcileRejectsConcurrentLocalMetadataEdit(t *testing.T) {
 	assert.NotContains(t, eventTypes(result.Events), "issue.metadata_updated")
 	issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, readErr)
-	value, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+	value, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, readErr)
 	assert.Equal(t, date("2026-08-22"), value)
 	state := h.fieldState(t, "scheduled_on")
@@ -828,7 +828,7 @@ func TestFieldConflictPausesOnlyThatField(t *testing.T) {
 	h.mapField(t, "scheduled_on", "start-date")
 	h.mapField(t, "deadline_on", "due-date")
 	h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
-	h.setKataField(t, "scheduled_on", date("2026-08-21"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 	h.client.fieldValues["start-date"] = date("2026-08-22")
 	h.client.fieldValues["due-date"] = date("2026-08-23")
 	h.client.comments = []connector.Comment{{
@@ -860,7 +860,7 @@ func TestFieldConflictPausesOnlyThatField(t *testing.T) {
 	assert.False(t, h.fieldState(t, "deadline_on").Conflicted)
 	issue, err := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, err)
-	deadline, err := fieldCodecs["deadline_on"].ReadKata(issue)
+	deadline, err := fieldCodecs["deadline_on"].ReadPoomsae(issue)
 	require.NoError(t, err)
 	assert.Equal(t, date("2026-08-23"), deadline)
 	binding, err := h.store.ExternalRootBindingByID(t.Context(), h.binding.ID)
@@ -873,14 +873,14 @@ func TestFieldConflictIsIdempotentAndRefreshesCandidatesWithoutAnotherEvent(t *t
 	h := newReconcileHarness(t)
 	h.mapField(t, "scheduled_on", "start-date")
 	h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
-	h.setKataField(t, "scheduled_on", date("2026-08-21"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 	h.client.fieldValues["start-date"] = date("2026-08-22")
 
 	first, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 1, first.FieldConflicts)
 	firstState := h.fieldState(t, "scheduled_on")
-	h.setKataField(t, "scheduled_on", date("2026-08-23"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-23"))
 	h.client.fieldValues["start-date"] = date("2026-08-24")
 	second, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
 	require.NoError(t, err)
@@ -888,9 +888,9 @@ func TestFieldConflictIsIdempotentAndRefreshesCandidatesWithoutAnotherEvent(t *t
 	assert.Equal(t, 1, second.FieldConflicts)
 	assert.NotContains(t, eventTypes(second.Events), "issue.external_field_conflicted")
 	secondState := h.fieldState(t, "scheduled_on")
-	assert.NotEqual(t, string(firstState.ConflictKata), string(secondState.ConflictKata))
+	assert.NotEqual(t, string(firstState.ConflictPoomsae), string(secondState.ConflictPoomsae))
 	assert.NotEqual(t, string(firstState.ConflictExternal), string(secondState.ConflictExternal))
-	assert.Equal(t, date("2026-08-23"), decodeStoredFieldValue(t, secondState.ConflictKata))
+	assert.Equal(t, date("2026-08-23"), decodeStoredFieldValue(t, secondState.ConflictPoomsae))
 	assert.Equal(t, date("2026-08-24"), decodeStoredFieldValue(t, secondState.ConflictExternal))
 }
 
@@ -915,7 +915,7 @@ func TestFieldReconcileDescriptorAndValueDriftBecomeSafeConflicts(t *testing.T) 
 			h := newReconcileHarness(t)
 			h.mapField(t, "scheduled_on", "start-date")
 			h.seedBaseline(t, "scheduled_on", date("2026-08-20"))
-			h.setKataField(t, "scheduled_on", date("2026-08-21"))
+			h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 			h.client.fieldValues["start-date"] = date("2026-08-20")
 			test.mutate(h)
 
@@ -924,7 +924,7 @@ func TestFieldReconcileDescriptorAndValueDriftBecomeSafeConflicts(t *testing.T) 
 			assert.Equal(t, 1, result.FieldConflicts)
 			state := h.fieldState(t, "scheduled_on")
 			assert.True(t, state.Conflicted)
-			assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictKata))
+			assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictPoomsae))
 			assert.Equal(t, date("2026-08-20"), decodeStoredFieldValue(t, state.ConflictExternal))
 			assert.NotContains(t, string(state.ConflictExternal), "untrusted-raw-value")
 			assert.Empty(t, h.client.writeFieldCalls)
@@ -976,7 +976,7 @@ func TestFieldReconcileMissingCodecRetainsEstablishedBaseline(t *testing.T) {
 	stored := h.fieldState(t, "scheduled_on")
 	assert.True(t, stored.Conflicted)
 	assert.Equal(t, string(seeded.Baseline), string(stored.Baseline))
-	assert.Equal(t, nullFieldValue(), decodeStoredFieldValue(t, stored.ConflictKata))
+	assert.Equal(t, nullFieldValue(), decodeStoredFieldValue(t, stored.ConflictPoomsae))
 	assert.Equal(t, nullFieldValue(), decodeStoredFieldValue(t, stored.ConflictExternal))
 
 	second, err := h.reconciler.Run(t.Context(), h.binding.ID, RunOptions{})
@@ -1011,7 +1011,7 @@ func TestFieldReconcileRefreshesEachMappedDescriptorIndependently(t *testing.T) 
 func TestFieldReconcileLossyWriteReadbackDoesNotAdvanceBaseline(t *testing.T) {
 	h := newReconcileHarness(t)
 	h.mapField(t, "scheduled_on", "start-date")
-	h.setKataField(t, "scheduled_on", date("2026-08-21"))
+	h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 	h.client.fieldValues["start-date"] = nullValue()
 	h.client.writeFieldResult = func(_ string, _ connector.FieldValue) connector.FieldValue {
 		return date("2026-08-22")
@@ -1023,7 +1023,7 @@ func TestFieldReconcileLossyWriteReadbackDoesNotAdvanceBaseline(t *testing.T) {
 	state := h.fieldState(t, "scheduled_on")
 	assert.True(t, state.Conflicted)
 	assert.Empty(t, state.Baseline)
-	assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictKata))
+	assert.Equal(t, date("2026-08-21"), decodeStoredFieldValue(t, state.ConflictPoomsae))
 	assert.Equal(t, date("2026-08-22"), decodeStoredFieldValue(t, state.ConflictExternal))
 }
 
@@ -1044,7 +1044,7 @@ func TestFieldReconcilePreservesConnectorErrorsWithoutAdvancingBaseline(t *testi
 	t.Run("write", func(t *testing.T) {
 		h := newReconcileHarness(t)
 		h.mapField(t, "scheduled_on", "start-date")
-		h.setKataField(t, "scheduled_on", date("2026-08-21"))
+		h.setPoomsaeField(t, "scheduled_on", date("2026-08-21"))
 		h.client.fieldValues["start-date"] = nullValue()
 		connectorErr := &connector.Error{Code: "temporarily_unavailable", Message: "field write unavailable"}
 		h.client.writeFieldsErr = connectorErr
@@ -1331,7 +1331,7 @@ func TestFieldReconcileCancellationAfterNativeProjectionPreservesEventAndFinaliz
 	assert.Equal(t, 1, binding.ConsecutiveFailures)
 	issue, readErr := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, readErr)
-	value, readErr := fieldCodecs["scheduled_on"].ReadKata(issue)
+	value, readErr := fieldCodecs["scheduled_on"].ReadPoomsae(issue)
 	require.NoError(t, readErr)
 	assert.Equal(t, date("2026-08-21"), value)
 }
@@ -1643,7 +1643,7 @@ func (h *reconcileHarness) mapFieldDescriptor(
 	return mapping
 }
 
-func (h *reconcileHarness) setKataField(t *testing.T, poomsaeField string, value connector.FieldValue) {
+func (h *reconcileHarness) setPoomsaeField(t *testing.T, poomsaeField string, value connector.FieldValue) {
 	t.Helper()
 	issue, err := h.store.IssueByID(t.Context(), h.issue.ID)
 	require.NoError(t, err)

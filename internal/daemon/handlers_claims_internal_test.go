@@ -150,7 +150,7 @@ func TestClaimHubClientNormalizesDeprecatedClaimFields(t *testing.T) {
 	assert.Equal(t, legacyClaim, status.Claim)
 }
 
-func TestClaimHubClientUsesUnixRuntimeForKataInvalid(t *testing.T) {
+func TestClaimHubClientUsesUnixRuntimeForPoomsaeInvalid(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix sockets unsupported on windows")
 	}

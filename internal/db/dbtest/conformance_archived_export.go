@@ -40,7 +40,7 @@ func RunArchivedPortableDataExport(t *testing.T, store db.Storage, backend Backe
 	identity := embedding.ArtifactIdentity{
 		ProjectUID: project.UID, IssueUID: issue.UID, ProducerInstanceUID: store.InstanceUID(),
 		Provider: "openai-compatible", Model: "example-model", Dimensions: 2,
-		InputType: "none", Normalization: "none", Preprocessing: "kata.issue/v2",
+		InputType: "none", Normalization: "none", Preprocessing: "poomsae.issue/v2",
 		RecipeVersion: 2, SplitMaxRunes: 2000, SplitOverlap: 200,
 		RecipeFingerprint: strings.Repeat("a", 64),
 	}

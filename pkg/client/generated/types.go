@@ -2414,8 +2414,8 @@ func (e ExternalFieldCandidateOut) Validate() error {
 type ExternalFieldConflictOut struct {
 	ConflictAt        *time.Time                 `json:"conflict_at,omitempty"`
 	ExternalCandidate *ExternalFieldCandidateOut `json:"external_candidate,omitempty"`
-	KataCandidate     *ExternalFieldCandidateOut `json:"kata_candidate,omitempty"`
-	KataField         string                     `json:"kata_field" validate:"required"`
+	PoomsaeCandidate  *ExternalFieldCandidateOut `json:"poomsae_candidate,omitempty"`
+	PoomsaeField      string                     `json:"poomsae_field" validate:"required"`
 }
 
 func (e ExternalFieldConflictOut) Validate() error {
@@ -2427,15 +2427,15 @@ func (e ExternalFieldConflictOut) Validate() error {
 			}
 		}
 	}
-	if e.KataCandidate != nil {
-		if v, ok := any(e.KataCandidate).(runtime.Validator); ok {
+	if e.PoomsaeCandidate != nil {
+		if v, ok := any(e.PoomsaeCandidate).(runtime.Validator); ok {
 			if err := v.Validate(); err != nil {
-				errors = errors.Append("KataCandidate", err)
+				errors = errors.Append("PoomsaeCandidate", err)
 			}
 		}
 	}
-	if err := typesValidator.Var(e.KataField, "required"); err != nil {
-		errors = errors.Append("KataField", err)
+	if err := typesValidator.Var(e.PoomsaeField, "required"); err != nil {
+		errors = errors.Append("PoomsaeField", err)
 	}
 	if len(errors) == 0 {
 		return nil
@@ -2448,8 +2448,8 @@ type ExternalFieldMappingOut struct {
 	Active            bool     `json:"active"`
 	ExternalFieldID   string   `json:"external_field_id" validate:"required"`
 	ExternalFieldName string   `json:"external_field_name" validate:"required"`
-	KataField         string   `json:"kata_field" validate:"required"`
 	Nullable          bool     `json:"nullable"`
+	PoomsaeField      string   `json:"poomsae_field" validate:"required"`
 	SchemaRevision    string   `json:"schema_revision" validate:"required"`
 	Writable          bool     `json:"writable"`
 }
@@ -6572,9 +6572,9 @@ func (r ResolveExternalCommentRequestBody) Validate() error {
 }
 
 type ResolveExternalFieldRequestBody struct {
-	Actor     *string `json:"actor,omitempty"`
-	KataField string  `json:"kata_field" validate:"required"`
-	Use       string  `json:"use" validate:"required"`
+	Actor        *string `json:"actor,omitempty"`
+	PoomsaeField string  `json:"poomsae_field" validate:"required"`
+	Use          string  `json:"use" validate:"required"`
 }
 
 func (r ResolveExternalFieldRequestBody) Validate() error {

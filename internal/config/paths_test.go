@@ -22,7 +22,7 @@ func setupTestHome(t *testing.T) string {
 	return home
 }
 
-func TestKataHome_PrefersEnvOverDefault(t *testing.T) {
+func TestPoomsaeHome_PrefersEnvOverDefault(t *testing.T) {
 	home := setupTestHome(t)
 
 	got, err := config.PoomsaeHome()
@@ -30,7 +30,7 @@ func TestKataHome_PrefersEnvOverDefault(t *testing.T) {
 	assert.Equal(t, home, got)
 }
 
-func TestKataHome_DefaultsToUserHomeDotKata(t *testing.T) {
+func TestPoomsaeHome_DefaultsToUserHomeDotPoomsae(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", "")
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestKataHome_DefaultsToUserHomeDotKata(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, ".poomsae"), got)
 }
 
-func TestKataDB_PrefersEnvOverHomeJoin(t *testing.T) {
+func TestPoomsaeDB_PrefersEnvOverHomeJoin(t *testing.T) {
 	home := setupTestHome(t)
 	t.Setenv("POOMSAE_DB", filepath.Join(home, "custom.db"))
 
@@ -49,7 +49,7 @@ func TestKataDB_PrefersEnvOverHomeJoin(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, "custom.db"), got)
 }
 
-func TestKataDB_DefaultsToHomeKataDB(t *testing.T) {
+func TestPoomsaeDB_DefaultsToHomePoomsaeDB(t *testing.T) {
 	home := setupTestHome(t)
 	t.Setenv("POOMSAE_DB", "")
 
@@ -58,7 +58,7 @@ func TestKataDB_DefaultsToHomeKataDB(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, "poomsae.db"), got)
 }
 
-func TestKataDB_DelegatesToKataDSN_EnvDSN(t *testing.T) {
+func TestPoomsaeDB_DelegatesToPoomsaeDSN_EnvDSN(t *testing.T) {
 	t.Setenv("POOMSAE_HOME", t.TempDir())
 	t.Setenv("POOMSAE_DSN", "postgres://db/poomsae")
 	t.Setenv("POOMSAE_DB", "")
@@ -69,7 +69,7 @@ func TestKataDB_DelegatesToKataDSN_EnvDSN(t *testing.T) {
 		"PoomsaeDB must now resolve through PoomsaeDSN so POOMSAE_DSN reaches the same callers")
 }
 
-func TestKataDB_DelegatesToKataDSN_StorageDSN(t *testing.T) {
+func TestPoomsaeDB_DelegatesToPoomsaeDSN_StorageDSN(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("POOMSAE_HOME", home)
 	t.Setenv("POOMSAE_DSN", "")
@@ -218,7 +218,7 @@ func TestStorageHashPostgresIncludesAmbientRouting(t *testing.T) {
 		{
 			name: "database",
 			dsn:  "postgres://db.example.com/?sslmode=verify-full",
-			env:  "PGDATABASE", first: "kata_a", second: "kata_b",
+			env:  "PGDATABASE", first: "poomsae_a", second: "poomsae_b",
 		},
 	}
 
@@ -308,7 +308,7 @@ func TestRuntimeDir_NamespaceIsDBHashUnderHome(t *testing.T) {
 
 const testDBHash = "abc123def456"
 
-func TestHookConfigPath_HonorsKataHome(t *testing.T) {
+func TestHookConfigPath_HonorsPoomsaeHome(t *testing.T) {
 	home := setupTestHome(t)
 
 	got, err := config.HookConfigPath()

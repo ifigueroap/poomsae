@@ -21,7 +21,7 @@ import (
 // runRecord is the JSONL line shape for runs.jsonl. The dispatcher's
 // runs appender (Task 6) marshals these.
 type runRecord struct {
-	Version          int    `json:"kata_hook_runs_version"`
+	Version          int    `json:"poomsae_hook_runs_version"`
 	EventID          int64  `json:"event_id"`
 	EventType        string `json:"event_type"`
 	HookIndex        int    `json:"hook_index"`

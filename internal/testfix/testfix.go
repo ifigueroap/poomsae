@@ -12,10 +12,10 @@ import (
 	gitcmd "go.kenn.io/kit/git/cmd"
 )
 
-// WriteKataToml writes a minimal v1 .poomsae.toml under dir with the given name.
+// WritePoomsaeToml writes a minimal v1 .poomsae.toml under dir with the given name.
 // The world-readable file mode mirrors how users commit .poomsae.toml in real
 // projects.
-func WriteKataToml(t *testing.T, dir, name string) {
+func WritePoomsaeToml(t *testing.T, dir, name string) {
 	t.Helper()
 	body := "version = 1\n\n[project]\nname = " + strconv.Quote(name) + "\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".poomsae.toml"), []byte(body), 0o644)) //nolint:gosec // test fixture mirrors production .poomsae.toml mode

@@ -59,7 +59,7 @@ func TestVersion_JSONEnvelope(t *testing.T) {
 	out := executeRoot(t, newRootCmd(), "version", "--json")
 
 	var got struct {
-		APIVersion   int    `json:"kata_api_version"`
+		APIVersion   int    `json:"poomsae_api_version"`
 		Name         string `json:"name"`
 		Version      string `json:"version"`
 		Commit       string `json:"commit"`
@@ -133,7 +133,7 @@ func TestVersion_RootFlagHonorsOutputMode(t *testing.T) {
 
 	out := executeRoot(t, newRootCmd(), "--version", "--json")
 	var got struct {
-		APIVersion int    `json:"kata_api_version"`
+		APIVersion int    `json:"poomsae_api_version"`
 		Name       string `json:"name"`
 		Version    string `json:"version"`
 	}

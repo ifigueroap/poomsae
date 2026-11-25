@@ -99,7 +99,7 @@ all_projects = true
 `+tokenConfig+"\n"+tt.startup+`
 [web]
 `+tt.web), 0o600))
-			store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+			store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 			_, err := store.CreateProject(t.Context(), "example-project")
 			require.NoError(t, err)
 			if tt.identity {
@@ -263,7 +263,7 @@ func TestDaemonMCPSelfCallsBypassHTTPProxy(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			home := deploymentHome(t)
-			store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+			store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 			t.Cleanup(func() { require.NoError(t, store.Close()) })
 			t.Setenv("POOMSAE_TRUST_PRIVATE_NETWORK", "")
 			authorization := ""
@@ -355,7 +355,7 @@ func TestDaemonMCPProjectScope(t *testing.T) {
 			require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(contents), 0o600))
 			cfg, err := config.ReadDaemonConfig()
 			require.NoError(t, err)
-			store := openKataTestDB(t, filepath.Join(home, "poomsae.db"))
+			store := openPoomsaeTestDB(t, filepath.Join(home, "poomsae.db"))
 			t.Cleanup(func() { require.NoError(t, store.Close()) })
 			alpha, err := store.CreateProject(t.Context(), "alpha")
 			require.NoError(t, err)

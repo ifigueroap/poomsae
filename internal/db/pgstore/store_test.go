@@ -59,7 +59,7 @@ func TestPeekSchemaVersion_ReturnsZeroForFreshDB(t *testing.T) {
 // the test exercises pure DSN handling without a container round-trip.
 func TestStorePath_RedactsCredentials(t *testing.T) {
 	const secret = "VeryS3cretP@ssword"
-	const dsn = "postgres://poomsae:" + secret + "@db.example.com:5432/kata_test?sslmode=disable"
+	const dsn = "postgres://poomsae:" + secret + "@db.example.com:5432/poomsae_test?sslmode=disable"
 
 	store := pgstore.NewStoreForTesting(dsn)
 	path := store.Path()
@@ -67,7 +67,7 @@ func TestStorePath_RedactsCredentials(t *testing.T) {
 	assert.NotContains(t, path, "poomsae:"+secret, "Path() must not leak user:pass form")
 	// CanonicalDSNIdentity drops userinfo entirely; the identity should
 	// carry only scheme + host + db.
-	assert.Equal(t, "postgres://db.example.com/kata_test", path)
+	assert.Equal(t, "postgres://db.example.com/poomsae_test", path)
 }
 
 // TestStorePath_MalformedDSNStillRedacts proves that even when

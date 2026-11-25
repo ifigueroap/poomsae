@@ -55,7 +55,7 @@ POOMSAE = "/opt/poomsae/bin/poomsae"
 DAEMON = "example-daemon"
 
 event = json.load(sys.stdin)
-if type(event.get("kata_hook_version")) is not int or event["kata_hook_version"] != 1:
+if type(event.get("poomsae_hook_version")) is not int or event["poomsae_hook_version"] != 1:
     raise SystemExit("unsupported hook envelope version")
 if event.get("project", {}).get("name") != PROJECT:
     sys.exit(0)

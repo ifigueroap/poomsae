@@ -52,7 +52,6 @@ __pycache__/
 *~
 .DS_Store
 .poomsae.local.toml
-.kata.local.toml
 # roborev snapshots
 /.roborev/
 

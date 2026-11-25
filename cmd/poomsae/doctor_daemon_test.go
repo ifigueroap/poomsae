@@ -428,7 +428,7 @@ func TestDoctorChecksExplicitDaemonWhenWorkspaceCannotResolve(t *testing.T) {
 	require.EqualValues(t, "fail", doctorFinding(t, report, "config.workspace").Status)
 }
 
-func TestDoctorUsesKataServerWhenWorkspaceCannotResolve(t *testing.T) {
+func TestDoctorUsesPoomsaeServerWhenWorkspaceCannotResolve(t *testing.T) {
 	_, workspace := doctorTestEnv(t)
 	server := doctorTestServer(t, nil, nil)
 	t.Setenv("POOMSAE_SERVER", server.URL)

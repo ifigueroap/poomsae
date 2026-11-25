@@ -23,8 +23,8 @@ func bridgeFixtureForRequest(r *http.Request, requestBody map[string]any) map[st
 		"consecutive_failures": 1, "last_success_at": "2026-08-20T12:00:00Z",
 		"last_error": "safe connector failure", "pending_comment_uid": "01JCOMMENT0000000000000000",
 		"field_conflicts": []any{map[string]any{
-			"kata_field":         "scheduled_on",
-			"kata_candidate":     map[string]any{"kind": "date", "value": "2026-08-21"},
+			"poomsae_field":      "scheduled_on",
+			"poomsae_candidate":  map[string]any{"kind": "date", "value": "2026-08-21"},
 			"external_candidate": map[string]any{"kind": "local_datetime", "value": "2026-08-22T09:30:00", "timezone": "Etc/UTC"},
 		}},
 	}
@@ -110,7 +110,7 @@ func TestBridgeEveryCommandRendersHumanJSONAndAgent(t *testing.T) {
 		jsonWant  []string
 	}{
 		{name: "bind", args: []string{"bridge", "bind", "example-project#abc4", "--connector", "example-connector", "--external", "root-locator"}, humanWant: []string{"example-connector", "enabled", "Receive comments: true", "Publish comments: false"}, agentWant: []string{"instance=example-connector", "state=enabled", "receive_comments=true", "publish_comments=false"}, jsonWant: []string{`"connector_instance":"example-connector"`, `"receive_comments":true`}},
-		{name: "show", args: []string{"bridge", "show", "example-project#abc4"}, humanWant: []string{"Pending comment: 01JCOMMENT0000000000000000", "scheduled_on", "kind=date", "value=2026-08-21", "timezone=Etc/UTC"}, agentWant: []string{"instance=example-connector", "state=enabled", "pending_comment=01JCOMMENT0000000000000000", "field=scheduled_on", "poomsae_value=2026-08-21", "external_timezone=Etc/UTC"}, jsonWant: []string{`"pending_comment_uid":"01JCOMMENT0000000000000000"`, `"kata_candidate"`}},
+		{name: "show", args: []string{"bridge", "show", "example-project#abc4"}, humanWant: []string{"Pending comment: 01JCOMMENT0000000000000000", "scheduled_on", "kind=date", "value=2026-08-21", "timezone=Etc/UTC"}, agentWant: []string{"instance=example-connector", "state=enabled", "pending_comment=01JCOMMENT0000000000000000", "field=scheduled_on", "poomsae_value=2026-08-21", "external_timezone=Etc/UTC"}, jsonWant: []string{`"pending_comment_uid":"01JCOMMENT0000000000000000"`, `"poomsae_candidate"`}},
 		{name: "reconcile", args: []string{"bridge", "reconcile", "example-project#abc4"}, humanWant: []string{"Reconciled", "Comments created: 2", "Root updated: true"}, agentWant: []string{"state=enabled", "comments_created=2", "root_updated=true"}, jsonWant: []string{`"comments_created":2`, `"root_updated":true`}},
 		{name: "pause", args: []string{"bridge", "pause", "example-project#abc4", "--reason", "operator pause"}, humanWant: []string{"paused", "operator pause"}, agentWant: []string{"state=paused", "instance=example-connector"}, jsonWant: []string{`"enabled":false`, `"paused_reason":"operator pause"`}},
 		{name: "resume", args: []string{"bridge", "resume", "example-project#abc4"}, humanWant: []string{"enabled", "example-connector"}, agentWant: []string{"state=enabled", "instance=example-connector"}, jsonWant: []string{`"enabled":true`}},
@@ -136,7 +136,7 @@ func TestBridgeEveryCommandRendersHumanJSONAndAgent(t *testing.T) {
 					assert.Contains(t, out, want)
 				}
 				if mode.flag == "--json" {
-					assert.Contains(t, out, `"kata_api_version":1`)
+					assert.Contains(t, out, `"poomsae_api_version":1`)
 				}
 			}
 		})
@@ -148,8 +148,8 @@ func TestBridgeOutputSortsConflictsAndRendersMissingValuesNeutrally(t *testing.T
 	bridge := generated.ExternalRootBridgeOut{
 		Active: true, Enabled: true, ConnectorInstance: "example-connector",
 		FieldConflicts: []generated.ExternalFieldConflictOut{
-			{KataField: "scheduled_on"},
-			{KataField: "deadline_on", KataCandidate: &generated.ExternalFieldCandidateOut{Kind: "date"}},
+			{PoomsaeField: "scheduled_on"},
+			{PoomsaeField: "deadline_on", PoomsaeCandidate: &generated.ExternalFieldCandidateOut{Kind: "date"}},
 		},
 	}
 	cmd := newBridgeShowCmd()
@@ -210,7 +210,7 @@ func TestBridgeResolveFieldRejectsInvalidChoiceBeforeHTTP(t *testing.T) {
 
 func TestBridgeQualifiedRefUsesConfiguredRemoteDaemon(t *testing.T) {
 	f := newExternalCLIFixture(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_SERVER", f.server.URL)
 	t.Setenv("POOMSAE_HOME", home)
 	out, _, err := executeRootCapture(t, t.Context(), "--agent", "bridge", "show", "example-project#abc4")
@@ -282,7 +282,7 @@ func TestBridgeCommandsSendExactQualifiedRefRequests(t *testing.T) {
 		{name: "pause without reason", args: []string{"bridge", "pause", "example-project#abc4"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/pause", body: map[string]any{"actor": "operator"}},
 		{name: "pause", args: []string{"bridge", "pause", "example-project#abc4", "--reason", "operator pause"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/pause", body: map[string]any{"actor": "operator", "reason": "operator pause"}},
 		{name: "resume", args: []string{"bridge", "resume", "example-project#abc4"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resume", body: map[string]any{"actor": "operator"}},
-		{name: "resolve-field", args: []string{"bridge", "resolve-field", "example-project#abc4", "scheduled_on", "--use", "external"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resolve-field", body: map[string]any{"actor": "operator", "kata_field": "scheduled_on", "use": "external"}},
+		{name: "resolve-field", args: []string{"bridge", "resolve-field", "example-project#abc4", "scheduled_on", "--use", "external"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resolve-field", body: map[string]any{"actor": "operator", "poomsae_field": "scheduled_on", "use": "external"}},
 		{name: "resolve-comment adopt", args: []string{"bridge", "resolve-comment", "example-project#abc4", "--adopt", "opaque ID/with spaces:%25"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resolve-comment", body: map[string]any{"action": "adopt", "actor": "operator", "external_comment_id": "opaque ID/with spaces:%25"}},
 		{name: "resolve-comment", args: []string{"bridge", "resolve-comment", "example-project#abc4", "--retry"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resolve-comment", body: map[string]any{"action": "retry", "actor": "operator"}},
 		{name: "resolve-comment skip", args: []string{"bridge", "resolve-comment", "example-project#abc4", "--skip"}, method: http.MethodPost, path: "/api/v1/projects/42/issues/abc4/bridge/actions/resolve-comment", body: map[string]any{"action": "skip", "actor": "operator"}},

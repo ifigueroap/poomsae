@@ -9,7 +9,7 @@ export interface DevRuntimePaths {
   database: string
 }
 
-export function developmentKataBuildArguments(binary: string): string[] {
+export function developmentPoomsaeBuildArguments(binary: string): string[] {
   return ['build', '-trimpath', '-buildvcs=false', '-o', binary, './cmd/poomsae']
 }
 
@@ -56,7 +56,7 @@ export async function prepareBrowserTestRuntime(
       environment,
     )
     runCommand(
-      ['go', ...developmentKataBuildArguments(binary)],
+      ['go', ...developmentPoomsaeBuildArguments(binary)],
       options.repositoryRoot,
       environment,
     )

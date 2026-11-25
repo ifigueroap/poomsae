@@ -39,7 +39,7 @@ func TestForegroundRefusesStartupBeforeCutover(t *testing.T) {
 		{name: "store owned through a database file symlink", ownedStore: true, ownerDBLink: true, wantError: "another poomsae daemon owns this store"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			home := setupKataEnv(t)
+			home := setupPoomsaeEnv(t)
 			t.Setenv("POOMSAE_DSN", "")
 			t.Setenv("PORT", "")
 			path := filepath.Join(home, "poomsae.db")
@@ -131,7 +131,7 @@ func TestStoreOwnerLockHelperProcess(t *testing.T) {
 // competing daemon configured with the same link is refused.
 func TestStoreStaysOwnedAfterCutoverThroughSymlink(t *testing.T) {
 	resetFlags(t)
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	t.Setenv("PORT", "")
 	t.Setenv("POOMSAE_AUTH_TOKEN", "")
@@ -187,7 +187,7 @@ func TestStoreStaysOwnedAfterCutoverThroughSymlink(t *testing.T) {
 // SQLite creates a missing database through a dangling symlink, so an owner
 // configured through that link must also own the target's name.
 func TestForegroundRefusesStoreOwnedThroughDanglingSymlink(t *testing.T) {
-	home := setupKataEnv(t)
+	home := setupPoomsaeEnv(t)
 	t.Setenv("POOMSAE_DSN", "")
 	t.Setenv("PORT", "")
 	target := filepath.Join(home, "fresh.db")
